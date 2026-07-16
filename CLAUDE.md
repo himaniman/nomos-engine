@@ -49,6 +49,9 @@ nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
                   structure axis = spatial coherence (metrics.spatial_autocorr,
                   neighbour autocorrelation), NOT gzip — it separates coherent
                   waves/blobs from noise; legacy runs fall back to gzip
+nomos/game.py     deterministic toroidal Snake (the external world)
+nomos/embodied.py brain<->game coupling: food sensor -> world, motor field ->
+                  move; `play()` loop; CLI `python -m nomos play`
 nomos/__main__.py CLI `python -m nomos run`
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
@@ -121,9 +124,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   old free hypothesis chain. Live runs grew coverage 9 -> 19 over the whole
   memory+coherence+illumination arc.
 - The closed-world scientific cycle is considered COMPLETE (memory, coherence-
-  honest map, illumination + basin escape, watchable GIFs). Next phase =
-  grid-as-brain driving a game (see the last "Next" bullet); expect many more
-  iterations than the closed-world cycle needed.
+  honest map, illumination + basin escape, watchable GIFs).
+- Done (game Phase A — brain<->game coupling): `nomos/game.py` (deterministic
+  toroidal Snake) + `nomos/embodied.py` couple the grid to the game. The world
+  senses via a read-only `food` channel (Gaussian bump egocentric to the head,
+  re-asserted each physics step) and acts via a `motor` channel (harness reads
+  the motor field's centre of mass -> a move). Game ticks once per `--ticks`
+  physics steps. `python -m nomos play laws/snake_brain.nomos --gif ...` renders
+  the SPLIT view (life left, snake right in the fire palette, progress strip).
+  Baseline `laws/snake_brain.nomos` (diffuse food into motor) already scores ~22
+  at 48/16, seed 0 — the sense->act loop demonstrably drives the snake to food.
+  Reproducible: `play()` is a pure function of (law, sizes, seed, cadence, moves).
+  Phase B (NOT started) = learning: selection with fitness = game score over the
+  argmax8 inheritance primitives.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

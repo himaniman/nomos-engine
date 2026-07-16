@@ -129,7 +129,8 @@ nomos/render.py   frames -> GIF/PNG (1 channel -> colormap, 2-3 -> RGB)
 nomos/archive.py  SQLite archive of runs (laws + reports + hypotheses)
 nomos/elites.py   MAP-Elites behavior map over the archive (regime coverage)
 nomos/scientist.py automated LLM physicist loop (nomos/llm.py, nomos/sim.py)
-nomos/__main__.py CLI (`python -m nomos run ...`)
+nomos/game.py     deterministic Snake; nomos/embodied.py couples it to a brain
+nomos/__main__.py CLI (`python -m nomos run ...`, `python -m nomos play ...`)
 laws/             .nomos law files
 tests/            pytest; GoL glider/blinker as engine ground truth
 ```
@@ -164,6 +165,11 @@ tests/            pytest; GoL glider/blinker as engine ground truth
 8. ~~Illumination~~ (done): `--mode illuminate` steers toward empty map cells —
    each turn it targets an empty frontier cell, seeds the model with a
    neighbouring cell's law and which single axis to move, and reports HIT/miss.
-9. Next: a smarter model steering DeepSeek's cheap mutations; batches as k8s
-   Jobs; environment-coupled worlds where the grid acts as a *brain* that emits
-   signals to drive an external game (not just a game feeding channels in).
+9. ~~Game Phase A — brain↔game coupling~~ (done): the grid drives a deterministic
+   Snake. It senses the food through a read-only `food` channel and acts through
+   a `motor` channel (its centre of mass picks the move); `python -m nomos play`
+   renders a split life|game GIF. A trivial baseline brain already steers the
+   snake to food. See `nomos/embodied.py`, `laws/snake_brain.nomos`.
+10. Next: game Phase B — *learning* to play (selection with fitness = game score
+    over the `argmax8` inheritance primitives); a smarter model steering
+    DeepSeek's mutations; batches as k8s Jobs.

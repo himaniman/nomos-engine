@@ -426,3 +426,51 @@ reproducibility survives. Rendering plan: a split GIF — life on the left, the
 game (snake) on the right styled to match the life field, progress strip below;
 aggregate cells for rendering once populations grow. Expect this phase to need
 many more iterations than the closed-world cycle.
+
+---
+
+## 2026-07-16 — Game Phase A: the grid as a brain that drives Snake
+
+**Built.** `nomos/game.py` — a deterministic toroidal Snake (wraps like the
+world; dies only on self-collision; food placed by a seeded RNG). `nomos/
+embodied.py` — the coupling. The engine was NOT touched: `World.state` is a
+public dict, so sensing/acting happens from outside, preserving the physics
+contract. An embodied law must declare two channels:
+- `food` (SENSOR, read-only): each physics step the harness overwrites it with a
+  Gaussian bump on the world grid pointing toward the food, egocentric to the
+  snake's head (food to the right -> bump on the right).
+- `motor` (MOTOR): the harness reads the non-negative centre of mass of this
+  field relative to the grid centre and turns the snake that way (or keeps
+  heading if the motor is silent).
+The game ticks once per `--ticks` physics steps, giving the brain time to
+organize between moves. `python -m nomos play <law> --gif` renders the split
+watch-along view: life field left (fire colormap), Snake board right (same
+palette on its fixed levels), progress strip below — exactly the layout we
+sketched.
+
+**It works.** Baseline brain `laws/snake_brain.nomos` is deliberately dumb —
+`motor = 0.6*avg8(motor) + food`, i.e. let the food signal soak into a diffusing
+motor field so its centre of mass sits toward the food. At world 48 / board 16 /
+seed 0 it scored **22** (ate 22 food) and survived 188 ticks before boxing
+itself in as it grew. So the sense->organize->act loop demonstrably produces
+goal-directed motion; the snake homes on food without any explicit pathfinding,
+purely from where activity concentrates on the grid.
+
+**Reproducibility held.** `play()` is a pure function of (law, world size, game
+size, seed, cadence, moves): world RNG seeded, game RNG seeded, no external
+nondeterminism. Same inputs -> identical move sequence and score (unit-tested).
+So causal experiments ("change one law, hold the game fixed") and parallel runs
+survive the coupling, as intended.
+
+**What this is and isn't.** This is *coupling*, not *learning*. The baseline
+brain is hand-wired; it doesn't improve. The snake dies by self-trapping because
+the brain has no sense of its own body — a `danger`/body sensor is an obvious
+next sensor. But the milestone is met: a cell-physics grid can act as a
+controller for an external game through pure signalling.
+
+**Next (Phase B — learning).** Put selection on top: fitness = game score, and
+let brains reproduce/mutate via the `argmax8` inheritance primitives (the Exp
+3-4 machinery) so better players spread. Open design question: one brain per run
+with evolution across runs (cheap, fits the archive/illumination tooling), or a
+population of brains embedded in one world. Also: add a body/danger sensor so
+"don't eat yourself" is even learnable. Expect many more iterations than Phase A.

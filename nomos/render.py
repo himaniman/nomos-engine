@@ -83,6 +83,38 @@ def frames_to_images(
     return images
 
 
+def split_images(
+    life_frames: list[np.ndarray],
+    game_frames: list[np.ndarray],
+    scale: int = 6,
+    gap: int = 4,
+) -> list[Image.Image]:
+    """Side-by-side frames: the life field (left, fire colormap, normalized
+    across the run) and the game board (right, same fire palette on its fixed
+    0..1 levels), matched in height, with a progress strip below. This is the
+    watch-along view: what the brain is doing next to what the snake is doing."""
+    life_imgs = frames_to_images({"life": life_frames}, scale=scale, cmap="fire")
+    target_h = life_imgs[0].height
+    out = []
+    n = len(life_frames)
+    for t in range(n):
+        left = life_imgs[t]
+        g = np.clip(game_frames[t], 0.0, 1.0)
+        gimg = Image.fromarray(_apply_fire(g).clip(0, 255).astype(np.uint8), "RGB")
+        gs = max(1, target_h // gimg.height)
+        gimg = gimg.resize((gimg.width * gs, gimg.height * gs), Image.NEAREST)
+        if gimg.height != target_h:
+            gimg = gimg.resize((round(gimg.width * target_h / gimg.height), target_h),
+                               Image.NEAREST)
+        w = left.width + gap + gimg.width
+        canvas = Image.new("RGB", (w, target_h), (0, 0, 0))
+        canvas.paste(left, (0, 0))
+        canvas.paste(gimg, (left.width + gap, 0))
+        frac = t / (n - 1) if n > 1 else 1.0
+        out.append(_add_progress_bar(canvas, frac))
+    return out
+
+
 def save_gif(images: list[Image.Image], path: str, fps: int = 25) -> None:
     images[0].save(
         path,

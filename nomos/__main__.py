@@ -19,7 +19,7 @@ from nomos import archive
 from nomos.dsl import NomosError, parse_program
 from nomos.engine import World
 from nomos.metrics import summarize
-from nomos.render import frames_to_images, save_gif, save_png
+from nomos.render import frames_to_images, save_gif, save_png, split_images
 
 
 def _observe_frame(world: World, cap: int) -> dict:
@@ -84,6 +84,31 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_play(args: argparse.Namespace) -> int:
+    from nomos.embodied import play
+
+    text = Path(args.law).read_text(encoding="utf-8")
+    want_frames = bool(args.gif)
+    result = play(text, world_size=args.world_size, game_size=args.game_size,
+                  seed=args.seed, moves=args.moves, ticks_per_move=args.ticks,
+                  life_channel=args.life_channel, collect_frames=want_frames,
+                  sensor_gain=args.sensor_gain)
+
+    if args.gif:
+        Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
+        images = split_images(result["life_frames"], result["game_frames"],
+                              scale=args.scale)
+        save_gif(images, args.gif, fps=args.fps)
+
+    summary = {k: result[k] for k in
+               ("score", "steps_alive", "moves", "alive_at_end", "world_size",
+                "game_size", "seed")}
+    print(json.dumps(summary, indent=2))
+    print(f"snake: score={result['score']} survived {result['steps_alive']} ticks"
+          + (f", wrote {args.gif}" if args.gif else ""), file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nomos", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -106,6 +131,25 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--obs-cap", type=int, default=64, dest="obs_cap",
                      help="downsample observer frames to <= this per axis (default 64)")
     run.set_defaults(func=cmd_run)
+
+    play = sub.add_parser("play", help="let a cell-grid brain drive the Snake game")
+    play.add_argument("law", help="path to an embodied .nomos law (declares food + motor)")
+    play.add_argument("--world-size", type=int, default=48, dest="world_size",
+                      help="brain grid side (default 48)")
+    play.add_argument("--game-size", type=int, default=16, dest="game_size",
+                      help="snake board side (default 16)")
+    play.add_argument("--seed", type=int, default=0)
+    play.add_argument("--moves", type=int, default=200, help="max game ticks")
+    play.add_argument("--ticks", type=int, default=4,
+                      help="physics steps the brain thinks per game tick (default 4)")
+    play.add_argument("--sensor-gain", type=float, default=0.8, dest="sensor_gain",
+                      help="how far the food bump sits from centre (default 0.8)")
+    play.add_argument("--life-channel", default="motor", dest="life_channel",
+                      help="which channel to render on the left (default motor)")
+    play.add_argument("--scale", type=int, default=6, help="upscale factor for the GIF")
+    play.add_argument("--fps", type=int, default=6, help="GIF playback speed")
+    play.add_argument("--gif", default=None, help="write the split life|game GIF here")
+    play.set_defaults(func=cmd_play)
 
     args = parser.parse_args(argv)
     try:

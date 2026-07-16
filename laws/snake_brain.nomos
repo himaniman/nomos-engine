@@ -1,0 +1,13 @@
+# A minimal Snake brain: a baseline that proves the sense->act loop works.
+# The harness writes `food` each tick (a bump pointing toward the food) and
+# reads where `motor` activity concentrates to pick a move. This law simply
+# lets the food signal soak into a diffusing motor field, so the motor's centre
+# of mass sits toward the food and the snake heads that way. Not clever — a
+# floor for LLM-written or evolved brains to beat.
+
+channel food
+channel motor: init 0
+
+rule think:
+  when 1
+  set motor = 0.6 * avg8(motor) + food

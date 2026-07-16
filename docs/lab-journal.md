@@ -215,3 +215,54 @@ so it stops re-deriving basics each run. (3) Novelty archive / MAP-Elites: keep
 a grid of (activity × structure × ...) and reward filling new cells, not a
 single score. (4) Let a smarter model periodically read the journal and set
 direction while DeepSeek does the many cheap mutations.
+
+---
+
+## 2026-07-16 — Scientist gets memory + a behavior map
+
+**Motivation.** Open threads (2) and (3) above: each automated run started from
+a blank slate and re-derived basics, and "novelty" was still a single verdict.
+Both are now built.
+
+**Memory.** `archive.memory(db)` returns the latest run of each *distinct* law
+(deduped by law hash), newest first, with its stored hypothesis and outcome.
+`scientist.memory_block()` renders these into the physicist's very first user
+turn: "results of past experiments … build on them, do not re-test what is
+already known." The HYPOTHESIS: line is now parsed out (`extract_hypothesis`)
+and persisted in a new `hypothesis` column — old archives are auto-migrated with
+an `ALTER TABLE` guarded by a try/except, so pre-existing `runs.db` files keep
+working. Controlled by `--memory N` (default 10, `0` disables).
+
+**Behavior map (MAP-Elites).** `nomos/elites.py` places every run in a coarse
+grid of *regimes* rather than scoring it:
+- **activity** (final |Δ|): frozen / static / settled / alive / boiling — the
+  same thresholds the observer's verdict already uses, so the axis is honest to
+  the metric.
+- **structure** (mean gzip ratio across channels): uniform / ordered /
+  structured / textured / noisy — 0 = flat field, 1 = incompressible noise.
+- **order** (max temporal recurrence self-correlation): chaotic / drifting /
+  recurrent / locked; a world that has stopped changing counts as trivially
+  locked.
+5×5×4 = 100 cells. The loop tells the model, after each run, its cell and
+whether it is NEW, and the memory block lists visited regimes with a coverage
+count. Cells are computed from stored reports on the fly, so the binning can be
+re-tuned later without migrating the DB.
+
+**Design choice.** Coverage is framed to the model as *a compass, not a score* —
+consistent with the project's "seek understanding, not a number" stance. The map
+just makes "somewhere no law has gone" a thing the physicist can aim at.
+
+**Status.** Wired end-to-end and unit-tested (`test_elites.py`, extended
+`test_archive.py` / `test_scientist.py`; 48 passing). Dry-run smoke test
+confirmed run #2 sees run #1 in memory and is told its cell is "already visited."
+Not yet exercised against a live model — this clone has no `.env`, so the
+WaveSpeed key needs restoring before the next real session.
+
+**Open threads.** (1) The three axes may be too coarse or too correlated
+(structure vs order) — inspect the real occupancy once a live batch fills it, and
+split/merge bins from evidence. (2) Actively *steer toward* empty cells: today
+the model is merely informed; a wrapper could pick the seed law from the nearest
+occupied neighbour of an empty target cell (true MAP-Elites illumination).
+(3) Environment-coupled worlds: feed an external map or game (Snake — food/walls
+as read-only channels, world activity read back as moves) so life must adapt to
+a foreign environment rather than a self-contained one.

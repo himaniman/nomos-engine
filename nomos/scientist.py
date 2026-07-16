@@ -17,7 +17,7 @@ import re
 import sys
 from pathlib import Path
 
-from nomos import archive
+from nomos import archive, elites
 from nomos.dsl import NomosError
 from nomos.llm import LLMError, make_client
 from nomos.sim import digest, simulate
@@ -68,6 +68,13 @@ organized along an axis (gradient), connected-blob structure, how its entropy
 drifted, and self-recurrence (oscillation). Plus the strongest correlations
 between channels. Use these to judge your prediction.
 
+THE BEHAVIOR MAP. Every run lands in a cell of a coarse map of regimes:
+activity (frozen..boiling) x spatial structure (uniform..noisy) x temporal
+order (chaotic..locked). After each run you are told the cell and whether it is
+new. Unvisited regimes are where undiscovered physics lives — when choosing the
+next experiment, prefer a causal hypothesis that could reach one. Coverage is a
+compass, not a score.
+
 HOW TO REPLY, every turn, in this order:
 1. HYPOTHESIS: one or two sentences — the causal idea you are testing.
 2. A law in a fenced ```nomos code block. Keep it small; change ONE thing at a
@@ -81,6 +88,14 @@ FIRST_TURN = ("Begin. Propose your first hypothesis, law, and prediction. "
               "A good first world is one that stays alive without dying out or boiling.")
 
 _LAW_RE = re.compile(r"```(?:nomos|text)?\s*\n(.*?)```", re.DOTALL)
+_HYP_RE = re.compile(r"HYPOTHESIS\s*:?\s*(.+?)(?=\n\s*\n|\n```|$)",
+                     re.DOTALL | re.IGNORECASE)
+
+
+def extract_hypothesis(reply: str) -> str:
+    """The model's HYPOTHESIS line(s), for the archive; '' if absent."""
+    m = _HYP_RE.search(reply)
+    return " ".join(m.group(1).split())[:400] if m else ""
 
 
 def extract_law(reply: str) -> str | None:
@@ -94,11 +109,39 @@ def extract_law(reply: str) -> str | None:
     return None
 
 
-def _follow_up(report_digest: str) -> str:
-    return (f"Observation from your law:\n{report_digest}\n\n"
-            "Was your prediction right? State what you concluded in one or two "
+def _follow_up(report_digest: str, map_line: str = "") -> str:
+    return (f"Observation from your law:\n{report_digest}\n"
+            + (f"{map_line}\n" if map_line else "")
+            + "\nWas your prediction right? State what you concluded in one or two "
             "sentences, then propose the next hypothesis, law, and prediction "
             "(change one thing at a time).")
+
+
+def memory_block(archive_path: str, limit: int) -> str:
+    """Past distinct laws + outcomes, formatted for the physicist's first turn."""
+    if limit <= 0 or not Path(archive_path).exists():
+        return ""
+    entries = archive.memory(archive_path, limit=limit)
+    if not entries:
+        return ""
+    parts = []
+    for e in entries:
+        act = e["report"].get("activity", {})
+        outcome = e["verdict"]
+        if act:
+            outcome += (f" | activity mean={act.get('mean', 0):.3f}"
+                        f" trend={act.get('trend', '?')}")
+        parts.append(
+            (f"[run #{e['id']}" + (f" {e['law_name']}" if e["law_name"] else "") + "]\n")
+            + (f"hypothesis: {e['hypothesis']}\n" if e["hypothesis"] else "")
+            + f"law:\n{e['law']}\noutcome: {outcome}"
+        )
+    summary = elites.coverage_summary(archive_path)
+    return ("MEMORY — results of past experiments (yours or an earlier session's), "
+            "newest first. Build on them: do not re-test what is already known; "
+            "refine, combine, or challenge these results.\n\n"
+            + "\n\n".join(parts)
+            + (f"\n\n{summary}" if summary else "") + "\n\n")
 
 
 def _bad_law_msg(err: str) -> str:
@@ -122,11 +165,17 @@ class Journal:
 
 def run_loop(client, iterations: int, size: int, steps: int, seed: int,
              archive_path: str | None, journal_path: Path,
-             temperature: float = 1.0) -> Journal:
+             temperature: float = 1.0, memory_runs: int = 10) -> Journal:
     params = {"size": size, "steps": steps, "seed": seed}
     journal = Journal(journal_path, getattr(client, "model", "?"), params)
+    mem = memory_block(archive_path, memory_runs) if archive_path else ""
+    if mem:
+        print(f"[memory] {mem.count('[run #')} past runs loaded into the first turn",
+              file=sys.stderr)
     messages = [{"role": "system", "content": DSL_SPEC},
-                {"role": "user", "content": FIRST_TURN}]
+                {"role": "user", "content": mem + FIRST_TURN}]
+    seen_cells = (set(elites.grid(archive_path))
+                  if archive_path and Path(archive_path).exists() else set())
 
     completed = 0
     while completed < iterations:
@@ -154,17 +203,24 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
 
         completed += 1
         dig = digest(report)
+        c = elites.cell(report)
+        is_new = c not in seen_cells
+        seen_cells.add(c)
+        map_line = (f"behavior-map: {elites.cell_label(c)} — "
+                    + ("NEW regime" if is_new else "already visited")
+                    + f" ({len(seen_cells)}/{elites.TOTAL_CELLS} cells)")
         run_id = None
         if archive_path:
-            run_id = archive.record(archive_path, report, law, law_name=f"auto-{completed}")
-        print(f"[iter {completed}/{iterations}] {report['verdict']}"
+            run_id = archive.record(archive_path, report, law, law_name=f"auto-{completed}",
+                                    hypothesis=extract_hypothesis(reply))
+        print(f"[iter {completed}/{iterations}] {report['verdict']} | {map_line}"
               + (f"  (archive #{run_id})" if run_id else ""), file=sys.stderr)
         journal.append(
             f"\n---\n\n## Experiment {completed}\n\n{reply}\n\n"
-            f"```nomos\n{law}\n```\n\n**Observer:**\n```\n{dig}\n```\n"
+            f"```nomos\n{law}\n```\n\n**Observer:**\n```\n{dig}\n{map_line}\n```\n"
             + (f"\n_archived as run #{run_id}._\n" if run_id else "")
         )
-        messages.append({"role": "user", "content": _follow_up(dig)})
+        messages.append({"role": "user", "content": _follow_up(dig, map_line)})
 
     return journal
 
@@ -178,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--temperature", type=float, default=1.0)
     p.add_argument("--archive", default="runs.db", help="SQLite archive path (or 'none')")
+    p.add_argument("--memory", type=int, default=10,
+                   help="past distinct laws shown to the physicist at start (0 = off)")
     p.add_argument("--journal", default=None, help="journal markdown path (default journal/auto-<ts>.md)")
     p.add_argument("--model", default=None, help="override NOMOS_LLM_MODEL")
     p.add_argument("--base-url", default=None, dest="base_url")
@@ -206,7 +264,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         journal = run_loop(client, args.iterations, args.size, args.steps, args.seed,
-                           archive_path, journal_path, temperature=args.temperature)
+                           archive_path, journal_path, temperature=args.temperature,
+                           memory_runs=args.memory)
     except LLMError as e:
         print(f"nomos.scientist: LLM error: {e}", file=sys.stderr)
         return 1

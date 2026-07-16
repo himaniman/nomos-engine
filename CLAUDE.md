@@ -42,6 +42,10 @@ nomos/engine.py   World.step(): SNAPSHOT semantics (synchronous CA), builtins,
                   regularization (NaN->0, clip 1e6). Torus grid, float64 channels.
 nomos/metrics.py  the observer: activity, entropy, gzip ratio, verdict line
 nomos/render.py   frames -> GIF/PNG
+nomos/archive.py  SQLite archive (laws + reports + hypotheses); memory() feeds
+                  the scientist's first turn
+nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
+                  100 regime cells computed from stored reports on the fly
 nomos/__main__.py CLI `python -m nomos run`
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
@@ -89,10 +93,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   `NOMOS_LLM_MODEL`. Note: WaveSpeed's LLM endpoint needs an LLM-enabled key
   (the image-gen key 401s). deepseek-v4 defaults to thinking mode — don't set a
   tiny max_tokens or `content` comes back empty.
+- Done (memory + behavior map): the scientist's first turn now carries the
+  archive — past laws deduped by hash, with hypotheses (extracted from the
+  HYPOTHESIS: line and stored in a new `hypothesis` column, auto-migrated) and
+  outcomes (`--memory N`, default 10, 0 = off). Every run is binned into a
+  MAP-Elites behavior map (`nomos/elites.py`): activity(5, same thresholds as
+  the verdict) x mean-gzip structure(5) x temporal-order recurrence(4) = 100
+  cells; the follow-up message tells the model its cell and NEW/visited, the
+  memory block includes coverage. Cells are computed from stored reports, so
+  binning can change without touching the DB.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
-- Next: give the scientist the archive as memory; novelty archive (MAP-Elites)
-  instead of single-objective; a smarter model setting direction over DeepSeek's
-  cheap mutations.
+- Next: a smarter model setting direction over DeepSeek's cheap mutations;
+  environment-coupled worlds — feed an external map/game state (e.g. Snake:
+  food/walls as read-only channels, world activity mapped back to moves) so
+  life must adapt to a foreign environment. NOTE: this fresh clone has no
+  `.env` — the WaveSpeed key must be restored before live scientist runs.
 - Deployment intent: runs are pure CLI -> trivially parallel as k8s Jobs on the
   user's cluster later; GPU only if we move to Lenia-style continuous physics.

@@ -126,6 +126,9 @@ nomos/dsl.py      tokenizer + Pratt parser -> tuple AST
 nomos/engine.py   World: snapshot-semantics step(), builtins, regularization
 nomos/metrics.py  the observer: activity, entropy, gzip ratio, verdict
 nomos/render.py   frames -> GIF/PNG (1 channel -> colormap, 2-3 -> RGB)
+nomos/archive.py  SQLite archive of runs (laws + reports + hypotheses)
+nomos/elites.py   MAP-Elites behavior map over the archive (regime coverage)
+nomos/scientist.py automated LLM physicist loop (nomos/llm.py, nomos/sim.py)
 nomos/__main__.py CLI (`python -m nomos run ...`)
 laws/             .nomos law files
 tests/            pytest; GoL glider/blinker as engine ground truth
@@ -149,6 +152,11 @@ tests/            pytest; GoL glider/blinker as engine ground truth
    proposes hypothesis+law+prediction, the engine runs it, the observer reports,
    it concludes and iterates; logged to `journal/` + the SQLite archive.
    `--dry-run` uses a mock physicist (no API).
-7. Next: give the scientist the archive as memory; a novelty archive
-   (MAP-Elites) instead of single-objective; a smarter model steering DeepSeek's
-   cheap mutations; batches as k8s Jobs.
+7. ~~Memory + behavior map~~ (done): the scientist starts each session with the
+   archive's past laws, hypotheses and outcomes (`--memory N`, deduped by law
+   hash), and every run is placed on a MAP-Elites-style behavior map
+   (`nomos/elites.py`): activity × spatial structure × temporal order,
+   5×5×4 = 100 regime cells. The loop tells the model its cell and whether it
+   is new; coverage is a compass, not a score.
+8. Next: a smarter model steering DeepSeek's cheap mutations; batches as k8s
+   Jobs; environment-coupled worlds (external maps/games feeding channels).

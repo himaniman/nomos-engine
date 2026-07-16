@@ -1,6 +1,6 @@
 import numpy as np
 
-from nomos import llm, scientist
+from nomos import archive, llm, scientist
 from nomos.sim import digest, simulate
 
 
@@ -48,8 +48,42 @@ def test_loop_runs_and_writes_journal(tmp_path):
     text = jpath.read_text(encoding="utf-8")
     assert "## Experiment 1" in text and "## Experiment 2" in text
     assert "Observer:" in text
+    assert "behavior-map:" in text
     # the loop fed observations back: system + 2*(user+assistant) at least
     assert len(client.calls[-1]) >= 4
+    # the follow-up told the model its map cell
+    assert "behavior-map:" in client.calls[-1][-1]["content"]
+
+
+def test_extract_hypothesis():
+    reply = ("HYPOTHESIS: diffusion smooths\nnoise into patches.\n\n"
+             "```nomos\nchannel a\n```\nPREDICTION: flat.")
+    assert scientist.extract_hypothesis(reply) == "diffusion smooths noise into patches."
+    assert scientist.extract_hypothesis("no marker here") == ""
+
+
+def test_memory_block_feeds_past_runs_into_first_turn(tmp_path):
+    db = str(tmp_path / "runs.db")
+    report = {"size": [32, 32], "seed": 1, "steps": 20, "verdict": "alive: waves",
+              "activity": {"mean": 0.42, "final": 0.4, "trend": "steady"}}
+    archive.record(db, report, "channel w\nrule r: when 1 add w = 1", "waves",
+                   hypothesis="waves persist")
+    reply = ("HYPOTHESIS: building on waves.\n```nomos\n"
+             "channel a: init bernoulli(0.3)\nrule r: when 1 set a = sum8(a) >= 4\n"
+             "```\nPREDICTION: patches.")
+    client = llm.MockClient([reply])
+    scientist.run_loop(client, iterations=1, size=32, steps=20, seed=1,
+                       archive_path=db, journal_path=tmp_path / "j.md")
+    first_user = client.calls[0][1]["content"]
+    assert "MEMORY" in first_user and "waves persist" in first_user
+    assert "channel w" in first_user and "alive: waves" in first_user
+    assert "BEHAVIOR MAP" in first_user
+    # and the new run was archived with its own hypothesis
+    assert archive.memory(db)[0]["hypothesis"] == "building on waves."
+
+
+def test_memory_block_empty_without_archive(tmp_path):
+    assert scientist.memory_block(str(tmp_path / "absent.db"), 10) == ""
 
 
 def test_loop_recovers_from_a_bad_law(tmp_path):

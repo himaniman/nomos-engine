@@ -1,0 +1,34 @@
+# Darwinian threshold: heredity + variation + selection.
+#
+# The environment `food` is a fixed left->right gradient. Each cell carries a
+# heritable gene `g` = the food level it is adapted to. Selection kills cells
+# whose g mismatches the local food. Reproduction copies the gene of a RANDOM
+# living neighbour -- argmax8(rand()*alive, g) -- plus a small mutation.
+#
+# Prediction: over time the `g` field should grow the SAME gradient as `food`
+# (life adapts to place). Compare with laws/evolution_faithful.nomos (mut = 0),
+# where copying is perfect and no such adaptation can appear.
+
+channel food:
+    init posx()
+
+channel mut:
+    init 0.03
+
+# Monoclonal ancestor: every cell genetically identical, zero standing
+# variation. New adaptations can come only from mutation -- this is the
+# honest test of the Darwinian threshold.
+channel g:
+    init 0.5
+
+channel alive:
+    init bernoulli(0.3)
+
+rule selection:
+    when alive == 1 and bernoulli(clamp(1.2 * abs(food - g), 0, 0.6))
+    set alive = 0
+
+rule birth:
+    when alive == 0 and sum8(alive) >= 2
+    set alive = 1
+    set g = clamp(argmax8(rand() * alive, g) + normal(0, mut), 0, 1)

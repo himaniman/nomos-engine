@@ -1,0 +1,27 @@
+# Control for laws/evolution.nomos: faithful replicators, NO mutation.
+# Identical physics except mut = 0 -- copying is point-for-point exact.
+# The gene pool can only reshuffle its initial values; it cannot refine.
+# This is the "before the Darwinian threshold" world.
+
+channel food:
+    init posx()
+
+channel mut:
+    init 0
+
+# Monoclonal ancestor, same as evolution.nomos. With mut = 0 the gene can
+# never leave 0.5, so only the middle of the food gradient is ever habitable.
+channel g:
+    init 0.5
+
+channel alive:
+    init bernoulli(0.3)
+
+rule selection:
+    when alive == 1 and bernoulli(clamp(1.2 * abs(food - g), 0, 0.6))
+    set alive = 0
+
+rule birth:
+    when alive == 0 and sum8(alive) >= 2
+    set alive = 1
+    set g = clamp(argmax8(rand() * alive, g) + normal(0, mut), 0, 1)

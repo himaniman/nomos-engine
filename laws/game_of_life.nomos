@@ -1,0 +1,13 @@
+# Conway's Game of Life expressed in the Nomos DSL.
+# This is the engine's sanity check: gliders must glide.
+
+channel alive:
+    init bernoulli(0.2)
+
+rule birth:
+    when alive == 0 and sum8(alive) == 3
+    set alive = 1
+
+rule death:
+    when alive == 1 and (sum8(alive) < 2 or sum8(alive) > 3)
+    set alive = 0

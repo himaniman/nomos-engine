@@ -1,0 +1,38 @@
+# "Primordial soup": a first multi-channel physics, hand-written as a demo.
+# Energy diffuses through the world; life consumes it, starves without it,
+# and spreads into energy-rich neighborhoods.
+
+channel energy:
+    init uniform(0.3, 0.7)
+
+channel alive:
+    init bernoulli(0.15)
+
+rule diffusion:
+    when 1
+    add energy = 0.25 * (avg8(energy) - energy)
+
+rule metabolism:
+    when alive == 1
+    add energy = -0.02
+
+rule starvation:
+    when alive == 1 and energy < 0.05
+    set alive = 0
+
+rule crowding:
+    when alive == 1 and sum8(alive) > 5
+    set alive = 0
+
+rule growth:
+    when alive == 0 and sum8(alive) >= 1 and energy > 0.35 and rand() < 0.3
+    set alive = 1
+    add energy = -0.05
+
+rule sunlight:
+    when energy < 0.3
+    add energy = 0.004
+
+rule energy_floor:
+    when energy < 0
+    set energy = 0

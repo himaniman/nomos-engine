@@ -67,7 +67,9 @@ Built-in functions:
 |-------|-----------|
 | Neighborhood (center excluded, toroidal) | `sum8 avg8 max8 min8` (Moore), `sum4 avg4 max4 min4` (von Neumann) |
 | Translation | `shift(f, dx, dy)` — the field moved by (dx, dy); cell sees `f(x-dx, y-dy)` |
-| Math | `abs sign floor round sqrt exp log`, `min(a,b) max(a,b) clamp(x,lo,hi) where(cond,a,b)` |
+| Inheritance | `argmax8(key, value) argmax4(key, value)` — value of the neighbour with the largest key |
+| Coordinates / time | `posx() posy()` (normalized [0,1)), `time()` (step number) |
+| Math | `abs sign floor round sqrt exp log sin cos pi()`, `min(a,b) max(a,b) clamp(x,lo,hi) where(cond,a,b)` |
 | Randomness (seeded, reproducible) | `rand()` U[0,1), `bernoulli(p)`, `uniform(a,b)`, `normal(mu,sigma)` |
 
 `sqrt/exp/log` are safe (clamped domains). Unknown channels/functions are
@@ -134,10 +136,13 @@ tests/            pytest; GoL glider/blinker as engine ground truth
 1. ~~Engine + DSL + GoL sanity check + GIF rendering~~ (done)
 2. ~~Evolution: heredity + mutation + selection → adaptation~~ (done;
    `argmax8` inheritance primitive, see lab journal Experiment 3)
-3. Observer v2: structure detection (connected components lifetime, FFT
-   periodicity, mutual information t↔t+k, gene↔environment correlation so
-   adaptation is *noticed* unprompted), run archive in SQLite
-4. The scientist loop, manual first: Claude-in-session as physicist keeping the
-   lab journal (this is already how Experiments 1–3 were run)
-5. Automated loop via API (provider-agnostic: DeepSeek / Claude), batches,
+3. ~~Observer v2~~ (done): channel-pair correlations, per-channel axis-gradient
+   and connected-components, activity periodicity (FFT), temporal dynamics
+   (persistence/recurrence, entropy & gzip start→end), SQLite run archive
+   (`--archive`). The observer now *notices* adaptation unprompted.
+4. ~~Evolvability~~ (done): mutation rate as a heritable gene; it evolves up in a
+   changing environment, not a static one (lab journal Experiment 4)
+5. The scientist loop, manual first: Claude-in-session as physicist keeping the
+   lab journal (this is already how Experiments 1–4 were run)
+6. Automated loop via API (provider-agnostic: DeepSeek / Claude), batches,
    novelty archive (MAP-Elites) instead of single-objective optimization

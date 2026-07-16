@@ -57,18 +57,29 @@ README.
 
 `argmax8(key, value)` = value of the neighbour with the largest key — the
 **inheritance** primitive. `argmax8(rand()*alive, g)` copies the gene of a
-random living neighbour; `argmax8(fitness*alive, g)` copies the fittest.
-`posx()/posy()` give normalized coordinates for spatially varying environments.
+random living neighbour; `argmax8(fitness*alive, g)` copies the fittest. For
+*linked* inheritance of several genes from one parent, use a shared random
+parent-key channel: `argmax8(pk*alive, geneA)` and `argmax8(pk*alive, geneB)`
+pick the same neighbour (see `laws/evolvability_moving.nomos`).
+`posx()/posy()` = normalized coordinates; `time()` = step number; `sin/cos/pi()`
+— together these let a law drive a changing environment.
 
 ## State of play
 
-- Done: engine + DSL + GoL sanity check + rendering + observer v1.
-- Done: **evolution works** — heredity (genome channels) + variation
-  (`normal(0,mut)` on inheritance) + selection produces adaptation. See
-  `laws/evolution.nomos` and the lab journal. The physicist in the loop is
-  currently Claude-in-session (manual scientific loop).
-- Next: observer v2 (structure/periodicity/memory metrics, SQLite run archive),
-  then the automated API loop (provider-agnostic: DeepSeek / Claude), with a
-  novelty archive (MAP-Elites) instead of single-objective optimization.
+- Done: engine + DSL + GoL sanity check + rendering.
+- Done (Exp 3): **evolution** — heredity + variation + selection → adaptation
+  (`laws/evolution.nomos`).
+- Done (Observer v2): channel-pair correlations, axis-gradient & connected
+  components per channel, activity periodicity (FFT), temporal dynamics, SQLite
+  archive (`--archive runs.db`, `nomos/archive.py`). The observer now *notices*
+  adaptation unprompted.
+- Done (Exp 4): **evolvability evolves** — mutation rate as a heritable gene
+  rises ~5× in a moving environment, stays flat/declines in a static one
+  (`laws/evolvability_{moving,static}.nomos`). Uses linked inheritance via `pk`.
+- The physicist in the loop is currently Claude-in-session; every experiment is
+  written up in `docs/lab-journal.md` (keep doing this per experiment).
+- Next: the automated API loop (provider-agnostic: DeepSeek / Claude) reading
+  the SQLite archive as memory, with a novelty archive (MAP-Elites) instead of
+  single-objective optimization.
 - Deployment intent: runs are pure CLI -> trivially parallel as k8s Jobs on the
   user's cluster later; GPU only if we move to Lenia-style continuous physics.

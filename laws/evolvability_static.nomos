@@ -1,0 +1,35 @@
+# Control for evolvability_moving.nomos: STATIC environment.
+# Identical physics and the same heritable mutation-rate gene `mut`, but `food`
+# never changes (no `environment` rule). Once lineages have adapted to the fixed
+# pattern, further mutation is pure load -- offspring drift off the optimum.
+# Hypothesis: mean mut should stay low or fall. High evolvability has no payoff
+# when there is nothing new to adapt to.
+
+channel pk:
+    init rand()
+
+channel food:
+    init 0.5 + 0.4 * sin(6.2832 * (posx() * 2))
+
+channel pref:
+    init 0.5
+
+channel mut:
+    init 0.02
+
+channel alive:
+    init bernoulli(0.3)
+
+rule reshuffle_parent_key:
+    when 1
+    set pk = rand()
+
+rule selection:
+    when alive == 1 and bernoulli(clamp(1.5 * abs(food - pref), 0, 0.7))
+    set alive = 0
+
+rule birth:
+    when alive == 0 and sum8(alive) >= 2
+    set alive = 1
+    set pref = clamp(argmax8(pk * alive, pref) + normal(0, argmax8(pk * alive, mut)), 0, 1)
+    set mut = clamp(argmax8(pk * alive, mut) + normal(0, 0.003), 0, 0.3)

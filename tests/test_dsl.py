@@ -87,6 +87,22 @@ def test_argmax8_zero_when_no_positive_key():
     assert np.all(out == 0.0)               # no eligible parent -> 0
 
 
+def test_time_and_trig_drive_changing_field():
+    prog = parse_program(
+        "channel f\n"
+        "rule wave: when 1 set f = sin(time())\n"
+    )
+    world = World(prog, size=4, seed=0)
+    world.step()                               # ctx.time == 0 -> sin(0) == 0
+    assert np.allclose(world.state["f"], 0.0)
+    world.step()                               # ctx.time == 1 -> sin(1)
+    assert np.allclose(world.state["f"], np.sin(1.0))
+
+
+def test_pi_builtin():
+    assert abs(float(_eval("pi()")) - np.pi) < 1e-9
+
+
 def test_pos_ramps():
     ctx = EvalCtx((4, 8), np.random.default_rng(0))
     from nomos.dsl import parse_expression as pe

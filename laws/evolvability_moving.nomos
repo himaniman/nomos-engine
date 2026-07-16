@@ -1,0 +1,45 @@
+# Does evolvability itself evolve? -- MOVING environment.
+#
+# The mutation RATE `mut` is now a heritable gene, not a constant. The
+# environment `food` is a travelling wave: every location keeps changing, so
+# lineages must re-adapt forever. Hypothesis: continual change should favour
+# higher mut (mutators generate the variation selection keeps needing), so the
+# population-mean mut should RISE. Compare with evolvability_static.nomos.
+#
+# Linked inheritance: pref and mut must come from the SAME parent, or a mutator
+# allele can't hitch-hike with the good pref it produced. We pick one parent via
+# a shared random key `pk` -- argmax8(pk*alive, .) selects the same living
+# neighbour for both genes.
+
+channel pk:
+    init rand()
+
+channel food:
+    init 0.5 + 0.4 * sin(6.2832 * (posx() * 2))
+
+channel pref:
+    init 0.5
+
+channel mut:
+    init 0.02
+
+channel alive:
+    init bernoulli(0.3)
+
+rule reshuffle_parent_key:
+    when 1
+    set pk = rand()
+
+rule environment:
+    when 1
+    set food = 0.5 + 0.4 * sin(6.2832 * (posx() * 2 - time() * 0.004))
+
+rule selection:
+    when alive == 1 and bernoulli(clamp(1.5 * abs(food - pref), 0, 0.7))
+    set alive = 0
+
+rule birth:
+    when alive == 0 and sum8(alive) >= 2
+    set alive = 1
+    set pref = clamp(argmax8(pk * alive, pref) + normal(0, argmax8(pk * alive, mut)), 0, 1)
+    set mut = clamp(argmax8(pk * alive, mut) + normal(0, 0.003), 0, 0.3)

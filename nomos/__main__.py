@@ -15,10 +15,19 @@ import sys
 import time
 from pathlib import Path
 
+from nomos import archive
 from nomos.dsl import NomosError, parse_program
 from nomos.engine import World
 from nomos.metrics import summarize
 from nomos.render import frames_to_images, save_gif, save_png
+
+
+def _observe_frame(world: World, cap: int) -> dict:
+    """Snapshot every channel for the observer, downsampled to <= cap per axis."""
+    h, w = world.shape
+    sy = max(1, h // cap)
+    sx = max(1, w // cap)
+    return {name: arr[::sy, ::sx].copy() for name, arr in world.state.items()}
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -32,6 +41,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             raise NomosError(f"--channels: unknown channel {ch!r}")
 
     frames = {ch: [world.state[ch].copy()] for ch in channels}
+    history = [_observe_frame(world, args.obs_cap)]   # all channels, for temporal metrics
     activity = []
     t0 = time.perf_counter()
     for step in range(1, args.steps + 1):
@@ -39,11 +49,17 @@ def cmd_run(args: argparse.Namespace) -> int:
         if step % args.every == 0:
             for ch in channels:
                 frames[ch].append(world.state[ch].copy())
+            history.append(_observe_frame(world, args.obs_cap))
     elapsed = time.perf_counter() - t0
 
-    report = summarize(world, activity)
+    report = summarize(world, activity, history=history)
     report["law"] = str(args.law)
+    report["law_name"] = Path(args.law).stem
     report["elapsed_sec"] = round(elapsed, 2)
+
+    if args.archive:
+        run_id = archive.record(args.archive, report, text, law_name=Path(args.law).stem)
+        report["archive_id"] = run_id
 
     outputs = []
     if args.gif:
@@ -86,6 +102,9 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--gif", default=None, help="write animated GIF here")
     run.add_argument("--png", default=None, help="write final-frame PNG here")
     run.add_argument("--json", default=None, help="write the observer report here")
+    run.add_argument("--archive", default=None, help="append the run to this SQLite archive")
+    run.add_argument("--obs-cap", type=int, default=64, dest="obs_cap",
+                     help="downsample observer frames to <= this per axis (default 64)")
     run.set_defaults(func=cmd_run)
 
     args = parser.parse_args(argv)

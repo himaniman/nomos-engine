@@ -27,6 +27,7 @@ _CLIP = 1e6
 class EvalCtx:
     shape: tuple[int, int]
     rng: np.random.Generator
+    time: int = 0
 
 
 def _grid(x, ctx: EvalCtx) -> np.ndarray:
@@ -119,6 +120,11 @@ BUILTINS = {
     "sqrt": (1, lambda ctx, x: np.sqrt(np.maximum(x, 0.0))),
     "exp": (1, lambda ctx, x: np.exp(np.minimum(x, 60.0))),
     "log": (1, lambda ctx, x: np.log(np.maximum(x, 1e-12))),
+    "sin": (1, lambda ctx, x: np.sin(x)),
+    "cos": (1, lambda ctx, x: np.cos(x)),
+    "pi": (0, lambda ctx: float(np.pi)),
+    # time(): the current step number, so laws can drive a changing environment
+    "time": (0, lambda ctx: float(ctx.time)),
     "min": (2, lambda ctx, a, b: np.minimum(a, b)),
     "max": (2, lambda ctx, a, b: np.maximum(a, b)),
     "clamp": (3, lambda ctx, x, lo, hi: np.clip(x, lo, hi)),
@@ -238,7 +244,7 @@ class World:
     def step(self) -> float:
         """Advance one tick. Returns activity: fraction of cells that changed."""
         snapshot = self.state
-        ctx = EvalCtx(self.shape, self.rng)
+        ctx = EvalCtx(self.shape, self.rng, time=self.time)
         new = {k: v.copy() for k, v in snapshot.items()}
         for rule in self.program.rules:
             mask = _grid(_truthy(evaluate(rule.when, snapshot, ctx)), ctx)

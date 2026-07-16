@@ -48,6 +48,18 @@ def test_body_sensor_marks_body_near_centre():
     assert cx < 20
 
 
+def test_body_sensor_ignores_far_segments():
+    # a long snake stretched away from the head: only near segments should mark
+    s = Snake(20, seed=1)
+    hy, hx = s.head()
+    s.body = [(hy, hx)] + [(hy, (hx - k) % 20) for k in range(1, 12)]
+    near = body_sensor((48, 48), s, radius_frac=0.2)   # ~4 cells of reach
+    wide = body_sensor((48, 48), s, radius_frac=0.9)   # the whole body
+    # a tighter radius silences the far tail, so fewer cells light up
+    assert (near > 0.05).sum() < (wide > 0.05).sum()
+    assert near.max() > 0.5                            # the neck is loud
+
+
 def test_play_writes_danger_only_when_declared():
     # a danger-aware brain runs and stays deterministic
     a = play(BRAIN_DANGER, world_size=32, game_size=12, seed=2, moves=30, ticks_per_move=3)

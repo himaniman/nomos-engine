@@ -53,25 +53,28 @@ def mutate(genome: dict, rng: random.Random, strength: float = 0.15) -> dict:
 
 
 def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int = 16,
-            moves: int = 300, ticks: int = 8) -> dict:
-    """Average game performance of a brain over several boards. Fitness rewards
-    eating first (score, heavily weighted) and surviving second, so there is a
-    gradient to climb even before a brain scores its first food."""
+            moves: int = 600, ticks: int = 16) -> dict:
+    """Average game performance of a brain over several boards, each played until
+    the snake dies (or the `moves` cap). Fitness rewards eating first (score,
+    heavily weighted) and surviving second (a small term — enough to give a
+    gradient before the first food and to break ties, but not so much that merely
+    circling forever without eating outscores actually playing)."""
     law = law_from_genome(genome)
-    scores, survivals = [], []
+    scores, survivals, immortal = [], [], 0
     for s in seeds:
         r = play(law, world_size=world_size, game_size=game_size, seed=s,
                  moves=moves, ticks_per_move=ticks)
         scores.append(r["score"])
         survivals.append(r["steps_alive"])
+        immortal += int(r["alive_at_end"])
     score = sum(scores) / len(scores)
     survival = sum(survivals) / len(survivals)
-    return {"fitness": score * 100.0 + survival, "score": score, "survival": survival,
-            "scores": scores}
+    return {"fitness": score * 100.0 + survival * 0.1, "score": score,
+            "survival": survival, "scores": scores, "immortal": immortal}
 
 
 def evolve(generations: int, lam: int = 6, seeds=(0, 1, 2), world_size: int = 48,
-           game_size: int = 16, moves: int = 300, ticks: int = 8, rng_seed: int = 0,
+           game_size: int = 16, moves: int = 600, ticks: int = 16, rng_seed: int = 0,
            start: dict | None = None, on_generation=None) -> dict:
     """(1+lambda) evolution strategy over brain genomes. Each generation makes
     `lam` mutants of the current parent, evaluates them, and keeps the best

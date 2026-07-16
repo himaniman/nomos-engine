@@ -26,7 +26,7 @@ def test_fitness_is_deterministic_and_scored():
     b = evolve.fitness(evolve.DEFAULT_GENOME, seeds=(0, 1), world_size=24,
                        game_size=10, moves=30, ticks=2)
     assert a == b
-    assert a["fitness"] == a["score"] * 100.0 + a["survival"]
+    assert a["fitness"] == a["score"] * 100.0 + a["survival"] * 0.1
 
 
 def test_evolve_reports_history_and_best_never_regresses():

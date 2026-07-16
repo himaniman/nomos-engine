@@ -576,3 +576,62 @@ that the brain needed more time to organize between moves.
 brain lab to see if body-awareness finally pays; optionally a bordered-board
 variant (walls as a sensor) for a harder game; a stronger model over deepseek's
 cheap iterations.
+
+---
+
+## 2026-07-16 — Concentrated senses, play-to-death, and an emergent immortal
+
+Three changes the user asked for, and one striking result.
+
+**Concentrated sensors.** Sensors are now sharp points, not blurred areas. The
+food 'smell' is a tight bump (sigma ~ min(H,W)/24), still proximity-scaled in
+amplitude. `danger` was rebuilt: instead of one bump per body segment summed into
+a length-scaled cloud, it marks only segments WITHIN a small radius of the head,
+each a sharp point that is louder the closer it is — the imminent collision risk,
+not the whole tail. This is the fix both earlier findings pointed at.
+
+**Play to death, longer thinking.** Cadence raised to 16 physics steps per game
+move (the grid gets real time to settle). Each game now runs until the snake
+dies; `moves` is only a safety cap, and a brain still alive at the cap is flagged
+IMMORTAL. Fitness weights survival lightly (score*100 + survival*0.1) so eating
+stays the objective.
+
+**Did concentrated danger rescue self-avoidance? No — same verdict, more sharply.**
+A quick sweep: food-only scored 19.0 avg (4 boards); food-danger 16.5; a
+memory+danger variant 14.8. Danger helps on some boards and hurts on others
+(seed 3: 18->32 with danger; seed 2: 28->4) — high variance, net wash. So even a
+clean, concentrated, proximity-based body signal does not let a *reactive* linear
+brain beat naive food-chasing. Robust self-avoidance is a planning/memory problem,
+not a subtraction. This is now triply confirmed (weight evolution, LLM design v1,
+LLM design v2).
+
+**The user's prediction came true: an emergent IMMORTAL.** In the brain-lab run
+(deepseek, 48/16, play-to-death cap 800, 4 boards), two brains discovered how to
+live forever by refusing to play:
+- Brain 2, `motor = 1 + avg8(food) - 2*avg8(danger)`: the constant `1` background
+  plus body-repulsion makes the snake flee into open space endlessly. Survived
+  800/800 ticks on ALL four boards; score 0.25.
+- Brain 5, `motor = where(max8(food) > 0.01, food, 1 - 3*danger)`: "chase food if
+  it's right here, otherwise run from your body into the void." Also IMMORTAL,
+  score 1.5.
+Exactly the outcome the user guessed: with survival on the table, the easiest
+way to not die is to stop pursuing food. The GIF of Brain 2 is 800 frames of a
+snake serenely circling, never eating — the progress bar fills to the end and it
+never dies. Meanwhile the LLM kept *trying* to beat the naive baseline (19) with
+body-aware brains (14.75, 12, 13) and couldn't, and correctly diagnosed its own
+immortals ("a constant background and excessive danger scaling caused the snake
+to flee endlessly without approaching food"). Naive food->motor (19) remained the
+top scorer.
+
+**Reading.** We now have two attractors in brain space: a fast, greedy eater that
+dies young, and a deathless wanderer that never eats — and nothing in between that
+does both well. That gap is the real problem the "LLM x cellular automaton" search
+is here to attack. Getting there almost certainly needs a brain with internal
+STATE (a trail/plan), so the next levers are: reward shaping that forbids the
+trivial immortal (e.g. score-per-life, or a hunger cost that punishes not eating),
+and encouraging the LLM toward memoryful brains. Also worth its own experiment:
+deliberately reward survival and *study* the immortal — what does a law that has
+learned to live forever look like, and how stable is it?
+
+**Also fixed:** a brain that fails static validation at play time no longer takes
+down the whole lab run (validate via a trial World before scoring).

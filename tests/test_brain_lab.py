@@ -11,7 +11,7 @@ def test_evaluate_scores_a_brain():
     law = "channel food\nchannel motor: init 0\nrule t: when 1 set motor = food\n"
     res = brain_lab.evaluate(law, seeds=(0, 1), world_size=24, game_size=10,
                              moves=40, ticks=3)
-    assert set(res) == {"score", "scores", "survival"}
+    assert {"score", "scores", "survival", "immortal"} == set(res)
     assert len(res["scores"]) == 2
 
 

@@ -43,11 +43,19 @@ def _bump(field: np.ndarray, by: int, bx: int, sigma: float, amp: float) -> None
     field += amp * np.exp(-(((yy - by) ** 2 + (xx - bx) ** 2) / (2.0 * sigma ** 2)))
 
 
+def _sharp_sigma(shape: tuple[int, int], sigma: float | None) -> float:
+    """A CONCENTRATED bump width — a crisp point, not a blurred area. The brain
+    can spread it itself (avg8) if it wants; the sensor stays sharp."""
+    H, W = shape
+    return sigma if sigma is not None else max(1.5, min(H, W) / 24.0)
+
+
 def food_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
                 sigma: float | None = None) -> np.ndarray:
-    """A Gaussian bump pointing toward the food, egocentric to the head. Its
-    amplitude also encodes PROXIMITY — brighter when the food is near, dimmer
-    when far — so the brain senses both direction and distance. Zero if no food."""
+    """A sharp bump pointing toward the food, egocentric to the head — a
+    concentrated 'smell'. Its amplitude encodes PROXIMITY (brighter when the food
+    is near, dimmer when far), so the brain senses direction and distance at once.
+    Zero if there is no food."""
     H, W = world_shape
     field = np.zeros((H, W), dtype=np.float64)
     if snake.food is None:
@@ -58,24 +66,30 @@ def food_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
     dist = (dy * dy + dx * dx) ** 0.5           # 0 (adjacent) .. ~0.707 (far)
     amp = 0.3 + 0.7 * max(0.0, 1.0 - dist / 0.707)
     by, bx = _ego_cell(dy, dx, world_shape, gain)
-    _bump(field, by, bx, sigma if sigma is not None else max(H, W) / 8.0, amp)
+    _bump(field, by, bx, _sharp_sigma(world_shape, sigma), amp)
     return field
 
 
 def body_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
-                sigma: float | None = None) -> np.ndarray:
-    """The snake's own body, egocentric to the head, in the same frame as the
-    food sensor — so a brain can feel where it must not steer. Nearer segments
-    (the neck, the imminent self-collision risk) land closer to the centre."""
+                sigma: float | None = None, radius_frac: float = 0.3) -> np.ndarray:
+    """Danger = PROXIMITY to the snake's own body, as concentrated marks (not a
+    diffuse whole-length cloud, which earlier drowned the food signal). Only body
+    segments within `radius_frac` of the head are marked, each a sharp point whose
+    amplitude grows as it nears the head — so the immediate collision risk is
+    loud and the far tail is silent, in the same egocentric frame as the food."""
     H, W = world_shape
     field = np.zeros((H, W), dtype=np.float64)
     hy, hx = snake.head()
-    sig = sigma if sigma is not None else max(H, W) / 12.0
+    sig = _sharp_sigma(world_shape, sigma)
     for sy, sx in snake.body[1:]:               # exclude the head itself
         dy = _tor_frac(sy - hy, snake.h)
         dx = _tor_frac(sx - hx, snake.w)
+        dist = (dy * dy + dx * dx) ** 0.5
+        if dist > radius_frac:
+            continue                            # far body is not an imminent threat
+        amp = 1.0 - dist / radius_frac          # nearer body = louder danger
         by, bx = _ego_cell(dy, dx, world_shape, gain)
-        _bump(field, by, bx, sig, 1.0)
+        _bump(field, by, bx, sig, amp)
     return field
 
 
@@ -110,11 +124,13 @@ def require_embodied(program) -> None:
 
 
 def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0,
-         moves: int = 300, ticks_per_move: int = 8, life_channel: str = MOTOR_CHANNEL,
+         moves: int = 1000, ticks_per_move: int = 16, life_channel: str = MOTOR_CHANNEL,
          collect_frames: bool = False, sensor_gain: float = 0.8,
          death_hold: int = 6) -> dict:
-    """Run the coupled brain+game loop. Returns score, survival, move sequence,
-    and (optionally) paired life/game frames for a split render."""
+    """Run the coupled brain+game loop until the snake dies (or `moves` is hit —
+    a safety cap; a brain still alive then is effectively immortal for this run).
+    Returns score, survival, move sequence, and (optionally) paired life/game
+    frames for a split render."""
     program = parse_program(law_text)
     require_embodied(program)
     if life_channel not in {c.name for c in program.channels}:

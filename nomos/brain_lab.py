@@ -47,23 +47,27 @@ pi(); min(a,b) max(a,b) clamp(x,lo,hi) where(cond,a,b); posx() posy() time();
 rand() bernoulli(p) uniform(a,b) normal(mu,sigma).
 
 THE EMBODIMENT — your interface to the game (all on the SAME grid, egocentric to
-the snake's head, which sits at the grid centre):
-- `food` (SENSOR, you MUST declare it, read-only): a bump pointing toward the
-  food; BRIGHTER when the food is near, dimmer when far. The harness rewrites it
-  every step, so treat it as a given input field, not scratch space.
-- `danger` (SENSOR, optional): if you declare it, the harness fills it with the
-  snake's OWN BODY, egocentric to the head — so you can steer away from it.
+the snake's head, which sits at the grid centre). Sensors are CONCENTRATED — a
+sharp point, not a blurred area — you spread or integrate them yourself:
+- `food` (SENSOR, you MUST declare it, read-only): a sharp bump pointing toward
+  the food (a 'smell'); BRIGHTER when the food is near, dimmer when far. The
+  harness rewrites it every step — a given input, not scratch space.
+- `danger` (SENSOR, optional): if you declare it, the harness marks the snake's
+  OWN BODY, but only the segments NEAR the head, each a sharp point that is
+  louder the closer that body part is — the imminent self-collision risk, not
+  the whole tail. Same egocentric frame as `food`.
 - `motor` (MOTOR, you MUST declare it): after your rules run, the harness looks
   at where the NON-NEGATIVE mass of `motor` sits relative to the grid centre and
   moves the snake that way (up/down/left/right). Silent motor = keep heading.
   So: push motor mass toward where you want to go, away from where you don't.
-The game ticks once every several physics steps, giving the grid time to settle.
-Eating food scores a point and grows the snake; running into your own body ends
-the run. The board wraps — there are no walls, only the food and your body.
+The game ticks once every MANY physics steps, so the grid has ample time to
+settle before each move. Each run plays until the snake dies (running into its
+own body); the board wraps — there are no walls, only the food and your body.
 
-YOUR GOAL: write a brain law that makes the snake score as HIGH as possible
-(eat a lot, live long). You will be told each brain's score and shown a
-leaderboard of the best so far; build on what works, and try genuinely new
+YOUR GOAL: write a brain law that makes the snake score as HIGH as possible —
+eat a lot. Surviving longer only helps because it buys more chances to eat;
+circling forever without eating scores zero. You will be told each brain's score
+and a leaderboard of the best so far; build on what works, and try genuinely new
 mechanisms when progress stalls — extra channels for memory or planning, a
 refractory trail to avoid your body, lateral inhibition to sharpen the target.
 
@@ -91,20 +95,23 @@ def _leaderboard_block(board: list[dict], top: int = 5) -> str:
 
 def _score_line(res: dict) -> str:
     per = ", ".join(f"{s}" for s in res["scores"])
+    tag = f"  IMMORTAL({res['immortal']}/{len(res['scores'])} boards)" if res.get("immortal") else ""
     return (f"score={res['score']:.2f} (per seed: {per})  "
-            f"survival={res['survival']:.0f} ticks")
+            f"survival={res['survival']:.0f} ticks{tag}")
 
 
 def evaluate(law_text: str, seeds, world_size, game_size, moves, ticks) -> dict:
-    """Average game performance of a brain over several boards."""
-    scores, survivals = [], []
+    """Average game performance of a brain over several boards (each played until
+    death or the `moves` cap; a brain still alive at the cap is 'immortal')."""
+    scores, survivals, immortal = [], [], 0
     for s in seeds:
         r = play(law_text, world_size=world_size, game_size=game_size, seed=s,
                  moves=moves, ticks_per_move=ticks)
         scores.append(r["score"])
         survivals.append(r["steps_alive"])
+        immortal += int(r["alive_at_end"])
     return {"score": sum(scores) / len(scores), "scores": scores,
-            "survival": sum(survivals) / len(survivals)}
+            "survival": sum(survivals) / len(survivals), "immortal": immortal}
 
 
 def _render_best(law_text, gif_path: Path, world_size, game_size, moves, ticks,
@@ -120,8 +127,8 @@ def _render_best(law_text, gif_path: Path, world_size, game_size, moves, ticks,
 
 
 def run_brain_lab(client, iterations: int, journal_path: Path, eval_seeds=(0, 1, 2),
-                  world_size: int = 48, game_size: int = 16, moves: int = 300,
-                  ticks: int = 8, gif_dir: Path | None = None, show_seed: int = 0,
+                  world_size: int = 48, game_size: int = 16, moves: int = 800,
+                  ticks: int = 16, gif_dir: Path | None = None, show_seed: int = 0,
                   temperature: float = 1.0) -> dict:
     params = {"world": world_size, "board": game_size, "moves": moves,
               "ticks": ticks, "eval_seeds": list(eval_seeds)}
@@ -200,8 +207,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--eval-seeds", type=int, default=3, dest="eval_seeds")
     p.add_argument("--world-size", type=int, default=48, dest="world_size")
     p.add_argument("--game-size", type=int, default=16, dest="game_size")
-    p.add_argument("--moves", type=int, default=300)
-    p.add_argument("--ticks", type=int, default=8)
+    p.add_argument("--moves", type=int, default=800, help="max game ticks (cap; ends at death)")
+    p.add_argument("--ticks", type=int, default=16)
     p.add_argument("--show-seed", type=int, default=0, dest="show_seed")
     p.add_argument("--temperature", type=float, default=1.0)
     p.add_argument("--model", default=None)

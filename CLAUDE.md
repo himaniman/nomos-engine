@@ -163,11 +163,23 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   channel (stigmergy). CORROBORATED the danger finding independently: subtracting
   the diffuse body sensor hurts foraging. So naive eating still beats body-aware
   brains — the danger *encoding* is the bottleneck, not the idea.
-- Misc this phase: death is now visualized (crash cell flashed + held ~6 frames
-  in the GIF; before, the killing step never advanced the head so death looked
-  identical to the prior frame — that's why the snake seemed to "already know how
-  to play"). Bigger defaults: play/evolve/lab now 300+ moves, 8 physics ticks per
-  game move (was 4). evolve genome gained a 4th gene w_lat (lateral inhibition).
+- Misc: death is visualized (crash cell flashed + held ~6 frames in the GIF; the
+  killing step never advances the head, so before this death looked identical to
+  the prior frame — why the snake seemed to "already know how to play"). evolve
+  genome gained a 4th gene w_lat (lateral inhibition).
+- Done (concentrated senses + play-to-death): sensors are now CONCENTRATED, not
+  diffuse — the food 'smell' is a sharp proximity-scaled point, and `danger`
+  marks only body segments NEAR the head (proximity-gated sharp points, louder
+  the closer), fixing the length-scaled cloud. Cadence raised to 16 physics ticks
+  per game move; games run until death (moves is a safety cap; a brain alive at
+  the cap is flagged IMMORTAL). Fitness weights survival lightly (score*100 +
+  survival*0.1) so eating stays primary. FINDING: even with clean concentrated
+  danger, reactive food-danger brains still don't beat naive food->motor on score
+  (high variance, net wash) — robust self-avoidance needs planning/memory, not a
+  linear term. And the user's prediction came TRUE: two LLM brains (a constant
+  baseline + danger repulsion) became IMMORTAL — they learned to run from food and
+  circle forever (score ~0, survival = full cap on every board). The survival vs
+  foraging split is now a live, observable phenomenon.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

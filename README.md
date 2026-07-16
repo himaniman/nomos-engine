@@ -182,5 +182,10 @@ tests/            pytest; GoL glider/blinker as engine ground truth
     with a leaderboard carried in the prompt. Its first run reasoned through
     real designs (baseline, danger-avoidance, a decaying trail memory) — the
     core "LLM × cellular automaton" idea, guided by an external objective.
-12. Next: a forward-collision `danger` sensor; a smarter model over DeepSeek;
-    walls / a bordered board variant; batches as k8s Jobs.
+12. ~~Concentrated senses + play-to-death~~ (done): sharp proximity-scaled food
+    'smell' and a proximity-gated body `danger` sensor; 16 physics ticks per game
+    move; games run until death. A live run produced an emergent IMMORTAL brain —
+    one that learned to flee food and circle forever (survival vs foraging split).
+13. Next: reward shaping that rules out the trivial immortal (score-per-life /
+    hunger cost); brains with internal state (trail/plan); a stronger model over
+    DeepSeek; walls as a sensor; batches as k8s Jobs.

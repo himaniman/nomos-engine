@@ -222,6 +222,17 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   score-vs-survival frontier is now populated; the open target is the Pareto
   corner (top score AND immortal). This is the thesis working end to end: an LLM
   doing CA control design against the game reward.
+- Done (hybrid LLM-design + evolution-tuning): rebuilt `evolve.py` around the
+  LLM's discovered two-layer + hunger-gated-risk architecture and evolved its 4
+  constants from the LLM best. Score 17.25 -> 22.5 over 6 gens; evolution overruled
+  the LLM's "relax fear when hungry" idea (drove avoid_relax->0, avoid_str up —
+  keep body-fear strong and constant, matching the LLM's own brain #6). On an
+  8-board HOLDOUT the evolved hybrid (`laws/snake_brain_evolved2.nomos`) dominates
+  the LLM best on all axes: score 20.1 vs 19.1, survival 693 vs 565, immortal 5/8
+  vs 3/8 (naive: 14.0/135/0). The full loop — LLM proposes structure + hypotheses
+  from game feedback, evolution tunes the winner and settles open hypotheses,
+  result beats either alone — is the project thesis working end to end. Open
+  frontier: the top-right Pareto corner (max score AND always immortal).
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

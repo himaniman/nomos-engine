@@ -1,0 +1,13 @@
+channel food
+channel danger
+channel temperature
+channel motor: init 0
+channel avoid: init 0
+
+rule go:
+  when 1
+  set motor = 0.5516*avg8(motor) + food * (1 + 2.7492*temperature)
+
+rule fear:
+  when 1
+  set avoid = 2.2755*danger * (1 - 0.0*temperature)

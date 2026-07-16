@@ -772,3 +772,47 @@ immortal — that Pareto corner is the remaining target. Levers to push it: let
 evolve tune the LLM's best template's constants; more/rotated eval boards; a
 stronger design model. But the machine works end to end now: senses, hunger,
 two-layer motor, LLM designer, game reward, watchable blended GIFs.
+
+---
+
+## 2026-07-16 — Hybrid: the LLM designs the brain, evolution tunes it, and beats both
+
+The natural next move on the score/survival frontier: stop choosing between the
+LLM (good at inventing structure) and evolution (good at tuning constants) and
+USE BOTH. Rebuilt `evolve.py` around the architecture the brain lab discovered —
+two non-interfering layers with hunger-gated risk — and let the (1+lambda)
+strategy tune its four constants (`w_mem`, `hunger_boost`, `avoid_str`,
+`avoid_relax`), starting from the LLM's best genome.
+
+**Evolution run** (48/16, play-to-death, 64 ticks, 4 boards, 6 generations,
+lambda 6). Score climbed 17.25 (LLM start) -> 18.25 -> 19.25 -> 20.0 -> **22.5**
+by gen 4. Best genome: `w_mem 0.55, hunger_boost 2.75, avoid_str 2.28,
+avoid_relax 0.0` (saved as `laws/snake_brain_evolved2.nomos`).
+
+**The interesting bit: evolution overruled the LLM on an open question.** The
+LLM's top brain (#3) *relaxed* body-fear when hungry (`avoid_relax = 0.5`) to
+chase food harder. Evolution drove `avoid_relax` to **0.0** and pushed
+`avoid_str` UP to 2.28 — its verdict: do NOT drop your guard when starving; keep
+body-fear strong and constant, and get your aggression from the hunger-boosted
+motor instead. Notably this matches what the LLM's *own* brain #6 had argued
+("keep avoidance constant and strong") but couldn't tune well by hand. So the two
+searches, run together, resolved a hypothesis neither settled alone.
+
+**Holdout (8 fresh boards, not the 4 evolved on):**
+- naive `motor = food`: score 14.0, survival 135, immortal 0/8.
+- LLM best (brain #3): score 19.1, survival 565, immortal 3/8.
+- evolved hybrid: **score 20.1, survival 693, immortal 5/8** — it DOMINATES the
+  LLM brain on all three axes at once (more food, longer life, more boards
+  survived to the cap). A real Pareto step toward the corner we'd named as the
+  target. (On its own 4 training boards it reached 22.5; 20.1 on the holdout is
+  the honest, slightly-regressed-by-overfit number.)
+
+**Reading.** The pipeline is now: LLM proposes an architecture and competing
+hypotheses from game feedback -> evolution tunes the winner's constants and
+empirically settles the hypotheses the LLM left open -> the result beats either
+method alone. That is the project's whole thesis — "combine the power of an LLM
+with a cellular automaton" — closed into a working loop against a real objective.
+The remaining frontier is the top-right corner (max score AND always immortal);
+levers from here: more/rotated boards to fight overfit, letting the LLM read the
+evolved constants and design a *next* structure around them (design<->tune
+alternation), and a stronger design model.

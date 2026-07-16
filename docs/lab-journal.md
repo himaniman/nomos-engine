@@ -474,3 +474,51 @@ let brains reproduce/mutate via the `argmax8` inheritance primitives (the Exp
 with evolution across runs (cheap, fits the archive/illumination tooling), or a
 population of brains embedded in one world. Also: add a body/danger sensor so
 "don't eat yourself" is even learnable. Expect many more iterations than Phase A.
+
+---
+
+## 2026-07-16 — Game Phase B: the brain learns to play, by selection
+
+**Design chosen (user's call).** One brain per run, evolution *between* runs —
+not a population inside one world. So the unit of selection is the whole brain,
+and the loop is an external GA, not the in-world `argmax8` inheritance.
+
+**Richer senses first.** Two additions to `nomos/embodied.py`: the `food` sensor
+now scales its amplitude by PROXIMITY (bright when food is near, dim when far),
+so the brain feels distance as well as direction; and a new optional `danger`
+sensor paints the snake's own body onto the world grid, egocentric to the head,
+in the same frame as food — a sense of one's own body. Sensors are written only
+if the law declares them, so old brains still run.
+
+**Learning loop.** `nomos/evolve.py` is a (1+lambda) evolution strategy over a
+brain GENOME — the weights `w_mem`, `w_food`, `w_danger` substituted into a
+template law `motor = w_mem*avg8(motor) + w_food*food - w_danger*danger`.
+Fitness = mean(score)*100 + mean(survival) over a few board seeds; the *100 makes
+eating dominate while survival gives a gradient before the first food.
+`python -m nomos evolve --gif-dir out/evolve` renders a best-of-generation split
+GIF each generation — the "output between runs" we wanted, so evolution is
+watchable. Fully deterministic given (start genome, seeds, sizes, cadence, rng).
+
+**Result.** A live run (48/16, 250 moves, 3 eval seeds, 8 generations, lambda 6)
+improved mean score **15 -> 17** — selection genuinely tunes the brain to play
+better. So the grid *learns*, by heredity + variation + selection with an
+external reward, exactly the Exp 3-4 recipe pointed at a game.
+
+**Finding: the body sensor, as built, isn't earning its keep.** Evolution drove
+`w_danger` to ~0.04 (from 0.31) — it chose to almost ignore the danger channel.
+Why: (1) the game already blocks 180° reversals, so the immediate "don't back
+into your neck" case needs no sensor; (2) the body sensor sums one bump per
+segment near the grid centre, so its magnitude grows with snake length and forms
+a diffuse central cloud that competes with the food pull more than it guides.
+The honest read is that a *diffuse whole-body* sense is the wrong encoding. The
+fix (next): a FORWARD-COLLISION sensor — mark only the cells the head could
+actually move into next tick (the three non-reverse neighbours), so "that way is
+death" is a sharp, local, length-independent signal. That's a targeted next
+iteration, not a tuning knob.
+
+**Also worth trying next.** The genome is only 3 weights on a fixed template, so
+the (1+lambda) climber plateaus fast (it did after gen 1). Two ways to open the
+landscape: let an LLM be the brain-mutation operator (structural edits — new
+channels/rules — like the scientist's illumination), and/or evolve a larger
+parameter set / richer template. Current Phase B proves the principle; making
+the brain *good* at Snake is the open frontier.

@@ -130,7 +130,8 @@ nomos/archive.py  SQLite archive of runs (laws + reports + hypotheses)
 nomos/elites.py   MAP-Elites behavior map over the archive (regime coverage)
 nomos/scientist.py automated LLM physicist loop (nomos/llm.py, nomos/sim.py)
 nomos/game.py     deterministic Snake; nomos/embodied.py couples it to a brain
-nomos/__main__.py CLI (`python -m nomos run ...`, `python -m nomos play ...`)
+nomos/evolve.py   Phase B: evolve a brain across runs (fitness = game score)
+nomos/__main__.py CLI (`nomos run ...`, `nomos play ...`, `nomos evolve ...`)
 laws/             .nomos law files
 tests/            pytest; GoL glider/blinker as engine ground truth
 ```
@@ -170,6 +171,11 @@ tests/            pytest; GoL glider/blinker as engine ground truth
    a `motor` channel (its centre of mass picks the move); `python -m nomos play`
    renders a split life|game GIF. A trivial baseline brain already steers the
    snake to food. See `nomos/embodied.py`, `laws/snake_brain.nomos`.
-10. Next: game Phase B — *learning* to play (selection with fitness = game score
-    over the `argmax8` inheritance primitives); a smarter model steering
-    DeepSeek's mutations; batches as k8s Jobs.
+10. ~~Game Phase B — learning to play~~ (done): `nomos/evolve.py` evolves a brain
+    genome across runs by a (1+λ) strategy, fitness = game score; `nomos evolve`
+    writes a best-of-generation GIF each generation. First run improved score
+    15→17. Added a proximity-scaled food sense and an optional body/`danger`
+    sensor (which evolution then judged marginal — see the lab journal).
+11. Next: make `danger` a forward-collision sensor; an LLM as the brain-mutation
+    operator (structural, not just weights); a smarter model steering DeepSeek;
+    batches as k8s Jobs.

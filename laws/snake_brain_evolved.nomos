@@ -1,0 +1,7 @@
+channel food
+channel danger
+channel motor: init 0
+
+rule think:
+  when 1
+  set motor = 0.5402*avg8(motor) + 1.1802*food - 0.0424*danger

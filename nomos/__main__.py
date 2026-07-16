@@ -109,6 +109,45 @@ def cmd_play(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_evolve(args: argparse.Namespace) -> int:
+    from nomos.embodied import play
+    from nomos.evolve import evolve, law_from_genome
+
+    gif_dir = Path(args.gif_dir) if args.gif_dir and args.gif_dir.lower() != "none" else None
+    seeds = tuple(range(args.eval_seeds))
+
+    def on_generation(gen, genome, fit):
+        print(f"[gen {gen}] best score={fit['score']:.2f} survival={fit['survival']:.0f} "
+              f"fitness={fit['fitness']:.1f} genome={ {k: round(v, 3) for k, v in genome.items()} }",
+              file=sys.stderr)
+        if gif_dir is not None:
+            r = play(law_from_genome(genome), world_size=args.world_size,
+                     game_size=args.game_size, seed=args.show_seed, moves=args.moves,
+                     ticks_per_move=args.ticks, collect_frames=True)
+            gif_dir.mkdir(parents=True, exist_ok=True)
+            images = split_images(r["life_frames"], r["game_frames"], scale=args.scale)
+            path = gif_dir / f"gen{gen:02d}-score{r['score']}.gif"
+            save_gif(images, str(path), fps=args.fps)
+            print(f"         wrote {path} (show-seed score={r['score']})", file=sys.stderr)
+
+    result = evolve(args.generations, lam=args.lam, seeds=seeds,
+                    world_size=args.world_size, game_size=args.game_size,
+                    moves=args.moves, ticks=args.ticks, rng_seed=args.seed,
+                    on_generation=on_generation)
+
+    best = {"best_genome": {k: round(v, 4) for k, v in result["best_genome"].items()},
+            "best_score": result["best_fitness"]["score"],
+            "best_survival": result["best_fitness"]["survival"],
+            "best_fitness": result["best_fitness"]["fitness"]}
+    print(json.dumps(best, indent=2))
+    if args.save_law:
+        Path(args.save_law).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.save_law).write_text(law_from_genome(result["best_genome"]),
+                                       encoding="utf-8")
+        print(f"best brain law -> {args.save_law}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nomos", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -150,6 +189,26 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--fps", type=int, default=6, help="GIF playback speed")
     play.add_argument("--gif", default=None, help="write the split life|game GIF here")
     play.set_defaults(func=cmd_play)
+
+    ev = sub.add_parser("evolve", help="evolve a Snake brain across runs (Phase B)")
+    ev.add_argument("--generations", type=int, default=8)
+    ev.add_argument("--lam", type=int, default=6, help="offspring per generation")
+    ev.add_argument("--eval-seeds", type=int, default=3, dest="eval_seeds",
+                    help="boards each brain is scored on (seeds 0..N-1)")
+    ev.add_argument("--seed", type=int, default=0, help="RNG seed for the evolution itself")
+    ev.add_argument("--show-seed", type=int, default=0, dest="show_seed",
+                    help="board seed used for the per-generation GIF")
+    ev.add_argument("--world-size", type=int, default=48, dest="world_size")
+    ev.add_argument("--game-size", type=int, default=16, dest="game_size")
+    ev.add_argument("--moves", type=int, default=250)
+    ev.add_argument("--ticks", type=int, default=4)
+    ev.add_argument("--scale", type=int, default=6)
+    ev.add_argument("--fps", type=int, default=6)
+    ev.add_argument("--gif-dir", default="out/evolve", dest="gif_dir",
+                    help="write a best-of-generation GIF here ('none' = off)")
+    ev.add_argument("--save-law", default=None, dest="save_law",
+                    help="write the best brain law here at the end")
+    ev.set_defaults(func=cmd_evolve)
 
     args = parser.parse_args(argv)
     try:

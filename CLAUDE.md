@@ -50,8 +50,10 @@ nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
                   neighbour autocorrelation), NOT gzip — it separates coherent
                   waves/blobs from noise; legacy runs fall back to gzip
 nomos/game.py     deterministic toroidal Snake (the external world)
-nomos/embodied.py brain<->game coupling: food sensor -> world, motor field ->
-                  move; `play()` loop; CLI `python -m nomos play`
+nomos/embodied.py brain<->game coupling: food + (optional) danger sensors ->
+                  world, motor field -> move; `play()`; CLI `nomos play`
+nomos/evolve.py   Phase B: (1+lambda) evolution of a brain genome across runs,
+                  fitness = game score; CLI `nomos evolve`
 nomos/__main__.py CLI `python -m nomos run`
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
@@ -135,8 +137,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   Baseline `laws/snake_brain.nomos` (diffuse food into motor) already scores ~22
   at 48/16, seed 0 — the sense->act loop demonstrably drives the snake to food.
   Reproducible: `play()` is a pure function of (law, sizes, seed, cadence, moves).
-  Phase B (NOT started) = learning: selection with fitness = game score over the
-  argmax8 inheritance primitives.
+- Done (game Phase B — learning by selection): `nomos/evolve.py` runs a
+  (1+lambda) evolution strategy over a brain GENOME (weights w_mem/w_food/
+  w_danger substituted into a template law), fitness = mean game score (*100) +
+  survival over a few seeds. `python -m nomos evolve --gif-dir out/evolve` writes
+  a best-of-generation split GIF each generation (the "output between runs" the
+  user asked for) and `--save-law` dumps the best brain. One brain per run,
+  selection between runs — the agreed design. First live run improved score
+  15->17 over 8 generations. Sensors extended: `food` now encodes proximity in
+  its amplitude; optional `danger` sensor paints the snake's own body egocentric
+  to the head. FINDING: evolution drove w_danger ~0 — the body sensor as built
+  (a diffuse, length-scaled body cloud near grid centre) is not a net help;
+  making it a forward-collision sensor (mark the cells the head could move into)
+  is the next refinement.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

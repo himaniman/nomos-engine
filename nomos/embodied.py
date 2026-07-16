@@ -20,29 +20,63 @@ from nomos.engine import World
 from nomos.game import DIRECTIONS, Snake
 
 SENSOR_CHANNEL = "food"
+DANGER_CHANNEL = "danger"        # optional sensor: the snake's own body
 MOTOR_CHANNEL = "motor"
+
+
+def _tor_frac(delta: int, n: int) -> float:
+    """Shortest toroidal offset as a fraction of the axis length, in [-.5, .5)."""
+    return (((delta + n // 2) % n) - n // 2) / n
+
+
+def _ego_cell(dy: float, dx: float, shape: tuple[int, int], gain: float):
+    """Map an egocentric board-fraction offset to a world-grid cell."""
+    H, W = shape
+    by = min(max(int(round(H / 2 + dy * H * gain)), 0), H - 1)
+    bx = min(max(int(round(W / 2 + dx * W * gain)), 0), W - 1)
+    return by, bx
+
+
+def _bump(field: np.ndarray, by: int, bx: int, sigma: float, amp: float) -> None:
+    H, W = field.shape
+    yy, xx = np.ogrid[:H, :W]
+    field += amp * np.exp(-(((yy - by) ** 2 + (xx - bx) ** 2) / (2.0 * sigma ** 2)))
 
 
 def food_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
                 sigma: float | None = None) -> np.ndarray:
-    """A Gaussian bump on the world grid pointing toward the food, egocentric to
-    the head: food to the right -> bump right of centre, etc. Direction only;
-    amplitude is constant. Zero field when there is no food."""
+    """A Gaussian bump pointing toward the food, egocentric to the head. Its
+    amplitude also encodes PROXIMITY — brighter when the food is near, dimmer
+    when far — so the brain senses both direction and distance. Zero if no food."""
     H, W = world_shape
+    field = np.zeros((H, W), dtype=np.float64)
     if snake.food is None:
-        return np.zeros((H, W), dtype=np.float64)
+        return field
     hy, hx = snake.head()
-    gh, gw = snake.h, snake.w
-    # shortest toroidal offset head->food, as a fraction of the board in [-.5,.5]
-    dy = (((snake.food[0] - hy + gh // 2) % gh) - gh // 2) / gh
-    dx = (((snake.food[1] - hx + gw // 2) % gw) - gw // 2) / gw
-    by = int(round(H / 2 + dy * H * gain))
-    bx = int(round(W / 2 + dx * W * gain))
-    by = min(max(by, 0), H - 1)
-    bx = min(max(bx, 0), W - 1)
-    yy, xx = np.ogrid[:H, :W]
-    sig = sigma if sigma is not None else max(H, W) / 8.0
-    return np.exp(-(((yy - by) ** 2 + (xx - bx) ** 2) / (2.0 * sig ** 2)))
+    dy = _tor_frac(snake.food[0] - hy, snake.h)
+    dx = _tor_frac(snake.food[1] - hx, snake.w)
+    dist = (dy * dy + dx * dx) ** 0.5           # 0 (adjacent) .. ~0.707 (far)
+    amp = 0.3 + 0.7 * max(0.0, 1.0 - dist / 0.707)
+    by, bx = _ego_cell(dy, dx, world_shape, gain)
+    _bump(field, by, bx, sigma if sigma is not None else max(H, W) / 8.0, amp)
+    return field
+
+
+def body_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
+                sigma: float | None = None) -> np.ndarray:
+    """The snake's own body, egocentric to the head, in the same frame as the
+    food sensor — so a brain can feel where it must not steer. Nearer segments
+    (the neck, the imminent self-collision risk) land closer to the centre."""
+    H, W = world_shape
+    field = np.zeros((H, W), dtype=np.float64)
+    hy, hx = snake.head()
+    sig = sigma if sigma is not None else max(H, W) / 12.0
+    for sy, sx in snake.body[1:]:               # exclude the head itself
+        dy = _tor_frac(sy - hy, snake.h)
+        dx = _tor_frac(sx - hx, snake.w)
+        by, bx = _ego_cell(dy, dx, world_shape, gain)
+        _bump(field, by, bx, sig, 1.0)
+    return field
 
 
 def read_move(world: World, channel: str = MOTOR_CHANNEL) -> str | None:
@@ -85,6 +119,7 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
     if life_channel not in {c.name for c in program.channels}:
         raise NomosError(f"--life-channel {life_channel!r} is not a declared channel")
 
+    has_danger = DANGER_CHANNEL in {c.name for c in program.channels}
     world = World(program, world_size, seed)
     snake = Snake(game_size, seed)
     life_frames: list[np.ndarray] = []
@@ -94,9 +129,12 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
     for _ in range(moves):
         if not snake.alive:
             break
-        sensor = food_sensor(world.shape, snake, gain=sensor_gain)
+        food = food_sensor(world.shape, snake, gain=sensor_gain)
+        danger = body_sensor(world.shape, snake, gain=sensor_gain) if has_danger else None
         for _ in range(ticks_per_move):
-            world.state[SENSOR_CHANNEL] = sensor      # re-assert the read-only sense
+            world.state[SENSOR_CHANNEL] = food        # re-assert the read-only senses
+            if has_danger:
+                world.state[DANGER_CHANNEL] = danger
             world.step()
         move = read_move(world, MOTOR_CHANNEL)
         snake.step(move)

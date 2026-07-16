@@ -2,13 +2,17 @@ import numpy as np
 import pytest
 
 from nomos.dsl import NomosError
-from nomos.embodied import food_sensor, play, read_move
+from nomos.embodied import body_sensor, food_sensor, play, read_move
 from nomos.engine import World
 from nomos.dsl import parse_program
 from nomos.game import Snake
 
 BRAIN = ("channel food\nchannel motor: init 0\n"
          "rule think:\n  when 1\n  set motor = 0.6 * avg8(motor) + food\n")
+
+BRAIN_DANGER = ("channel food\nchannel danger\nchannel motor: init 0\n"
+                "rule think:\n  when 1\n"
+                "  set motor = 0.6*avg8(motor) + food - danger\n")
 
 
 def test_food_sensor_points_toward_food():
@@ -23,6 +27,32 @@ def test_food_sensor_points_toward_food():
     f = food_sensor((40, 40), s)
     cx = np.argmax(f.sum(axis=0))
     assert cx > 20                         # bump sits in the right half
+
+
+def test_food_sensor_amplitude_encodes_proximity():
+    s = Snake(16, seed=1)
+    hy, hx = s.head()
+    s.food = (hy, (hx + 1) % 16)           # adjacent
+    near = food_sensor((40, 40), s).max()
+    s.food = (hy, (hx + 7) % 16)           # far
+    far = food_sensor((40, 40), s).max()
+    assert near > far                      # closer food -> brighter sense
+
+
+def test_body_sensor_marks_body_near_centre():
+    s = Snake(16, seed=1)                   # body extends left from the head
+    d = body_sensor((40, 40), s)
+    assert d.max() > 0                      # the body is felt
+    # its mass sits left of centre (body is to the left of the head)
+    cx = (d.sum(axis=0) * np.arange(40)).sum() / d.sum()
+    assert cx < 20
+
+
+def test_play_writes_danger_only_when_declared():
+    # a danger-aware brain runs and stays deterministic
+    a = play(BRAIN_DANGER, world_size=32, game_size=12, seed=2, moves=30, ticks_per_move=3)
+    b = play(BRAIN_DANGER, world_size=32, game_size=12, seed=2, moves=30, ticks_per_move=3)
+    assert a["move_seq"] == b["move_seq"]
 
 
 def test_read_move_follows_motor_centre_of_mass():

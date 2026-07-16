@@ -266,3 +266,50 @@ occupied neighbour of an empty target cell (true MAP-Elites illumination).
 (3) Environment-coupled worlds: feed an external map or game (Snake — food/walls
 as read-only channels, world activity read back as moves) so life must adapt to
 a foreign environment rather than a self-contained one.
+
+---
+
+## 2026-07-16 — A gentle prompt nudge moves the physicist from blinkers to an excitable medium
+
+**Setup.** One soft sentence added to the scientist's system prompt: stable
+spatial structure that holds still, and oscillators with a *long* period, are
+especially prized and rare — "a whole field flipping every step (period 2) is
+easy; something that cycles over many steps … is the real find." Nothing else
+changed. Then a live 6-experiment run (deepseek-v4-flash, 80², 200 steps).
+
+**What DeepSeek did.** Before the nudge, its laws were single-channel
+majority/threshold rules that produced field-wide **period-2 blinkers** (the
+whole grid inverts each tick — negative lag-1 self-correlation, the flicker we
+saw in the GIFs). After the nudge, on turn one it reached for a **two-channel
+excitable medium**: an activator `a` (diffusion + decay + threshold excitation)
+gated by a refractory variable `b` (spikes on excitation, then decays). That is
+a FitzHugh–Nagumo / reaction–diffusion recipe — the textbook substrate for
+spiral waves — and it was pursued with a coherent 6-step causal arc: it read the
+observer, correctly diagnosed "`b` is globally synchronized (std≈0.04), so it
+can't seed local wave fronts," and spent the remaining turns trying to localize
+the refractory field (lower diffusion, sparser nucleation, `set b=1` with fast
+decay).
+
+**Two measurable effects.**
+1. *Longer periods, as asked.* Recurrence moved from lag-2 (period-2 flip) to
+   lag-7…lag-10 across runs — the world now self-recurs over many steps, not
+   every step. The activator/refractory anti-correlation showed up cleanly
+   (a~b = −0.41…−0.49), which is the correct physics of an excitable medium.
+2. *Coherence.* Blob count for `a` collapsed from 47 to 3 — large connected
+   regions instead of spatter.
+
+**But the behavior map stalled at 9/100 cells** the whole run. This is a finding
+about *our instrument*, not the physics: the structure axis (mean gzip ratio
+over channels) cannot tell a coherent spiral-wave medium from noise — both
+compress poorly — so genuinely different worlds kept binning as
+`alive/noisy/recurrent` or `alive/textured/drifting`. The nudge changed the
+physics in a way the map is blind to. (Confirms open thread (1) from the
+previous entry: the structure axis needs a better descriptor — e.g. spatial
+autocorrelation length or blob-size concentration — to separate order from
+noise.)
+
+**Conclusion.** A one-sentence, non-coercive steer meaningfully redirected the
+automated physicist toward richer physics — from trivial blinkers to a
+reaction–diffusion medium chasing spirals — validating the "gentle compass, not
+a score" approach. The bottleneck is now the observer's structure axis, which is
+too coarse to reward the coherence the model is actually producing.

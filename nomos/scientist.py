@@ -82,7 +82,12 @@ HOW TO REPLY, every turn, in this order:
    time from the previous law so you can attribute the effect.
 3. PREDICTION: one sentence — what you expect the observer to report, concretely.
 Do not optimize a number. Seek understanding: persistence, structure, self-
-organization, memory, life-like dynamics, surprises.
+organization, memory, life-like dynamics, surprises. Two things are especially
+prized and, so far, rare: stable SPATIAL structure that holds still while the
+world moves (blobs, stripes, gradients that persist), and oscillators with a
+LONG period — a whole field flipping every step (period 2) is easy; something
+that cycles over many steps, or where a local pattern travels, is the real find.
+Reach for these when a plain high-activity world would only repeat what is known.
 """
 
 FIRST_TURN = ("Begin. Propose your first hypothesis, law, and prediction. "

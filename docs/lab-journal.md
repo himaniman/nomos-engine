@@ -170,3 +170,48 @@ only via maladapted offspring; add an explicit fidelity cost and see if it caps
 `mut`. (3) Sexual recombination (blend two parents) vs the current asexual copy.
 (4) These four experiments were all run by Claude-in-session — next is handing
 the loop to an API model, with the SQLite archive as its memory.
+
+---
+
+## 2026-07-16 — The automated scientist loop (DeepSeek via WaveSpeed)
+
+**Built.** `nomos/llm.py` (provider-agnostic OpenAI-compatible adapter + a
+MockClient for offline tests; default WaveSpeed unified API, model
+`deepseek/deepseek-v4-flash`), `nomos/sim.py` (`simulate` + `digest` — a run to
+a compact observation), `nomos/scientist.py` (the loop: system prompt = the DSL
+spec, the model returns hypothesis + a ```nomos law + prediction, we run it,
+feed the observation back, and log everything to a markdown journal + the SQLite
+archive). Invalid laws are fed back as engine errors so the model self-corrects.
+
+**First live run** (deepseek-v4-flash, 64², 120 steps, 2 iterations, ~$0.00001):
+- The model's very first law omitted `when`; the engine error was returned and
+  the model fixed it next turn — self-correction works.
+- It then wrote `a = avg8(a) + 0.1*(rand()-0.5)`, predicted "alive", got the old
+  verdict "boiling". It correctly diagnosed "noise amplitude too large", cut it
+  to 0.01, and predicted "static". The observer again said "boiling".
+
+**Finding (the loop earned its keep on run one).** DeepSeek's reasoning was
+right and the *observer was wrong*. Old `activity` = fraction of cells that
+changed by any ε; for any continuous law with noise that is always 1.0, so every
+such world was mislabelled "boiling" regardless of amplitude. Fixed: `activity`
+is now magnitude-based — mean |Δ| per channel divided by the channel's spatial
+range, averaged. Verdicts recalibrated to the metric's real dynamic range
+(uniform full-randomization tops out at |Δ| ≈ ⅓ range): static < 1e-3, settled
+< 0.03, alive, boiling > 0.22. Now: pure chaos → boiling, pure diffusion →
+settled, Game of Life → alive, the noisy-diffusion worlds → alive (they *do*
+keep rearranging at small amplitude — "static" was the wrong intuition; the honest
+description is low-amplitude but persistent change).
+
+**Conclusion.** The automated loop reproduces the manual one (hypothesis →
+law → observation → revised hypothesis) and immediately surfaced a measurement
+error a human had missed — exactly the intended value of putting a scientist in
+the loop. DeepSeek is a capable workhorse physicist; the observer, not the
+model, was the weak link, and the loop found it.
+
+**Open threads.** (1) The magnitude metric normalizes per channel by spatial
+range, so a tiny-range field that churns still reads active — revisit if it
+misleads. (2) Give the scientist the *archive* as memory (past laws + verdicts)
+so it stops re-deriving basics each run. (3) Novelty archive / MAP-Elites: keep
+a grid of (activity × structure × ...) and reward filling new cells, not a
+single score. (4) Let a smarter model periodically read the journal and set
+direction while DeepSeek does the many cheap mutations.

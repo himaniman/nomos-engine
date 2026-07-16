@@ -76,10 +76,23 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
 - Done (Exp 4): **evolvability evolves** — mutation rate as a heritable gene
   rises ~5× in a moving environment, stays flat/declines in a static one
   (`laws/evolvability_{moving,static}.nomos`). Uses linked inheritance via `pk`.
-- The physicist in the loop is currently Claude-in-session; every experiment is
-  written up in `docs/lab-journal.md` (keep doing this per experiment).
-- Next: the automated API loop (provider-agnostic: DeepSeek / Claude) reading
-  the SQLite archive as memory, with a novelty archive (MAP-Elites) instead of
-  single-objective optimization.
+- Done (automated loop): `nomos/scientist.py` — an LLM physicist proposes a
+  hypothesis + law + prediction, the engine runs it, the observer reports, the
+  model concludes and proposes the next; logged to `journal/` + SQLite archive.
+  `nomos/llm.py` provider-agnostic (WaveSpeed unified OpenAI-compatible API,
+  default `deepseek/deepseek-v4-flash`); `nomos/sim.py` = `simulate`+`digest`.
+  Run: `.\.venv\Scripts\python.exe -m nomos.scientist --iterations N`
+  (`--dry-run` uses a mock physicist, no API). Its first live run already
+  surfaced and fixed an observer bug (activity is now magnitude-based, not
+  fraction-of-cells-changed). Key config lives in `.env` (gitignored):
+  `WAVESPEED_API_KEY` reused from the ava project; `NOMOS_LLM_BASE_URL`,
+  `NOMOS_LLM_MODEL`. Note: WaveSpeed's LLM endpoint needs an LLM-enabled key
+  (the image-gen key 401s). deepseek-v4 defaults to thinking mode — don't set a
+  tiny max_tokens or `content` comes back empty.
+- The manual physicist (Claude-in-session) still runs the deeper experiments;
+  every one is written up in `docs/lab-journal.md` (keep doing this).
+- Next: give the scientist the archive as memory; novelty archive (MAP-Elites)
+  instead of single-objective; a smarter model setting direction over DeepSeek's
+  cheap mutations.
 - Deployment intent: runs are pure CLI -> trivially parallel as k8s Jobs on the
   user's cluster later; GPU only if we move to Lenia-style continuous physics.

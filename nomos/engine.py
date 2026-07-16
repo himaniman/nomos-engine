@@ -242,7 +242,12 @@ class World:
             self.state[ch.name] = val
 
     def step(self) -> float:
-        """Advance one tick. Returns activity: fraction of cells that changed."""
+        """Advance one tick. Returns activity in [0, 1]: the mean absolute change
+        of each channel this step, measured relative to that channel's spatial
+        range, averaged over channels. This is magnitude-based on purpose — a
+        field that merely jitters by a tiny amount reads near 0, not 1, so a
+        continuous law with noise is no longer mislabelled as maximally active.
+        """
         snapshot = self.state
         ctx = EvalCtx(self.shape, self.rng, time=self.time)
         new = {k: v.copy() for k, v in snapshot.items()}
@@ -256,15 +261,17 @@ class World:
                     new[ch] = np.where(mask, val, new[ch])
                 else:
                     new[ch] = new[ch] + np.where(mask, val, 0.0)
-        changed = np.zeros(self.shape, dtype=bool)
+        activities = []
         for k in new:
             arr = np.nan_to_num(new[k], nan=0.0, posinf=_CLIP, neginf=-_CLIP)
             np.clip(arr, -_CLIP, _CLIP, out=arr)
             new[k] = arr
-            changed |= arr != snapshot[k]
+            prev = snapshot[k]
+            scale = float(prev.max() - prev.min()) + 1e-3   # spatial range, floored
+            activities.append(min(1.0, float(np.abs(arr - prev).mean()) / scale))
         self.state = new
         self.time += 1
-        return float(changed.mean())
+        return float(np.mean(activities)) if activities else 0.0
 
     def run(self, steps: int) -> list[float]:
         """Advance many ticks; returns the per-step activity history."""

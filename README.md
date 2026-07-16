@@ -144,5 +144,11 @@ tests/            pytest; GoL glider/blinker as engine ground truth
    changing environment, not a static one (lab journal Experiment 4)
 5. The scientist loop, manual first: Claude-in-session as physicist keeping the
    lab journal (this is already how Experiments 1–4 were run)
-6. Automated loop via API (provider-agnostic: DeepSeek / Claude), batches,
-   novelty archive (MAP-Elites) instead of single-objective optimization
+6. ~~Automated loop via API~~ (done): `python -m nomos.scientist` — a
+   provider-agnostic LLM physicist (WaveSpeed unified API, default DeepSeek)
+   proposes hypothesis+law+prediction, the engine runs it, the observer reports,
+   it concludes and iterates; logged to `journal/` + the SQLite archive.
+   `--dry-run` uses a mock physicist (no API).
+7. Next: give the scientist the archive as memory; a novelty archive
+   (MAP-Elites) instead of single-objective; a smarter model steering DeepSeek's
+   cheap mutations; batches as k8s Jobs.

@@ -189,13 +189,16 @@ def _trend(act: np.ndarray) -> str:
 
 
 def _verdict(final_activity: float, world) -> str:
+    # final_activity is magnitude-based (mean |Δ| / spatial range); see World.step.
     flat = all(v.std() < 1e-9 for v in world.state.values())
-    if flat and final_activity < 1e-6:
+    if flat and final_activity < 1e-4:
         return "frozen: every channel is uniform and nothing changes"
-    if final_activity < 1e-6:
-        return "static: structure remains but nothing changes anymore"
-    if final_activity > 0.9:
-        return "boiling: almost every cell changes every step"
+    if final_activity < 1e-3:
+        return "static: structure remains but barely changes anymore"
+    if final_activity < 0.03:
+        return "settled: small persistent fluctuations around a steady state"
+    if final_activity > 0.22:
+        return "boiling: the world changes drastically every step"
     return "alive: the world keeps changing at a moderate rate"
 
 

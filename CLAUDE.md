@@ -212,6 +212,16 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   baseline + danger repulsion) became IMMORTAL — they learned to run from food and
   circle forever (score ~0, survival = full cap on every board). The survival vs
   foraging split is now a live, observable phenomenon.
+- Done (LLM finds the balance with two layers): re-ran the brain lab with two
+  layers + leverage + 64 ticks, 6 boards. Naive food->motor (14.3) came LAST;
+  every two-layer brain both ate (16-18.7) and survived long (500-800). deepseek
+  designed like an engineer — it independently invented hunger-gated risk
+  (`motor = food*(1+2*temperature)`, `avoid = danger*(1-0.5*temperature)`; top
+  score 18.67, saved as `laws/snake_brain_llm.nomos`), a decaying food-memory
+  layer, food smoothing for a wider sensor, and a hunger threshold. The
+  score-vs-survival frontier is now populated; the open target is the Pareto
+  corner (top score AND immortal). This is the thesis working end to end: an LLM
+  doing CA control design against the game reward.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

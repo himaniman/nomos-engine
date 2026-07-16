@@ -1,0 +1,20 @@
+# Best brain from an LLM brain-lab run (deepseek, 48/16, play-to-death, 64 ticks,
+# 6 boards): score 18.67, survival ~497, immortal on 2/6 boards. The LLM's own
+# design — two non-interfering layers plus HUNGER-GATED RISK: when hungry
+# (temperature high) it amplifies the food drive and eases off body-fear, so it
+# hunts harder as starvation nears and plays safe when fed. A real risk/reward
+# controller, discovered from game feedback alone.
+
+channel food
+channel danger
+channel temperature
+channel motor
+channel avoid
+
+rule hungry_boost:
+  when 1
+  set motor = food * (1 + 2 * temperature)
+
+rule cautious_avoid:
+  when 1
+  set avoid = danger * (1 - 0.5 * temperature)

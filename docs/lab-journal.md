@@ -731,3 +731,44 @@ animation — a good reminder that the GIFs are an instrument, not decoration.
 **Next.** Let the LLM/evolve exploit two layers now that they work (score vs
 survival is a real frontier to push); more eval seeds to cut the one-board
 variance; sweep `starve_every` to map where greedy flips to cautious.
+
+---
+
+## 2026-07-16 — With two layers, the LLM finds the balance (and designs like an engineer)
+
+Re-ran the brain lab now that body-fear works (two layers, leverage, 64 ticks),
+6 boards, 8 brains. The gap between the two attractors is now full of good brains,
+and deepseek navigated the score/survival frontier with real control-design
+reasoning. Naive `motor = food` (14.33, dies at 140) came out DEAD LAST.
+
+Selected designs (all play-to-death; IMMORTAL = reached the 800 cap alive, and
+now that hunger is on, an immortal is one that eats enough to never starve):
+- Brain 2 — the plain two-layer split (`motor = food`, `avoid = danger`): 17.17,
+  survived 798, immortal 5/6. It reasoned explicitly that separate layers "combine
+  without cancelling internal gradients" — it understood the point of the design.
+- Brain 3 (top score, 18.67, survival 497) — HUNGER-GATED RISK:
+  `motor = food*(1 + 2*temperature)`, `avoid = danger*(1 - 0.5*temperature)`.
+  When hungry it hunts harder and fears less; when fed it plays safe. An elegant,
+  correct risk/reward controller, discovered from game feedback alone. Saved as
+  `laws/snake_brain_llm.nomos`.
+- Brain 5 — a decaying `food_memory` layer to keep a heading when food is out of
+  range (14.67, immortal 6/6). Brain 6 — constant strong avoid + hunger-boosted
+  motor (16.50, immortal 6/6). Brain 7 — `avg8`-smoothed food for a wider sensor
+  (18.17, survival 649). Brain 8 — a hunger THRESHOLD (`max(0, temperature-0.3)`)
+  so it only takes risks near starvation (18.33, survival 604).
+
+Across the run the LLM independently invented: the two-layer separation, hunger-
+gated risk modulation, food memory, exploration noise, food smoothing for a wider
+sensor, and a hunger threshold — each proposed as a diagnosis of the previous
+brain's failure, and most of them working. This is the thesis realised: an LLM
+doing genuine cellular-automaton control design against an external objective,
+with the observer (the game score) closing the loop. It also self-corrected an
+invalid law mid-run (`neighbourhood_sum8` -> engine error -> fixed next turn).
+
+**Where we are.** The two attractors now have a populated frontier between them:
+cautious immortals (13–16.5, survive the whole run) through aggressive scorers
+(18–18.67, survive 500–650). No single brain yet both tops the score AND stays
+immortal — that Pareto corner is the remaining target. Levers to push it: let
+evolve tune the LLM's best template's constants; more/rotated eval boards; a
+stronger design model. But the machine works end to end now: senses, hunger,
+two-layer motor, LLM designer, game reward, watchable blended GIFs.

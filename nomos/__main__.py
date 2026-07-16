@@ -178,9 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--game-size", type=int, default=16, dest="game_size",
                       help="snake board side (default 16)")
     play.add_argument("--seed", type=int, default=0)
-    play.add_argument("--moves", type=int, default=200, help="max game ticks")
-    play.add_argument("--ticks", type=int, default=4,
-                      help="physics steps the brain thinks per game tick (default 4)")
+    play.add_argument("--moves", type=int, default=300, help="max game ticks")
+    play.add_argument("--ticks", type=int, default=8,
+                      help="physics steps the brain thinks per game tick (default 8)")
     play.add_argument("--sensor-gain", type=float, default=0.8, dest="sensor_gain",
                       help="how far the food bump sits from centre (default 0.8)")
     play.add_argument("--life-channel", default="motor", dest="life_channel",
@@ -200,8 +200,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="board seed used for the per-generation GIF")
     ev.add_argument("--world-size", type=int, default=48, dest="world_size")
     ev.add_argument("--game-size", type=int, default=16, dest="game_size")
-    ev.add_argument("--moves", type=int, default=250)
-    ev.add_argument("--ticks", type=int, default=4)
+    ev.add_argument("--moves", type=int, default=300)
+    ev.add_argument("--ticks", type=int, default=8)
     ev.add_argument("--scale", type=int, default=6)
     ev.add_argument("--fps", type=int, default=6)
     ev.add_argument("--gif-dir", default="out/evolve", dest="gif_dir",

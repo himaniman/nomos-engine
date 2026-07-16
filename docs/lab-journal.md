@@ -522,3 +522,57 @@ landscape: let an LLM be the brain-mutation operator (structural edits — new
 channels/rules — like the scientist's illumination), and/or evolve a larger
 parameter set / richer template. Current Phase B proves the principle; making
 the brain *good* at Snake is the open frontier.
+
+---
+
+## 2026-07-16 — The LLM writes the brain: LLM × cellular automaton, on an objective
+
+This is the project's thesis in one loop. `nomos/brain_lab.py` makes the LLM the
+mutation operator: it writes whole brain *rules* (not just weights), we score
+each on Snake over several boards, and carry a leaderboard of the best back into
+the prompt so it iterates against a real external objective. Mirrors
+`scientist.py`, but the reward is a game, not open-ended observation.
+
+**First live run (deepseek, 48/16, 350 moves, 8 ticks/move, 3 seeds).** The
+model reasoned like a designer, each brain a diagnosis of the last:
+1. `motor = food` — baseline forage. **Score 19.67** (best of the run). It
+   predicted, correctly, that with no body-awareness it would eventually coil
+   into itself (died ~173 ticks).
+2. `motor = food - danger` — add body repulsion. It expected survival to double.
+   Instead **score 8**; it diagnosed "direct subtraction glued the motor down —
+   indecision."
+3. `motor = food * (1 - danger)` — gate out body directions. Survived the full
+   350 ticks but **score 7.3**; diagnosed "when the body surrounds the head every
+   direction is blocked — it starves."
+4. A new **decaying trail-memory channel** (`memory *= 0.95; memory += 0.2*danger;
+   motor = food - memory`) — stigmergy, a scent trail of where it has been.
+   **Score 7.7**, survived 350.
+
+**Findings.**
+- *The idea works*: an LLM productively searches the space of CA laws against a
+  concrete objective, inventing mechanisms (a trail memory) unprompted. The best
+  brain it wrote (19.67) beat the parametrically-evolved one (17).
+- *Independent corroboration of the danger problem*: two unrelated methods —
+  weight evolution (drove w_danger→0) and LLM design (every danger-aware brain
+  scored worse) — agree that the diffuse whole-body sensor hurts foraging. That
+  is a real result about the *sensor encoding*, not the model: subtracting a
+  length-scaled body cloud from the motor causes indecision. The fix stands:
+  a sharp forward-collision sensor (only the cells the head could enter next).
+- *A survival/foraging tension* is visible: naive eating dies fast but scores
+  high; body-aware brains live to 350 but starve. A brain that both survives and
+  eats is the actual open problem — likely needs the better danger sensor plus
+  memory, which the model was already reaching toward.
+
+**Fixed a perception bug (thanks to the user noticing).** The snake "seemed to
+already know how to play" and death was never visible in the GIFs. Cause: the
+step that kills sets `alive=False` and returns *without* advancing the head, so
+the final frame was identical to the previous one — the collision was never
+drawn. Now the crash cell is flashed and the death frame is held ~6 frames, so
+the self-collision is watchable. Also raised the game/thinking ratio (8 physics
+steps per move, up from 4) and the game length (300+ moves) per the user's read
+that the brain needed more time to organize between moves.
+
+**Next.** Forward-collision `danger` sensor; then re-run both evolve and the
+brain lab to see if body-awareness finally pays; optionally a bordered-board
+variant (walls as a sensor) for a harder game; a stronger model over deepseek's
+cheap iterations.

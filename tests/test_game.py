@@ -39,6 +39,18 @@ def test_snake_is_deterministic():
     assert a.body == b.body and a.food == b.food and a.score == b.score
 
 
+def test_death_is_recorded_and_flashed():
+    s = Snake(6, seed=2)
+    # a 2x2 loop: head (3,3); (2,3) is a non-tail body cell (tail is (3,2))
+    s.body = [(3, 3), (2, 3), (2, 2), (3, 2)]
+    s.direction = "right"
+    s.food = (0, 0)
+    s.step("up")                       # head (3,3) -> (2,3), a body cell -> crash
+    assert not s.alive
+    assert s.death_cell == (2, 3)
+    assert s.field()[2, 3] == 1.0      # the crash is flashed for the render
+
+
 def test_field_marks_head_food_body():
     s = Snake(8, seed=1)
     f = s.field()

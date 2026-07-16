@@ -54,6 +54,9 @@ nomos/embodied.py brain<->game coupling: food + (optional) danger sensors ->
                   world, motor field -> move; `play()`; CLI `nomos play`
 nomos/evolve.py   Phase B: (1+lambda) evolution of a brain genome across runs,
                   fitness = game score; CLI `nomos evolve`
+nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
+                  the model), scored on the game, leaderboard in the prompt;
+                  `python -m nomos.brain_lab` (mirrors scientist.py)
 nomos/__main__.py CLI `python -m nomos run`
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
@@ -150,6 +153,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (a diffuse, length-scaled body cloud near grid centre) is not a net help;
   making it a forward-collision sensor (mark the cells the head could move into)
   is the next refinement.
+- Done (LLM brain lab): `nomos/brain_lab.py` — the LLM is the mutation operator,
+  writing whole brain RULES between runs (not just weights). Each brain is scored
+  on the game over several seeds, a leaderboard of the best is carried in the
+  prompt, results + per-brain split GIFs logged to `journal/`. First live run
+  (deepseek): the model reasoned through real designs — baseline food->motor
+  (score 19.67, best), food-danger (diagnosed "indecision"), food*(1-danger)
+  ("starves when body surrounds head"), and even invented a decaying trail-memory
+  channel (stigmergy). CORROBORATED the danger finding independently: subtracting
+  the diffuse body sensor hurts foraging. So naive eating still beats body-aware
+  brains — the danger *encoding* is the bottleneck, not the idea.
+- Misc this phase: death is now visualized (crash cell flashed + held ~6 frames
+  in the GIF; before, the killing step never advanced the head so death looked
+  identical to the prior frame — that's why the snake seemed to "already know how
+  to play"). Bigger defaults: play/evolve/lab now 300+ moves, 8 physics ticks per
+  game move (was 4). evolve genome gained a 4th gene w_lat (lateral inhibition).
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

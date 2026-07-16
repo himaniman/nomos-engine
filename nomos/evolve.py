@@ -25,12 +25,15 @@ TEMPLATE = (
     "channel motor: init 0\n\n"
     "rule think:\n"
     "  when 1\n"
-    "  set motor = {w_mem}*avg8(motor) + {w_food}*food - {w_danger}*danger\n"
+    "  set motor = {w_mem}*avg8(motor) + {w_food}*food"
+    " - {w_danger}*danger - {w_lat}*avg8(food)\n"
 )
 
-# Gene bounds. w_mem < 1 keeps the motor field from diverging.
-BOUNDS = {"w_mem": (0.0, 0.95), "w_food": (0.0, 3.0), "w_danger": (0.0, 3.0)}
-DEFAULT_GENOME = {"w_mem": 0.5, "w_food": 1.0, "w_danger": 1.0}
+# Gene bounds. w_mem < 1 keeps the motor field from diverging. w_lat is lateral
+# inhibition (centre-surround): it sharpens the motor peak toward the food.
+BOUNDS = {"w_mem": (0.0, 0.95), "w_food": (0.0, 3.0),
+          "w_danger": (0.0, 3.0), "w_lat": (0.0, 2.0)}
+DEFAULT_GENOME = {"w_mem": 0.5, "w_food": 1.0, "w_danger": 1.0, "w_lat": 0.0}
 
 
 def law_from_genome(genome: dict) -> str:
@@ -50,7 +53,7 @@ def mutate(genome: dict, rng: random.Random, strength: float = 0.15) -> dict:
 
 
 def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int = 16,
-            moves: int = 250, ticks: int = 4) -> dict:
+            moves: int = 300, ticks: int = 8) -> dict:
     """Average game performance of a brain over several boards. Fitness rewards
     eating first (score, heavily weighted) and surviving second, so there is a
     gradient to climb even before a brain scores its first food."""
@@ -68,7 +71,7 @@ def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int 
 
 
 def evolve(generations: int, lam: int = 6, seeds=(0, 1, 2), world_size: int = 48,
-           game_size: int = 16, moves: int = 250, ticks: int = 4, rng_seed: int = 0,
+           game_size: int = 16, moves: int = 300, ticks: int = 8, rng_seed: int = 0,
            start: dict | None = None, on_generation=None) -> dict:
     """(1+lambda) evolution strategy over brain genomes. Each generation makes
     `lam` mutants of the current parent, evaluates them, and keeps the best

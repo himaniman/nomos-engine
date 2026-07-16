@@ -31,6 +31,7 @@ class Snake:
         self.alive = True
         self.score = 0
         self.steps = 0
+        self.death_cell: tuple[int, int] | None = None   # where the head crashed
         self.food: tuple[int, int] | None = None
         self._place_food()
 
@@ -58,6 +59,7 @@ class Snake:
         blocking = set(self.body if ate else self.body[:-1])
         if new_head in blocking:
             self.alive = False
+            self.death_cell = new_head          # the body cell the head ran into
             self.steps += 1
             return
         self.body.insert(0, new_head)
@@ -70,7 +72,10 @@ class Snake:
 
     def field(self) -> np.ndarray:
         """Board as a 0..1 intensity map for rendering: body 0.5, head 0.85,
-        food 1.0, empty 0 — so it reads naturally through the fire colormap."""
+        food 1.0, empty 0 — so it reads naturally through the fire colormap.
+        On death the crash cell is flashed at full brightness so the collision
+        is visible (the step that kills never advances the head, so without this
+        the death frame would look identical to the one before it)."""
         f = np.zeros((self.h, self.w), dtype=np.float64)
         for y, x in self.body:
             f[y, x] = 0.5
@@ -78,4 +83,6 @@ class Snake:
         f[hy, hx] = 0.85
         if self.food is not None:
             f[self.food] = 1.0
+        if not self.alive and self.death_cell is not None:
+            f[self.death_cell] = 1.0            # the collision, flashed
         return f

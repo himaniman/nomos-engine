@@ -110,8 +110,9 @@ def require_embodied(program) -> None:
 
 
 def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0,
-         moves: int = 200, ticks_per_move: int = 4, life_channel: str = MOTOR_CHANNEL,
-         collect_frames: bool = False, sensor_gain: float = 0.8) -> dict:
+         moves: int = 300, ticks_per_move: int = 8, life_channel: str = MOTOR_CHANNEL,
+         collect_frames: bool = False, sensor_gain: float = 0.8,
+         death_hold: int = 6) -> dict:
     """Run the coupled brain+game loop. Returns score, survival, move sequence,
     and (optionally) paired life/game frames for a split render."""
     program = parse_program(law_text)
@@ -142,6 +143,12 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
         if collect_frames:
             life_frames.append(world.state[life_channel].copy())
             game_frames.append(snake.field())
+
+    # hold the death frame so the crash is actually watchable in the GIF
+    if collect_frames and not snake.alive and game_frames:
+        for _ in range(death_hold):
+            life_frames.append(life_frames[-1])
+            game_frames.append(game_frames[-1])
 
     return {
         "score": snake.score,

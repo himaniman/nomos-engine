@@ -5,7 +5,7 @@ from nomos.dsl import parse_program
 
 
 def test_law_from_genome_is_valid_nomos():
-    law = evolve.law_from_genome({"w_mem": 0.5, "w_food": 1.2, "w_danger": 0.8})
+    law = evolve.law_from_genome(dict(evolve.DEFAULT_GENOME))
     prog = parse_program(law)                       # must parse
     names = {c.name for c in prog.channels}
     assert {"food", "danger", "motor"} <= names

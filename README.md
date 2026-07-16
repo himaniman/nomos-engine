@@ -131,6 +131,7 @@ nomos/elites.py   MAP-Elites behavior map over the archive (regime coverage)
 nomos/scientist.py automated LLM physicist loop (nomos/llm.py, nomos/sim.py)
 nomos/game.py     deterministic Snake; nomos/embodied.py couples it to a brain
 nomos/evolve.py   Phase B: evolve a brain across runs (fitness = game score)
+nomos/brain_lab.py LLM writes the brain rules across runs, scored on the game
 nomos/__main__.py CLI (`nomos run ...`, `nomos play ...`, `nomos evolve ...`)
 laws/             .nomos law files
 tests/            pytest; GoL glider/blinker as engine ground truth
@@ -176,6 +177,10 @@ tests/            pytest; GoL glider/blinker as engine ground truth
     writes a best-of-generation GIF each generation. First run improved score
     15→17. Added a proximity-scaled food sense and an optional body/`danger`
     sensor (which evolution then judged marginal — see the lab journal).
-11. Next: make `danger` a forward-collision sensor; an LLM as the brain-mutation
-    operator (structural, not just weights); a smarter model steering DeepSeek;
-    batches as k8s Jobs.
+11. ~~LLM as the brain-mutation operator~~ (done): `python -m nomos.brain_lab` —
+    the model writes whole brain *rules* between runs, each scored on the game
+    with a leaderboard carried in the prompt. Its first run reasoned through
+    real designs (baseline, danger-avoidance, a decaying trail memory) — the
+    core "LLM × cellular automaton" idea, guided by an external objective.
+12. Next: a forward-collision `danger` sensor; a smarter model over DeepSeek;
+    walls / a bordered board variant; batches as k8s Jobs.

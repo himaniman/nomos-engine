@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import random
 import re
 import sys
 from pathlib import Path
@@ -115,6 +116,40 @@ def extract_law(reply: str) -> str | None:
     return None
 
 
+# Which mechanisms move each behavior-map axis — handed to the model when we ask
+# it to steer a seed law toward an empty regime. These are levers, not rules.
+_LEVER_HINTS = {
+    "activity": ("activity = how much the world changes each step. Raise it with "
+                 "stronger feedback/excitation, larger noise, or looser thresholds; "
+                 "lower it with damping, decay, diffusion, or tighter thresholds."),
+    "structure": ("structure = spatial coherence (do neighbouring cells agree). "
+                  "Raise it with diffusion/averaging or local coupling that spreads "
+                  "state between neighbours; lower it with per-cell randomness or "
+                  "sharp thresholds that break neighbours apart."),
+    "order": ("order = temporal self-similarity (does the pattern recur over time). "
+              "Raise it with memory/refractory variables and slow modes that make "
+              "state persist or cycle; lower it with chaos or fast full randomization."),
+}
+
+
+def target_prompt(seed_cell, seed_law, target_cell, coverage_line, prev=None) -> str:
+    """Ask the model to move ONE axis of a seed law toward an empty regime."""
+    axis, frm, to, direction = elites.axis_move(seed_cell, target_cell)
+    parts = []
+    if prev:
+        parts.append(prev)
+    parts.append(coverage_line)
+    parts.append(f"TARGET: reach the empty regime [{elites.cell_label(target_cell)}].")
+    parts.append(f"This SEED law produces the neighbouring regime "
+                 f"[{elites.cell_label(seed_cell)}]:\n```nomos\n{seed_law}\n```")
+    parts.append(f"They differ on ONE axis: move **{axis} {direction}** "
+                 f"({frm} -> {to}). {_LEVER_HINTS[axis]}")
+    parts.append("Propose ONE minimal change to the seed law to move that axis "
+                 "toward the target, keeping the rest intact. Reply as usual: "
+                 "hypothesis, law, prediction.")
+    return "\n\n".join(parts)
+
+
 def _follow_up(report_digest: str, map_line: str = "") -> str:
     return (f"Observation from your law:\n{report_digest}\n"
             + (f"{map_line}\n" if map_line else "")
@@ -184,20 +219,43 @@ class Journal:
             f.write(text)
 
 
+def _coverage_line(n: int) -> str:
+    return f"MAP coverage: {n}/{elites.TOTAL_CELLS} regimes reached so far."
+
+
 def run_loop(client, iterations: int, size: int, steps: int, seed: int,
              archive_path: str | None, journal_path: Path,
              temperature: float = 1.0, memory_runs: int = 10,
-             gif_dir: Path | None = None, gif_fps: int = 6) -> Journal:
-    params = {"size": size, "steps": steps, "seed": seed}
+             gif_dir: Path | None = None, gif_fps: int = 6,
+             mode: str = "explore") -> Journal:
+    params = {"size": size, "steps": steps, "seed": seed, "mode": mode}
     journal = Journal(journal_path, getattr(client, "model", "?"), params)
-    mem = memory_block(archive_path, memory_runs) if archive_path else ""
-    if mem:
-        print(f"[memory] {mem.count('[run #')} past runs loaded into the first turn",
-              file=sys.stderr)
+    have_archive = bool(archive_path and Path(archive_path).exists())
+    seen_cells = set(elites.grid(archive_path)) if have_archive else set()
+
+    illuminate = mode == "illuminate"
+    elite_law = elites.elite_laws(archive_path) if (illuminate and have_archive) else {}
+    attempts: dict = {}
+    rng = random.Random(seed)
+    target = None            # (target_cell, seed_cell) we are aiming at this turn
+
+    if illuminate and elite_law:
+        target = elites.choose_target(set(elite_law), attempts, rng)
+    if illuminate and target:
+        tcell, scell = target
+        attempts[tcell] = attempts.get(tcell, 0) + 1
+        first = target_prompt(scell, elite_law[scell], tcell,
+                              _coverage_line(len(seen_cells)))
+        print(f"[illuminate] aiming at {elites.cell_label(tcell)} "
+              f"from {elites.cell_label(scell)}", file=sys.stderr)
+    else:
+        mem = memory_block(archive_path, memory_runs) if archive_path else ""
+        if mem:
+            print(f"[memory] {mem.count('[run #')} past runs loaded into the first turn",
+                  file=sys.stderr)
+        first = mem + FIRST_TURN
     messages = [{"role": "system", "content": DSL_SPEC},
-                {"role": "user", "content": mem + FIRST_TURN}]
-    seen_cells = (set(elites.grid(archive_path))
-                  if archive_path and Path(archive_path).exists() else set())
+                {"role": "user", "content": first}]
 
     completed = 0
     while completed < iterations:
@@ -229,9 +287,11 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
         c = elites.cell(report)
         is_new = c not in seen_cells
         seen_cells.add(c)
+        hit = target is not None and c == target[0]
         map_line = (f"behavior-map: {elites.cell_label(c)} — "
                     + ("NEW regime" if is_new else "already visited")
-                    + f" ({len(seen_cells)}/{elites.TOTAL_CELLS} cells)")
+                    + f" ({len(seen_cells)}/{elites.TOTAL_CELLS} cells)"
+                    + (f" [target {'HIT' if hit else 'missed'}]" if target else ""))
         run_id = None
         if archive_path:
             run_id = archive.record(archive_path, report, law, law_name=f"auto-{completed}",
@@ -263,7 +323,32 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
             + (f"\n![run {completed}]({gif_link})\n" if gif_link else "")
             + (f"\n_archived as run #{run_id}._\n" if run_id else "")
         )
-        messages.append({"role": "user", "content": _follow_up(dig, map_line)})
+
+        if illuminate:
+            elite_law[c] = law
+            prev_target = target[0] if target else None
+            target = elites.choose_target(set(elite_law), attempts, rng)
+            if target:
+                tcell, scell = target
+                attempts[tcell] = attempts.get(tcell, 0) + 1
+                landed = elites.cell_label(c)
+                if prev_target is not None and c == prev_target:
+                    prev = f"Your last law HIT its target regime [{landed}]. Good."
+                elif prev_target is not None:
+                    prev = (f"Your last law landed in [{landed}] — not the target "
+                            f"[{elites.cell_label(prev_target)}], but a useful new "
+                            f"neighbour. Now aim elsewhere.")
+                else:
+                    prev = f"Your last law landed in [{landed}]."
+                nxt = target_prompt(scell, elite_law[scell], tcell,
+                                    _coverage_line(len(seen_cells)), prev)
+                print(f"[illuminate] aiming at {elites.cell_label(tcell)} "
+                      f"from {elites.cell_label(scell)}", file=sys.stderr)
+            else:
+                nxt = _follow_up(dig, map_line)   # frontier exhausted -> free exploration
+        else:
+            nxt = _follow_up(dig, map_line)
+        messages.append({"role": "user", "content": nxt})
 
     return journal
 
@@ -272,6 +357,9 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="nomos.scientist",
                                 description="Automated LLM scientist loop over artificial physics.")
     p.add_argument("--iterations", type=int, default=6)
+    p.add_argument("--mode", choices=["explore", "illuminate"], default="explore",
+                   help="explore = free hypothesis chain; illuminate = actively "
+                        "steer a seed law toward empty behavior-map cells")
     p.add_argument("--size", type=int, default=96)
     p.add_argument("--steps", type=int, default=300)
     p.add_argument("--seed", type=int, default=1)
@@ -318,7 +406,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         journal = run_loop(client, args.iterations, args.size, args.steps, args.seed,
                            archive_path, journal_path, temperature=args.temperature,
-                           memory_runs=args.memory, gif_dir=gif_dir, gif_fps=args.gif_fps)
+                           memory_runs=args.memory, gif_dir=gif_dir, gif_fps=args.gif_fps,
+                           mode=args.mode)
     except LLMError as e:
         print(f"nomos.scientist: LLM error: {e}", file=sys.stderr)
         return 1

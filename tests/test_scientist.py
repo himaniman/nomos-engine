@@ -108,6 +108,39 @@ def test_simulate_frames_out_collects_render_frames():
     assert len(frames["a"]) >= 2 and frames["a"][0].shape == (32, 32)
 
 
+def test_illuminate_seeds_from_archive_and_targets_empty_cell(tmp_path):
+    db = str(tmp_path / "runs.db")
+    # seed the archive with one occupied cell (a coherent, alive, recurrent world)
+    report = {"size": [32, 32], "seed": 1, "steps": 20, "verdict": "alive: seed",
+              "activity": {"mean": 0.05, "final": 0.05, "trend": "steady"},
+              "channels": {"a": {"gzip_ratio": 0.4, "std": 0.2, "coherence": 0.7}},
+              "dynamics": {"a": {"recurrence_lag": 3, "recurrence_corr": 0.9}}}
+    archive.record(db, report, "channel seed\nrule r: when 1 add seed = 1", "seedlaw",
+                   hypothesis="seed world")
+    reply = ("HYPOTHESIS: nudge one axis.\n```nomos\nchannel a: init bernoulli(0.3)\n"
+             "rule r: when 1 set a = sum8(a) >= 4\n```\nPREDICTION: moves.")
+    client = llm.MockClient([reply])
+    scientist.run_loop(client, iterations=1, size=32, steps=20, seed=1,
+                       archive_path=db, journal_path=tmp_path / "j.md",
+                       mode="illuminate")
+    first_user = client.calls[0][1]["content"]
+    assert "TARGET: reach the empty regime" in first_user
+    assert "SEED law produces the neighbouring regime" in first_user
+    assert "channel seed" in first_user                 # the seed law text is shown
+    assert "MAP coverage" in first_user
+
+
+def test_illuminate_bootstraps_when_archive_empty(tmp_path):
+    reply = ("HYPOTHESIS: first.\n```nomos\nchannel a: init bernoulli(0.3)\n"
+             "rule r: when 1 set a = sum8(a) >= 4\n```\nPREDICTION: alive.")
+    client = llm.MockClient([reply])
+    scientist.run_loop(client, iterations=1, size=32, steps=20, seed=1,
+                       archive_path=str(tmp_path / "runs.db"),
+                       journal_path=tmp_path / "j.md", mode="illuminate")
+    # no occupied cells yet -> falls back to the free first turn, no crash
+    assert "TARGET" not in client.calls[0][1]["content"]
+
+
 def test_loop_recovers_from_a_bad_law(tmp_path):
     bad = "HYPOTHESIS: oops.\n```nomos\nrule r: when ghost > 0 set ghost = 1\n```\nPREDICTION: x."
     good = ("HYPOTHESIS: fixed.\n```nomos\nchannel a: init bernoulli(0.3)\n"

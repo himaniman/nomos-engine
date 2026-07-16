@@ -52,6 +52,46 @@ def test_frozen_world_counts_as_locked():
     assert elites.cell_label(elites.cell(rep)).endswith("order=locked")
 
 
+def test_neighbours_respect_bounds():
+    # corner cell (0,0,0) has exactly 3 in-bounds neighbours (one per axis, +1)
+    assert set(elites.neighbours((0, 0, 0))) == {(1, 0, 0), (0, 1, 0), (0, 0, 1)}
+    # an interior cell has 6
+    assert len(elites.neighbours((2, 2, 2))) == 6
+
+
+def test_frontier_and_choose_target():
+    occupied = {(2, 2, 2)}
+    front = elites.frontier(occupied)
+    # every empty axis-neighbour of the single occupied cell is a target seeded by it
+    assert set(front) == set(elites.neighbours((2, 2, 2)))
+    assert all(seeds == [(2, 2, 2)] for seeds in front.values())
+    import random
+    t = elites.choose_target(occupied, rng=random.Random(0))
+    assert t is not None
+    target_cell, seed_cell = t
+    assert seed_cell == (2, 2, 2)
+    assert target_cell in front
+
+
+def test_choose_target_prefers_less_attempted():
+    occupied = {(2, 2, 2)}
+    nbrs = elites.neighbours((2, 2, 2))
+    attempts = {n: 5 for n in nbrs}
+    attempts[nbrs[0]] = 0                       # one untried target
+    target_cell, _ = elites.choose_target(occupied, attempts=attempts)
+    assert target_cell == nbrs[0]
+
+
+def test_axis_move_names_the_single_changed_axis():
+    assert elites.axis_move((2, 2, 2), (3, 2, 2)) == ("activity", "settled", "alive", "up")
+    assert elites.axis_move((2, 2, 2), (2, 1, 2))[0] == "structure"
+    assert elites.axis_move((2, 2, 2), (2, 2, 1))[3] == "down"
+
+
+def test_choose_target_none_when_no_occupied():
+    assert elites.choose_target(set()) is None
+
+
 def test_grid_and_coverage_from_archive():
     with tempfile.TemporaryDirectory() as d:
         db = os.path.join(d, "runs.db")

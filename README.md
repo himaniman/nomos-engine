@@ -161,6 +161,9 @@ tests/            pytest; GoL glider/blinker as engine ground truth
    experiment (progress strip, `--gif-fps`). The structure axis is spatial
    coherence (neighbour autocorrelation), which — unlike gzip — separates
    coherent wave/blob media from noise.
-8. Next: actively steer toward empty map cells (true MAP-Elites illumination);
-   a smarter model steering DeepSeek's cheap mutations; batches as k8s Jobs;
-   environment-coupled worlds (external maps/games feeding channels).
+8. ~~Illumination~~ (done): `--mode illuminate` steers toward empty map cells —
+   each turn it targets an empty frontier cell, seeds the model with a
+   neighbouring cell's law and which single axis to move, and reports HIT/miss.
+9. Next: a smarter model steering DeepSeek's cheap mutations; batches as k8s
+   Jobs; environment-coupled worlds where the grid acts as a *brain* that emits
+   signals to drive an external game (not just a game feeding channels in).

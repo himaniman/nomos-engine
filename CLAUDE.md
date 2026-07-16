@@ -109,12 +109,25 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   compress poorly); it's now `metrics.spatial_autocorr` (neighbour correlation:
   ~1 coherent, ~0 noise, <0 checkerboard). Scientist auto-renders one GIF per
   experiment (`--gif-dir`, `--gif-fps` default 6) with a bottom progress strip.
+- Done (illumination): `--mode illuminate` actively steers. Each turn it picks
+  an empty behavior-map cell on the frontier (adjacent to an occupied one via
+  `elites.frontier`/`choose_target`, deterministic under a seeded rng, prefers
+  well-supported least-attempted targets), hands the model the neighbour's law
+  as a SEED plus which single axis to move and a lever hint for that axis
+  (`target_prompt` + `_LEVER_HINTS`), and reports HIT/miss. A miss just lands in
+  another neighbour — still illumination. `--mode explore` (default) keeps the
+  old free hypothesis chain. First live illuminate run (128², 400 steps) grew
+  coverage 12->14 with one direct target hit.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
-  environment-coupled worlds — feed an external map/game state (e.g. Snake:
-  food/walls as read-only channels, world activity mapped back to moves) so
-  life must adapt to a foreign environment. NOTE: this fresh clone has no
-  `.env` — the WaveSpeed key must be restored before live scientist runs.
+  environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
+  grid is a *brain* that self-organizes and drives an external world through
+  emitted SIGNALS — e.g. cell clustering in a region raises a "move" signal read
+  back as a game action (Snake direction) — rather than the world merely feeding
+  read-only channels in. Data flows both ways via physical channels
+  (temperature/energy); game ticks can be rare relative to physics ticks. Boxes-
+  you-can-push style direct interaction was considered and set aside — cells are
+  too simple to manipulate objects; signalling/organizing is the right level.
 - Deployment intent: runs are pure CLI -> trivially parallel as k8s Jobs on the
   user's cluster later; GPU only if we move to Lenia-style continuous physics.

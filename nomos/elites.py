@@ -28,6 +28,10 @@ ORDER_EDGES = [0.25, 0.5, 0.8]                  # max temporal self-correlation
 ORDER_LABELS = ["chaotic", "drifting", "recurrent", "locked"]
 
 AXES = ["activity", "structure", "order"]
+AXIS_LABELS = [ACTIVITY_LABELS, STRUCTURE_LABELS, ORDER_LABELS]
+AXIS_BOUNDS = [(0, len(ACTIVITY_LABELS) - 1),
+               (0, len(STRUCTURE_LABELS) - 1),
+               (0, len(ORDER_LABELS) - 1)]
 TOTAL_CELLS = len(ACTIVITY_LABELS) * len(STRUCTURE_LABELS) * len(ORDER_LABELS)
 
 
@@ -92,6 +96,66 @@ def grid(db_path: str) -> dict[tuple[int, int, int], list[dict]]:
         cells.setdefault(c, []).append(
             {"id": e["id"], "law_name": e["law_name"], "verdict": e["verdict"]})
     return cells
+
+
+# ---- illumination: steer toward empty cells adjacent to occupied ones ----
+
+def neighbours(cell: tuple[int, int, int]) -> list[tuple[int, int, int]]:
+    """Cells one axis-step away (±1 on a single axis, within bounds)."""
+    out = []
+    for i, (lo, hi) in enumerate(AXIS_BOUNDS):
+        for d in (-1, 1):
+            v = cell[i] + d
+            if lo <= v <= hi:
+                nc = list(cell)
+                nc[i] = v
+                out.append(tuple(nc))
+    return out
+
+
+def frontier(occupied) -> dict[tuple, list[tuple]]:
+    """Empty cells adjacent to an occupied one -> the occupied seed(s) next to them."""
+    occ = set(occupied)
+    targets: dict[tuple, list[tuple]] = {}
+    for oc in occ:
+        for nb in neighbours(oc):
+            if nb not in occ:
+                targets.setdefault(nb, []).append(oc)
+    return targets
+
+
+def choose_target(occupied, attempts: dict | None = None, rng=None):
+    """Pick (target_cell, seed_cell): an empty frontier cell to aim at and an
+    occupied neighbour to seed from. Prefers well-supported, least-attempted
+    targets. Returns None when the frontier is empty (map full or unseeded)."""
+    front = frontier(occupied)
+    if not front:
+        return None
+    attempts = attempts or {}
+    scored = [(len(seeds) - attempts.get(t, 0), t, seeds) for t, seeds in front.items()]
+    best = max(s for s, _, _ in scored)
+    cands = sorted((t, seeds) for s, t, seeds in scored if s == best)
+    t, seeds = cands[rng.randrange(len(cands))] if rng else cands[0]
+    seeds = sorted(seeds)
+    seed = seeds[rng.randrange(len(seeds))] if rng else seeds[0]
+    return t, seed
+
+
+def axis_move(seed: tuple, target: tuple):
+    """(axis_name, from_label, to_label, 'up'|'down') for the one differing axis."""
+    for i in range(3):
+        if seed[i] != target[i]:
+            return (AXES[i], AXIS_LABELS[i][seed[i]], AXIS_LABELS[i][target[i]],
+                    "up" if target[i] > seed[i] else "down")
+    return None
+
+
+def elite_laws(db_path: str, limit: int = 100000) -> dict[tuple, str]:
+    """cell -> most recent law text that produced it, from the archive."""
+    out: dict[tuple, str] = {}
+    for e in reversed(archive.memory(db_path, limit=limit)):
+        out[cell(e["report"])] = e["law"]
+    return out
 
 
 def coverage_summary(db_path: str) -> str:

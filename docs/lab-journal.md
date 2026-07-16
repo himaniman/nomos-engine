@@ -347,3 +347,39 @@ science loop (failures are caught).
 map "frozen". Same number, slightly different flat-field handling; harmless but
 worth unifying if it confuses later. Next real step: actively steer toward empty
 cells (illumination), not just report the cell after the fact.
+
+---
+
+## 2026-07-16 — Illumination: steering the physicist toward empty regimes
+
+**What changed.** A second scientist mode, `--mode illuminate`, turns the map
+from a passive compass into an active target generator (MAP-Elites illumination
+with the LLM as the mutation operator). Each turn: pick an empty cell on the
+*frontier* (adjacent to an occupied one), hand the model the neighbour's law as
+a **seed** plus exactly which single axis to move (activity / structure / order)
+and a lever hint for that axis — e.g. "move structure up: raise spatial
+coherence with diffusion or local coupling." Then run, and tell it whether it
+HIT the target cell or landed in a different neighbour. Target choice is
+deterministic under a seeded RNG and prefers well-supported, least-attempted
+cells, so it doesn't fixate. `elites.py` gained the map geometry
+(`neighbours`, `frontier`, `choose_target`, `axis_move`, `elite_laws`).
+
+**First live run** (deepseek, 128², 400 steps, 6 turns, illuminate). Coverage
+grew 12→14, with one direct target HIT (`boiling/textured/recurrent`) and one
+other new cell reached off-target. The dominant observation: the model kept
+landing back in `alive/structured/recurrent` even when aimed elsewhere — that
+region is a strong attractor for these threshold/reaction-diffusion laws, and a
+single-axis nudge often isn't enough to escape it. So illumination is working as
+intended (it discovers neighbours and occasionally hits), but crossing *out* of
+a dense basin will likely need either larger edits or seeding from cells on the
+far side. A miss is still informative: it maps the basin's shape.
+
+**Note on scale.** Ran at 128²/400 steps (up from 80²/200) to give structures
+room and time to form; the engine handles it comfortably (pure-numpy torus).
+Cells are scale-free (activity normalized by range, coherence and order are
+correlations), so laws and their map positions stay comparable across sizes —
+seeding a 128² run from an 80² archived law is legitimate.
+
+**Next.** Either bias seed choice toward the frontier cell *nearest an empty
+target on the far side of a basin*, or let illumination occasionally request a
+larger structural change when repeated single-axis nudges stall.

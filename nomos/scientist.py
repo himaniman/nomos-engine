@@ -132,8 +132,13 @@ _LEVER_HINTS = {
 }
 
 
-def target_prompt(seed_cell, seed_law, target_cell, coverage_line, prev=None) -> str:
-    """Ask the model to move ONE axis of a seed law toward an empty regime."""
+def target_prompt(seed_cell, seed_law, target_cell, coverage_line, prev=None,
+                  escalate=False) -> str:
+    """Ask the model to move ONE axis of a seed law toward an empty regime.
+
+    `escalate` switches from a minimal tweak to a structural change — used when
+    the world keeps collapsing into the same basin regardless of small edits.
+    """
     axis, frm, to, direction = elites.axis_move(seed_cell, target_cell)
     parts = []
     if prev:
@@ -144,9 +149,15 @@ def target_prompt(seed_cell, seed_law, target_cell, coverage_line, prev=None) ->
                  f"[{elites.cell_label(seed_cell)}]:\n```nomos\n{seed_law}\n```")
     parts.append(f"They differ on ONE axis: move **{axis} {direction}** "
                  f"({frm} -> {to}). {_LEVER_HINTS[axis]}")
-    parts.append("Propose ONE minimal change to the seed law to move that axis "
-                 "toward the target, keeping the rest intact. Reply as usual: "
-                 "hypothesis, law, prediction.")
+    if escalate:
+        parts.append("Small tweaks have kept collapsing into the same regime. "
+                     "This time make a STRUCTURAL change — add or remove a channel "
+                     "or a rule, or introduce a new mechanism (a second field, a "
+                     "feedback loop, a memory variable) — not just a coefficient.")
+    else:
+        parts.append("Propose ONE minimal change to the seed law to move that axis "
+                     "toward the target, keeping the rest intact.")
+    parts.append("Reply as usual: hypothesis, law, prediction.")
     return "\n\n".join(parts)
 
 
@@ -236,6 +247,7 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
     illuminate = mode == "illuminate"
     elite_law = elites.elite_laws(archive_path) if (illuminate and have_archive) else {}
     attempts: dict = {}
+    recent_cells: list = []  # last landing cells, to detect basin collapse
     rng = random.Random(seed)
     target = None            # (target_cell, seed_cell) we are aiming at this turn
 
@@ -326,6 +338,7 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
 
         if illuminate:
             elite_law[c] = law
+            recent_cells.append(c)
             prev_target = target[0] if target else None
             target = elites.choose_target(set(elite_law), attempts, rng)
             if target:
@@ -340,10 +353,14 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
                             f"neighbour. Now aim elsewhere.")
                 else:
                     prev = f"Your last law landed in [{landed}]."
+                # basin collapse: same landing cell two turns running -> escalate
+                stalled = len(recent_cells) >= 2 and recent_cells[-1] == recent_cells[-2]
                 nxt = target_prompt(scell, elite_law[scell], tcell,
-                                    _coverage_line(len(seen_cells)), prev)
+                                    _coverage_line(len(seen_cells)), prev, escalate=stalled)
                 print(f"[illuminate] aiming at {elites.cell_label(tcell)} "
-                      f"from {elites.cell_label(scell)}", file=sys.stderr)
+                      f"from {elites.cell_label(scell)}"
+                      + ("  (escalate: structural change)" if stalled else ""),
+                      file=sys.stderr)
             else:
                 nxt = _follow_up(dig, map_line)   # frontier exhausted -> free exploration
         else:

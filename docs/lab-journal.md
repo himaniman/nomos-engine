@@ -383,3 +383,46 @@ seeding a 128² run from an 80² archived law is legitimate.
 **Next.** Either bias seed choice toward the frontier cell *nearest an empty
 target on the far side of a basin*, or let illumination occasionally request a
 larger structural change when repeated single-axis nudges stall.
+
+---
+
+## 2026-07-16 — Basin escape, and wrapping the closed-world scientific cycle
+
+**Stall escape.** Implemented the second option above: when two consecutive laws
+land in the *same* cell (a basin collapse), the next illumination prompt stops
+asking for a minimal coefficient tweak and instead asks for a **structural**
+change — add/remove a channel or rule, introduce a new mechanism. In a 12-turn
+run it fired once (turn 7, after turns 5–6 both fell into
+`alive/structured/drifting`) and the structural edit did break out — overshooting
+into `boiling`, and the following turn reached a brand-new
+`alive/ordered/recurrent`. So escalation works as an escape hatch, if a blunt
+one.
+
+**Coverage trajectory.** Across the whole memory+map+coherence+illumination arc,
+distinct behavior-map cells grew 9 → 12 (coherence axis fix) → 14 (first
+illuminate) → **19** (this 12-turn illuminate run). The map now spans the full
+activity axis (frozen / settled / alive / boiling) and most of the structure
+axis (uniform / structured / textured / ordered / noisy) — no longer a single
+`alive/*` clump. New regimes this run included `frozen/uniform/locked`,
+`settled/structured/locked`, `alive/textured/locked`, `alive/ordered/recurrent`,
+`boiling/noisy/locked`.
+
+**State of the closed-world scientific cycle — considered complete.** The loop
+now has all the pieces it was missing: memory (the archive in the first turn),
+a behavior map that measures coherence honestly, active illumination that aims
+at empty regimes and escapes basins, and per-experiment GIFs (slowed, progress
+strip) to watch it. A cheap model (deepseek-v4-flash) driving it explores a
+genuinely broadening space of physics without chasing a score. Remaining
+polish (not blockers): illumination misses far more than it hits (single-axis
+reachability is optimistic), and the map's `frozen`/verdict-`static` naming seam.
+
+**Next phase (deferred, by decision): the grid as a brain driving a game.** Not
+"life plays via boxes" (cells can't manipulate objects) but the cell field as a
+self-organizing controller that senses an external game through read-only
+channels and acts on it through emitted signals (cell clustering in a region ->
+a movement signal, e.g. Snake direction); rare game ticks relative to physics
+ticks; the coupled system stays a pure function of (law, seed, rules) so
+reproducibility survives. Rendering plan: a split GIF — life on the left, the
+game (snake) on the right styled to match the life field, progress strip below;
+aggregate cells for rendering once populations grow. Expect this phase to need
+many more iterations than the closed-world cycle.

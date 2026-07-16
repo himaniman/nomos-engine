@@ -130,6 +130,15 @@ def test_illuminate_seeds_from_archive_and_targets_empty_cell(tmp_path):
     assert "MAP coverage" in first_user
 
 
+def test_target_prompt_escalates_on_stall():
+    seed_cell, target_cell = (3, 2, 2), (3, 1, 2)   # differ on structure axis only
+    minimal = scientist.target_prompt(seed_cell, "channel a", target_cell, "cov")
+    structural = scientist.target_prompt(seed_cell, "channel a", target_cell, "cov",
+                                         escalate=True)
+    assert "ONE minimal change" in minimal and "STRUCTURAL" not in minimal
+    assert "STRUCTURAL change" in structural
+
+
 def test_illuminate_bootstraps_when_archive_empty(tmp_path):
     reply = ("HYPOTHESIS: first.\n```nomos\nchannel a: init bernoulli(0.3)\n"
              "rule r: when 1 set a = sum8(a) >= 4\n```\nPREDICTION: alive.")

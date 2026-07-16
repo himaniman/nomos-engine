@@ -115,9 +115,15 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   well-supported least-attempted targets), hands the model the neighbour's law
   as a SEED plus which single axis to move and a lever hint for that axis
   (`target_prompt` + `_LEVER_HINTS`), and reports HIT/miss. A miss just lands in
-  another neighbour — still illumination. `--mode explore` (default) keeps the
-  old free hypothesis chain. First live illuminate run (128², 400 steps) grew
-  coverage 12->14 with one direct target hit.
+  another neighbour — still illumination. Basin escape: two identical landings
+  in a row -> the next prompt asks for a STRUCTURAL change (add/remove a channel
+  or rule) instead of a coefficient tweak. `--mode explore` (default) keeps the
+  old free hypothesis chain. Live runs grew coverage 9 -> 19 over the whole
+  memory+coherence+illumination arc.
+- The closed-world scientific cycle is considered COMPLETE (memory, coherence-
+  honest map, illumination + basin escape, watchable GIFs). Next phase =
+  grid-as-brain driving a game (see the last "Next" bullet); expect many more
+  iterations than the closed-world cycle needed.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
@@ -129,5 +135,11 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (temperature/energy); game ticks can be rare relative to physics ticks. Boxes-
   you-can-push style direct interaction was considered and set aside — cells are
   too simple to manipulate objects; signalling/organizing is the right level.
+  Render plan (user's): a SPLIT GIF — life field on the left, the game (snake) on
+  the right styled to match the life field, progress strip below; aggregate cells
+  for the life render once populations grow. "Learning to play" is a step beyond
+  mere coupling: needs selection (fitness = game score) over the argmax8
+  inheritance primitives (Exp 3-4 evolution with an external reward). Phase A =
+  build the world<->game coupling loop; phase B = add that selection.
 - Deployment intent: runs are pure CLI -> trivially parallel as k8s Jobs on the
   user's cluster later; GPU only if we move to Lenia-style continuous physics.

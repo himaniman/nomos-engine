@@ -126,7 +126,8 @@ def cmd_evolve(args: argparse.Namespace) -> int:
                      game_size=args.game_size, seed=args.show_seed, moves=args.moves,
                      ticks_per_move=args.ticks, collect_frames=True)
             gif_dir.mkdir(parents=True, exist_ok=True)
-            images = split_images(r["life_frames"], r["game_frames"], scale=args.scale)
+            images = split_images(r["life_frames"], r["game_frames"], scale=args.scale,
+                                  life_frames2=r["avoid_frames"] or None)
             path = gif_dir / f"gen{gen:02d}-score{r['score']}.gif"
             save_gif(images, str(path), fps=args.fps)
             print(f"         wrote {path} (show-seed score={r['score']})", file=sys.stderr)

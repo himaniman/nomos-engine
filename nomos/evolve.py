@@ -15,25 +15,35 @@ import random
 
 from nomos.embodied import play
 
-# The brain the genome parameterizes. It reads the food sensor (attraction) and
-# the body/danger sensor (repulsion), integrating them into a diffusing motor
-# field whose centre of mass the harness turns into a move. The weights are the
-# genes: how much memory, how strongly food pulls, how strongly the body repels.
+# The brain the genome parameterizes. Its ARCHITECTURE is the one the LLM brain
+# lab discovered (two non-interfering output layers + hunger-gated risk); here
+# evolution tunes its constants. This is the hybrid: the model designs the
+# structure, selection optimizes the parameters. `motor` (go-toward) soaks up the
+# food smell, amplified by hunger; `avoid` (stay-away) soaks up body-danger,
+# eased when starving so the snake dares more the hungrier it gets. The harness
+# combines the two layers only at the move decision (motor-pull minus avoid-pull).
 TEMPLATE = (
     "channel food\n"
     "channel danger\n"
-    "channel motor: init 0\n\n"
-    "rule think:\n"
+    "channel temperature\n"
+    "channel motor: init 0\n"
+    "channel avoid: init 0\n\n"
+    "rule go:\n"
     "  when 1\n"
-    "  set motor = {w_mem}*avg8(motor) + {w_food}*food"
-    " - {w_danger}*danger - {w_lat}*avg8(food)\n"
+    "  set motor = {w_mem}*avg8(motor) + food * (1 + {hunger_boost}*temperature)\n\n"
+    "rule fear:\n"
+    "  when 1\n"
+    "  set avoid = {avoid_str}*danger * (1 - {avoid_relax}*temperature)\n"
 )
 
-# Gene bounds. w_mem < 1 keeps the motor field from diverging. w_lat is lateral
-# inhibition (centre-surround): it sharpens the motor peak toward the food.
-BOUNDS = {"w_mem": (0.0, 0.95), "w_food": (0.0, 3.0),
-          "w_danger": (0.0, 3.0), "w_lat": (0.0, 2.0)}
-DEFAULT_GENOME = {"w_mem": 0.5, "w_food": 1.0, "w_danger": 1.0, "w_lat": 0.0}
+# Gene bounds. w_mem < 1 keeps the motor field from diverging. hunger_boost = how
+# hard hunger amplifies the food drive; avoid_str = base body-fear strength;
+# avoid_relax in [0,1] = how much that fear is dropped at full hunger (1 = fully
+# reckless when starving). Defaults start from the LLM's best brain (score 18.67).
+BOUNDS = {"w_mem": (0.0, 0.9), "hunger_boost": (0.0, 4.0),
+          "avoid_str": (0.0, 3.0), "avoid_relax": (0.0, 1.0)}
+DEFAULT_GENOME = {"w_mem": 0.3, "hunger_boost": 2.0,
+                  "avoid_str": 1.5, "avoid_relax": 0.3}
 
 
 def law_from_genome(genome: dict) -> str:

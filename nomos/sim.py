@@ -12,24 +12,45 @@ from nomos.engine import World
 from nomos.metrics import summarize
 
 
-def _observe_frame(world: World, cap: int) -> dict:
+def _observe_frame(world: World, cap: int, channels=None) -> dict:
     h, w = world.shape
     sy, sx = max(1, h // cap), max(1, w // cap)
-    return {name: arr[::sy, ::sx].copy() for name, arr in world.state.items()}
+    names = channels if channels is not None else world.state
+    return {name: world.state[name][::sy, ::sx].copy() for name in names}
+
+
+def render_channels(program, limit: int = 3) -> list[str]:
+    """Channels to draw: first `limit` declared. One -> colormap, 2-3 -> RGB."""
+    return [c.name for c in program.channels[:limit]]
 
 
 def simulate(law_text: str, size: int = 96, steps: int = 300, seed: int = 1,
-             obs_cap: int = 48, samples: int = 40) -> dict:
-    """Parse, run, and observe a law. Raises NomosError on a malformed law."""
+             obs_cap: int = 48, samples: int = 40,
+             frames_out: dict | None = None, render_cap: int = 96) -> dict:
+    """Parse, run, and observe a law. Raises NomosError on a malformed law.
+
+    If `frames_out` is given, it is filled in place with {channel: [frame, ...]}
+    for the first few channels, sampled at the same cadence — ready to hand to
+    nomos.render for a GIF, without bloating the observer report.
+    """
     program = parse_program(law_text)
     world = World(program, size=size, seed=seed)
     every = max(1, steps // samples)
     history = [_observe_frame(world, obs_cap)]
+
+    rchans = render_channels(program) if frames_out is not None else []
+    if frames_out is not None:
+        for name, arr in _observe_frame(world, render_cap, rchans).items():
+            frames_out[name] = [arr]
+
     activity = []
     for step in range(1, steps + 1):
         activity.append(world.step())
         if step % every == 0:
             history.append(_observe_frame(world, obs_cap))
+            if frames_out is not None:
+                for name, arr in _observe_frame(world, render_cap, rchans).items():
+                    frames_out[name].append(arr)
     report = summarize(world, activity, history=history)
     return report
 

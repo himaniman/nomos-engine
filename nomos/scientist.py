@@ -20,6 +20,7 @@ from pathlib import Path
 from nomos import archive, elites
 from nomos.dsl import NomosError
 from nomos.llm import LLMError, make_client
+from nomos.render import frames_to_images, save_gif
 from nomos.sim import digest, simulate
 
 DSL_SPEC = """\
@@ -150,6 +151,21 @@ def _bad_law_msg(err: str) -> str:
             "format: hypothesis, law, prediction).")
 
 
+def _slug(text: str, n: int = 24) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return s[:n] or "world"
+
+
+def render_gif(frames: dict, path: Path, scale: int = 4, fps: int = 20) -> bool:
+    """Write a GIF from collected render frames. Returns False if nothing to draw."""
+    if not frames or not any(frames.values()):
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    images = frames_to_images(frames, scale=scale)
+    save_gif(images, str(path), fps=fps)
+    return True
+
+
 class Journal:
     def __init__(self, path: Path, model: str, params: dict):
         self.path = path
@@ -165,7 +181,8 @@ class Journal:
 
 def run_loop(client, iterations: int, size: int, steps: int, seed: int,
              archive_path: str | None, journal_path: Path,
-             temperature: float = 1.0, memory_runs: int = 10) -> Journal:
+             temperature: float = 1.0, memory_runs: int = 10,
+             gif_dir: Path | None = None) -> Journal:
     params = {"size": size, "steps": steps, "seed": seed}
     journal = Journal(journal_path, getattr(client, "model", "?"), params)
     mem = memory_block(archive_path, memory_runs) if archive_path else ""
@@ -192,8 +209,9 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
                                         "Please resend with the law fenced."})
             continue
 
+        frames: dict = {} if gif_dir is not None else None
         try:
-            report = simulate(law, size=size, steps=steps, seed=seed)
+            report = simulate(law, size=size, steps=steps, seed=seed, frames_out=frames)
         except NomosError as e:
             print(f"[iter {completed + 1}] invalid law: {e}", file=sys.stderr)
             journal.append(f"\n---\n\n## Attempt {completed + 1} (law error)\n\n"
@@ -213,11 +231,31 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
         if archive_path:
             run_id = archive.record(archive_path, report, law, law_name=f"auto-{completed}",
                                     hypothesis=extract_hypothesis(reply))
+
+        gif_rel = None
+        if gif_dir is not None:
+            verdict_word = report["verdict"].split(":", 1)[0]
+            name = f"exp{completed:02d}-{verdict_word}-{_slug(elites.cell_label(c))}.gif"
+            gif_path = gif_dir / name
+            try:
+                if render_gif(frames, gif_path):
+                    gif_rel = gif_path.as_posix()
+            except Exception as e:  # never let rendering kill the science loop
+                print(f"[iter {completed}] gif failed: {e}", file=sys.stderr)
+
         print(f"[iter {completed}/{iterations}] {report['verdict']} | {map_line}"
-              + (f"  (archive #{run_id})" if run_id else ""), file=sys.stderr)
+              + (f"  (archive #{run_id})" if run_id else "")
+              + (f"  -> {gif_rel}" if gif_rel else ""), file=sys.stderr)
+        gif_link = None
+        if gif_rel:
+            try:
+                gif_link = Path(gif_rel).relative_to(journal_path.parent).as_posix()
+            except ValueError:
+                gif_link = gif_rel
         journal.append(
             f"\n---\n\n## Experiment {completed}\n\n{reply}\n\n"
             f"```nomos\n{law}\n```\n\n**Observer:**\n```\n{dig}\n{map_line}\n```\n"
+            + (f"\n![run {completed}]({gif_link})\n" if gif_link else "")
             + (f"\n_archived as run #{run_id}._\n" if run_id else "")
         )
         messages.append({"role": "user", "content": _follow_up(dig, map_line)})
@@ -236,6 +274,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--archive", default="runs.db", help="SQLite archive path (or 'none')")
     p.add_argument("--memory", type=int, default=10,
                    help="past distinct laws shown to the physicist at start (0 = off)")
+    p.add_argument("--gif-dir", default=None, dest="gif_dir",
+                   help="write a GIF per experiment here (default: <journal>-gifs/; 'none' = off)")
     p.add_argument("--journal", default=None, help="journal markdown path (default journal/auto-<ts>.md)")
     p.add_argument("--model", default=None, help="override NOMOS_LLM_MODEL")
     p.add_argument("--base-url", default=None, dest="base_url")
@@ -246,6 +286,12 @@ def main(argv: list[str] | None = None) -> int:
     journal_path = Path(args.journal) if args.journal else Path(
         f"journal/auto-{dt.datetime.now():%Y%m%d-%H%M%S}.md")
     archive_path = None if args.archive.lower() == "none" else args.archive
+    if args.gif_dir is None:
+        gif_dir = journal_path.parent / f"{journal_path.stem}-gifs"
+    elif args.gif_dir.lower() == "none":
+        gif_dir = None
+    else:
+        gif_dir = Path(args.gif_dir)
 
     if args.dry_run:
         mock = [
@@ -265,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         journal = run_loop(client, args.iterations, args.size, args.steps, args.seed,
                            archive_path, journal_path, temperature=args.temperature,
-                           memory_runs=args.memory)
+                           memory_runs=args.memory, gif_dir=gif_dir)
     except LLMError as e:
         print(f"nomos.scientist: LLM error: {e}", file=sys.stderr)
         return 1

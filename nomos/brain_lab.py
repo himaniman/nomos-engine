@@ -60,10 +60,16 @@ sharp point, not a blurred area — you spread or integrate them yourself:
   WHOLE grid with one uniform value = HUNGER, from 0 just after eating up toward
   1 as starvation nears. A global "how hungry am I" signal you can use to switch
   strategy — e.g. hunt harder, or accept more risk, when hot.
-- `motor` (MOTOR, you MUST declare it): after your rules run, the harness looks
-  at where the NON-NEGATIVE mass of `motor` sits relative to the grid centre and
-  moves the snake that way (up/down/left/right). Silent motor = keep heading.
-  So: push motor mass toward where you want to go, away from where you don't.
+- `motor` (MOTOR, you MUST declare it): the 'GO TOWARD' layer. After your rules
+  run, the harness scores each direction by how much non-negative `motor` mass
+  points that way, and moves the snake toward the best one. Silent motor = keep
+  heading. So push motor mass toward where you want to go.
+- `avoid` (MOTOR, optional): a separate 'STAY AWAY' layer. If you declare it, its
+  directional pull is SUBTRACTED from the motor's when choosing the move. Keep
+  attraction in `motor` and repulsion (e.g. from `danger`) in `avoid` — because
+  they are combined only at the decision, they do NOT cancel each other in one
+  field the way `motor = food - danger` does. This two-layer split is the
+  recommended way to be body-aware without killing your foraging.
 The game ticks once every MANY physics steps, so the grid has ample time to
 settle before each move. Each run plays until the snake dies. The board wraps —
 no walls, only food and your body. HUNGER: every move without eating makes you
@@ -132,14 +138,15 @@ def _render_best(law_text, gif_path: Path, world_size, game_size, moves, ticks,
     if not r["life_frames"]:
         return False
     gif_path.parent.mkdir(parents=True, exist_ok=True)
-    save_gif(split_images(r["life_frames"], r["game_frames"], scale=scale),
+    save_gif(split_images(r["life_frames"], r["game_frames"], scale=scale,
+                          life_frames2=r["avoid_frames"] or None),
              str(gif_path), fps=fps)
     return True
 
 
 def run_brain_lab(client, iterations: int, journal_path: Path, eval_seeds=(0, 1, 2),
                   world_size: int = 48, game_size: int = 16, moves: int = 800,
-                  ticks: int = 16, gif_dir: Path | None = None, show_seed: int = 0,
+                  ticks: int = 64, gif_dir: Path | None = None, show_seed: int = 0,
                   temperature: float = 1.0) -> dict:
     params = {"world": world_size, "board": game_size, "moves": moves,
               "ticks": ticks, "eval_seeds": list(eval_seeds)}
@@ -219,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--world-size", type=int, default=48, dest="world_size")
     p.add_argument("--game-size", type=int, default=16, dest="game_size")
     p.add_argument("--moves", type=int, default=800, help="max game ticks (cap; ends at death)")
-    p.add_argument("--ticks", type=int, default=16)
+    p.add_argument("--ticks", type=int, default=64)
     p.add_argument("--show-seed", type=int, default=0, dest="show_seed")
     p.add_argument("--temperature", type=float, default=1.0)
     p.add_argument("--model", default=None)

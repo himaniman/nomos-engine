@@ -684,3 +684,50 @@ parametric loop, or have the LLM propose the template and evolution set the
 weights); (3) a stronger model for the design step over deepseek's cheap
 iterations; (4) study the balance directly — sweep `starve_every` and watch where
 the greedy vs cautious optimum flips.
+
+---
+
+## 2026-07-16 — Body-fear finally works: leverage, two layers, and 64:1
+
+The user, watching the GIFs, called it: body-fear looked visually weak, and the
+16:1 think ratio felt too small. Both were right, and fixing them (plus one
+design idea from the user) turned body-awareness from a liability into a win.
+
+**Why fear was toothless — geometry.** The `danger` sensor marked each nearby
+body cell at its literal egocentric position. But the imminent threat — the neck,
+one cell from the head — maps almost exactly onto the grid centre, where it can
+barely shift the motor's centre of mass. So the loudest danger had the least
+steering authority; distant food (mapped near the edge) always outvoted it.
+Fix: place each danger mark in the body's DIRECTION at a large fixed radius
+(leverage ~0.7 of the half-grid). Now "body is that way" has real pull.
+
+**Two non-interfering layers (the user's idea).** Even leveraged, `motor =
+food - danger` cancels: where attraction and repulsion overlap they subtract to
+mush, and the centre of mass of a half-cancelled field is unreliable. So we split
+the output into two layers that never touch in the field: `motor` (go-toward) and
+optional `avoid` (stay-away). The move is chosen by scoring each direction as
+motor-pull minus avoid-pull — they combine only at the decision. For rendering,
+the two layers are blended into colour (green = go, red = fear) so you can watch
+them side by side without them fighting.
+
+**Think ratio to 64:1.** More physics steps per game move lets the motor field
+settle far more before it's read, making both the food gradient and the fear
+layer decisive.
+
+**Result — body-fear pays now.** Over 6 boards (48/16, play-to-death, 64 ticks):
+- naive `motor = food`: score 14.3, dies ~139 ticks (self-trap).
+- `motor = food - danger` (single layer, but leveraged + 64 ticks): **20.3**,
+  survival 212 — it now clearly BEATS naive eating (it was a wash before).
+- two-layer `laws/snake_brain_layers.nomos` (motor=food, avoid=danger): score
+  15.7 and **survives the full 800-move cap on every board** — a steady forager
+  that keeps eating enough to never starve while avoiding its own body. Not the
+  top scorer, but the first genuinely *balanced* creature: neither the greedy
+  eater that dies young nor the immortal that never eats.
+
+So the two attractors finally have something between them. The knobs that made
+the difference were exactly the ones the user pointed at from watching the
+animation — a good reminder that the GIFs are an instrument, not decoration.
+
+**Next.** Let the LLM/evolve exploit two layers now that they work (score vs
+survival is a real frontier to push); more eval seeds to cut the one-board
+variance; sweep `starve_every` to map where greedy flips to cautious.

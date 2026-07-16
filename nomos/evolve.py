@@ -53,7 +53,7 @@ def mutate(genome: dict, rng: random.Random, strength: float = 0.15) -> dict:
 
 
 def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int = 16,
-            moves: int = 600, ticks: int = 16) -> dict:
+            moves: int = 600, ticks: int = 64) -> dict:
     """Average game performance of a brain over several boards, each played until
     the snake dies (or the `moves` cap). Fitness rewards eating first (score,
     heavily weighted) and surviving second (a small term — enough to give a
@@ -74,7 +74,7 @@ def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int 
 
 
 def evolve(generations: int, lam: int = 6, seeds=(0, 1, 2), world_size: int = 48,
-           game_size: int = 16, moves: int = 600, ticks: int = 16, rng_seed: int = 0,
+           game_size: int = 16, moves: int = 600, ticks: int = 64, rng_seed: int = 0,
            start: dict | None = None, on_generation=None) -> dict:
     """(1+lambda) evolution strategy over brain genomes. Each generation makes
     `lam` mutants of the current parent, evaluates them, and keeps the best

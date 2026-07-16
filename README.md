@@ -191,6 +191,10 @@ tests/            pytest; GoL glider/blinker as engine ground truth
     survival requires foraging; hunger is exposed as an optional uniform
     `temperature` sensor. The brain lab now builds internal-state brains (scent
     trail, heading integrator), though naive food→motor still tops the boards.
-14. Next: more eval seeds (cut board variance); evolve the LLM's memory brains;
-    a stronger model over DeepSeek; sweep `starve_every` to study the balance;
-    walls as a sensor; batches as k8s Jobs.
+14. ~~Body-fear that works~~ (done): a leveraged directional `danger` sensor, two
+    non-interfering output layers (`motor` go + `avoid` fear, combined at the
+    decision, not subtracted in one field), and a 64:1 think ratio. Body-fear now
+    pays — `food - danger` beats naive eating and a two-layer brain forages
+    steadily for the whole run. The GIF blends the layers (green = go, red = fear).
+15. Next: more eval seeds (cut board variance); evolve/LLM-tune the two-layer
+    memory brains; a stronger model over DeepSeek; walls as a sensor; k8s Jobs.

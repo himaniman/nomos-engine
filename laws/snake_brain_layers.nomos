@@ -1,0 +1,18 @@
+# A two-layer Snake brain: 'go toward' and 'stay away' kept in separate fields
+# so they don't cancel. `motor` soaks up the food smell (attraction); `avoid`
+# soaks up the danger sense of the nearby body (repulsion). The harness scores
+# each direction as motor-pull minus avoid-pull, so body-fear steers without
+# eroding the food gradient. Render blends them: green = go, red = fear.
+
+channel food
+channel danger
+channel motor: init 0
+channel avoid: init 0
+
+rule go:
+  when 1
+  set motor = 0.4 * avg8(motor) + food
+
+rule fear:
+  when 1
+  set avoid = 0.4 * avg8(avoid) + danger

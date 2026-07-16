@@ -49,9 +49,11 @@ nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
                   structure axis = spatial coherence (metrics.spatial_autocorr,
                   neighbour autocorrelation), NOT gzip — it separates coherent
                   waves/blobs from noise; legacy runs fall back to gzip
-nomos/game.py     deterministic toroidal Snake (the external world)
-nomos/embodied.py brain<->game coupling: food + (optional) danger sensors ->
-                  world, motor field -> move; `play()`; CLI `nomos play`
+nomos/game.py     deterministic toroidal Snake + hunger (the external world)
+nomos/embodied.py brain<->game coupling: sensors food/danger/temperature ->
+                  world; two output layers motor (go) + optional avoid (fear)
+                  combined at the DECISION (directional pull, non-interfering);
+                  `play()`; CLI `nomos play`
 nomos/evolve.py   Phase B: (1+lambda) evolution of a brain genome across runs,
                   fitness = game score; CLI `nomos evolve`
 nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
@@ -167,6 +169,22 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   killing step never advances the head, so before this death looked identical to
   the prior frame — why the snake seemed to "already know how to play"). evolve
   genome gained a 4th gene w_lat (lateral inhibition).
+- Done (body-fear that works — leverage + two layers + 64 ticks): three fixes
+  after the user found body-fear visually weak and the 16:1 think ratio too low.
+  (1) The `danger` sensor now marks body in its DIRECTION at a large fixed radius
+  (leverage ~0.7 of half-grid), not at its near-centre literal position — the
+  neck sat almost on the grid centre where it couldn't move the motor's centre of
+  mass, so avoidance was geometrically toothless; pushing marks outward gives it
+  steering authority. (2) TWO non-interfering output layers: `motor` (go-toward)
+  and optional `avoid` (stay-away). read_move scores each direction as motor-pull
+  minus avoid-pull, so attraction and repulsion combine only at the decision
+  instead of cancelling in `motor = food - danger`. (3) Think ratio raised to 64
+  physics ticks per game move. RESULT: body-fear finally pays — `food - danger`
+  now scores ~20 (beats naive ~14), and the two-layer brain
+  (`laws/snake_brain_layers.nomos`) survives the full 800-move cap while eating
+  steadily (a balanced forager, not a greedy die-young eater nor a starving
+  immortal). Render blends the layers: green = go (motor), red = fear (avoid),
+  via split_images(life_frames2=...). Defaults: 64 ticks everywhere.
 - Done (hunger + temperature sensor + memory push): the snake now gets hungry —
   every move without food raises hunger, and after `starve_every` (default 50)
   moves it SHRINKS a segment; shrink to nothing = starve. This closes the

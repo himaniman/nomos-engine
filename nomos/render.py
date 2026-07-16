@@ -88,12 +88,28 @@ def split_images(
     game_frames: list[np.ndarray],
     scale: int = 6,
     gap: int = 4,
+    life_frames2: list[np.ndarray] | None = None,
 ) -> list[Image.Image]:
-    """Side-by-side frames: the life field (left, fire colormap, normalized
-    across the run) and the game board (right, same fire palette on its fixed
-    0..1 levels), matched in height, with a progress strip below. This is the
-    watch-along view: what the brain is doing next to what the snake is doing."""
-    life_imgs = frames_to_images({"life": life_frames}, scale=scale, cmap="fire")
+    """Side-by-side frames: the life field (left) and the game board (right,
+    fire palette on its fixed 0..1 levels), matched in height, progress strip
+    below. This is the watch-along view. If `life_frames2` is given (the 'avoid'
+    layer), the two brain layers are merged into colour — green = go-toward
+    (motor), red = stay-away (fear) — so you can see them without them fighting
+    in one field; otherwise the single life field uses the fire colormap."""
+    if life_frames2 is not None:
+        go = _normalize(life_frames)
+        fear = _normalize(life_frames2)
+        life_imgs = []
+        for t in range(len(life_frames)):
+            rgb = np.zeros((*life_frames[t].shape, 3), dtype=np.float64)
+            rgb[..., 0] = fear[t] * 255        # red   = fear / avoid
+            rgb[..., 1] = go[t] * 255          # green = go / motor
+            img = Image.fromarray(rgb.clip(0, 255).astype(np.uint8), "RGB")
+            if scale != 1:
+                img = img.resize((img.width * scale, img.height * scale), Image.NEAREST)
+            life_imgs.append(img)
+    else:
+        life_imgs = frames_to_images({"life": life_frames}, scale=scale, cmap="fire")
     target_h = life_imgs[0].height
     out = []
     n = len(life_frames)

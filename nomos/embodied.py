@@ -22,7 +22,8 @@ from nomos.game import DIRECTIONS, Snake
 SENSOR_CHANNEL = "food"
 DANGER_CHANNEL = "danger"           # optional sensor: the snake's own body
 TEMPERATURE_CHANNEL = "temperature"  # optional sensor: hunger, uniform over the grid
-MOTOR_CHANNEL = "motor"
+MOTOR_CHANNEL = "motor"             # 'go toward' output layer
+AVOID_CHANNEL = "avoid"             # optional 'stay away' output layer (non-interfering)
 
 
 def _tor_frac(delta: int, n: int) -> float:
@@ -72,48 +73,65 @@ def food_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
 
 
 def body_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
-                sigma: float | None = None, radius_frac: float = 0.3) -> np.ndarray:
-    """Danger = PROXIMITY to the snake's own body, as concentrated marks (not a
-    diffuse whole-length cloud, which earlier drowned the food signal). Only body
-    segments within `radius_frac` of the head are marked, each a sharp point whose
-    amplitude grows as it nears the head — so the immediate collision risk is
-    loud and the far tail is silent, in the same egocentric frame as the food."""
+                sigma: float | None = None, radius_frac: float = 0.3,
+                leverage: float = 0.7) -> np.ndarray:
+    """Danger = PROXIMITY to the snake's own body, marked with LEVERAGE. Only body
+    segments within `radius_frac` of the head count (near = an imminent threat),
+    but each mark is placed in that segment's DIRECTION at a large fixed radius
+    (`leverage` of the half-grid), not at its literal near-centre position. That
+    matters: the neck sits one cell from the head, which maps almost onto the grid
+    centre where it can barely shift the motor's centre of mass — so plain
+    placement makes body-fear geometrically toothless against distant food.
+    Pushing the mark outward in its direction gives 'body is that way, don't go'
+    real steering authority. Amplitude still grows as the body nears the head."""
     H, W = world_shape
     field = np.zeros((H, W), dtype=np.float64)
     hy, hx = snake.head()
     sig = _sharp_sigma(world_shape, sigma)
+    R = leverage * min(H, W) / 2.0
     for sy, sx in snake.body[1:]:               # exclude the head itself
         dy = _tor_frac(sy - hy, snake.h)
         dx = _tor_frac(sx - hx, snake.w)
         dist = (dy * dy + dx * dx) ** 0.5
-        if dist > radius_frac:
+        if dist > radius_frac or dist < 1e-9:
             continue                            # far body is not an imminent threat
         amp = 1.0 - dist / radius_frac          # nearer body = louder danger
-        by, bx = _ego_cell(dy, dx, world_shape, gain)
+        by = min(max(int(round(H / 2 + (dy / dist) * R)), 0), H - 1)
+        bx = min(max(int(round(W / 2 + (dx / dist) * R)), 0), W - 1)
         _bump(field, by, bx, sig, amp)
     return field
 
 
-def read_move(world: World, channel: str = MOTOR_CHANNEL) -> str | None:
-    """Turn the motor field into a move: the direction of its (non-negative)
-    centre of mass from the grid centre. None when the motor is silent, so the
-    snake keeps its heading."""
+def _pulls(field: np.ndarray) -> dict:
+    """Non-negative 'pull' toward each cardinal direction: the field's moment
+    away from the grid centre. A bump above centre gives a large 'up' pull, etc."""
+    w = np.clip(field, 0.0, None)
+    H, W = field.shape
+    yy = np.arange(H)[:, None]
+    xx = np.arange(W)[None, :]
+    cy, cx = (H - 1) / 2.0, (W - 1) / 2.0
+    return {"up": float((w * np.clip(cy - yy, 0, None)).sum()),
+            "down": float((w * np.clip(yy - cy, 0, None)).sum()),
+            "left": float((w * np.clip(cx - xx, 0, None)).sum()),
+            "right": float((w * np.clip(xx - cx, 0, None)).sum())}
+
+
+def read_move(world: World, channel: str = MOTOR_CHANNEL,
+              avoid: str | None = None) -> str | None:
+    """Pick a move from the motor layer(s). Each direction gets a score = the
+    motor's pull that way; if an `avoid` layer is given, its pull that way is
+    SUBTRACTED — so 'go toward' and 'stay away' are kept as separate layers that
+    combine only here, at the decision, instead of cancelling in one field. The
+    best positive direction wins; if none is positive the snake keeps heading."""
     m = world.state.get(channel)
     if m is None:
         return None
-    w = np.clip(m, 0.0, None)
-    total = float(w.sum())
-    if total <= 1e-9:
-        return None
-    H, W = m.shape
-    yy, xx = np.ogrid[:H, :W]
-    cy = float((w * yy).sum()) / total - H / 2.0
-    cx = float((w * xx).sum()) / total - W / 2.0
-    if abs(cy) < 1e-9 and abs(cx) < 1e-9:
-        return None
-    if abs(cy) >= abs(cx):
-        return "up" if cy < 0 else "down"
-    return "left" if cx < 0 else "right"
+    net = _pulls(m)
+    if avoid is not None and avoid in world.state:
+        av = _pulls(world.state[avoid])
+        net = {d: net[d] - av[d] for d in net}
+    best = max(net, key=net.get)
+    return best if net[best] > 1e-9 else None
 
 
 def require_embodied(program) -> None:
@@ -125,7 +143,7 @@ def require_embodied(program) -> None:
 
 
 def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0,
-         moves: int = 1000, ticks_per_move: int = 16, life_channel: str = MOTOR_CHANNEL,
+         moves: int = 1000, ticks_per_move: int = 64, life_channel: str = MOTOR_CHANNEL,
          collect_frames: bool = False, sensor_gain: float = 0.8,
          death_hold: int = 6, starve_every: int = 50) -> dict:
     """Run the coupled brain+game loop until the snake dies (or `moves` is hit —
@@ -140,9 +158,11 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
     names = {c.name for c in program.channels}
     has_danger = DANGER_CHANNEL in names
     has_temp = TEMPERATURE_CHANNEL in names
+    has_avoid = AVOID_CHANNEL in names
     world = World(program, world_size, seed)
     snake = Snake(game_size, seed, starve_every=starve_every)
     life_frames: list[np.ndarray] = []
+    avoid_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
     move_seq: list[str | None] = []
 
@@ -159,11 +179,13 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
             if has_temp:
                 world.state[TEMPERATURE_CHANNEL][:] = temp   # uniform hunger field
             world.step()
-        move = read_move(world, MOTOR_CHANNEL)
+        move = read_move(world, MOTOR_CHANNEL, avoid=AVOID_CHANNEL if has_avoid else None)
         snake.step(move)
         move_seq.append(move)
         if collect_frames:
             life_frames.append(world.state[life_channel].copy())
+            if has_avoid:
+                avoid_frames.append(world.state[AVOID_CHANNEL].copy())
             game_frames.append(snake.field())
 
     # hold the death frame so the crash is actually watchable in the GIF
@@ -171,6 +193,8 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
         for _ in range(death_hold):
             life_frames.append(life_frames[-1])
             game_frames.append(game_frames[-1])
+            if has_avoid:
+                avoid_frames.append(avoid_frames[-1])
 
     return {
         "score": snake.score,
@@ -182,5 +206,6 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
         "game_size": [snake.h, snake.w],
         "seed": seed,
         "life_frames": life_frames,
+        "avoid_frames": avoid_frames,
         "game_frames": game_frames,
     }

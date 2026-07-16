@@ -15,6 +15,20 @@ def test_progress_bar_adds_a_bottom_strip():
     assert barred[0].height > plain[0].height
 
 
+def test_split_images_blends_two_layers_into_colour():
+    from nomos.render import split_images
+    life = [np.zeros((8, 8)) for _ in range(3)]
+    fear = [np.zeros((8, 8)) for _ in range(3)]
+    for t in range(3):
+        life[t][2, 2] = 1.0                # go layer -> green
+        fear[t][5, 5] = 1.0                # fear layer -> red
+    game = [np.zeros((6, 6)) for _ in range(3)]
+    imgs = split_images(life, game, scale=2, life_frames2=fear)
+    px = np.asarray(imgs[0])
+    assert px[..., 1].max() > 100          # green present (go)
+    assert px[..., 0].max() > 100          # red present (fear)
+
+
 def test_progress_bar_grows_left_to_right():
     imgs = frames_to_images(_frames(n=5, size=16), scale=2, progress_bar=True)
     h_field = imgs[0].height - max(4, imgs[0].height // 41)   # roughly the field top

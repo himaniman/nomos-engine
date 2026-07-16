@@ -39,13 +39,16 @@ def test_food_sensor_amplitude_encodes_proximity():
     assert near > far                      # closer food -> brighter sense
 
 
-def test_body_sensor_marks_body_near_centre():
+def test_body_sensor_marks_body_direction_with_leverage():
     s = Snake(16, seed=1)                   # body extends left from the head
     d = body_sensor((40, 40), s)
     assert d.max() > 0                      # the body is felt
-    # its mass sits left of centre (body is to the left of the head)
+    # its mass sits left of centre (body is to the left of the head)...
     cx = (d.sum(axis=0) * np.arange(40)).sum() / d.sum()
     assert cx < 20
+    # ...and with leverage the mark is pushed well OUT toward the edge, not stuck
+    # near the centre where it would have no steering authority
+    assert cx < 14                          # centre is 20; leverage moves it far left
 
 
 def test_body_sensor_ignores_far_segments():
@@ -99,6 +102,33 @@ def test_read_move_follows_motor_centre_of_mass():
     assert read_move(world) == "right"
     world.state["motor"][:] = 0.0
     assert read_move(world) is None        # silent motor -> keep heading
+
+
+def test_avoid_layer_overrides_motor_at_the_decision():
+    brain = ("channel food\nchannel motor: init 0\nchannel avoid: init 0\n"
+             "rule t: when 1 set motor = 0\n")
+    prog = parse_program(brain)
+    world = World(prog, 20, seed=0)
+    # motor pulls up, but a stronger avoid pull up should veto 'up'
+    world.state["motor"][:] = 0.0
+    world.state["motor"][2, 10] = 1.0
+    world.state["avoid"][:] = 0.0
+    world.state["avoid"][0, 10] = 5.0      # strong 'stay away from up'
+    assert read_move(world, avoid="avoid") != "up"
+    # with no avoid mass, the motor pull wins as usual
+    world.state["avoid"][:] = 0.0
+    assert read_move(world, avoid="avoid") == "up"
+
+
+def test_two_layer_brain_plays_deterministically():
+    from pathlib import Path
+    law = Path("laws/snake_brain_layers.nomos").read_text(encoding="utf-8")
+    a = play(law, world_size=32, game_size=12, seed=1, moves=40, ticks_per_move=4)
+    b = play(law, world_size=32, game_size=12, seed=1, moves=40, ticks_per_move=4)
+    assert a["move_seq"] == b["move_seq"]
+    r = play(law, world_size=32, game_size=12, seed=1, moves=8, ticks_per_move=4,
+             collect_frames=True)
+    assert len(r["avoid_frames"]) == len(r["life_frames"]) >= 1   # avoid layer captured
 
 
 def test_play_requires_food_and_motor_channels():

@@ -97,7 +97,8 @@ def cmd_play(args: argparse.Namespace) -> int:
     if args.gif:
         Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
         images = split_images(result["life_frames"], result["game_frames"],
-                              scale=args.scale)
+                              scale=args.scale,
+                              life_frames2=result["avoid_frames"] or None)
         save_gif(images, args.gif, fps=args.fps)
 
     summary = {k: result[k] for k in
@@ -180,8 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--seed", type=int, default=0)
     play.add_argument("--moves", type=int, default=1000,
                       help="max game ticks (safety cap; the run ends at death)")
-    play.add_argument("--ticks", type=int, default=16,
-                      help="physics steps the brain thinks per game tick (default 16)")
+    play.add_argument("--ticks", type=int, default=64,
+                      help="physics steps the brain thinks per game tick (default 64)")
     play.add_argument("--sensor-gain", type=float, default=0.8, dest="sensor_gain",
                       help="how far the food bump sits from centre (default 0.8)")
     play.add_argument("--starve-every", type=int, default=50, dest="starve_every",
@@ -204,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--world-size", type=int, default=48, dest="world_size")
     ev.add_argument("--game-size", type=int, default=16, dest="game_size")
     ev.add_argument("--moves", type=int, default=600, help="max game ticks (cap; ends at death)")
-    ev.add_argument("--ticks", type=int, default=16)
+    ev.add_argument("--ticks", type=int, default=64)
     ev.add_argument("--scale", type=int, default=6)
     ev.add_argument("--fps", type=int, default=6)
     ev.add_argument("--gif-dir", default="out/evolve", dest="gif_dir",

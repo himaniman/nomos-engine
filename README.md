@@ -155,8 +155,12 @@ tests/            pytest; GoL glider/blinker as engine ground truth
 7. ~~Memory + behavior map~~ (done): the scientist starts each session with the
    archive's past laws, hypotheses and outcomes (`--memory N`, deduped by law
    hash), and every run is placed on a MAP-Elites-style behavior map
-   (`nomos/elites.py`): activity × spatial structure × temporal order,
+   (`nomos/elites.py`): activity × spatial coherence × temporal order,
    5×5×4 = 100 regime cells. The loop tells the model its cell and whether it
-   is new; coverage is a compass, not a score.
-8. Next: a smarter model steering DeepSeek's cheap mutations; batches as k8s
-   Jobs; environment-coupled worlds (external maps/games feeding channels).
+   is new; coverage is a compass, not a score. It also auto-renders one GIF per
+   experiment (progress strip, `--gif-fps`). The structure axis is spatial
+   coherence (neighbour autocorrelation), which — unlike gzip — separates
+   coherent wave/blob media from noise.
+8. Next: actively steer toward empty map cells (true MAP-Elites illumination);
+   a smarter model steering DeepSeek's cheap mutations; batches as k8s Jobs;
+   environment-coupled worlds (external maps/games feeding channels).

@@ -45,7 +45,10 @@ nomos/render.py   frames -> GIF/PNG
 nomos/archive.py  SQLite archive (laws + reports + hypotheses); memory() feeds
                   the scientist's first turn
 nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
-                  100 regime cells computed from stored reports on the fly
+                  100 regime cells computed from stored reports on the fly.
+                  structure axis = spatial coherence (metrics.spatial_autocorr,
+                  neighbour autocorrelation), NOT gzip — it separates coherent
+                  waves/blobs from noise; legacy runs fall back to gzip
 nomos/__main__.py CLI `python -m nomos run`
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
@@ -98,10 +101,14 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   HYPOTHESIS: line and stored in a new `hypothesis` column, auto-migrated) and
   outcomes (`--memory N`, default 10, 0 = off). Every run is binned into a
   MAP-Elites behavior map (`nomos/elites.py`): activity(5, same thresholds as
-  the verdict) x mean-gzip structure(5) x temporal-order recurrence(4) = 100
-  cells; the follow-up message tells the model its cell and NEW/visited, the
-  memory block includes coverage. Cells are computed from stored reports, so
-  binning can change without touching the DB.
+  the verdict) x spatial-coherence structure(5) x temporal-order recurrence(4)
+  = 100 cells; the follow-up message tells the model its cell and NEW/visited,
+  the memory block includes coverage. Cells are computed from stored reports, so
+  binning can change without touching the DB. The structure axis was originally
+  mean-gzip but that couldn't tell a spiral-wave medium from noise (both
+  compress poorly); it's now `metrics.spatial_autocorr` (neighbour correlation:
+  ~1 coherent, ~0 noise, <0 checkerboard). Scientist auto-renders one GIF per
+  experiment (`--gif-dir`, `--gif-fps` default 6) with a bottom progress strip.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

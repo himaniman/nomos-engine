@@ -21,6 +21,26 @@ def test_components_wrap_join():
     assert metrics.components(mask)["count"] == 1
 
 
+def test_spatial_autocorr_separates_coherence_from_noise():
+    rng = np.random.default_rng(0)
+    noise = rng.random((40, 40))
+    assert abs(metrics.spatial_autocorr(noise)) < 0.2        # neighbours uncorrelated
+
+    ramp = np.broadcast_to(np.linspace(0, 1, 40), (40, 40)).copy()
+    assert metrics.spatial_autocorr(ramp) > 0.9              # smooth gradient is coherent
+
+    checker = np.indices((40, 40)).sum(axis=0) % 2           # flips every cell
+    assert metrics.spatial_autocorr(checker.astype(float)) < 0   # anti-correlated
+
+    assert metrics.spatial_autocorr(np.ones((10, 10))) is None   # constant -> None
+
+
+def test_channel_report_includes_coherence():
+    ramp = np.broadcast_to(np.linspace(0, 1, 32), (32, 32)).copy()
+    rep = metrics.channel_report(ramp)
+    assert "coherence" in rep and rep["coherence"] > 0.9
+
+
 def test_dominant_period_finds_oscillation():
     series = [1.0 if t % 4 < 2 else 0.0 for t in range(64)]   # period 4
     p = metrics.dominant_period(series)

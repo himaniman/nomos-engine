@@ -161,12 +161,12 @@ def _slug(text: str, n: int = 24) -> str:
     return s[:n] or "world"
 
 
-def render_gif(frames: dict, path: Path, scale: int = 4, fps: int = 20) -> bool:
+def render_gif(frames: dict, path: Path, scale: int = 4, fps: int = 6) -> bool:
     """Write a GIF from collected render frames. Returns False if nothing to draw."""
     if not frames or not any(frames.values()):
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    images = frames_to_images(frames, scale=scale)
+    images = frames_to_images(frames, scale=scale, progress_bar=True)
     save_gif(images, str(path), fps=fps)
     return True
 
@@ -187,7 +187,7 @@ class Journal:
 def run_loop(client, iterations: int, size: int, steps: int, seed: int,
              archive_path: str | None, journal_path: Path,
              temperature: float = 1.0, memory_runs: int = 10,
-             gif_dir: Path | None = None) -> Journal:
+             gif_dir: Path | None = None, gif_fps: int = 6) -> Journal:
     params = {"size": size, "steps": steps, "seed": seed}
     journal = Journal(journal_path, getattr(client, "model", "?"), params)
     mem = memory_block(archive_path, memory_runs) if archive_path else ""
@@ -243,7 +243,7 @@ def run_loop(client, iterations: int, size: int, steps: int, seed: int,
             name = f"exp{completed:02d}-{verdict_word}-{_slug(elites.cell_label(c))}.gif"
             gif_path = gif_dir / name
             try:
-                if render_gif(frames, gif_path):
+                if render_gif(frames, gif_path, fps=gif_fps):
                     gif_rel = gif_path.as_posix()
             except Exception as e:  # never let rendering kill the science loop
                 print(f"[iter {completed}] gif failed: {e}", file=sys.stderr)
@@ -281,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="past distinct laws shown to the physicist at start (0 = off)")
     p.add_argument("--gif-dir", default=None, dest="gif_dir",
                    help="write a GIF per experiment here (default: <journal>-gifs/; 'none' = off)")
+    p.add_argument("--gif-fps", type=int, default=6, dest="gif_fps",
+                   help="GIF playback speed (default 6; lower = slower)")
     p.add_argument("--journal", default=None, help="journal markdown path (default journal/auto-<ts>.md)")
     p.add_argument("--model", default=None, help="override NOMOS_LLM_MODEL")
     p.add_argument("--base-url", default=None, dest="base_url")
@@ -316,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         journal = run_loop(client, args.iterations, args.size, args.steps, args.seed,
                            archive_path, journal_path, temperature=args.temperature,
-                           memory_runs=args.memory, gif_dir=gif_dir)
+                           memory_runs=args.memory, gif_dir=gif_dir, gif_fps=args.gif_fps)
     except LLMError as e:
         print(f"nomos.scientist: LLM error: {e}", file=sys.stderr)
         return 1

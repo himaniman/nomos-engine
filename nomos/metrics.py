@@ -50,6 +50,22 @@ def pearson(a: np.ndarray, b: np.ndarray) -> float | None:
     return float(np.corrcoef(a, b)[0, 1])
 
 
+def spatial_autocorr(a: np.ndarray) -> float | None:
+    """Mean one-cell neighbour correlation (Moran's-I-like), on the torus.
+
+    Distinguishes *coherence* from mere disorder, which gzip cannot: a smooth
+    field (waves, blobs, gradients) has neighbours that track each other, so
+    this is ~1; spatial noise gives ~0; a checkerboard that flips sign each cell
+    gives <0. None if the field is constant.
+    """
+    a = a.astype(np.float64)
+    if a.std() < 1e-12:
+        return None
+    cs = [c for shift in ((0, 1), (1, 0))
+          if (c := pearson(a, np.roll(a, shift, axis=(0, 1)))) is not None]
+    return round(float(np.mean(cs)), 3) if cs else None
+
+
 # ---- structure: connected components on a torus (no scipy) ----
 
 _MOORE = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy, dx) != (0, 0)]
@@ -154,6 +170,9 @@ def channel_report(a: np.ndarray) -> dict:
         "entropy_bits": round(entropy_bits(a), 3),
         "gzip_ratio": round(gzip_ratio(a), 4),
     }
+    coh = spatial_autocorr(a)
+    if coh is not None:
+        rep["coherence"] = coh
     grad = _axis_alignment(a)
     if grad is not None:
         rep["gradient"] = grad

@@ -18,7 +18,11 @@ from nomos import archive
 # ACTIVITY edges mirror the observer's verdict thresholds (metrics._verdict).
 ACTIVITY_EDGES = [1e-4, 1e-3, 0.03, 0.22]
 ACTIVITY_LABELS = ["frozen", "static", "settled", "alive", "boiling"]
-STRUCTURE_EDGES = [0.05, 0.3, 0.6, 0.85]        # mean gzip ratio: 0 uniform, 1 noise
+# STRUCTURE is spatial coherence (neighbour autocorrelation), NOT gzip: it tells
+# a coherent wave/blob field apart from noise, which gzip could not. "uniform"
+# is the degenerate flat field (no coherence to measure); otherwise higher
+# coherence == more organized. Edges are on coherence, mapped high->low below.
+COHERENCE_EDGES = [0.35, 0.6, 0.85]             # noisy < textured < structured < ordered
 STRUCTURE_LABELS = ["uniform", "ordered", "structured", "textured", "noisy"]
 ORDER_EDGES = [0.25, 0.5, 0.8]                  # max temporal self-correlation
 ORDER_LABELS = ["chaotic", "drifting", "recurrent", "locked"]
@@ -34,24 +38,45 @@ def _bin(x: float, edges: list[float]) -> int:
     return len(edges)
 
 
+def _structure(report: dict) -> tuple[int, float]:
+    """(STRUCTURE_LABELS index, coherence used). Index 0 is the flat 'uniform'
+    field; otherwise bin the most-coherent channel high->low into
+    ordered/structured/textured/noisy. Falls back to gzip for legacy runs
+    recorded before the observer measured coherence."""
+    chans = report.get("channels", {})
+    cohs = [c["coherence"] for c in chans.values() if c.get("coherence") is not None]
+    if not cohs:
+        stds = [c.get("std", 0.0) for c in chans.values()]
+        if not chans or all(s < 1e-9 for s in stds):
+            return 0, 0.0                       # uniform (flat)
+        gzs = [c["gzip_ratio"] for c in chans.values() if "gzip_ratio" in c]
+        coh = 1.0 - (sum(gzs) / len(gzs)) if gzs else 0.0   # rough legacy proxy
+    else:
+        coh = max(cohs)                         # the most-organized channel wins
+    # coherence rises 0..3; map to labels noisy(4)/textured(3)/structured(2)/ordered(1)
+    rank = _bin(coh, COHERENCE_EDGES)
+    return [4, 3, 2, 1][rank], coh
+
+
 def descriptor(report: dict) -> dict:
     """Raw behavior coordinates of a run, from its observer report."""
     act = float(report.get("activity", {}).get("final", 0.0))
-    chans = report.get("channels", {})
-    gzs = [c["gzip_ratio"] for c in chans.values() if "gzip_ratio" in c]
-    structure = sum(gzs) / len(gzs) if gzs else 0.0
+    _, coherence = _structure(report)
     recs = [d["recurrence_corr"] for d in report.get("dynamics", {}).values()
             if "recurrence_corr" in d]
     # a world that no longer changes is trivially self-similar
     order = max(recs) if recs else (1.0 if act < 1e-3 else 0.0)
-    return {"activity": act, "structure": structure, "order": order}
+    return {"activity": act, "structure": coherence, "order": order}
 
 
 def cell(report: dict) -> tuple[int, int, int]:
-    d = descriptor(report)
-    return (_bin(d["activity"], ACTIVITY_EDGES),
-            _bin(d["structure"], STRUCTURE_EDGES),
-            _bin(d["order"], ORDER_EDGES))
+    act = float(report.get("activity", {}).get("final", 0.0))
+    recs = [d["recurrence_corr"] for d in report.get("dynamics", {}).values()
+            if "recurrence_corr" in d]
+    order = max(recs) if recs else (1.0 if act < 1e-3 else 0.0)
+    return (_bin(act, ACTIVITY_EDGES),
+            _structure(report)[0],
+            _bin(order, ORDER_EDGES))
 
 
 def cell_label(c: tuple[int, int, int]) -> str:

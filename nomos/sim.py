@@ -72,6 +72,8 @@ def digest(report: dict) -> str:
     for name, ch in report["channels"].items():
         parts = [f"mean={ch['mean']:.3f}", f"std={ch['std']:.3f}",
                  f"range=[{ch['min']:.3f},{ch['max']:.3f}]"]
+        if "coherence" in ch:
+            parts.append(f"coherence={ch['coherence']:+.2f}")
         if "gradient" in ch:
             parts.append(f"gradient={ch['gradient']['axis']}({ch['gradient']['corr']:+.2f})")
         if "components" in ch and ch["components"]["count"]:

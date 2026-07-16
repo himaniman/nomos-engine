@@ -313,3 +313,37 @@ automated physicist toward richer physics — from trivial blinkers to a
 reaction–diffusion medium chasing spirals — validating the "gentle compass, not
 a score" approach. The bottleneck is now the observer's structure axis, which is
 too coarse to reward the coherence the model is actually producing.
+
+---
+
+## 2026-07-16 — Fixing the structure axis: coherence, not compressibility
+
+**The fix.** The observer now measures *spatial coherence* per channel —
+`metrics.spatial_autocorr`, the mean one-cell neighbour correlation on the torus
+(Moran's-I-like): ~1 for smooth waves/blobs/gradients, ~0 for spatial noise, <0
+for a checkerboard that flips sign each cell. The behavior map's structure axis
+was rebuilt on this instead of mean gzip ratio (`nomos/elites.py`): a flat field
+is `uniform`, otherwise coherence bins high→low into
+`ordered / structured / textured / noisy`. Legacy archived runs, recorded before
+coherence existed, fall back to a gzip proxy so they still bin.
+
+**Effect.** Immediately, worlds the old axis flattened into `noisy` spread out:
+a live batch produced `alive/structured/recurrent` and, notably,
+`frozen/ordered/locked` — a coherent pattern that self-organized and then *held
+still*, which is exactly the "spatial structure that persists" the nudge asked
+for and the old gzip axis was blind to. Map coverage that had been stuck at 9/100
+across a whole run moved again (→12) because the axis now varies with the physics
+the model changes. gzip couldn't distinguish a spiral-wave medium from spatter
+(both incompressible); neighbour correlation can.
+
+**Also.** The auto-GIFs now carry a bottom progress strip (fill ∝ frame index)
+and default to 6 fps (≈3× slower), so the fast period-2/anti-phase dynamics are
+watchable rather than a blur; `--gif-fps` tunes it. Rendering never blocks the
+science loop (failures are caught).
+
+**Open thread.** Minor naming seam: the map's activity axis calls final-activity
+< 1e-4 `frozen`, while the verdict reserves "frozen" for a *flat* field and says
+"static" otherwise — so a coherent-but-still world reads verdict "static" /
+map "frozen". Same number, slightly different flat-field handling; harmless but
+worth unifying if it confuses later. Next real step: actively steer toward empty
+cells (illumination), not just report the cell after the fact.

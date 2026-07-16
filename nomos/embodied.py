@@ -20,7 +20,8 @@ from nomos.engine import World
 from nomos.game import DIRECTIONS, Snake
 
 SENSOR_CHANNEL = "food"
-DANGER_CHANNEL = "danger"        # optional sensor: the snake's own body
+DANGER_CHANNEL = "danger"           # optional sensor: the snake's own body
+TEMPERATURE_CHANNEL = "temperature"  # optional sensor: hunger, uniform over the grid
 MOTOR_CHANNEL = "motor"
 
 
@@ -126,7 +127,7 @@ def require_embodied(program) -> None:
 def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0,
          moves: int = 1000, ticks_per_move: int = 16, life_channel: str = MOTOR_CHANNEL,
          collect_frames: bool = False, sensor_gain: float = 0.8,
-         death_hold: int = 6) -> dict:
+         death_hold: int = 6, starve_every: int = 50) -> dict:
     """Run the coupled brain+game loop until the snake dies (or `moves` is hit —
     a safety cap; a brain still alive then is effectively immortal for this run).
     Returns score, survival, move sequence, and (optionally) paired life/game
@@ -136,9 +137,11 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
     if life_channel not in {c.name for c in program.channels}:
         raise NomosError(f"--life-channel {life_channel!r} is not a declared channel")
 
-    has_danger = DANGER_CHANNEL in {c.name for c in program.channels}
+    names = {c.name for c in program.channels}
+    has_danger = DANGER_CHANNEL in names
+    has_temp = TEMPERATURE_CHANNEL in names
     world = World(program, world_size, seed)
-    snake = Snake(game_size, seed)
+    snake = Snake(game_size, seed, starve_every=starve_every)
     life_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
     move_seq: list[str | None] = []
@@ -148,10 +151,13 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
             break
         food = food_sensor(world.shape, snake, gain=sensor_gain)
         danger = body_sensor(world.shape, snake, gain=sensor_gain) if has_danger else None
+        temp = snake.hunger_fraction() if has_temp else None
         for _ in range(ticks_per_move):
             world.state[SENSOR_CHANNEL] = food        # re-assert the read-only senses
             if has_danger:
                 world.state[DANGER_CHANNEL] = danger
+            if has_temp:
+                world.state[TEMPERATURE_CHANNEL][:] = temp   # uniform hunger field
             world.step()
         move = read_move(world, MOTOR_CHANNEL)
         snake.step(move)

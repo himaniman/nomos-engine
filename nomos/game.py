@@ -19,9 +19,17 @@ _OPPOSITE = {"up": "down", "down": "up", "left": "right", "right": "left"}
 
 
 class Snake:
-    """Toroidal Snake. Head is body[0]; eating grows it and scores a point."""
+    """Toroidal Snake. Head is body[0]; eating grows it and scores a point.
 
-    def __init__(self, size: int | tuple[int, int], seed: int = 0):
+    Hunger: every step without food the snake gets hungrier, and after
+    `starve_every` such steps it SHRINKS by one segment (loses its tail). Shrink
+    a length-1 snake and it starves to death. So a snake that never eats cannot
+    live forever — survival now requires foraging, which balances the reward
+    against the trivial "flee food and circle forever" strategy.
+    """
+
+    def __init__(self, size: int | tuple[int, int], seed: int = 0,
+                 starve_every: int = 50):
         self.h, self.w = (size, size) if isinstance(size, int) else tuple(size)
         self.rng = random.Random(seed)
         cy, cx = self.h // 2, self.w // 2
@@ -31,9 +39,16 @@ class Snake:
         self.alive = True
         self.score = 0
         self.steps = 0
+        self.starve_every = starve_every
+        self.hunger = 0                                  # steps since last meal
+        self.starved = False
         self.death_cell: tuple[int, int] | None = None   # where the head crashed
         self.food: tuple[int, int] | None = None
         self._place_food()
+
+    def hunger_fraction(self) -> float:
+        """0 just after eating, approaching 1 as the next shrink nears."""
+        return min(1.0, self.hunger / max(1, self.starve_every))
 
     def head(self) -> tuple[int, int]:
         return self.body[0]
@@ -65,9 +80,19 @@ class Snake:
         self.body.insert(0, new_head)
         if ate:
             self.score += 1
+            self.hunger = 0                     # a meal resets hunger
             self._place_food()
         else:
-            self.body.pop()
+            self.body.pop()                     # normal move: length unchanged
+            self.hunger += 1
+            if self.hunger >= self.starve_every:
+                self.hunger = 0
+                if len(self.body) <= 1:
+                    self.alive = False          # starved: nothing left to shrink
+                    self.starved = True
+                    self.steps += 1
+                    return
+                self.body.pop()                 # shrink: lose another tail segment
         self.steps += 1
 
     def field(self) -> np.ndarray:
@@ -83,6 +108,9 @@ class Snake:
         f[hy, hx] = 0.85
         if self.food is not None:
             f[self.food] = 1.0
-        if not self.alive and self.death_cell is not None:
-            f[self.death_cell] = 1.0            # the collision, flashed
+        if not self.alive:                      # flash the death for a visible beat
+            if self.death_cell is not None:
+                f[self.death_cell] = 1.0        # self-collision
+            elif self.starved:
+                f[hy, hx] = 1.0                 # starvation (no crash cell)
         return f

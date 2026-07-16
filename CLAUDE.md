@@ -167,6 +167,20 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   killing step never advances the head, so before this death looked identical to
   the prior frame — why the snake seemed to "already know how to play"). evolve
   genome gained a 4th gene w_lat (lateral inhibition).
+- Done (hunger + temperature sensor + memory push): the snake now gets hungry —
+  every move without food raises hunger, and after `starve_every` (default 50)
+  moves it SHRINKS a segment; shrink to nothing = starve. This closes the
+  immortal loophole (a food-avoider now dies ~165 ticks, not 800). Hunger is
+  exposed as the optional `temperature` SENSOR: a uniform field over the grid,
+  0 (full) -> 1 (starving). The brain-lab spec now strongly pushes INTERNAL-STATE
+  brains (memory/trail/heading channels), and in a live run the LLM did build
+  them — a decaying `scent` trail, a `heading` integrator — plus temperature-
+  gated brains. Still, none beat naive food->motor (19) on the 4 test boards
+  (variance dominated by one board where greedy eats 28 and body-aware brains 4).
+  So: balance mechanic works, memory brains are now emerging, but beating the
+  reactive baseline is still open — likely needs more eval seeds (less variance),
+  tuned/evolved memory brains, or a stronger model. game.py Snake gained
+  hunger/starve_every; embodied has TEMPERATURE_CHANNEL.
 - Done (concentrated senses + play-to-death): sensors are now CONCENTRATED, not
   diffuse — the food 'smell' is a sharp proximity-scaled point, and `danger`
   marks only body segments NEAR the head (proximity-gated sharp points, louder

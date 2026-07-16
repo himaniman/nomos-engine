@@ -67,6 +67,27 @@ def test_play_writes_danger_only_when_declared():
     assert a["move_seq"] == b["move_seq"]
 
 
+def test_temperature_sensor_brain_runs_and_is_deterministic():
+    # a brain that reads the global hunger field steers harder when hungry
+    brain = ("channel food\nchannel temperature\nchannel motor: init 0\n"
+             "rule think:\n  when 1\n"
+             "  set motor = 0.5*avg8(motor) + (1 + temperature) * food\n")
+    a = play(brain, world_size=32, game_size=12, seed=1, moves=40, ticks_per_move=4)
+    b = play(brain, world_size=32, game_size=12, seed=1, moves=40, ticks_per_move=4)
+    assert a["move_seq"] == b["move_seq"]
+    assert a["score"] == b["score"]
+
+
+def test_starvation_kills_a_do_nothing_brain():
+    # a brain whose motor never moves the snake toward food will starve, not live
+    # forever — hunger closes the immortal loophole
+    idle = "channel food\nchannel motor: init 0\nrule t: when 1 set motor = 0\n"
+    r = play(idle, world_size=32, game_size=12, seed=0, moves=1000, ticks_per_move=4,
+             starve_every=20)
+    assert not r["alive_at_end"]        # it dies (starves) rather than looping forever
+    assert r["steps_alive"] < 1000
+
+
 def test_read_move_follows_motor_centre_of_mass():
     prog = parse_program(BRAIN)
     world = World(prog, 20, seed=0)

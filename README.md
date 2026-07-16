@@ -186,6 +186,11 @@ tests/            pytest; GoL glider/blinker as engine ground truth
     'smell' and a proximity-gated body `danger` sensor; 16 physics ticks per game
     move; games run until death. A live run produced an emergent IMMORTAL brain —
     one that learned to flee food and circle forever (survival vs foraging split).
-13. Next: reward shaping that rules out the trivial immortal (score-per-life /
-    hunger cost); brains with internal state (trail/plan); a stronger model over
-    DeepSeek; walls as a sensor; batches as k8s Jobs.
+13. ~~Hunger + a global temperature sense~~ (done): the snake shrinks if it does
+    not eat and starves if it shrinks away, so the immortal loophole is closed and
+    survival requires foraging; hunger is exposed as an optional uniform
+    `temperature` sensor. The brain lab now builds internal-state brains (scent
+    trail, heading integrator), though naive food→motor still tops the boards.
+14. Next: more eval seeds (cut board variance); evolve the LLM's memory brains;
+    a stronger model over DeepSeek; sweep `starve_every` to study the balance;
+    walls as a sensor; batches as k8s Jobs.

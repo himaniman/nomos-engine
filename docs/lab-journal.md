@@ -635,3 +635,52 @@ learned to live forever look like, and how stable is it?
 
 **Also fixed:** a brain that fails static validation at play time no longer takes
 down the whole lab run (validate via a trial World before scoring).
+
+---
+
+## 2026-07-16 — Hunger closes the immortal loophole; the LLM starts building memory
+
+Following the emergent immortal, we added the mechanic the user proposed: HUNGER.
+
+**The mechanic.** Every move without eating makes the snake hungrier; after
+`starve_every` (default 50) hungry moves it SHRINKS by a tail segment, and
+shrinking a length-1 snake starves it to death. Eating resets hunger. So you
+cannot live forever by avoiding food — survival now *requires* foraging, which
+is exactly the balance we wanted: the reward for staying alive and the reward for
+eating point the same way. Verified: the old immortal brain
+(`motor = 1 + avg8(food) - 2*avg8(danger)`), which used to circle for the full
+800-tick cap, now dies at ~165 ticks on every board (immortal 0/4). Loophole
+closed.
+
+**Hunger as a sense — "temperature."** Per the user's framing, hunger is exposed
+as an optional `temperature` sensor: a single uniform value flooded across the
+whole grid, 0 just after eating up toward 1 as starvation nears. A global "how
+hungry am I" signal the brain can gate behaviour on (hunt harder when hot).
+
+**Pushing internal state.** The brain-lab spec now argues explicitly that purely
+reactive brains plateau and that the way past is memory/planning channels, with
+examples (a decaying trail, an integrator, a temperature-gated switch). It
+worked as a prompt: in the live run the LLM stopped writing only one-line
+reflexes and built **stateful brains** — a decaying `scent` trail that remembers
+where the body has been, a `heading` integrator that builds a stable direction,
+and several temperature-gated designs. This is the qualitative shift we were
+after (Phase-B point 2).
+
+**But the reactive baseline still wins — an honest wall.** Across 6 brains none
+beat the naive `motor = food` baseline (score 19) on the four test boards; the
+memory/danger brains landed 13–16. The variance is telling: seed 1 gives *every*
+brain exactly 8, and seed 2 gives the greedy eater 28 but body-aware brains only
+4 — a single board where danger-deflection steers the snake away from a good run
+dominates the average. So the baseline's edge is partly an artifact of few, high-
+variance boards, and partly that on a wrapping 16x16 board a greedy eater that
+dies at ~188 ticks has already eaten plenty before it traps itself.
+
+**Reading / next.** The scaffolding is now right: balance mechanic in place,
+memory brains emerging, immortals gone. The open problem — a brain that both eats
+well AND avoids trapping itself — is unbeaten but now *attackable*. Concrete next
+levers: (1) more eval seeds (e.g. 8–12) so one unlucky board stops dominating;
+(2) let evolve tune the LLM's memory brains (hand the scent-trail law to the
+parametric loop, or have the LLM propose the template and evolution set the
+weights); (3) a stronger model for the design step over deepseek's cheap
+iterations; (4) study the balance directly — sweep `starve_every` and watch where
+the greedy vs cautious optimum flips.

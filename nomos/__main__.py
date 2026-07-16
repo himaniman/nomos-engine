@@ -92,7 +92,7 @@ def cmd_play(args: argparse.Namespace) -> int:
     result = play(text, world_size=args.world_size, game_size=args.game_size,
                   seed=args.seed, moves=args.moves, ticks_per_move=args.ticks,
                   life_channel=args.life_channel, collect_frames=want_frames,
-                  sensor_gain=args.sensor_gain)
+                  sensor_gain=args.sensor_gain, starve_every=args.starve_every)
 
     if args.gif:
         Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
@@ -184,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
                       help="physics steps the brain thinks per game tick (default 16)")
     play.add_argument("--sensor-gain", type=float, default=0.8, dest="sensor_gain",
                       help="how far the food bump sits from centre (default 0.8)")
+    play.add_argument("--starve-every", type=int, default=50, dest="starve_every",
+                      help="moves without food before the snake shrinks (default 50)")
     play.add_argument("--life-channel", default="motor", dest="life_channel",
                       help="which channel to render on the left (default motor)")
     play.add_argument("--scale", type=int, default=6, help="upscale factor for the GIF")

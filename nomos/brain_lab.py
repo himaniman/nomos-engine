@@ -56,20 +56,31 @@ sharp point, not a blurred area — you spread or integrate them yourself:
   OWN BODY, but only the segments NEAR the head, each a sharp point that is
   louder the closer that body part is — the imminent self-collision risk, not
   the whole tail. Same egocentric frame as `food`.
+- `temperature` (SENSOR, optional): if you declare it, the harness fills the
+  WHOLE grid with one uniform value = HUNGER, from 0 just after eating up toward
+  1 as starvation nears. A global "how hungry am I" signal you can use to switch
+  strategy — e.g. hunt harder, or accept more risk, when hot.
 - `motor` (MOTOR, you MUST declare it): after your rules run, the harness looks
   at where the NON-NEGATIVE mass of `motor` sits relative to the grid centre and
   moves the snake that way (up/down/left/right). Silent motor = keep heading.
   So: push motor mass toward where you want to go, away from where you don't.
 The game ticks once every MANY physics steps, so the grid has ample time to
-settle before each move. Each run plays until the snake dies (running into its
-own body); the board wraps — there are no walls, only the food and your body.
+settle before each move. Each run plays until the snake dies. The board wraps —
+no walls, only food and your body. HUNGER: every move without eating makes you
+hungrier, and after a while you SHRINK a segment; shrink to nothing and you
+starve. So you cannot survive by avoiding food — you must eat to live, and eat
+well to grow.
 
 YOUR GOAL: write a brain law that makes the snake score as HIGH as possible —
-eat a lot. Surviving longer only helps because it buys more chances to eat;
-circling forever without eating scores zero. You will be told each brain's score
-and a leaderboard of the best so far; build on what works, and try genuinely new
-mechanisms when progress stalls — extra channels for memory or planning, a
-refractory trail to avoid your body, lateral inhibition to sharpen the target.
+eat a lot, and don't die (to self-collision or starvation). You will be told
+each brain's score and a leaderboard of the best so far.
+
+You are strongly encouraged to give the brain INTERNAL STATE — extra channels
+that persist and update over time, not just a reflex from the current senses.
+Examples: a decaying trail that remembers where the body has been (to plan a
+path that won't trap you); an integrator that builds a stable heading; a
+temperature-gated mode switch. A purely reactive brain (motor = f(food,danger))
+tends to plateau; memory and planning are how you get past it.
 
 HOW TO REPLY, every turn, in this order:
 1. HYPOTHESIS: one or two sentences — the idea about brain design you are testing.

@@ -39,6 +39,34 @@ def test_snake_is_deterministic():
     assert a.body == b.body and a.food == b.food and a.score == b.score
 
 
+def test_hunger_shrinks_then_starves_without_food():
+    s = Snake(12, seed=1, starve_every=3)
+    s.food = None                       # no food anywhere -> it can never eat
+    start_len = len(s.body)
+    for _ in range(2):                  # two hunger cycles -> two shrinks
+        for _ in range(3):
+            s.step(None)
+    assert len(s.body) == start_len - 2
+    assert s.alive
+    # keep going until it starves to death
+    for _ in range(30):
+        s.step(None)
+        if not s.alive:
+            break
+    assert not s.alive and s.starved
+
+
+def test_eating_resets_hunger():
+    s = Snake(10, seed=1, starve_every=5)
+    for _ in range(3):
+        s.step(None)
+    assert s.hunger == 3
+    hy, hx = s.head()
+    s.food = (hy, (hx + 1) % 10)
+    s.step("right")                     # eat
+    assert s.hunger == 0 and s.score == 1
+
+
 def test_death_is_recorded_and_flashed():
     s = Snake(6, seed=2)
     # a 2x2 loop: head (3,3); (2,3) is a non-tail body cell (tail is (3,2))

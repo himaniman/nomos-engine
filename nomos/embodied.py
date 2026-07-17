@@ -375,7 +375,9 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 wall_radius: int | None = None, view_radius: int = 32,
                 view_fade: float | None = 0.7, view_fog: bool = True,
                 render_cap: int = 128, reward_decay: float = 0.6,
-                reward_shaping: float = 0.5) -> dict:
+                reward_shaping: float = 0.5,
+                init_channels: dict[str, np.ndarray] | None = None,
+                return_channels: tuple[str, ...] = ()) -> dict:
     """Run the coupled brain+forage loop until the player starves (or `moves` —
     the safety cap; a brain still alive then kept feeding itself the whole run).
     Same contract as `play`: senses re-asserted every physics tick, one game move
@@ -399,6 +401,13 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     has_reward = REWARD_CHANNEL in names
     has_avoid = AVOID_CHANNEL in names
     world = World(program, world_size, seed)
+    # Carry learned/inherited channel fields in (e.g. a brain's weights from a
+    # previous life — Lamarckian transfer). Overrides the law's init for those
+    # channels; shapes must match the world grid.
+    if init_channels:
+        for name, val in init_channels.items():
+            if name in world.state:
+                world.state[name] = np.array(val, dtype=np.float64).reshape(world.shape)
     game = Forage(game_size, seed, food_count=food_count, starve_after=starve_after)
     reward_val = 0.0
     prev_score = 0
@@ -407,6 +416,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     avoid_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
     temp_frames: list[float] = []
+    sense_frames: list[np.ndarray] = []      # per-frame RGB of the raw senses
     move_seq: list[str | None] = []
 
     for _ in range(moves):
@@ -456,12 +466,18 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 avoid_frames.append(_block_mean(world.state[AVOID_CHANNEL], render_cap))
             game_frames.append(game.view(view_radius, fade=view_fade, fog=view_fog))
             temp_frames.append(game.hunger_fraction())
+            # RGB of the raw senses, so the viewer sees exactly what the brain
+            # perceives: red = walls, green = food smell, blue = food in sight.
+            wl = _block_mean(wall, render_cap) if has_wall else np.zeros_like(life_frames[-1])
+            sg = _block_mean(sight, render_cap) if has_sight else np.zeros_like(life_frames[-1])
+            sense_frames.append(np.stack([wl, _block_mean(food, render_cap), sg], axis=-1))
 
     if collect_frames and not game.alive and game_frames:
         for _ in range(death_hold):
             life_frames.append(life_frames[-1])
             game_frames.append(game_frames[-1])
             temp_frames.append(temp_frames[-1])
+            sense_frames.append(sense_frames[-1])
             if has_avoid:
                 avoid_frames.append(avoid_frames[-1])
 
@@ -478,4 +494,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
         "avoid_frames": avoid_frames,
         "game_frames": game_frames,
         "temp_frames": temp_frames,
+        "sense_frames": sense_frames,
+        "final_channels": {n: world.state[n].copy() for n in return_channels
+                           if n in world.state},
     }

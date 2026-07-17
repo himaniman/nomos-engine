@@ -128,7 +128,12 @@ def fitness(genome: dict, seeds=(0, 1, 2), world_size: int = 48, game_size: int 
         immortal += int(r["alive_at_end"])
     score = sum(scores) / len(scores)
     survival = sum(survivals) / len(survivals)
-    return {"fitness": score * 100.0 + survival * 0.1, "score": score,
+    # meals dominate, but a LONG life is well rewarded: survived ticks plus a
+    # flat bonus per board reached the cap (immortal). One meal (100) still
+    # outweighs the ~90 a full immortal life earns, so longevity is rewarded
+    # without letting a flee-food-forever brain win.
+    fit = score * 100.0 + survival * 0.1 + 40.0 * (immortal / max(1, len(scores)))
+    return {"fitness": fit, "score": score,
             "survival": survival, "scores": scores, "immortal": immortal}
 
 

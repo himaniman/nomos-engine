@@ -137,6 +137,50 @@ def split_images(
     return out
 
 
+def sense_split_images(
+    sense_frames: list[np.ndarray],
+    game_frames: list[np.ndarray],
+    scale: int = 6,
+    gap: int = 4,
+) -> list[Image.Image]:
+    """The SENSES view: left = an RGB of exactly what the brain perceives
+    (red = walls, green = food smell, blue = food in sight), right = the game
+    board. Each colour channel is normalized independently ACROSS THE RUN and
+    gamma-lifted so faint distant senses (far walls, a whiff of far smell, a
+    glimpse of sight) read with contrast instead of vanishing — the complaint
+    that only near walls/smell were visible. Progress strip below."""
+    r = _normalize([f[..., 0] for f in sense_frames])
+    g = _normalize([f[..., 1] for f in sense_frames])
+    b = _normalize([f[..., 2] for f in sense_frames])
+    life_imgs = []
+    for t in range(len(sense_frames)):
+        rgb = np.zeros((*sense_frames[t].shape[:2], 3), dtype=np.float64)
+        rgb[..., 0] = np.power(r[t], 0.5) * 255      # gamma < 1 lifts faint signal
+        rgb[..., 1] = np.power(g[t], 0.5) * 255
+        rgb[..., 2] = np.power(b[t], 0.5) * 255
+        img = Image.fromarray(rgb.clip(0, 255).astype(np.uint8), "RGB")
+        if scale != 1:
+            img = img.resize((img.width * scale, img.height * scale), Image.NEAREST)
+        life_imgs.append(img)
+    target_h = life_imgs[0].height
+    out = []
+    n = len(sense_frames)
+    for t in range(n):
+        left = life_imgs[t]
+        gim = np.clip(game_frames[t], 0.0, 1.0)
+        gimg = Image.fromarray(_apply_fire(gim).clip(0, 255).astype(np.uint8), "RGB")
+        gs = max(1, target_h // gimg.height)
+        gimg = gimg.resize((gimg.width * gs, gimg.height * gs), Image.NEAREST)
+        if gimg.height != target_h:
+            gimg = gimg.resize((round(gimg.width * target_h / gimg.height), target_h),
+                               Image.NEAREST)
+        canvas = Image.new("RGB", (left.width + gap + gimg.width, target_h), (0, 0, 0))
+        canvas.paste(left, (0, 0))
+        canvas.paste(gimg, (left.width + gap, 0))
+        out.append(_add_progress_bar(canvas, t / (n - 1) if n > 1 else 1.0))
+    return out
+
+
 def save_gif(images: list[Image.Image], path: str, fps: int = 25) -> None:
     images[0].save(
         path,

@@ -114,7 +114,7 @@ def cmd_forage(args: argparse.Namespace) -> int:
     from nomos.embodied import play_forage
 
     text = Path(args.law).read_text(encoding="utf-8")
-    want_frames = bool(args.gif)
+    want_frames = bool(args.gif or args.senses_gif)
     result = play_forage(text, world_size=args.world_size, game_size=args.game_size,
                          seed=args.seed, moves=args.moves, ticks_per_move=args.ticks,
                          life_channel=args.life_channel, collect_frames=want_frames,
@@ -129,13 +129,54 @@ def cmd_forage(args: argparse.Namespace) -> int:
                               life_frames2=result["avoid_frames"] or None,
                               hunger_frames=result["temp_frames"] or None)
         save_gif(images, args.gif, fps=args.fps)
+    if args.senses_gif:
+        from nomos.render import sense_split_images
+        Path(args.senses_gif).parent.mkdir(parents=True, exist_ok=True)
+        save_gif(sense_split_images(result["sense_frames"], result["game_frames"],
+                                    scale=args.scale), args.senses_gif, fps=args.fps)
 
     summary = {k: result[k] for k in
                ("score", "steps_alive", "moves", "alive_at_end", "world_size",
                 "game_size", "seed")}
     print(json.dumps(summary, indent=2))
+    wrote = ", ".join(p for p in (args.gif, args.senses_gif) if p)
     print(f"forage: score={result['score']} survived {result['steps_alive']} moves"
-          + (f", wrote {args.gif}" if args.gif else ""), file=sys.stderr)
+          + (f", wrote {wrote}" if wrote else ""), file=sys.stderr)
+    return 0
+
+
+def cmd_lamarck(args: argparse.Namespace) -> int:
+    from nomos.embodied import play_forage
+    from nomos.lamarck import LMCELL_WEIGHTS, lamarckian
+
+    text = Path(args.law).read_text(encoding="utf-8")
+    seeds = tuple(range(args.eval_seeds))
+
+    def on_generation(gen, h):
+        print(f"[life {gen}] score={h['score']} alive={h['steps_alive']} "
+              f"(best {h['best_score']})", file=sys.stderr)
+
+    out = lamarckian(text, lives=args.lives, lam=args.lam, seeds=seeds,
+                     mutation=args.mutation, world_size=args.world_size,
+                     game_size=args.game_size, moves=args.moves, ticks=args.ticks,
+                     rng_seed=args.seed, workers=args.workers,
+                     on_generation=on_generation)
+
+    print(json.dumps({"best_score": out["best"]["score"],
+                      "best_steps_alive": out["best"]["steps_alive"],
+                      "lives": args.lives}, indent=2))
+    if args.gif:
+        # replay the best lineage's weights for a watchable life
+        r = play_forage(text, world_size=args.world_size, game_size=args.game_size,
+                        seed=args.show_seed, moves=args.moves, ticks_per_move=args.ticks,
+                        collect_frames=True, init_channels=out["best"]["weights"])
+        Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
+        save_gif(split_images(r["life_frames"], r["game_frames"], scale=args.scale,
+                              life_frames2=r["avoid_frames"] or None,
+                              hunger_frames=r["temp_frames"] or None),
+                 args.gif, fps=args.fps)
+        print(f"lamarck: best-weights replay score={r['score']}, wrote {args.gif}",
+              file=sys.stderr)
     return 0
 
 
@@ -263,7 +304,34 @@ def main(argv: list[str] | None = None) -> int:
     fo.add_argument("--scale", type=int, default=6, help="upscale factor for the GIF")
     fo.add_argument("--fps", type=int, default=6, help="GIF playback speed")
     fo.add_argument("--gif", default=None, help="write the split life|game GIF here")
+    fo.add_argument("--senses-gif", default=None, dest="senses_gif",
+                    help="write the SENSES view GIF here (red=walls, green=smell, "
+                         "blue=sight — exactly what the brain perceives)")
     fo.set_defaults(func=cmd_forage)
+
+    lm = sub.add_parser("lamarck", help="Lamarckian evolution of a learning brain: "
+                                        "carry learned weights across lives + mutate")
+    lm.add_argument("law", help="path to an LM-cell .nomos brain (declares reward + weights)")
+    lm.add_argument("--lives", type=int, default=12, help="generations of the lineage")
+    lm.add_argument("--lam", type=int, default=4, help="mutated offspring per life")
+    lm.add_argument("--mutation", type=float, default=0.02,
+                    help="Gaussian weight-mutation strength between lives")
+    lm.add_argument("--eval-seeds", type=int, default=4, dest="eval_seeds",
+                    help="mazes rotated across lives (seeds 0..N-1)")
+    lm.add_argument("--seed", type=int, default=0, help="RNG seed for the lineage")
+    lm.add_argument("--show-seed", type=int, default=0, dest="show_seed",
+                    help="maze seed for the final best-weights GIF")
+    lm.add_argument("--workers", type=int, default=1,
+                    help="parallel processes for the offspring (default 1; set to "
+                         "your core count for a big speedup)")
+    lm.add_argument("--world-size", type=int, default=128, dest="world_size")
+    lm.add_argument("--game-size", type=int, default=96, dest="game_size")
+    lm.add_argument("--moves", type=int, default=400)
+    lm.add_argument("--ticks", type=int, default=32)
+    lm.add_argument("--scale", type=int, default=6)
+    lm.add_argument("--fps", type=int, default=6)
+    lm.add_argument("--gif", default=None, help="replay the best lineage weights into this GIF")
+    lm.set_defaults(func=cmd_lamarck)
 
     ev = sub.add_parser("evolve", help="evolve a game brain across runs (Phase B)")
     ev.add_argument("--game", choices=["snake", "forage"], default="snake",

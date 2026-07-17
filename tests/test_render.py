@@ -1,5 +1,16 @@
 import numpy as np
 
+from nomos.render import sense_split_images
+
+
+def test_sense_split_images_builds_rgb_frames():
+    senses = [np.random.rand(12, 12, 3) for _ in range(4)]
+    game = [np.random.rand(10, 10) for _ in range(4)]
+    imgs = sense_split_images(senses, game, scale=2)
+    assert len(imgs) == 4
+    assert imgs[0].mode == "RGB"
+    assert imgs[0].width > 12 and imgs[0].height > 12   # scaled + game panel + bar
+
 from nomos.render import frames_to_images
 
 

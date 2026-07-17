@@ -219,6 +219,11 @@ class Forage:
                 x += sx
         return True
 
+    def sees(self, cell: tuple[int, int]) -> bool:
+        """Line of sight from the player to a cell (walls block; the first wall
+        on the ray is itself visible)."""
+        return self._los(*cell)
+
     def visibility(self, radius: int) -> np.ndarray:
         """Boolean line-of-sight mask over the egocentric window, cached per
         (position, radius) — walls are static, so a revisited cell is free."""

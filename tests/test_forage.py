@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from nomos.dsl import NomosError
-from nomos.embodied import forage_food_sensor, play_forage, wall_sensor
+from nomos.embodied import (forage_food_sensor, play_forage, sight_sensor,
+                            wall_sensor)
 from nomos.forage import Forage
 
 BRAIN = ("channel food\nchannel motor: init 0\n"
@@ -150,6 +151,31 @@ def test_wall_sensor_sees_near_walls_with_leverage():
     g.walls[py, px + 1] = False
     g.walls[py, px + 11] = True                # beyond the vision radius
     assert wall_sensor((48, 48), g).max() == 0.0
+
+
+def test_sight_sensor_needs_line_of_sight():
+    g = _open_arena(24)
+    py, px = g.pos
+    g.foods = {(py, px + 5)}                   # visible food to the right
+    seen = sight_sensor((48, 48), g)
+    assert seen.max() > 0.5                    # sight is strong and certain
+    cx = (seen.sum(axis=0) * np.arange(48)).sum() / seen.sum()
+    assert cx > 26                             # painted to the right of centre
+    g.walls[py - 3:py + 4, px + 2] = True      # a wall slab breaks the sight line
+    assert sight_sensor((48, 48), g).max() == 0.0   # smelled maybe, seen never
+    g.walls[py - 3:py + 4, px + 2] = False
+    g.foods = {(py, px + 20)}                  # open line but beyond sight range
+    assert sight_sensor((48, 48), g).max() == 0.0
+
+
+def test_sight_is_brighter_when_food_is_near():
+    g = _open_arena(24)
+    py, px = g.pos
+    g.foods = {(py, px + 2)}
+    near = sight_sensor((48, 48), g).max()
+    g.foods = {(py, px + 9)}
+    far = sight_sensor((48, 48), g).max()
+    assert near > far > 0
 
 
 def test_play_forage_is_deterministic_and_reports():

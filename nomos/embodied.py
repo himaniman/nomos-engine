@@ -23,6 +23,7 @@ from nomos.game import DIRECTIONS, _OPPOSITE, Snake
 SENSOR_CHANNEL = "food"
 DANGER_CHANNEL = "danger"           # optional sensor: the snake's own body
 WALL_CHANNEL = "wall"               # optional sensor (forage): near-field wall vision
+SIGHT_CHANNEL = "sight"             # optional sensor (forage): food in line of sight
 TEMPERATURE_CHANNEL = "temperature"  # optional sensor: hunger, uniform over the grid
 MOTOR_CHANNEL = "motor"             # 'go toward' output layer
 AVOID_CHANNEL = "avoid"             # optional 'stay away' output layer (non-interfering)
@@ -220,6 +221,32 @@ def _net_pulls(world: World, channel: str, avoid: str | None):
     return net, total
 
 
+def sight_sensor(world_shape: tuple[int, int], game: Forage, gain: float = 0.9,
+                 sigma: float | None = None, radius: int = 16,
+                 min_rad: float = 0.2) -> np.ndarray:
+    """Food the player can SEE: items within `radius` cells with an unbroken
+    line of sight, painted at their TRUE egocentric direction (the straight
+    line — sight, unlike smell, does not bend around corners) and much brighter
+    than a smell of the same range: seeing is precise and certain. Amplitude
+    grows as the food nears; anything behind a wall or beyond the range gives
+    nothing. Complements the `food` scent: smell says 'somewhere that way,
+    around the corner', sight says 'RIGHT THERE'."""
+    H, W = world_shape
+    field = np.zeros((H, W), dtype=np.float64)
+    py, px = game.pos
+    sig = _sharp_sigma(world_shape, sigma)
+    for fy, fx in sorted(game.foods):
+        dy, dx = fy - py, fx - px
+        dist = (dy * dy + dx * dx) ** 0.5
+        if dist > radius or dist < 1e-9 or not game.sees((fy, fx)):
+            continue
+        amp = 0.5 + 0.5 * (1.0 - dist / radius)
+        rad = min(0.45, max(min_rad, dist / (2.0 * radius)))
+        by, bx = _ego_cell(dy / dist * rad, dx / dist * rad, world_shape, gain)
+        _bump(field, by, bx, sig, amp)
+    return field
+
+
 def _slide(ranked: list[str], game: Forage) -> str | None:
     """Contact dynamics for a blocked favourite: slide TANGENTIALLY along the
     wall (the next commanded direction that is not the exact reverse), falling
@@ -364,6 +391,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
 
     names = {c.name for c in program.channels}
     has_wall = WALL_CHANNEL in names
+    has_sight = SIGHT_CHANNEL in names
     has_temp = TEMPERATURE_CHANNEL in names
     has_avoid = AVOID_CHANNEL in names
     world = World(program, world_size, seed)
@@ -380,11 +408,14 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
         food = forage_food_sensor(world.shape, game, gain=sensor_gain)
         wall = (wall_sensor(world.shape, game, gain=sensor_gain, radius=wall_radius)
                 if has_wall else None)
+        sight = sight_sensor(world.shape, game, gain=sensor_gain) if has_sight else None
         temp = game.hunger_fraction() if has_temp else None
         for _ in range(ticks_per_move):
             world.state[SENSOR_CHANNEL] = food        # re-assert the read-only senses
             if has_wall:
                 world.state[WALL_CHANNEL] = wall
+            if has_sight:
+                world.state[SIGHT_CHANNEL] = sight
             if has_temp:
                 world.state[TEMPERATURE_CHANNEL][:] = temp   # uniform hunger field
             world.step()

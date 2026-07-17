@@ -256,6 +256,9 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   spotted it in the GIF first); cure = commitment channel with saturating
   positive feedback (`laws/forage_brain_mem.nomos`, clamp is load-bearing
   against 1e6 runaway): 3 meals/351 moves vs baseline 1/185 on seed 0.
+  Optional `sight` sensor: food within ~16 cells and an unbroken line of
+  sight, painted at its true straight-line direction, much brighter than smell
+  (sight is precise; smell bends around corners, sight never does).
   `python -m nomos.brain_lab --game forage` runs the LLM lab on it (spec names
   the oscillation failure and pushes internal state). Open: live forage lab
   run; commitment vs flexibility; hunger-gated exploration.

@@ -143,6 +143,12 @@ the grid centre, the world is painted around you):
   to fill the ego view and louder the closer (1/d^2). Off-axis walls are not
   sensed (they don't block your next step); the maze's global structure reaches
   you through the scent, which has already flowed around it.
+- `sight` (SENSOR, optional): food you can SEE — items within ~16 cells with an
+  UNBROKEN line of sight, painted at their true straight-line direction (sight
+  does not bend around corners) and much brighter than smell: seeing is precise
+  and certain. Behind a wall there is nothing, however close. Smell says
+  "somewhere that way, around the corner"; sight says "RIGHT THERE" — a strong
+  candidate for gating a final approach or breaking a smell tie.
 - `temperature` (SENSOR, optional): the WHOLE grid filled with one uniform
   value = HUNGER, 0 just after eating up toward 1 as starvation nears.
 - `motor` (MOTOR, you MUST declare it): the 'GO TOWARD' layer — each direction

@@ -552,6 +552,34 @@ class World:
         gaps.append(1.0 - hues[-1] + hues[0])          # wrap seam
         return max(1, sum(1 for g in gaps if g > self.cfg.species_hue))
 
+    def species_groups(self) -> list[dict]:
+        """Group the living population into colour-species (same hue clustering as
+        species_count) and return per-species stats — count, mean hue/diet/age and
+        carnivore share — largest first. Lets the HUD report EACH population, not just
+        the aggregate."""
+        agents = sorted(self.agents.values(), key=lambda a: a.brain.genome.hue)
+        if not agents:
+            return []
+        groups, cur = [], [agents[0]]
+        for a in agents[1:]:
+            if a.brain.genome.hue - cur[-1].brain.genome.hue > self.cfg.species_hue:
+                groups.append(cur)
+                cur = [a]
+            else:
+                cur.append(a)
+        groups.append(cur)
+        thr = self.cfg.carnivore_threshold
+        out = []
+        for grp in groups:
+            gs = [a.brain.genome for a in grp]
+            out.append({"n": len(grp),
+                        "hue": float(np.mean([g.hue for g in gs])),
+                        "diet": float(np.mean([g.diet for g in gs])),
+                        "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
+                        "age": float(np.mean([a.age for a in grp]))})
+        out.sort(key=lambda s: s["n"], reverse=True)
+        return out
+
     def carnivore_fraction(self) -> float:
         """Share of the living population that are committed carnivores."""
         n = len(self.agents)

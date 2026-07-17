@@ -54,7 +54,9 @@ class Config:
                                        # halos concentrate food where random brains
                                        # can't find it and takeoff stalls)
     food_halo_drift: float = 2.0       # cells a halo centre may step when it drifts
-    food_halo_drift_every: int = 40    # ticks between halo drifts (0 = static halos)
+    food_halo_drift_every: int = 1280  # ticks between halo drifts (0 = static halos) —
+                                       # very slow, so food patches feel like stable
+                                       # regions that only wander over long timescales
 
     # diet niche: a heritable trait sets which food TYPE an agent digests best (1.0 on
     # its own type, down to diet_min_eff on the far one); vision dims food it can't eat
@@ -159,6 +161,11 @@ class Config:
     nca_retype_prob: float = 0.05      # chance a mutation re-types one cell
     nca_split_prob: float = 0.02       # chance a mutation SPLITS a type into a new one
                                        # (clone+jitter a rule, reassign ~half its cells)
+    # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
+    # its depth (add a near-identity layer / remove a middle one), capped.
+    nca_max_layers: int = 4            # max layers in a cell-type rule (depth cap)
+    nca_add_layer_prob: float = 0.03   # chance a mutation deepens a rule by one layer
+    nca_del_layer_prob: float = 0.02   # chance a mutation removes a middle layer
     nca_cell_cost: float = 0.02        # energy per brain cell per tick (NCA only): makes
                                        # a bigger brain COST more, so shape/size is under
                                        # selection, not a free random drift

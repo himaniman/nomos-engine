@@ -401,3 +401,29 @@ UPDATE — the ecology is now demonstrably LIVELY (takeoff solved + tuned):
 Open frontier still: carnivores rarely establish (0% — macro-mut now gives them a
 shot); holding pop nearer the target needs a smaller food buffer (tension with
 bootstrap findability). Good enough to move to the v2 brain.
+
+---
+
+## v2 DONE — evolvable rule DEPTH (2026-07-18)
+
+The user's idea (and the better v2 than full NEAT-in-cell): make each cell-type's
+rule a STACK of layers of variable length, capped, and let mutation grow/shrink the
+DEPTH. Implemented in nca.py: a rule is now a list of layers ({W,b}); the chain is
+9C -> H -> ... -> H -> C (hidden layers tanh, output linear). Mutations ADD a
+near-IDENTITY hidden layer (inserted before the output so it barely perturbs a
+working brain — depth grows gracefully) up to `nca_max_layers`, or REMOVE a middle
+layer down to depth 2. Crossover mixes rules layer-by-layer by index (fixed width H
+means matching-index layers share shapes); serialization + the W-key save/load handle
+variable depth. The single-type fast path still applies one stack to the whole grid.
+The inspector draws each rule as a layered net whose COLUMN COUNT is its depth, and
+shows `depth N`. 43 tests pass (+ depth grow/shrink, cross-depth crossover). So a
+cell's little network now evolves its own depth, on top of v1's set-of-rules and v0's
+shape — three nested things the genome grows.
+
+Also this batch (user requests): food halos drift MUCH slower (every 1280 ticks, so
+patches feel like stable regions); and PER-POPULATION stats — `World.species_groups`
+returns count / mean diet / carnivore % / mean age per living colour-species, shown as
+a "populations" panel so you read each population, not just the aggregate.
+
+Next (v3 candidates): sensory ORGANS on the shape's edge (spatial I/O instead of a
+uniform broadcast); evolvable hidden WIDTH; getting carnivores to actually establish.

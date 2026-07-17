@@ -157,6 +157,21 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         if hitboxes is not None:
             hitboxes.append((pygame.Rect(x0, y, panel_w, 17), g))
         y += 17
+    y += 6
+
+    # per-POPULATION stats: one row per living colour-species (count, mean diet,
+    # carnivore %, mean age) so you read EACH population, not just the aggregate
+    groups = world.species_groups()
+    surf.blit(small.render(f"populations ({len(groups)}):", True, (150, 160, 180)),
+              (x0 + 12, y)); y += 18
+    for gr in groups[:5]:
+        r, g_, b = colorsys.hsv_to_rgb(gr["hue"], 0.85, 1.0)
+        pygame.draw.rect(surf, (int(r * 255), int(g_ * 255), int(b * 255)),
+                         (x0 + 12, y + 2, 10, 10))
+        surf.blit(small.render(
+            f"n{gr['n']:<3} diet{gr['diet']:.1f} carn{gr['carn'] * 100:.0f}% "
+            f"age{gr['age']:.0f}", True, (205, 210, 225)), (x0 + 28, y))
+        y += 16
     y += 8
 
     # inspector: a clicked leader genome takes priority, else the selected agent
@@ -177,7 +192,8 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     nh, nc = g.complexity()
     info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
             if agent is not None else [])
-    info.append(f"cells {nh}  types {nc}" if getattr(g, "kind", "neat") == "nca"
+    info.append(f"cells {nh}  types {nc}  depth {g.max_depth()}"
+                if getattr(g, "kind", "neat") == "nca"
                 else f"hidden {nh}  conns {nc}")
     info.append(f"diet {g.diet:.2f}  "
                 + ("CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"))
@@ -267,39 +283,41 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
 
 
 def _draw_rule_net(surf, genome, k, x, y, w, h):
-    """A cell TYPE's update rule as a small 3-layer net: input CHANNELS (left, the
-    9-neighbour weights averaged per channel) -> HIDDEN (middle) -> output channel
-    delta (right). Only the strongest edges are drawn so the shape reads at a glance;
-    the header dot is the type's colour."""
+    """A cell TYPE's update rule as a small layered net whose DEPTH is what evolved:
+    a column of nodes per layer (input channels on the left — the 9-neighbour weights
+    averaged per channel — hidden layers in the middle, channel-delta output on the
+    right), strongest edges only. The header dot is the type's colour; more columns =
+    a deeper rule."""
     C, H = genome.C, genome.H
-    W_ih = genome.W1[k].reshape(H, 9, C).mean(axis=1)      # (H, C) neighbour-averaged
-    W_ho = genome.W2[k]                                    # (C, H)
+    rule = genome.rules[k]
+    # per-layer weight matrices, with the input layer's 9-neighbour weights averaged
+    # down to C so the leftmost column reads as "channels"
+    mats = [rule[0]["W"].reshape(rule[0]["W"].shape[0], 9, C).mean(axis=1)]
+    mats += [L["W"] for L in rule[1:]]                     # (out, in) per layer
+    widths = [C] + [m.shape[0] for m in mats]             # node count per column
     top = max(6, y)
-    x0, x1, xm = x + 8, x + w - 8, x + w // 2
+    n_col = len(widths)
+    xs = [x + 8 + int(i / max(1, n_col - 1) * (w - 16)) for i in range(n_col)]
     def ys(n):
         return [top + int((j + 0.5) / max(1, n) * (h - 8)) for j in range(n)]
-    yi, yh, yo = ys(C), ys(H), ys(C)
+    ycols = [ys(nw) for nw in widths]
     pygame.draw.rect(surf, _type_color(k), (x, top - 4, 6, 6))
-
-    def edges(Wm, xa, ya, xb, yb):
+    for li, Wm in enumerate(mats):                        # edges between columns
         m = np.abs(Wm).max() + 1e-6
-        thr = 0.55 * m                                     # only strong edges
+        thr = 0.6 * m
+        ya, yb = ycols[li], ycols[li + 1]
         for a in range(Wm.shape[0]):
             for b in range(Wm.shape[1]):
-                wv = Wm[a, b]
-                if abs(wv) < thr:
+                if abs(Wm[a, b]) < thr:
                     continue
-                col = (90, 160, 255) if wv >= 0 else (255, 110, 90)
-                pygame.draw.line(surf, col, (xa, ya[b]), (xb, yb[a]),
-                                 1 if abs(wv) < 0.8 * m else 2)
-    edges(W_ih, x0, yi, xm, yh)                            # channels -> hidden
-    edges(W_ho, xm, yh, x1, yo)                            # hidden -> channel delta
-    for yy in yi:
-        pygame.draw.circle(surf, (140, 220, 150), (x0, yy), 3)
-    for yy in yh:
-        pygame.draw.circle(surf, (210, 210, 230), (xm, yy), 2)
-    for yy in yo:
-        pygame.draw.circle(surf, (240, 200, 120), (x1, yy), 3)
+                col = (90, 160, 255) if Wm[a, b] >= 0 else (255, 110, 90)
+                pygame.draw.line(surf, col, (xs[li], ya[b]), (xs[li + 1], yb[a]),
+                                 1 if abs(Wm[a, b]) < 0.85 * m else 2)
+    for ci, ycol in enumerate(ycols):                     # nodes
+        cc = (140, 220, 150) if ci == 0 else \
+            (240, 200, 120) if ci == n_col - 1 else (210, 210, 230)
+        for yy in ycol:
+            pygame.draw.circle(surf, cc, (xs[ci], yy), 3 if ci in (0, n_col - 1) else 2)
 
 
 def _draw_net(surf, genome, x, y, w, h):

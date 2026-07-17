@@ -522,6 +522,38 @@ def test_nca_type_split_adds_a_rule_and_differentiates_cells():
     assert nca.Phenotype(g, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
 
 
+def test_nca_rule_depth_grows_and_shrinks_and_stays_runnable():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(6)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    assert g.max_depth() == 2                       # fresh rule = 2 layers
+    grow = _nca_cfg(nca_add_layer_prob=1.0, nca_del_layer_prob=0.0, nca_max_layers=4)
+    for _ in range(6):
+        g, _ = nca.mutate(g, rng, grow, 0)
+    assert g.max_depth() == 4                        # deepened, capped at max_layers
+    assert nca.Phenotype(g, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+    shrink = _nca_cfg(nca_add_layer_prob=0.0, nca_del_layer_prob=1.0)
+    for _ in range(6):
+        g, _ = nca.mutate(g, rng, shrink, 0)
+    assert g.max_depth() == 2                        # shrank back to the min depth
+    assert nca.Phenotype(g, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
+def test_nca_crossover_across_different_depths_is_valid():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(7)
+    cfg = _nca_cfg()
+    g1 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)          # depth 2
+    g2 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    deep = _nca_cfg(nca_add_layer_prob=1.0, nca_del_layer_prob=0.0)
+    for _ in range(3):
+        g2, _ = nca.mutate(g2, rng, deep, 0)                          # deeper
+    for child in (nca.crossover(g2, g1, rng), nca.crossover(g1, g2, rng)):
+        assert nca.Phenotype(child, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
 def test_nca_crossover_across_different_type_counts_is_valid():
     from vivarium import nca
     n_in = input_size(3)

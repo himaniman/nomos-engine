@@ -302,6 +302,21 @@ def test_food_types_follow_spatial_zones():
         assert w.food[y, x] == w.food_zone[y, x]           # food type matches its region
 
 
+def test_immigration_adds_newcomers_to_a_living_world():
+    w = World(Config(size=30, seed=1, init_population=8, immigrate_every=5,
+                     immigrate_count=4, start_energy=80.0))
+    # keep the incumbents alive so the population change is from immigration
+    for _ in range(4):
+        for a in w.agents.values():
+            a.energy = 80.0
+        w.step()
+    before = w.population()
+    for a in w.agents.values():
+        a.energy = 80.0
+    w.step()                                       # tick 5 -> an immigration wave
+    assert w.population() >= before + 1            # newcomers arrived
+
+
 def test_carnivore_eats_prey_and_takes_its_cell():
     w = World(Config(size=20, seed=0, init_population=2, predation=True,
                      carnivore_threshold=0.5, meat_energy=30.0))

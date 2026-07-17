@@ -75,6 +75,12 @@ class Config:
     # population
     init_population: int = 40
     reseed_count: int = 6              # individuals dropped when the world goes extinct
+    # immigration: rare fresh random-ish newcomers dropped into a LIVING world.
+    # Keeps diversity from collapsing, tests whether fresh brains beat evolved
+    # ones, and — crucially — introduces variants (e.g. carnivores) once the world
+    # is populated enough for them to establish, which they can't during bootstrap.
+    immigrate_every: int = 300         # ticks between immigration waves (0 = off)
+    immigrate_count: int = 3           # newcomers per wave
     hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age in
                                        # the hall-of-fame's success score (fecundity
                                        # + longevity, not longevity alone)

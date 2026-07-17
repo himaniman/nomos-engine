@@ -307,9 +307,24 @@ class World:
             self._kill(a)
         self.corpse[self.corpse > 0] -= 1              # corpses decay away
         self._drift_walls()                            # the living landscape shifts
+        self._immigrate()                              # rare fresh newcomers
         self.tick += 1
         if not self.agents:
             self._reseed()
+
+    def _immigrate(self) -> None:
+        """Drop a few FRESH random-ish newcomers into the living world. They bring
+        new variation (including diets/carnivory the current population may lack)
+        into an already-populated world where such strategies can actually
+        establish — unlike at bootstrap. Also a standing test of whether fresh
+        brains can beat the evolved incumbents."""
+        c = self.cfg
+        if c.immigrate_every <= 0 or self.tick == 0 or self.tick % c.immigrate_every \
+                or not self.agents:
+            return
+        for _ in range(c.immigrate_count):
+            self._spawn_agent(neat.random_genome(self.n_in, self.n_out, self.rng,
+                                                  forward_bias=c.init_forward_bias))
 
     def _drift_walls(self) -> None:
         """The landscape lives: every `wall_drift_every` ticks each stroke may WALK

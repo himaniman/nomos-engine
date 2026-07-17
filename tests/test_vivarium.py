@@ -81,7 +81,7 @@ def test_food_stays_near_target_and_sim_survives_long_run():
     target = cfg.food_target * open_cells
     for _ in range(500):
         w.step()
-        assert w.food.sum() <= target + cfg.food_regrow + 1   # regrow is capped
+        assert (w.food > 0).sum() <= target + cfg.food_regrow + 1   # regrow is capped
     # the world never gets stuck empty: reseed keeps life going
     assert w.population() > 0
 
@@ -279,6 +279,47 @@ def test_island_evolution_runs_and_migrates():
     # every migrant is a valid runnable brain
     for g in pool:
         assert Phenotype(g).act(np.zeros(g.n_in)) in range(g.n_out)
+
+
+def test_diet_efficiency_specialists_vs_generalist():
+    w = World(Config(size=20, seed=0, init_population=1, n_food_types=2,
+                     diet_min_eff=0.2))
+    # a type-1 specialist (diet 0) eats type-1 food fully, type-2 food at the floor
+    assert w._diet_eff(0.0, 1) == 1.0
+    assert w._diet_eff(0.0, 2) == 0.2
+    # a generalist (diet 0.5) is middling on both
+    assert w._diet_eff(0.5, 1) == 0.5 and w._diet_eff(0.5, 2) == 0.5
+
+
+def test_food_types_follow_spatial_zones():
+    w = World(Config(size=48, seed=1, n_food_types=2))
+    assert set(np.unique(w.food_zone)) <= {1, 2}          # every cell is zone 1 or 2
+    assert (w.food_zone == 1).any() and (w.food_zone == 2).any()   # both regions exist
+    for _ in range(50):
+        w.step()
+    ys, xs = np.where(w.food > 0)
+    for y, x in zip(ys, xs):
+        assert w.food[y, x] == w.food_zone[y, x]           # food type matches its region
+
+
+def test_carnivore_eats_prey_and_takes_its_cell():
+    w = World(Config(size=20, seed=0, init_population=2, predation=True,
+                     carnivore_threshold=0.5, meat_energy=30.0))
+    w.food[:] = 0
+    w.occ[:] = -1
+    pred, prey = list(w.agents.values())
+    pred.brain.genome.carnivore = 1.0
+    prey.brain.genome.carnivore = 0.0
+    pred.y, pred.x, pred.heading = 10, 10, 1              # facing east (+x)
+    prey.y, prey.x = 10, 11                               # directly ahead
+    w.occ[10, 10] = pred.id
+    w.occ[10, 11] = prey.id
+    e0 = pred.energy
+    w._predate(pred, 10, 11)
+    assert prey.id not in w.agents                        # prey eaten
+    assert pred.y == 10 and pred.x == 11                  # predator took the cell
+    assert pred.energy > e0                               # and gained meat energy
+    assert w.corpse[10, 11] == 0                          # body consumed, no corpse
 
 
 def test_species_count_clusters_hues():

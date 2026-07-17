@@ -48,6 +48,16 @@ class Config:
     toggle_prob: float = 0.02          # chance to flip a connection on/off
     hue_drift_prob: float = 0.08       # chance the heritable lineage colour drifts
     hue_drift: float = 0.02            # size of that colour drift (wraps at 1.0)
+    trait_drift_prob: float = 0.10     # chance the diet / carnivore niche traits drift
+    trait_drift: float = 0.05          # size of that drift (clamped to [0, 1])
+
+    # niches: food types + diet
+    n_food_types: int = 2              # distinct food types (a dietary niche axis)
+    diet_min_eff: float = 0.2          # digestion efficiency on your WORST food type
+    # niches: predation (trophic)
+    predation: bool = True             # carnivores can eat other agents
+    carnivore_threshold: float = 0.5   # min carnivore gene to hunt at all
+    meat_energy: float = 34.0          # energy a kill yields (scaled by carnivore)
     mate_within_species: bool = False  # if True, mating is restricted to same-colour
                                        # partners (reproductive isolation). OFF by
                                        # default: in a homogeneous world it just

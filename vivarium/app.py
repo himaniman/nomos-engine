@@ -30,6 +30,7 @@ from vivarium.neat import Genome
 from vivarium.world import World
 
 _CONSONANTS = "BCDFGHJKLMNPQRSTVWXZ"
+_FOOD_COLORS = [(60, 200, 90), (90, 160, 240), (230, 190, 70), (210, 90, 200)]
 
 
 def _genome_hash(genome: Genome) -> int:
@@ -74,11 +75,12 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
     cy, cx = np.where(world.corpse > 0)
     for y, x in zip(cy, cx):
         surf.fill((70, 40, 30), (x * cell_px, y * cell_px, cell_px, cell_px))
-    # food
-    fy, fx = np.where(world.food)
+    # food, coloured by TYPE (each dietary/spatial niche a different colour)
+    fy, fx = np.where(world.food > 0)
     fr = max(1, cell_px // 2)
     for y, x in zip(fy, fx):
-        pygame.draw.circle(surf, (60, 200, 90),
+        col = _FOOD_COLORS[(int(world.food[y, x]) - 1) % len(_FOOD_COLORS)]
+        pygame.draw.circle(surf, col,
                            (x * cell_px + cell_px // 2, y * cell_px + cell_px // 2), fr)
     # agents
     for a in world.agents.values():
@@ -103,7 +105,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
-             f"food {s['food']}", f"births {s['births']}", f"deaths {s['deaths']}"]
+             f"food {s['food']}  carniv {s['carnivores']:.0%}",
+             f"births {s['births']}", f"deaths {s['deaths']}"]
     if hud is not None:
         lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s")
     for i, t in enumerate(lines):
@@ -143,6 +146,8 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     nh, nc = g.complexity()
     info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
             if agent is not None else [])
+    kind = "carnivore" if g.carnivore >= 0.5 else "herbivore"
+    info.append(f"diet {g.diet:.2f}  {kind} {g.carnivore:.2f}")
     info.append(f"hidden {nh}  conns {nc}")
     for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18

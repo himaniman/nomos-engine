@@ -70,7 +70,8 @@ class World:
         self.strokes = self._generate_strokes()
         self.walls = np.zeros((self.h, self.w), dtype=bool)
         self._rasterize_walls()
-        self.food = np.zeros((self.h, self.w), dtype=bool)
+        self.food = np.zeros((self.h, self.w), dtype=np.int8)   # 0 none, 1..K type
+        self.food_zone = self._generate_food_zones()            # spatial niche of each cell
         self.occ = np.full((self.h, self.w), -1, dtype=np.int64)   # agent id or -1
         self.corpse = np.zeros((self.h, self.w), dtype=np.int64)   # ticks remaining
 
@@ -158,9 +159,20 @@ class World:
         return (0 <= y < self.h and 0 <= x < self.w and not self.walls[y, x]
                 and self.corpse[y, x] == 0 and self.occ[y, x] < 0)
 
+    def _generate_food_zones(self) -> np.ndarray:
+        """Assign every cell a food-type zone via nearest of K seeded centres
+        (Voronoi), so each food TYPE clusters in its own REGION — a spatial niche
+        coupling 'where you forage' to 'what you can digest'. Seeded."""
+        K = self.cfg.n_food_types
+        cy = self.rng.integers(0, self.h, size=K)
+        cx = self.rng.integers(0, self.w, size=K)
+        yy, xx = np.mgrid[0:self.h, 0:self.w]
+        d = ((yy[..., None] - cy) ** 2 + (xx[..., None] - cx) ** 2)
+        return (np.argmin(d, axis=2) + 1).astype(np.int8)       # zone/type 1..K
+
     def _random_free_cell(self):
         free = np.argwhere((~self.walls) & (self.occ < 0) & (self.corpse == 0)
-                           & (~self.food))
+                           & (self.food == 0))
         if len(free) == 0:
             return None
         return tuple(free[self.rng.integers(len(free))])
@@ -183,12 +195,19 @@ class World:
     def _regrow_food(self) -> None:
         open_cells = int((~self.walls).sum())
         target = int(self.cfg.food_target * open_cells)
-        deficit = target - int(self.food.sum())
+        deficit = target - int((self.food > 0).sum())
         for _ in range(min(self.cfg.food_regrow, max(0, deficit))):
             cell = self._random_free_cell()
             if cell is None:
                 break
-            self.food[cell] = True
+            self.food[cell] = self.food_zone[cell]     # food takes its region's type
+
+    def _diet_eff(self, diet: float, food_type: int) -> float:
+        """How well a genome's diet digests a food type: 1.0 on its preferred type,
+        down to `diet_min_eff` on the farthest — the dietary-niche trade-off."""
+        k = self.cfg.n_food_types
+        target = (food_type - 1) / (k - 1) if k > 1 else 0.0
+        return max(self.cfg.diet_min_eff, 1.0 - abs(diet - target))
 
     # -- vision -------------------------------------------------------------
 
@@ -218,6 +237,10 @@ class World:
         H, W, rl = self.h, self.w, c.ray_length
         vec = np.zeros(self.n_in)
         ay, ax, aid = a.y, a.x, a.id
+        # per-type digestion efficiency for THIS agent's diet, so food it can eat
+        # looks brighter than food it can't (diet-aware vision)
+        diet = a.brain.genome.diet
+        effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
         for i, ray in enumerate(self._ray_offsets[a.heading]):
             for k, (dy, dx) in enumerate(ray, start=1):
                 cy, cx = ay + dy, ax + dx
@@ -228,8 +251,9 @@ class World:
                 if o >= 0 and o != aid:
                     vec[i * 3 + 2] = 1.0 - k / rl       # another agent
                     break
-                if food[cy, cx]:
-                    vec[i * 3] = 1.0 - k / rl           # food
+                ft = food[cy, cx]
+                if ft:
+                    vec[i * 3] = effs[ft - 1] * (1.0 - k / rl)   # food, dimmed if indigestible
                     break
         vec[-2] = a.energy / c.max_energy               # interoception
         vec[-1] = 1.0                                    # bias
@@ -256,9 +280,15 @@ class World:
                     self.occ[a.y, a.x] = -1
                     a.y, a.x = ny, nx
                     self.occ[ny, nx] = a.id
-                    if self.food[ny, nx]:               # step onto food = eat
-                        self.food[ny, nx] = False
-                        a.energy = min(c.max_energy, a.energy + c.food_energy)
+                    ft = self.food[ny, nx]
+                    if ft:                              # step onto food = eat (as a plant)
+                        self.food[ny, nx] = 0
+                        g = a.brain.genome
+                        gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
+                        a.energy = min(c.max_energy, a.energy + gain)
+                elif (c.predation and a.brain.genome.carnivore >= c.carnivore_threshold
+                      and self.occ[ny, nx] >= 0):
+                    self._predate(a, ny, nx)            # carnivore eats the agent ahead
             elif action == TURN_LEFT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading - 1) % 4
@@ -354,6 +384,25 @@ class World:
             for p in parents:
                 p.offspring += 1
 
+    def _predate(self, pred: Agent, ny: int, nx: int) -> None:
+        """A carnivore moves onto the agent ahead, killing and eating it: the
+        predator gains `meat_energy` (scaled by how committed a carnivore it is),
+        the prey dies WITHOUT leaving a corpse (its body was consumed), and the
+        predator takes the now-empty cell. Predator vs prey is the trophic niche."""
+        prey = self.agents.get(int(self.occ[ny, nx]))
+        if prey is None:
+            return
+        g = pred.brain.genome
+        self.agents.pop(prey.id, None)                  # prey removed (no corpse)
+        self.occ[prey.y, prey.x] = -1
+        self.stats["deaths"] += 1
+        self._remember(prey)
+        pred.energy = min(self.cfg.max_energy,
+                          pred.energy + self.cfg.meat_energy * g.carnivore)
+        self.occ[pred.y, pred.x] = -1
+        pred.y, pred.x = ny, nx
+        self.occ[ny, nx] = pred.id
+
     def _kill(self, a: Agent) -> None:
         self.occ[a.y, a.x] = -1
         self.corpse[a.y, a.x] = self.cfg.corpse_decay      # body blocks, then decays
@@ -398,8 +447,18 @@ class World:
         gaps.append(1.0 - hues[-1] + hues[0])          # wrap seam
         return max(1, sum(1 for g in gaps if g > self.cfg.species_hue))
 
+    def carnivore_fraction(self) -> float:
+        """Share of the living population that are committed carnivores."""
+        n = len(self.agents)
+        if not n:
+            return 0.0
+        thr = self.cfg.carnivore_threshold
+        return sum(1 for a in self.agents.values()
+                   if a.brain.genome.carnivore >= thr) / n
+
     def snapshot(self) -> dict:
         return {"tick": self.tick, "population": self.population(),
-                "food": int(self.food.sum()), "corpses": int((self.corpse > 0).sum()),
+                "food": int((self.food > 0).sum()), "corpses": int((self.corpse > 0).sum()),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
-                "species": self.species_count()}
+                "species": self.species_count(),
+                "carnivores": round(self.carnivore_fraction(), 2)}

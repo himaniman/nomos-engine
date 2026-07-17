@@ -50,10 +50,17 @@ nomos/elites.py   MAP-Elites behavior map: activity x structure x order,
                   neighbour autocorrelation), NOT gzip — it separates coherent
                   waves/blobs from noise; legacy runs fall back to gzip
 nomos/game.py     deterministic toroidal Snake + hunger (the external world)
+nomos/forage.py   deterministic WIDE walled world (rooms/nooks, seeded strokes,
+                  geodesic scent maps, egocentric view() camera); death only by
+                  starvation; food respawns into nooks
 nomos/embodied.py brain<->game coupling: sensors food/danger/temperature ->
                   world; two output layers motor (go) + optional avoid (fear)
                   combined at the DECISION (directional pull, non-interfering);
-                  `play()`; CLI `nomos play`
+                  `play()`; CLI `nomos play`. For forage: `play_forage()` + CLI
+                  `nomos forage` — scent flows around walls (BFS), wall sense is
+                  a 4-ray touch sense (first wall per axis, 1/d^2), movement is
+                  a COMMAND (positive net pull or stand still), blocked moves
+                  slide tangentially, dense-brain frames block-mean to render_cap
 nomos/evolve.py   Phase B: (1+lambda) evolution of a brain genome across runs,
                   fitness = game score; CLI `nomos evolve`
 nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
@@ -233,6 +240,25 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   from game feedback, evolution tunes the winner and settles open hypotheses,
   result beats either alone — is the project thesis working end to end. Open
   frontier: the top-right Pareto corner (max score AND always immortal).
+- Done (the forage world — game v2, 2026-07-17): `nomos/forage.py` + forage
+  support in embodied/brain_lab. Wide seeded walled map (96^2, ~16% walls with
+  doorways, food respawns into nooks), player = a dot, death only by starvation,
+  camera follows the player (`view()`), brain 128^2 default (512^2 ~19 min,
+  GIF via block-mean render_cap), 32 ticks per move. Five hard-won harness
+  lessons (journal): positive-net freeze -> command semantics; 1/d^2 walls;
+  tangential slide on blocked moves; **geodesic scent** (BFS around walls,
+  sealed pockets scentless — the decisive fix, world computes diffusion, brain
+  thinks); ray wall-sense (point-repulsion made corridors scary along their
+  axis). MOVEMENT IS A COMMAND (user's rule): no positive net pull = stand
+  still while hunger grows; exploration must be brain-generated (bernoulli
+  specks in the baseline). Observed phenomenon: the reactive limit cycle —
+  baseline oscillates between two equidistant foods until it starves (user
+  spotted it in the GIF first); cure = commitment channel with saturating
+  positive feedback (`laws/forage_brain_mem.nomos`, clamp is load-bearing
+  against 1e6 runaway): 3 meals/351 moves vs baseline 1/185 on seed 0.
+  `python -m nomos.brain_lab --game forage` runs the LLM lab on it (spec names
+  the oscillation failure and pushes internal state). Open: live forage lab
+  run; commitment vs flexibility; hunger-gated exploration.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

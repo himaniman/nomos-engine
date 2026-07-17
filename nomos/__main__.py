@@ -110,6 +110,34 @@ def cmd_play(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_forage(args: argparse.Namespace) -> int:
+    from nomos.embodied import play_forage
+
+    text = Path(args.law).read_text(encoding="utf-8")
+    want_frames = bool(args.gif)
+    result = play_forage(text, world_size=args.world_size, game_size=args.game_size,
+                         seed=args.seed, moves=args.moves, ticks_per_move=args.ticks,
+                         life_channel=args.life_channel, collect_frames=want_frames,
+                         sensor_gain=args.sensor_gain, food_count=args.food_count,
+                         starve_after=args.starve_after, wall_radius=args.wall_radius,
+                         view_radius=args.view_radius)
+
+    if args.gif:
+        Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
+        images = split_images(result["life_frames"], result["game_frames"],
+                              scale=args.scale,
+                              life_frames2=result["avoid_frames"] or None)
+        save_gif(images, args.gif, fps=args.fps)
+
+    summary = {k: result[k] for k in
+               ("score", "steps_alive", "moves", "alive_at_end", "world_size",
+                "game_size", "seed")}
+    print(json.dumps(summary, indent=2))
+    print(f"forage: score={result['score']} survived {result['steps_alive']} moves"
+          + (f", wrote {args.gif}" if args.gif else ""), file=sys.stderr)
+    return 0
+
+
 def cmd_evolve(args: argparse.Namespace) -> int:
     from nomos.embodied import play
     from nomos.evolve import evolve, law_from_genome
@@ -194,6 +222,35 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--fps", type=int, default=6, help="GIF playback speed")
     play.add_argument("--gif", default=None, help="write the split life|game GIF here")
     play.set_defaults(func=cmd_play)
+
+    fo = sub.add_parser("forage", help="let a cell-grid brain play the walled forage world")
+    fo.add_argument("law", help="path to an embodied .nomos law (declares food + motor; "
+                                "optional wall, temperature, avoid)")
+    fo.add_argument("--world-size", type=int, default=128, dest="world_size",
+                    help="brain grid side (default 128; 512 for the dense showcase brain)")
+    fo.add_argument("--game-size", type=int, default=96, dest="game_size",
+                    help="forage map side (default 96 — a wide world)")
+    fo.add_argument("--seed", type=int, default=0)
+    fo.add_argument("--moves", type=int, default=400,
+                    help="max game moves (safety cap; the run ends at starvation)")
+    fo.add_argument("--ticks", type=int, default=32,
+                    help="physics steps the brain thinks per game move (default 32)")
+    fo.add_argument("--sensor-gain", type=float, default=0.9, dest="sensor_gain",
+                    help="how far the ego view spreads from centre (default 0.9)")
+    fo.add_argument("--food-count", type=int, default=None, dest="food_count",
+                    help="food items alive on the map at once (default: area / 768)")
+    fo.add_argument("--starve-after", type=int, default=120, dest="starve_after",
+                    help="moves without food before the player starves (default 120)")
+    fo.add_argument("--wall-radius", type=int, default=None, dest="wall_radius",
+                    help="wall vision radius in map cells (default: min(8, map side / 4))")
+    fo.add_argument("--view-radius", type=int, default=16, dest="view_radius",
+                    help="egocentric game camera radius for the GIF (default 16)")
+    fo.add_argument("--life-channel", default="motor", dest="life_channel",
+                    help="which channel to render on the left (default motor)")
+    fo.add_argument("--scale", type=int, default=6, help="upscale factor for the GIF")
+    fo.add_argument("--fps", type=int, default=6, help="GIF playback speed")
+    fo.add_argument("--gif", default=None, help="write the split life|game GIF here")
+    fo.set_defaults(func=cmd_forage)
 
     ev = sub.add_parser("evolve", help="evolve a Snake brain across runs (Phase B)")
     ev.add_argument("--generations", type=int, default=8)

@@ -816,3 +816,75 @@ The remaining frontier is the top-right corner (max score AND always immortal);
 levers from here: more/rotated boards to fight overfit, letting the LLM read the
 evolved constants and design a *next* structure around them (design<->tune
 alternation), and a stronger design model.
+
+---
+
+## 2026-07-17 — The forage world: walls, scent that flows, and movement as a command
+
+The snake balanced score against survival, but its world was a featureless
+torus — no obstacles, no navigation, nothing to plan around. New external
+world, an order harder: **Forage** (`nomos/forage.py`). A WIDE seeded map
+(default 96x96, ~16% interior walls laid as strokes-with-doorways at any size)
+full of rooms and nooks; the player is a single dot starting at the centre;
+the only death is starvation (`starve_after` moves without food); several food
+items live on the map at once and respawn INTO NOOKS (placement weighted by
+how many walls hug a cell), so eating means threading corridors, not surfing
+one gradient. The camera follows the player (`Forage.view()` — the egocentric
+crop is what the split GIF shows), the brain got denser (128^2 default, 512^2
+runs ~19 min for showcases, block-mean `render_cap` keeps GIFs small), and the
+think ratio is 32 physics ticks per move.
+
+Getting a playable interface took five harness lessons, each earned from a
+watched failure (the user caught the key one in the GIF before I did):
+
+1. **Relative decisions were not enough.** With walls omnipresent, requiring a
+   positive net pull froze the player forever; picking the best net direction
+   unfroze it but only moved the problem.
+2. **Adjacent walls must scream.** Linear-fading wall marks let big far
+   structures drown the one cell the player was about to walk into — it
+   pressed into walls forever. 1/d^2 fixed the pressing.
+3. **Blocked moves must SLIDE, tangentially.** Naive next-best sliding is a
+   two-cell limit cycle (runner-up is usually the reverse). Contact dynamics:
+   slide to the next commanded direction that isn't the exact reverse.
+4. **Smell must diffuse THROUGH THE MAZE, not through walls.** The decisive
+   fix. Euclidean smell pinned the player against the wall its food sat
+   behind. Now each food's scent field is its geodesic BFS distance map over
+   open cells (cached; walls are static), the sensor bump points along the
+   walking path's first step, amplitude decays with path length, and sealed
+   pockets carry no scent. The world computes diffusion; the brain does the
+   thinking. First meal ever eaten the same run this landed.
+5. **Point-repulsion makes corridors terrifying.** Summed 1/d^2 marks from a
+   corridor's paired side walls repelled ALONG the corridor axis — the player
+   stalled at the mouth of the passage leading to its food ("corridor fear").
+   The wall sense is now a ray sense: for each of the four movement axes, only
+   the FIRST wall on that ray (it is the one that blocks), 1/d^2 by distance.
+   Global maze structure reaches the brain through the scent, which has
+   already flowed around it.
+
+On top of that, the user's rule change: **movement is a command**. The game
+never moves the player; a step happens only when some direction's net pull
+(motor minus avoid) is strictly positive, otherwise the player stands while
+hunger grows. Far from every food the scent is silent, so a purely reactive
+brain starves where it stands — exploration has to be GENERATED (the baseline
+law now carries sparse `bernoulli()` motor specks: noise as physics).
+
+**The observed phenomenon of the day: the reactive limit cycle.** The
+baseline brain (`laws/forage_brain.nomos`, food->motor + light wall fear)
+walks to a point between two foods and oscillates — one step toward A makes
+B's summed pull win, and back, forever, with instrumented net pulls flipping
+winner every single move (up 8865 on one cell, down 9119 on the next, nothing
+blocked). The user predicted-by-eye exactly this from the GIF. The cure is
+COMMITMENT, and it lives in the brain, not the harness:
+`laws/forage_brain_mem.nomos` adds a saturating positive-feedback channel
+(`mem = clamp(0.99*mem + 0.02*motor, 0, 2)` fed back into motor) — hysteresis
+that amplifies and keeps whichever target currently leads. Result on seed 0:
+baseline 1 meal / 185 moves; mem brain **3 meals / 351 moves**. First brain to
+reliably eat more than once per life. (An earlier unclamped version diverged
+into the 1e6 clip and scored 0 — the clamp is load-bearing.)
+
+The LLM lab now plays this game: `python -m nomos.brain_lab --game forage`
+(FORAGE_SPEC documents the embodiment, the command semantics, and names the
+oscillation failure mode explicitly, pushing internal state). Next: a live
+forage lab run — the open questions are commitment vs. flexibility (when
+SHOULD a brain abandon its target?), hunger-gated exploration, and whether an
+LLM invents a better tie-breaker than saturating positive feedback.

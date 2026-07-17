@@ -1,0 +1,29 @@
+# Baseline two-layer forage brain: `motor` soaks up the path-following food
+# smell (attraction), `avoid` soaks up the near-field wall sight (repulsion).
+# The harness scores each direction as motor-pull minus avoid-pull, so "go to
+# food" and "don't walk into walls" combine only at the decision. The wall
+# weight is deliberately light: contact sliding already stops the player from
+# pressing into walls, and a heavy weight makes narrow corridors scarier than
+# hunger ("corridor fear" — the brain stalls at the mouth of the very passage
+# that leads to food). This is the navigation floor smarter brains must beat.
+
+channel food
+channel wall
+channel motor: init 0
+channel avoid: init 0
+
+rule go:
+  when 1
+  set motor = 0.4 * avg8(motor) + food
+
+# Sparse random specks of motor activity: far from every scent the world is
+# silent, and a brain that emits no command stands still and starves. These
+# specks are spontaneous exploratory drive — noise as physics — and they also
+# nudge the decision out of perfect two-food ties.
+rule explore:
+  when 1
+  add motor = 0.05 * bernoulli(0.001)
+
+rule fear:
+  when 1
+  set avoid = 0.4 * avg8(avoid) + 0.15 * wall

@@ -1,0 +1,25 @@
+# A committing forage brain: the reactive floor plus a saturating commitment
+# channel. `mem` slowly integrates motor activity (clamped so the positive
+# feedback cannot run away) and feeds it back, so whichever target currently
+# leads gets amplified and KEPT — hysteresis at the decision. This is the cure
+# for the observed reactive limit cycle: standing between two foods whose pulls
+# flip winner every step until the player starves. First brain to reliably eat
+# more than once per life on the wide maze.
+
+channel food
+channel wall
+channel mem: init 0
+channel motor: init 0
+channel avoid: init 0
+
+rule commit:
+  when 1
+  set mem = clamp(0.99 * mem + 0.02 * motor, 0, 2)
+
+rule go:
+  when 1
+  set motor = 0.4 * avg8(motor) + food + 0.5 * mem
+
+rule fear:
+  when 1
+  set avoid = 0.4 * avg8(avoid) + 0.5 * wall

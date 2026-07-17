@@ -17,10 +17,12 @@ import numpy as np
 
 from nomos.dsl import NomosError, parse_program
 from nomos.engine import World
-from nomos.game import DIRECTIONS, Snake
+from nomos.forage import Forage
+from nomos.game import DIRECTIONS, _OPPOSITE, Snake
 
 SENSOR_CHANNEL = "food"
 DANGER_CHANNEL = "danger"           # optional sensor: the snake's own body
+WALL_CHANNEL = "wall"               # optional sensor (forage): near-field wall vision
 TEMPERATURE_CHANNEL = "temperature"  # optional sensor: hunger, uniform over the grid
 MOTOR_CHANNEL = "motor"             # 'go toward' output layer
 AVOID_CHANNEL = "avoid"             # optional 'stay away' output layer (non-interfering)
@@ -40,9 +42,16 @@ def _ego_cell(dy: float, dx: float, shape: tuple[int, int], gain: float):
 
 
 def _bump(field: np.ndarray, by: int, bx: int, sigma: float, amp: float) -> None:
+    """Add a Gaussian bump, truncated at 3 sigma so painting stays local — with
+    a dense brain (512^2) and hundreds of wall marks per move, whole-grid
+    painting would dominate the run time."""
     H, W = field.shape
-    yy, xx = np.ogrid[:H, :W]
-    field += amp * np.exp(-(((yy - by) ** 2 + (xx - bx) ** 2) / (2.0 * sigma ** 2)))
+    r = int(3.0 * sigma) + 1
+    y0, y1 = max(0, by - r), min(H, by + r + 1)
+    x0, x1 = max(0, bx - r), min(W, bx + r + 1)
+    yy, xx = np.ogrid[y0:y1, x0:x1]
+    field[y0:y1, x0:x1] += amp * np.exp(
+        -(((yy - by) ** 2 + (xx - bx) ** 2) / (2.0 * sigma ** 2)))
 
 
 def _sharp_sigma(shape: tuple[int, int], sigma: float | None) -> float:
@@ -102,6 +111,73 @@ def body_sensor(world_shape: tuple[int, int], snake: Snake, gain: float = 0.8,
     return field
 
 
+def forage_food_sensor(world_shape: tuple[int, int], game: Forage,
+                       gain: float = 0.9, sigma: float | None = None,
+                       lam_frac: float = 0.3, min_rad: float = 0.2) -> np.ndarray:
+    """Every food item as a SMELL that has DIFFUSED through the maze: amplitude
+    decays exponentially with the GEODESIC (walking) distance, and the bump is
+    painted in the direction of the shortest-path descent at the player's nose
+    — the way to WALK, which around a wall is not the straight line to the
+    food. Food with no open path to the player has no scent. The bump's radius
+    from centre grows with distance (never closer than `min_rad` of the ego
+    view, so a nearby meal keeps its moment arm — the leverage lesson from the
+    attractor's side). Far food fades toward nothing: finding it is exploration,
+    not perception."""
+    H, W = world_shape
+    field = np.zeros((H, W), dtype=np.float64)
+    py, px = game.pos
+    lam = lam_frac * max(game.h, game.w)
+    sig = _sharp_sigma(world_shape, sigma)
+    for food in sorted(game.foods):
+        dmap = game.scent(food)
+        d0 = int(dmap[py, px])
+        if d0 <= 0:
+            continue                               # unreachable (or standing on it)
+        vy = vx = 0.0
+        for dy, dx in DIRECTIONS.values():
+            ny, nx = py + dy, px + dx
+            if (0 <= ny < game.h and 0 <= nx < game.w and dmap[ny, nx] >= 0
+                    and dmap[ny, nx] < d0):
+                vy += dy
+                vx += dx
+        norm = (vy * vy + vx * vx) ** 0.5
+        if norm < 1e-9:
+            continue                               # local plateau: no gradient here
+        amp = float(np.exp(-d0 / lam))
+        rad = min(0.45, max(min_rad, d0 / (2.0 * max(game.h, game.w))))
+        by, bx = _ego_cell(vy / norm * rad, vx / norm * rad, world_shape, gain)
+        _bump(field, by, bx, sig, amp)
+    return field
+
+
+def wall_sensor(world_shape: tuple[int, int], game: Forage, gain: float = 0.9,
+                sigma: float | None = None, radius: int | None = None) -> np.ndarray:
+    """Sight down the four MOVEMENT AXES: for each direction, the first wall
+    cell on that ray within `radius`, painted egocentric with the window
+    magnified to fill the ego view (a wall one step away lands well off centre,
+    where it has steering authority) and louder the closer (1/d^2). Only
+    on-axis walls are sensed because only they BLOCK a step: point-repulsion
+    from every nearby wall cell turned corridors into fear — the paired side
+    walls repelled along the corridor axis and the player stalled at the mouth
+    of the very passage that led to food. Walls are touch/blocking sense; the
+    maze's global structure reaches the brain through the scent field, which
+    has already diffused around it."""
+    H, W = world_shape
+    field = np.zeros((H, W), dtype=np.float64)
+    py, px = game.pos
+    r = radius if radius is not None else min(8, max(3, min(game.h, game.w) // 4))
+    sig = _sharp_sigma(world_shape, sigma)
+    for dy, dx in DIRECTIONS.values():
+        for k in range(1, r + 1):
+            ny, nx = py + dy * k, px + dx * k
+            if not (0 <= ny < game.h and 0 <= nx < game.w) or game.walls[ny, nx]:
+                by, bx = _ego_cell(dy * k / (2 * r), dx * k / (2 * r),
+                                   world_shape, gain)
+                _bump(field, by, bx, sig, 1.0 / (k * k))
+                break                              # only the first hit blocks
+    return field
+
+
 def _pulls(field: np.ndarray) -> dict:
     """Non-negative 'pull' toward each cardinal direction: the field's moment
     away from the grid centre. A bump above centre gives a large 'up' pull, etc."""
@@ -123,15 +199,56 @@ def read_move(world: World, channel: str = MOTOR_CHANNEL,
     SUBTRACTED — so 'go toward' and 'stay away' are kept as separate layers that
     combine only here, at the decision, instead of cancelling in one field. The
     best positive direction wins; if none is positive the snake keeps heading."""
-    m = world.state.get(channel)
-    if m is None:
+    net, _ = _net_pulls(world, channel, avoid)
+    if net is None:
         return None
-    net = _pulls(m)
-    if avoid is not None and avoid in world.state:
-        av = _pulls(world.state[avoid])
-        net = {d: net[d] - av[d] for d in net}
     best = max(net, key=net.get)
     return best if net[best] > 1e-9 else None
+
+
+def _net_pulls(world: World, channel: str, avoid: str | None):
+    """Net directional pulls (motor minus avoid) and the total signal mass."""
+    m = world.state.get(channel)
+    if m is None:
+        return None, 0.0
+    net = _pulls(m)
+    total = sum(net.values())
+    if avoid is not None and avoid in world.state:
+        av = _pulls(world.state[avoid])
+        total += sum(av.values())
+        net = {d: net[d] - av[d] for d in net}
+    return net, total
+
+
+def _slide(ranked: list[str], game: Forage) -> str | None:
+    """Contact dynamics for a blocked favourite: slide TANGENTIALLY along the
+    wall (the next commanded direction that is not the exact reverse), falling
+    back to the reverse only when it too was commanded and everything else is
+    walled. Naive next-best sliding creates a two-cell limit cycle: pressed
+    against a wall the runner-up is usually the reverse, the player steps back,
+    the wall stops screaming, the favourite wins again — forever."""
+    if not ranked:
+        return None
+    opposite = _OPPOSITE[ranked[0]]
+    for d in ranked:
+        if d != opposite and not game.blocked(d):
+            return d
+    return opposite if opposite in ranked and not game.blocked(opposite) else None
+
+
+def read_ranked(world: World, channel: str = MOTOR_CHANNEL,
+                avoid: str | None = None) -> list[str]:
+    """The brain's move COMMANDS: directions whose net pull (motor minus avoid)
+    is strictly POSITIVE, best first. Empty list = no command = the player
+    STANDS STILL (hunger still grows — stillness is a choice, not safety). The
+    game never moves by itself; far from any scent a brain must generate its
+    own exploratory motor activity or starve where it stands. The forage
+    harness walks this list to the first OPEN direction, so pressing into a
+    wall slides along it (contact dynamics, not intelligence)."""
+    net, _ = _net_pulls(world, channel, avoid)
+    if net is None:
+        return []
+    return [d for d in sorted(net, key=net.get, reverse=True) if net[d] > 1e-9]
 
 
 def require_embodied(program) -> None:
@@ -204,6 +321,95 @@ def play(law_text: str, world_size: int = 48, game_size: int = 16, seed: int = 0
         "move_seq": move_seq,
         "world_size": list(world.shape),
         "game_size": [snake.h, snake.w],
+        "seed": seed,
+        "life_frames": life_frames,
+        "avoid_frames": avoid_frames,
+        "game_frames": game_frames,
+    }
+
+
+def _block_mean(a: np.ndarray, cap: int) -> np.ndarray:
+    """Downsample by block averaging until each side is <= cap — how a dense
+    brain (512^2) stays watchable as a GIF without storing every cell."""
+    f = int(np.ceil(max(a.shape) / cap))
+    if f <= 1:
+        return a.copy()
+    hc, wc = a.shape[0] - a.shape[0] % f, a.shape[1] - a.shape[1] % f
+    return a[:hc, :wc].reshape(hc // f, f, wc // f, f).mean(axis=(1, 3))
+
+
+def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
+                seed: int = 0, moves: int = 400, ticks_per_move: int = 32,
+                life_channel: str = MOTOR_CHANNEL, collect_frames: bool = False,
+                sensor_gain: float = 0.9, death_hold: int = 6,
+                food_count: int | None = None, starve_after: int = 120,
+                wall_radius: int | None = None, view_radius: int = 16,
+                render_cap: int = 128) -> dict:
+    """Run the coupled brain+forage loop until the player starves (or `moves` —
+    the safety cap; a brain still alive then kept feeding itself the whole run).
+    Same contract as `play`: senses re-asserted every physics tick, one game move
+    per `ticks_per_move` ticks, deterministic in all arguments. Sensors: `food`
+    (required, distance-attenuated smell of every food item), `wall` (optional,
+    near-field sight of walls), `temperature` (optional, uniform hunger).
+    Rendering follows the player: game frames are the egocentric `view_radius`
+    crop (the camera, not the whole wide map), and life frames are block-averaged
+    down to `render_cap` so a dense brain stays a small GIF."""
+    program = parse_program(law_text)
+    require_embodied(program)
+    if life_channel not in {c.name for c in program.channels}:
+        raise NomosError(f"--life-channel {life_channel!r} is not a declared channel")
+
+    names = {c.name for c in program.channels}
+    has_wall = WALL_CHANNEL in names
+    has_temp = TEMPERATURE_CHANNEL in names
+    has_avoid = AVOID_CHANNEL in names
+    world = World(program, world_size, seed)
+    game = Forage(game_size, seed, food_count=food_count, starve_after=starve_after)
+    life_frames: list[np.ndarray] = []
+    avoid_frames: list[np.ndarray] = []
+    game_frames: list[np.ndarray] = []
+    move_seq: list[str | None] = []
+
+    for _ in range(moves):
+        if not game.alive:
+            break
+        food = forage_food_sensor(world.shape, game, gain=sensor_gain)
+        wall = (wall_sensor(world.shape, game, gain=sensor_gain, radius=wall_radius)
+                if has_wall else None)
+        temp = game.hunger_fraction() if has_temp else None
+        for _ in range(ticks_per_move):
+            world.state[SENSOR_CHANNEL] = food        # re-assert the read-only senses
+            if has_wall:
+                world.state[WALL_CHANNEL] = wall
+            if has_temp:
+                world.state[TEMPERATURE_CHANNEL][:] = temp   # uniform hunger field
+            world.step()
+        ranked = read_ranked(world, MOTOR_CHANNEL,
+                             avoid=AVOID_CHANNEL if has_avoid else None)
+        move = _slide(ranked, game)
+        game.step(move)
+        move_seq.append(move)
+        if collect_frames:
+            life_frames.append(_block_mean(world.state[life_channel], render_cap))
+            if has_avoid:
+                avoid_frames.append(_block_mean(world.state[AVOID_CHANNEL], render_cap))
+            game_frames.append(game.view(view_radius))
+
+    if collect_frames and not game.alive and game_frames:
+        for _ in range(death_hold):
+            life_frames.append(life_frames[-1])
+            game_frames.append(game_frames[-1])
+            if has_avoid:
+                avoid_frames.append(avoid_frames[-1])
+
+    return {
+        "score": game.score,
+        "steps_alive": game.steps,
+        "moves": len(move_seq),
+        "alive_at_end": game.alive,
+        "move_seq": move_seq,
+        "world_size": list(world.shape),
+        "game_size": [game.h, game.w],
         "seed": seed,
         "life_frames": life_frames,
         "avoid_frames": avoid_frames,

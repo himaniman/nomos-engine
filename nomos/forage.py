@@ -1,0 +1,205 @@
+"""A walled foraging world — the harder external game the cell-grid brain drives.
+
+The map is generated from the seed: border walls plus random wall strokes (each
+with a doorway gap) carve the open space into rooms and nooks. The player is a
+single dot that starts at the centre, moves in the 4 cardinal directions (a wall
+blocks the move; no move = stand still), and must keep finding food to survive:
+hunger grows every move and `starve_after` moves without a meal kill it. There
+is no other death — the challenge is navigation, not collision. `food_count`
+items live on the map at once and respawn when eaten, biased into nooks (cells
+hugged by walls), so eating means steering around walls, not just surfing a
+straight gradient.
+
+Deterministic: the whole game — map, food placement, respawns — is a pure
+function of (size, seed, the move sequence). NOT toroidal: walls bound the world.
+"""
+
+from __future__ import annotations
+
+import random
+from collections import deque
+
+import numpy as np
+
+# move name -> (dy, dx)
+DIRECTIONS = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+
+
+class Forage:
+    """Point-agent foraging in a seeded walled map. Score = meals eaten.
+
+    The map is meant to be WIDE (default 96x96) — the player starts at the
+    centre and the render follows it egocentrically via `view()`; `food_count`
+    defaults to one item per ~768 cells so the world stays spacious."""
+
+    def __init__(self, size: int | tuple[int, int] = 96, seed: int = 0,
+                 food_count: int | None = None, starve_after: int = 120):
+        self.h, self.w = (size, size) if isinstance(size, int) else tuple(size)
+        self.rng = random.Random(seed)
+        self.pos: tuple[int, int] = (self.h // 2, self.w // 2)
+        self.walls = self._generate_walls()
+        self.reachable = self._flood_fill(self.pos)
+        self._nook = self._nook_weights()
+        self.alive = True
+        self.starved = False
+        self.score = 0
+        self.steps = 0
+        self.starve_after = starve_after
+        self.hunger = 0                                  # moves since last meal
+        self.foods: set[tuple[int, int]] = set()
+        self._scent_cache: dict[tuple[int, int], np.ndarray] = {}
+        if food_count is None:
+            food_count = max(4, (self.h * self.w) // 768)
+        for _ in range(food_count):
+            self._place_food()
+
+    # -- map generation -----------------------------------------------------
+
+    def _generate_walls(self) -> np.ndarray:
+        """Border walls + random strokes, each pierced by one doorway so strokes
+        partition space into rooms without (usually) sealing it. Strokes are
+        added until ~16% of the interior is wall, so wall density is the same
+        whatever the map size. The centre 3x3 is always cleared so the player
+        never spawns inside a wall."""
+        walls = np.zeros((self.h, self.w), dtype=bool)
+        walls[0, :] = walls[-1, :] = True
+        walls[:, 0] = walls[:, -1] = True
+        target = int(0.16 * (self.h - 2) * (self.w - 2))
+        lo = max(3, min(self.h, self.w) // 8)
+        hi = max(lo + 1, min(self.h, self.w) // 3)
+        placed = 0
+        for _ in range(10_000):                          # hard cap, never spins
+            if placed >= target:
+                break
+            length = self.rng.randint(lo, hi)
+            door = self.rng.randrange(length)            # leave one gap
+            if self.rng.random() < 0.5:                  # horizontal stroke
+                y = self.rng.randint(2, self.h - 3)
+                x0 = self.rng.randint(1, max(1, self.w - 1 - length))
+                cells = [(y, x0 + i) for i in range(length)]
+            else:                                        # vertical stroke
+                x = self.rng.randint(2, self.w - 3)
+                y0 = self.rng.randint(1, max(1, self.h - 1 - length))
+                cells = [(y0 + i, x) for i in range(length)]
+            for i, (y, x) in enumerate(cells):
+                if i != door and 0 < y < self.h - 1 and 0 < x < self.w - 1:
+                    placed += int(not walls[y, x])
+                    walls[y, x] = True
+        py, px = self.pos
+        walls[max(0, py - 1):py + 2, max(0, px - 1):px + 2] = False
+        return walls
+
+    def _flood_fill(self, start: tuple[int, int]) -> set[tuple[int, int]]:
+        """Open cells reachable from `start` — food only ever spawns here, so a
+        stroke that seals off a pocket just makes that pocket irrelevant."""
+        seen = {start}
+        queue = deque([start])
+        while queue:
+            y, x = queue.popleft()
+            for dy, dx in DIRECTIONS.values():
+                ny, nx = y + dy, x + dx
+                if (0 <= ny < self.h and 0 <= nx < self.w
+                        and not self.walls[ny, nx] and (ny, nx) not in seen):
+                    seen.add((ny, nx))
+                    queue.append((ny, nx))
+        return seen
+
+    def _nook_weights(self) -> np.ndarray:
+        """Per-cell food-placement weight, precomputed once (the walls are
+        static): cells hugged by walls weigh more — food prefers nooks and dead
+        ends, so reaching it takes actual navigation."""
+        p = np.pad(self.walls, 1, constant_values=True).astype(np.float64)
+        n = sum(p[1 + dy:self.h + 1 + dy, 1 + dx:self.w + 1 + dx]
+                for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx)
+        return 1.0 + 2.0 * n
+
+    def _place_food(self) -> None:
+        free = sorted(self.reachable - self.foods - {self.pos})
+        if not free:
+            return
+        weights = [self._nook[c] for c in free]
+        self.foods.add(self.rng.choices(free, weights=weights, k=1)[0])
+
+    # -- game dynamics ------------------------------------------------------
+
+    def hunger_fraction(self) -> float:
+        """0 just after eating, approaching 1 as starvation nears."""
+        return min(1.0, self.hunger / max(1, self.starve_after))
+
+    def scent(self, food: tuple[int, int]) -> np.ndarray:
+        """GEODESIC distance map from a food item over open cells (-1 where
+        unreachable), BFS-computed once per item and cached (walls are static).
+        This is how smell physically works: it diffuses through the maze, so
+        its gradient at the player's nose points along the PATH to the food,
+        around walls — not through them. A food sealed off from the player has
+        no scent at all."""
+        if food not in self._scent_cache:
+            dist = np.full((self.h, self.w), -1, dtype=np.int32)
+            dist[food] = 0
+            queue = deque([food])
+            while queue:
+                y, x = queue.popleft()
+                for dy, dx in DIRECTIONS.values():
+                    ny, nx = y + dy, x + dx
+                    if (0 <= ny < self.h and 0 <= nx < self.w
+                            and not self.walls[ny, nx] and dist[ny, nx] < 0):
+                        dist[ny, nx] = dist[y, x] + 1
+                        queue.append((ny, nx))
+            self._scent_cache[food] = dist
+        return self._scent_cache[food]
+
+    def blocked(self, move: str | None) -> bool:
+        """Would this move run into a wall (or off the map)?"""
+        if move not in DIRECTIONS:
+            return False
+        dy, dx = DIRECTIONS[move]
+        ny, nx = self.pos[0] + dy, self.pos[1] + dx
+        return not (0 <= ny < self.h and 0 <= nx < self.w) or bool(self.walls[ny, nx])
+
+    def step(self, move: str | None) -> None:
+        """Advance one game tick. A wall blocks the move (the player stays);
+        `move` of None means stand still. Hunger grows either way. No-op once
+        dead."""
+        if not self.alive:
+            return
+        self.steps += 1
+        if move in DIRECTIONS:
+            dy, dx = DIRECTIONS[move]
+            ny, nx = self.pos[0] + dy, self.pos[1] + dx
+            if 0 <= ny < self.h and 0 <= nx < self.w and not self.walls[ny, nx]:
+                self.pos = (ny, nx)
+        if self.pos in self.foods:
+            self.foods.discard(self.pos)
+            self.score += 1
+            self.hunger = 0
+            self._place_food()
+        else:
+            self.hunger += 1
+            if self.hunger >= self.starve_after:
+                self.alive = False
+                self.starved = True
+
+    def field(self) -> np.ndarray:
+        """Board as a 0..1 intensity map for rendering: walls 0.3 (dim red in
+        the fire palette), player 0.85 (orange), food 1.0 (white). Starvation
+        flashes the player at full brightness so the death is visible."""
+        f = np.zeros((self.h, self.w), dtype=np.float64)
+        f[self.walls] = 0.3
+        for fy, fx in self.foods:
+            f[fy, fx] = 1.0
+        f[self.pos] = 1.0 if self.starved else 0.85
+        return f
+
+    def view(self, radius: int = 16) -> np.ndarray:
+        """Egocentric crop of `field()`: a (2*radius+1)^2 window with the player
+        always at the CENTRE — the camera follows the player through the wide
+        world. Cells beyond the map read as wall."""
+        f = self.field()
+        side = 2 * radius + 1
+        out = np.full((side, side), 0.3, dtype=np.float64)
+        py, px = self.pos
+        y0, y1 = max(0, py - radius), min(self.h, py + radius + 1)
+        x0, x1 = max(0, px - radius), min(self.w, px + radius + 1)
+        out[y0 - py + radius:y1 - py + radius,
+            x0 - px + radius:x1 - px + radius] = f[y0:y1, x0:x1]
+        return out

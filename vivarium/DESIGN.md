@@ -265,3 +265,39 @@ Backlog (user ideas, after the above): occasional IMMIGRATION of fresh
 random-ish brains (test whether evolved always beats naive; maintains diversity)
 — pairs naturally with the niche/fitness-sharing work for real speciation. Then
 stage 5: the LLM meta-designer reading the JSON genomes.
+
+---
+
+## Niches + immigration: a real trophic web (2026-07-17)
+
+Added the three niche axes the user asked for — food TYPES + a heritable diet
+gene, SPATIAL food zones (each type in its own Voronoi region), and PREDATION (a
+carnivore gene; a committed carnivore that steps into another agent eats it) —
+plus IMMIGRATION of newcomers. Getting a *diverse* world out of them took a
+chain of honest findings:
+
+1. Niches broke the bootstrap (pop collapsed to ~8): specialisation + spatial
+   confinement halve foraging efficiency, and random brains can't afford it.
+   Fix: richer food + a softer diet floor so the world still takes off (~300).
+2. But then ONE diet won the whole map (competitive exclusion again, diet std
+   ~0.02) and carnivores stayed at 0%: predators can't self-bootstrap (a lone
+   carnivore starves before prey are dense), and hunting is a skill that can't
+   evolve if carnivores keep dying.
+3. Plain immigration didn't help — random-brained newcomers forage too poorly to
+   establish in an empty niche.
+4. What worked: **niche-shifted immigration** — newcomers are COMPETENT hall-of-
+   fame brains given FRESH niche genes (random diet, random carnivory, new
+   colour) — plus **omnivore-first carnivory** (a predator still gets half its
+   energy from plants, so the trait persists while hunting behaviour co-evolves).
+
+Result (15k ticks): a stable ~200-260 population with a PERSISTENT carnivore
+fraction oscillating 13-43% (predator-prey dynamics), 1-3 colour-species alive
+at once, real diet spread (std up to 0.24), and evolved topology (brains with
+1-3 hidden nodes). The render shows it: many lineage colours, two food zones, and
+inspectable carnivores (diet 0, carnivore 0.65). A genuine trophic web with
+maintained diversity — the payoff the niches were for.
+
+Lesson worth keeping: in this ecosystem, novelty only establishes if it rides a
+COMPETENT brain — diversity comes from re-skinning good foragers into new niches,
+not from injecting random ones. That likely applies to the LLM meta-designer too
+(propose niche/architecture variants on top of proven brains, not from scratch).

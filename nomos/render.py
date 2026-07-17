@@ -89,13 +89,17 @@ def split_images(
     scale: int = 6,
     gap: int = 4,
     life_frames2: list[np.ndarray] | None = None,
+    hunger_frames: list[float] | None = None,
 ) -> list[Image.Image]:
     """Side-by-side frames: the life field (left) and the game board (right,
     fire palette on its fixed 0..1 levels), matched in height, progress strip
     below. This is the watch-along view. If `life_frames2` is given (the 'avoid'
     layer), the two brain layers are merged into colour — green = go-toward
     (motor), red = stay-away (fear) — so you can see them without them fighting
-    in one field; otherwise the single life field uses the fire colormap."""
+    in one field. `hunger_frames` (0..1 per frame) additionally floods the blue
+    channel: the brain visibly turns blue as starvation nears, exactly the
+    uniform temperature field it feels. Without `life_frames2` the single life
+    field uses the fire colormap."""
     if life_frames2 is not None:
         go = _normalize(life_frames)
         fear = _normalize(life_frames2)
@@ -104,6 +108,8 @@ def split_images(
             rgb = np.zeros((*life_frames[t].shape, 3), dtype=np.float64)
             rgb[..., 0] = fear[t] * 255        # red   = fear / avoid
             rgb[..., 1] = go[t] * 255          # green = go / motor
+            if hunger_frames is not None:
+                rgb[..., 2] = hunger_frames[t] * 150   # blue = hunger
             img = Image.fromarray(rgb.clip(0, 255).astype(np.uint8), "RGB")
             if scale != 1:
                 img = img.resize((img.width * scale, img.height * scale), Image.NEAREST)

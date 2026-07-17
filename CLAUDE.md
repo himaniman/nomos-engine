@@ -259,6 +259,18 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   `python -m nomos.brain_lab --game forage` runs the LLM lab on it (spec names
   the oscillation failure and pushes internal state). Open: live forage lab
   run; commitment vs flexibility; hunger-gated exploration.
+- Done (forage round 2 — metabolism + watchability, 2026-07-17): standing
+  still costs 0.5 hunger vs 1.0 per move (thinking is cheaper than wandering,
+  never free — before this there was NO economic reason to pause, which is why
+  play looked like non-stop walking); game camera = 65x65 egocentric crop with
+  Gaussian perception vignette (`view(fade=0.7)`); hunger painted onto the
+  brain render as the blue channel (green=motor, red=avoid, blue=temperature);
+  `--render-cap 64` default block-averages dense brains (512^2 ok) into small
+  GIFs. `laws/forage_brain_desperate.nomos` = commitment + hunger-gated melt
+  (temperature>0.7 overrides the commit set — last-set-wins idiom) + gamble
+  noise: 4/701 vs mem 4/689 over 3 seeds — the escape hatch opens but too
+  late; tuning it is a brain_lab question. Current forage ladder: reactive
+  2 meals < mem 4 < desperate 4 (slightly longer-lived) over seeds 0-2.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

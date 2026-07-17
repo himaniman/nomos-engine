@@ -64,9 +64,20 @@ def test_starvation_kills():
     g = Forage(16, seed=2, starve_after=5)
     g.foods = set()                            # nothing to eat anywhere
     for _ in range(5):
-        g.step(None)
+        g.step("up")                           # moving costs a full hunger point
     assert not g.alive and g.starved
     assert g.field()[g.pos] == 1.0             # death is flashed for the render
+
+
+def test_standing_still_is_cheaper_but_not_free():
+    g = Forage(16, seed=2, starve_after=5)
+    g.foods = set()
+    for _ in range(5):
+        g.step(None)                           # idle costs 0.5 -> hunger 2.5
+    assert g.alive
+    for _ in range(5):
+        g.step(None)                           # hunger reaches 5.0
+    assert not g.alive and g.starved           # thinking is cheap, never free
 
 
 def test_game_is_deterministic_under_a_move_sequence():
@@ -155,6 +166,7 @@ def test_play_forage_collects_paired_frames():
                     ticks_per_move=2, collect_frames=True, view_radius=8)
     assert len(r["life_frames"]) == len(r["game_frames"]) >= 1
     assert len(r["avoid_frames"]) == len(r["life_frames"])
+    assert len(r["temp_frames"]) == len(r["life_frames"])   # hunger per frame
     assert r["life_frames"][0].shape == (24, 24)
     assert r["game_frames"][0].shape == (17, 17)   # egocentric camera crop
 
@@ -168,6 +180,15 @@ def test_view_keeps_player_centred_and_pads_with_wall():
     v = g.view(radius=10)
     assert v[10, 10] in (0.85, 1.0)
     assert v[0, 0] == 0.3                          # beyond the map reads as wall
+
+
+def test_view_fade_dims_the_periphery_not_the_player():
+    g = Forage(24, seed=0)
+    plain = g.view(radius=10)
+    faded = g.view(radius=10, fade=0.7)
+    assert faded[10, 10] == plain[10, 10]          # the player never fades
+    corner = plain[1, 1]
+    assert faded[1, 1] < corner or corner == 0.0   # periphery dims under vignette
 
 
 def test_dense_brain_frames_are_aggregated():

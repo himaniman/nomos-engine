@@ -120,13 +120,14 @@ def cmd_forage(args: argparse.Namespace) -> int:
                          life_channel=args.life_channel, collect_frames=want_frames,
                          sensor_gain=args.sensor_gain, food_count=args.food_count,
                          starve_after=args.starve_after, wall_radius=args.wall_radius,
-                         view_radius=args.view_radius)
+                         view_radius=args.view_radius, render_cap=args.render_cap)
 
     if args.gif:
         Path(args.gif).parent.mkdir(parents=True, exist_ok=True)
         images = split_images(result["life_frames"], result["game_frames"],
                               scale=args.scale,
-                              life_frames2=result["avoid_frames"] or None)
+                              life_frames2=result["avoid_frames"] or None,
+                              hunger_frames=result["temp_frames"] or None)
         save_gif(images, args.gif, fps=args.fps)
 
     summary = {k: result[k] for k in
@@ -243,8 +244,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="moves without food before the player starves (default 120)")
     fo.add_argument("--wall-radius", type=int, default=None, dest="wall_radius",
                     help="wall vision radius in map cells (default: min(8, map side / 4))")
-    fo.add_argument("--view-radius", type=int, default=16, dest="view_radius",
-                    help="egocentric game camera radius for the GIF (default 16)")
+    fo.add_argument("--view-radius", type=int, default=32, dest="view_radius",
+                    help="egocentric game camera radius for the GIF (default 32)")
+    fo.add_argument("--render-cap", type=int, default=64, dest="render_cap",
+                    help="block-average brain frames down to this side for the "
+                         "GIF (default 64; the 512 brain renders 8x aggregated)")
     fo.add_argument("--life-channel", default="motor", dest="life_channel",
                     help="which channel to render on the left (default motor)")
     fo.add_argument("--scale", type=int, default=6, help="upscale factor for the GIF")

@@ -888,3 +888,42 @@ oscillation failure mode explicitly, pushing internal state). Next: a live
 forage lab run — the open questions are commitment vs. flexibility (when
 SHOULD a brain abandon its target?), hunger-gated exploration, and whether an
 LLM invents a better tie-breaker than saturating positive feedback.
+
+---
+
+## 2026-07-17 (later) — Metabolism, desperation, and watching the brain go blue
+
+Four refinements from watching the GIFs together (all user-driven):
+
+1. **Thinking now has a price advantage.** Standing still costs 0.5 hunger vs
+   1.0 for a move (even a blocked one — pressing is effort). Before this, a
+   pause to "think" cost exactly as much as a wrong step, so there was no
+   selection pressure for deliberation — the user noticed the play LOOKED like
+   non-stop walking, and the reason was economic, not cognitive. Standing
+   forever still kills (the immortal loophole stays closed); the change just
+   makes deliberation a purchasable good.
+2. **Perception vignette on the game camera** (`Forage.view(fade=0.7)`): the
+   egocentric 65x65 window now dims with distance under a Gaussian, matching
+   how the brain's own senses attenuate; the player cell never fades.
+3. **Hunger is visible on the brain**: the split render's blue channel floods
+   with the hunger fraction (green = motor, red = avoid, blue = temperature) —
+   literally the uniform field the brain feels. A brain that goes deep blue and
+   then finds food reads like a story.
+4. **Dense-brain rendering**: `--render-cap 64` (default) block-averages any
+   brain (512^2 included) to a watchable GIF; `--view-radius 32` shows 64 map
+   cells around the player.
+
+**Desperation (hunger-gated commitment melt), first cut.** The user saw the
+mem brain die in a terminal loop — commitment's own trap: a target the
+geometry won't yield gets REINFORCED by the very hysteresis that fixed the
+two-food tie. `laws/forage_brain_desperate.nomos` melts `mem` and injects
+exploration specks when temperature > 0.7 (a nice DSL idiom: the `melt` rule's
+`set` simply overrides `commit`'s under its `when` — last matching set wins).
+Result (3 seeds): mem 4 meals / 689 alive -> desperate 4 / 701. The hatch
+opens (s0: +12 moves alive) but too late to matter — by temperature 0.7 the
+brain has ~36 moves of gamble left, not enough to random-walk to a new room.
+Threshold/noise tuning is exactly a brain_lab question now; the mechanism and
+its measurement are in place. Idle-cost note: the three laws' scores were
+unchanged by the metabolism change on these seeds — none of the current brains
+ever stands still (commitment always commands); the pressure is there for
+FUTURE brains to exploit.

@@ -1,0 +1,35 @@
+# Commitment with a hunger-gated escape hatch. The saturating `mem` channel
+# gives the brain hysteresis (the cure for the two-food limit cycle), but pure
+# commitment has its own trap: a committed target the geometry won't yield
+# turns into a loop the brain reinforces until it starves. So DESPERATION:
+# when the temperature (hunger) field passes 0.7, the commitment is melted
+# (the `melt` set overrides `commit` — last matching set wins) and sparse
+# random motor specks switch the brain into exploration. Commit when fed,
+# gamble when starving.
+
+channel food
+channel wall
+channel temperature
+channel mem: init 0
+channel motor: init 0
+channel avoid: init 0
+
+rule commit:
+  when 1
+  set mem = clamp(0.99 * mem + 0.02 * motor, 0, 2)
+
+rule melt:
+  when temperature > 0.7
+  set mem = 0.95 * mem
+
+rule go:
+  when 1
+  set motor = 0.4 * avg8(motor) + food + 0.5 * mem
+
+rule gamble:
+  when temperature > 0.7
+  add motor = 0.3 * bernoulli(0.002)
+
+rule fear:
+  when 1
+  set avoid = 0.4 * avg8(avoid) + 0.5 * wall

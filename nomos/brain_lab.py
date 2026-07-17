@@ -122,11 +122,12 @@ rand() bernoulli(p) uniform(a,b) normal(mu,sigma).
 
 THE GAME: a big seeded map full of WALLS forming rooms and nooks. You are a
 single dot; each game move you go one cell up/down/left/right — a wall simply
-blocks you. The ONLY death is starvation: hunger grows every move and a long
-run without food kills you. Several food items live on the map at once (they
-respawn when eaten, preferring nooks hugged by walls), so surviving means
-NAVIGATING around walls to food, again and again. Doing nothing = standing
-still = starving.
+blocks you. The ONLY death is starvation: hunger grows every tick and a long
+run without food kills you. METABOLISM: a move costs 1 hunger point, standing
+still costs only 0.5 — pausing to think is CHEAPER than wandering wrongly, but
+never free, so you cannot stand forever either. Several food items live on the
+map at once (they respawn when eaten, preferring nooks hugged by walls), so
+surviving means NAVIGATING around walls to food, again and again.
 
 THE EMBODIMENT — your interface (all on the SAME grid, egocentric: YOU sit at
 the grid centre, the world is painted around you):
@@ -236,7 +237,8 @@ def _render_best(law_text, gif_path: Path, world_size, game_size, moves, ticks,
         return False
     gif_path.parent.mkdir(parents=True, exist_ok=True)
     save_gif(split_images(r["life_frames"], r["game_frames"], scale=scale,
-                          life_frames2=r["avoid_frames"] or None),
+                          life_frames2=r["avoid_frames"] or None,
+                          hunger_frames=r.get("temp_frames") or None),
              str(gif_path), fps=fps)
     return True
 

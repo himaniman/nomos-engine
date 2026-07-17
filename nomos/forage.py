@@ -33,7 +33,8 @@ class Forage:
     defaults to one item per ~768 cells so the world stays spacious."""
 
     def __init__(self, size: int | tuple[int, int] = 96, seed: int = 0,
-                 food_count: int | None = None, starve_after: int = 120):
+                 food_count: int | None = None, starve_after: int = 120,
+                 idle_cost: float = 0.5):
         self.h, self.w = (size, size) if isinstance(size, int) else tuple(size)
         self.rng = random.Random(seed)
         self.pos: tuple[int, int] = (self.h // 2, self.w // 2)
@@ -45,7 +46,8 @@ class Forage:
         self.score = 0
         self.steps = 0
         self.starve_after = starve_after
-        self.hunger = 0                                  # moves since last meal
+        self.idle_cost = idle_cost
+        self.hunger = 0.0                                # grows until the next meal
         self.foods: set[tuple[int, int]] = set()
         self._scent_cache: dict[tuple[int, int], np.ndarray] = {}
         if food_count is None:
@@ -158,12 +160,16 @@ class Forage:
 
     def step(self, move: str | None) -> None:
         """Advance one game tick. A wall blocks the move (the player stays);
-        `move` of None means stand still. Hunger grows either way. No-op once
-        dead."""
+        `move` of None means stand still. Hunger grows either way, but standing
+        costs only `idle_cost` (resting metabolism) while a move — even a
+        blocked one, pressing is effort — costs a full point: pausing to THINK
+        is cheaper than wandering wrongly, yet never free, so the immortal
+        stand-forever loophole stays closed. No-op once dead."""
         if not self.alive:
             return
         self.steps += 1
-        if move in DIRECTIONS:
+        attempted = move in DIRECTIONS
+        if attempted:
             dy, dx = DIRECTIONS[move]
             ny, nx = self.pos[0] + dy, self.pos[1] + dx
             if 0 <= ny < self.h and 0 <= nx < self.w and not self.walls[ny, nx]:
@@ -171,10 +177,10 @@ class Forage:
         if self.pos in self.foods:
             self.foods.discard(self.pos)
             self.score += 1
-            self.hunger = 0
+            self.hunger = 0.0
             self._place_food()
         else:
-            self.hunger += 1
+            self.hunger += 1.0 if attempted else self.idle_cost
             if self.hunger >= self.starve_after:
                 self.alive = False
                 self.starved = True
@@ -190,10 +196,13 @@ class Forage:
         f[self.pos] = 1.0 if self.starved else 0.85
         return f
 
-    def view(self, radius: int = 16) -> np.ndarray:
+    def view(self, radius: int = 32, fade: float | None = None) -> np.ndarray:
         """Egocentric crop of `field()`: a (2*radius+1)^2 window with the player
         always at the CENTRE — the camera follows the player through the wide
-        world. Cells beyond the map read as wall."""
+        world. Cells beyond the map read as wall. With `fade` (a fraction of
+        the radius, e.g. 0.7) the surroundings dim under a Gaussian vignette —
+        the render matches how perception attenuates with distance — with a
+        small floor so the layout stays legible; the centre cell is untouched."""
         f = self.field()
         side = 2 * radius + 1
         out = np.full((side, side), 0.3, dtype=np.float64)
@@ -202,4 +211,10 @@ class Forage:
         x0, x1 = max(0, px - radius), min(self.w, px + radius + 1)
         out[y0 - py + radius:y1 - py + radius,
             x0 - px + radius:x1 - px + radius] = f[y0:y1, x0:x1]
+        if fade is not None:
+            yy, xx = np.ogrid[-radius:radius + 1, -radius:radius + 1]
+            sigma = fade * radius
+            vignette = np.exp(-(yy * yy + xx * xx) / (2.0 * sigma * sigma))
+            out *= np.maximum(vignette, 0.12)
+            out[radius, radius] = f[py, px]      # the player never fades
         return out

@@ -343,8 +343,8 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 life_channel: str = MOTOR_CHANNEL, collect_frames: bool = False,
                 sensor_gain: float = 0.9, death_hold: int = 6,
                 food_count: int | None = None, starve_after: int = 120,
-                wall_radius: int | None = None, view_radius: int = 16,
-                render_cap: int = 128) -> dict:
+                wall_radius: int | None = None, view_radius: int = 32,
+                view_fade: float | None = 0.7, render_cap: int = 128) -> dict:
     """Run the coupled brain+forage loop until the player starves (or `moves` —
     the safety cap; a brain still alive then kept feeding itself the whole run).
     Same contract as `play`: senses re-asserted every physics tick, one game move
@@ -352,8 +352,10 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     (required, distance-attenuated smell of every food item), `wall` (optional,
     near-field sight of walls), `temperature` (optional, uniform hunger).
     Rendering follows the player: game frames are the egocentric `view_radius`
-    crop (the camera, not the whole wide map), and life frames are block-averaged
-    down to `render_cap` so a dense brain stays a small GIF."""
+    crop (the camera, not the whole wide map) with a `view_fade` perception
+    vignette, life frames are block-averaged down to `render_cap` so a dense
+    brain stays a small GIF, and `temp_frames` carries the hunger fraction per
+    frame so the renderer can paint hunger onto the brain (blue channel)."""
     program = parse_program(law_text)
     require_embodied(program)
     if life_channel not in {c.name for c in program.channels}:
@@ -368,6 +370,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     life_frames: list[np.ndarray] = []
     avoid_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
+    temp_frames: list[float] = []
     move_seq: list[str | None] = []
 
     for _ in range(moves):
@@ -393,12 +396,14 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
             life_frames.append(_block_mean(world.state[life_channel], render_cap))
             if has_avoid:
                 avoid_frames.append(_block_mean(world.state[AVOID_CHANNEL], render_cap))
-            game_frames.append(game.view(view_radius))
+            game_frames.append(game.view(view_radius, fade=view_fade))
+            temp_frames.append(game.hunger_fraction())
 
     if collect_frames and not game.alive and game_frames:
         for _ in range(death_hold):
             life_frames.append(life_frames[-1])
             game_frames.append(game_frames[-1])
+            temp_frames.append(temp_frames[-1])
             if has_avoid:
                 avoid_frames.append(avoid_frames[-1])
 
@@ -414,4 +419,5 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
         "life_frames": life_frames,
         "avoid_frames": avoid_frames,
         "game_frames": game_frames,
+        "temp_frames": temp_frames,
     }

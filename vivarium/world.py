@@ -286,7 +286,11 @@ class World:
                     if ft:                              # step onto food = eat (as a plant)
                         self.food[ny, nx] = 0
                         g = a.brain.genome
-                        gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
+                        # omnivore-first: even a full carnivore keeps some plant
+                        # income, so the trait can persist while hunting behaviour
+                        # co-evolves instead of starving out immediately
+                        gain = (c.food_energy * self._diet_eff(g.diet, ft)
+                                * (1 - 0.5 * g.carnivore))
                         a.energy = min(c.max_energy, a.energy + gain)
                 elif (c.predation and a.brain.genome.carnivore >= c.carnivore_threshold
                       and self.occ[ny, nx] >= 0):
@@ -313,18 +317,25 @@ class World:
             self._reseed()
 
     def _immigrate(self) -> None:
-        """Drop a few FRESH random-ish newcomers into the living world. They bring
-        new variation (including diets/carnivory the current population may lack)
-        into an already-populated world where such strategies can actually
-        establish — unlike at bootstrap. Also a standing test of whether fresh
-        brains can beat the evolved incumbents."""
+        """Drop a few newcomers into the living world to probe empty niches. Each
+        is a COMPETENT forager brain (a successful genome from the hall) but with
+        FRESH niche genes — a random diet, a random carnivory, a new lineage
+        colour — plus light mutation. Random-brained newcomers forage too poorly
+        to establish; a good brain with a new niche can. This is what lets a
+        second diet or a predator get a foothold, and it tests whether fresh
+        variants beat the incumbents. Falls back to fully random if no hall yet."""
         c = self.cfg
         if c.immigrate_every <= 0 or self.tick == 0 or self.tick % c.immigrate_every \
                 or not self.agents:
             return
+        pool = [g for _, g in self.hall] or \
+               [a.brain.genome for a in self.agents.values()]
         for _ in range(c.immigrate_count):
-            self._spawn_agent(neat.random_genome(self.n_in, self.n_out, self.rng,
-                                                  forward_bias=c.init_forward_bias))
+            base = pool[self.rng.integers(len(pool))].copy()
+            base.diet = float(self.rng.random())
+            base.carnivore = float(self.rng.random())    # full range -> real predators
+            base.hue = float(self.rng.random())          # a distinct new lineage
+            self._spawn_agent(self._mutate(base))
 
     def _drift_walls(self) -> None:
         """The landscape lives: every `wall_drift_every` ticks each stroke may WALK

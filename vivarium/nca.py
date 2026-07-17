@@ -172,14 +172,19 @@ class Phenotype:
         g = self.genome
         drive = inputs @ g.P_in                              # (C,) sensory current
         st = self.state
+        single = g.n_types == 1                              # common case: fast path
         for _ in range(self.subticks):
             perc = self._perceive(st)                        # (G, G, 9C)
-            delta = np.zeros_like(st)
-            for k, sel in enumerate(self._type_sel):         # each type runs its rule
-                if not sel.any():
-                    continue
-                h = np.tanh(perc[sel] @ g.W1[k].T + g.b1[k])   # (n_k, H)
-                delta[sel] = h @ g.W2[k].T + g.b2[k]           # (n_k, C)
+            if single:                                       # one rule over the whole grid
+                h = np.tanh(perc @ g.W1[0].T + g.b1[0])      # (G, G, H)
+                delta = h @ g.W2[0].T + g.b2[0]              # (G, G, C)
+            else:                                            # each type runs its own rule
+                delta = np.zeros_like(st)
+                for k, sel in enumerate(self._type_sel):
+                    if not sel.any():
+                        continue
+                    hk = np.tanh(perc[sel] @ g.W1[k].T + g.b1[k])   # (n_k, H)
+                    delta[sel] = hk @ g.W2[k].T + g.b2[k]           # (n_k, C)
             st = np.tanh(st + delta + drive)                 # residual + clamped
             st = st * self._m                                # dead cells stay 0
         self.state = st

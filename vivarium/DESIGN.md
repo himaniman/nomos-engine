@@ -229,3 +229,39 @@ deterministic.
 Still ahead: tune the ecology for interesting emergent behaviour (clustering,
 fleeing, niches), maybe speciation if one lineage dominates, and stage 5 - the
 LLM meta-designer reading these JSON genomes to propose better ones.
+
+---
+
+## Post-stage-3 batch (2026-07-17): colour, speciation, islands, perf
+
+From a design discussion, a batch of user-approved features:
+
+- **Heritable lineage colour**: colour was an avalanche hash (every mutated child
+  a new colour — families invisible, an honest bug). Now the genome carries an
+  inherited hue that drifts slowly, so families share a colour and diverge
+  gradually. Name still = brain fingerprint; colour = lineage.
+- **Interactive leaders**: click a top-3 leader to pin and inspect its genome/net
+  (they're dead lineages with no on-map agent).
+- **Speciation by colour**: mating needs partners within `species_hue` (circular)
+  — reproductive isolation by colour; a lineage that drifts past it becomes a new
+  species; HUD shows the live species count. FINDING: the mechanism works (tests
+  confirm isolation + counting) but does NOT sustain multiple species in a
+  HOMOGENEOUS world — competitive exclusion collapses it to species=1 across a
+  12k-tick run. Sustained coexistence needs ecological niches (food types /
+  regions favouring different brains) or fitness-sharing (protect rare species).
+  That's the honest next step for real diversity.
+- **Fecundity-weighted selection**: agents count offspring; the hall ranks genomes
+  by age + weight*offspring, so saved/migrated pools are the genomes that leave
+  descendants, not just old survivors.
+- **Island model** (`vivarium/island.py`): many independent worlds evolve in
+  parallel (ProcessPoolExecutor — GIL-irrelevant), exchange top-K migrants between
+  rounds via partial migration (random subsets). `run_island` maps 1:1 to a k8s
+  Job; the controller is the between-round merge. The horizontal-scale answer to
+  the GIL, as intended.
+- **Perf**: precomputed vision rays removed the round()/linspace hot spot (~2x
+  faster step, no numba/no new deps). numba stays a later lever if needed.
+
+Backlog (user ideas, after the above): occasional IMMIGRATION of fresh
+random-ish brains (test whether evolved always beats naive; maintains diversity)
+— pairs naturally with the niche/fitness-sharing work for real speciation. Then
+stage 5: the LLM meta-designer reading the JSON genomes.

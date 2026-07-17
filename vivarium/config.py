@@ -46,6 +46,8 @@ class Config:
     add_conn_prob: float = 0.06        # chance to add a new connection
     add_node_prob: float = 0.03        # chance to split a connection into a node
     toggle_prob: float = 0.02          # chance to flip a connection on/off
+    hue_drift_prob: float = 0.08       # chance the heritable lineage colour drifts
+    hue_drift: float = 0.02            # size of that colour drift (wraps at 1.0)
 
     # corpse: an OBSTACLE (not food) that decays away
     corpse_decay: int = 40             # ticks a corpse blocks its cell before clearing

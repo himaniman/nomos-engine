@@ -37,10 +37,10 @@ def _genome_hash(genome: Genome) -> int:
 
 
 def genome_color(genome: Genome) -> tuple[int, int, int]:
-    """A stable hue from the genome — a lineage shares a colour; mutation shifts
-    it slightly, so families are visible and drift shows."""
-    h = (_genome_hash(genome) % 3600) / 3600.0
-    r, g, b = colorsys.hsv_to_rgb(h, 0.85, 1.0)
+    """Colour from the HERITABLE lineage hue — a family shares a colour and it
+    drifts only slowly, so you can watch lineages spread, split and diverge.
+    (The brain fingerprint `key` is used for the NAME, not the colour.)"""
+    r, g, b = colorsys.hsv_to_rgb(genome.hue, 0.85, 1.0)
     return int(r * 255), int(g * 255), int(b * 255)
 
 

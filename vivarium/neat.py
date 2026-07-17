@@ -34,15 +34,21 @@ class Genome:
     constant bias), output ids are n_in..n_in+n_out-1; hidden ids are unique and
     larger."""
 
-    def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict]):
+    def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict],
+                 hue: float = 0.0):
         self.n_in = n_in
         self.n_out = n_out
         self.nodes = nodes
         self.conns = conns
+        # A HERITABLE lineage hue (0..1): children inherit a parent's hue and it
+        # drifts only slowly, so a family shares a colour and related lineages sit
+        # near each other in hue-space — unlike the brain fingerprint (`key`),
+        # which avalanche-changes on any mutation. Colour = lineage; name = brain.
+        self.hue = hue
 
     def copy(self) -> "Genome":
         return Genome(self.n_in, self.n_out, dict(self.nodes),
-                      [dict(c) for c in self.conns])
+                      [dict(c) for c in self.conns], self.hue)
 
     def max_node_id(self) -> int:
         return max(self.nodes) if self.nodes else self.n_in + self.n_out - 1
@@ -53,7 +59,7 @@ class Genome:
         return n_hidden, n_enabled
 
     def to_dict(self) -> dict:
-        return {"n_in": self.n_in, "n_out": self.n_out,
+        return {"n_in": self.n_in, "n_out": self.n_out, "hue": self.hue,
                 "nodes": [[i, k] for i, k in self.nodes.items()],
                 "conns": [[c["in"], c["out"], c["w"], c["enabled"]] for c in self.conns]}
 
@@ -62,7 +68,8 @@ class Genome:
         nodes = {int(i): k for i, k in d["nodes"]}
         conns = [{"in": int(a), "out": int(b), "w": float(w), "enabled": bool(e)}
                  for a, b, w, e in d["conns"]]
-        return cls(int(d["n_in"]), int(d["n_out"]), nodes, conns)
+        return cls(int(d["n_in"]), int(d["n_out"]), nodes, conns,
+                   float(d.get("hue", 0.0)))
 
     def key(self) -> bytes:
         """A canonical fingerprint of the topology + weights, for naming/colour."""
@@ -85,7 +92,7 @@ def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
             if i == n_in - 1 and j == FORWARD:
                 w += forward_bias
             conns.append({"in": i, "out": n_in + j, "w": w, "enabled": True})
-    return Genome(n_in, n_out, nodes, conns)
+    return Genome(n_in, n_out, nodes, conns, hue=float(rng.random()))
 
 
 class Phenotype:
@@ -123,6 +130,8 @@ def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
     mutations (add connection, split a connection into a node, toggle) at low
     rates so complexity grows gradually."""
     g = genome.copy()
+    if rng.random() < cfg.hue_drift_prob:                # the lineage colour drifts slowly
+        g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
     for c in g.conns:
         if rng.random() < cfg.weight_mut_prob:
             c["w"] += float(rng.normal(0.0, cfg.weight_mut))
@@ -175,4 +184,5 @@ def crossover(g_fit: Genome, g_other: Genome, rng: np.random.Generator) -> Genom
         for nid in (c["in"], c["out"]):
             if nid not in nodes:
                 nodes[nid] = "hidden"
-    return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns)
+    hue = g_fit.hue if rng.random() < 0.5 else g_other.hue    # inherit a parent's colour
+    return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns, hue=hue)

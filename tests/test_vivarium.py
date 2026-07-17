@@ -47,6 +47,20 @@ def test_neat_crossover_and_mutation_grow_topology():
     assert Phenotype(child).act(np.zeros(n_in)) in range(N_ACTIONS)
 
 
+def test_lineage_hue_inherits_and_drifts_slowly():
+    from vivarium.neat import mutate
+    rng = np.random.default_rng(0)
+    n_in = input_size(5)
+    g1 = random_genome(n_in, N_ACTIONS, rng)
+    g2 = random_genome(n_in, N_ACTIONS, rng)
+    g1.hue = g2.hue = 0.5
+    child = crossover(g1, g2, rng)
+    assert child.hue == 0.5                      # both parents same hue -> child same
+    cfg = Config(hue_drift_prob=1.0, hue_drift=0.02)
+    m, _ = mutate(child, rng, cfg, n_in + N_ACTIONS)
+    assert 0.0 <= m.hue < 1.0 and abs(m.hue - 0.5) < 0.25   # drifts only a little
+
+
 def test_run_is_deterministic():
     cfg = Config(size=48, seed=7, init_population=25)
     a = run_headless(cfg, ticks=300, every=50)

@@ -11,11 +11,15 @@ class Config:
     # world
     size: int = 96                     # grid side (bounded, walls on the border)
     seed: int = 0
+    wall_density: float = 0.14         # fraction of the interior that is INNER wall
+                                       # (strokes with doorways) — makes foraging a
+                                       # navigation problem; vision rays stop at walls
+                                       # so agents cannot see food behind them
 
-    # food (the carrying-capacity knob)
-    food_target: float = 0.06          # fraction of open cells that should hold food
-    food_regrow: int = 6               # at most this many food items appear per tick
-    food_energy: float = 22.0          # energy gained per food eaten
+    # food (the carrying-capacity knob) — deliberately scarce so reaching it matters
+    food_target: float = 0.025         # fraction of open cells that should hold food
+    food_regrow: int = 4               # at most this many food items appear per tick
+    food_energy: float = 26.0          # energy gained per food eaten
 
     # metabolism (energy drained per tick; standing still is cheapest)
     base_cost: float = 0.35            # paid every tick just to exist

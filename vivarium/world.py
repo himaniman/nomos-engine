@@ -41,9 +41,7 @@ class World:
         self.tick = 0
         self._next_id = 0
 
-        self.walls = np.zeros((self.h, self.w), dtype=bool)
-        self.walls[0, :] = self.walls[-1, :] = True
-        self.walls[:, 0] = self.walls[:, -1] = True
+        self.walls = self._generate_walls()
         self.food = np.zeros((self.h, self.w), dtype=bool)
         self.occ = np.full((self.h, self.w), -1, dtype=np.int64)   # agent id or -1
         self.corpse = np.zeros((self.h, self.w), dtype=np.int64)   # ticks remaining
@@ -57,6 +55,42 @@ class World:
         for _ in range(c.init_population):
             self._spawn_agent(Brain.random(self.n_in, c.hidden, self.rng).genome)
         self._regrow_food()
+
+    # -- map ----------------------------------------------------------------
+
+    def _generate_walls(self) -> np.ndarray:
+        """Border walls + inner strokes, each pierced by one doorway so the maze
+        partitions the space into rooms/corridors without sealing it. Strokes are
+        laid until ~`wall_density` of the interior is wall; a clear centre patch
+        guarantees room to (re)spawn. Seeded -> the map is part of the run's
+        determinism."""
+        walls = np.zeros((self.h, self.w), dtype=bool)
+        walls[0, :] = walls[-1, :] = True
+        walls[:, 0] = walls[:, -1] = True
+        target = int(self.cfg.wall_density * (self.h - 2) * (self.w - 2))
+        lo = max(3, min(self.h, self.w) // 10)
+        hi = max(lo + 1, min(self.h, self.w) // 3)
+        placed = 0
+        for _ in range(20_000):
+            if placed >= target:
+                break
+            length = int(self.rng.integers(lo, hi + 1))
+            door = int(self.rng.integers(length))
+            if self.rng.random() < 0.5:                     # horizontal stroke
+                y = int(self.rng.integers(2, self.h - 2))
+                x0 = int(self.rng.integers(1, max(2, self.w - length)))
+                cells = [(y, x0 + i) for i in range(length)]
+            else:                                           # vertical stroke
+                x = int(self.rng.integers(2, self.w - 2))
+                y0 = int(self.rng.integers(1, max(2, self.h - length)))
+                cells = [(y0 + i, x) for i in range(length)]
+            for i, (yy, xx) in enumerate(cells):
+                if i != door and 0 < yy < self.h - 1 and 0 < xx < self.w - 1:
+                    placed += int(not walls[yy, xx])
+                    walls[yy, xx] = True
+        cy, cx = self.h // 2, self.w // 2
+        walls[cy - 2:cy + 3, cx - 2:cx + 3] = False         # clear centre for spawns
+        return walls
 
     # -- helpers ------------------------------------------------------------
 

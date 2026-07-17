@@ -70,6 +70,35 @@ def test_corpse_blocks_then_decays():
     assert w.corpse[y, x] == 0          # it has decayed away
 
 
+def test_inner_walls_generated_and_reproducible():
+    a = World(Config(size=64, seed=4))
+    b = World(Config(size=64, seed=4))
+    assert (a.walls == b.walls).all()                       # map is part of the seed
+    interior = a.walls[1:-1, 1:-1]
+    assert interior.sum() > 0                               # inner walls exist
+    # roughly the requested density (loose bounds — strokes overlap/hit doorways)
+    frac = interior.sum() / interior.size
+    assert 0.04 < frac < 0.30
+
+
+def test_vision_is_blocked_by_walls():
+    # a wall between the agent and food hides the food (line of sight, no smell)
+    w = World(Config(size=30, seed=0, init_population=1, n_rays=1, fov=0.0,
+                     ray_length=10))
+    a = next(iter(w.agents.values()))
+    w.walls[:] = False
+    w.walls[0, :] = w.walls[-1, :] = w.walls[:, 0] = w.walls[:, -1] = True
+    w.food[:] = False
+    a.y, a.x, a.heading = 10, 10, 1          # facing east (+x)
+    w.food[10, 14] = True                    # food 4 cells ahead, clear line
+    seen = w._sense(a)
+    assert seen[0] > 0                       # food channel of the single ray fires
+    w.walls[10, 12] = True                   # drop a wall between agent and food
+    blocked = w._sense(a)
+    assert blocked[0] == 0                   # food no longer visible...
+    assert blocked[1] > 0                    # ...an obstacle is seen instead
+
+
 def test_app_renders_headless():
     # the drawing must work without a display, so screenshots/tests are possible
     import os

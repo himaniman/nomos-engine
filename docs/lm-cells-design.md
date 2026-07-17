@@ -197,3 +197,34 @@ grid) rather than a rewrite.
 - **Rendering axons**: the point-aggregate render shows fields well; drawing a
   few thousand directed edges is a different visualization problem. Maybe render
   axon *activity* as a field and only overlay a sampled few edges.
+
+---
+
+## v1 built (2026-07-17): plumbing works, learning is behaviourally inert
+
+Built the cheapest version from the plan: engine got a `tanh` builtin and the
+forage harness got a `reward` field (1.0 the move a meal is eaten, decays 0.6/
+move, injected uniformly like `temperature`). `laws/forage_brain_lmcell.nomos`
+is a per-cell 2-layer net: a FIXED random hidden projection (per-cell
+`uniform(-1,1)` weights, never learned — the reservoir trick) and a LEARNED
+readout updated by three-factor Hebb `dV = 0.05*reward*pre*post - decay`.
+
+What works, verified: it's deterministic despite random-init weights (init uses
+the seeded world RNG); the readout weights MOVE under reward; and the per-cell
+weights DIVERGE from their shared start (std 0.43) — the differentiation-through-
+experience story is real and visible. Plays forage at mean score 2.0 over seeds
+0-2 (4/2/0), above the hand-built reactive/commitment brains (0.67/1.33), below
+the LLM sight champion.
+
+The honest finding: **learning does not yet change behaviour.** Ablation —
+same brain with the learning rate set to 0 — scores IDENTICALLY (2.00/180 mean
+over 6 seeds, per-seed identical). So this is the "drift, not control" horn of
+the open question, and the reason is clear: reward is sparse (a pulse only at
+the 2-4 meals per life) while the motor is dominated by the hardwired
+`food + 2*sight` term, so the slow readout never accumulates enough to matter.
+The mechanism is in place and reproducible; making it BITE needs one or more of:
+a denser reward (shaped by approach, not just eating), a stronger readout /
+weaker hardwired drive so learned weights carry the decision, longer lives, or
+tuning the learning constants (lr, decay, reward window) — the last is exactly
+an `evolve.py` / `brain_lab` job now that the substrate exists. That is the next
+experiment, and it's cleanly set up.

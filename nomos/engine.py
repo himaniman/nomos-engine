@@ -122,6 +122,8 @@ BUILTINS = {
     "log": (1, lambda ctx, x: np.log(np.maximum(x, 1e-12))),
     "sin": (1, lambda ctx, x: np.sin(x)),
     "cos": (1, lambda ctx, x: np.cos(x)),
+    "tanh": (1, lambda ctx, x: np.tanh(x)),   # bounded squash for network cells
+
     "pi": (0, lambda ctx: float(np.pi)),
     # time(): the current step number, so laws can drive a changing environment
     "time": (0, lambda ctx: float(ctx.time)),

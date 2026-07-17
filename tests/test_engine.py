@@ -12,6 +12,15 @@ def make_gol(size=16):
     return world
 
 
+def test_tanh_builtin_squashes():
+    law = "channel x: init 0\nchannel y: init 0\nrule t: when 1 set y = tanh(x)\n"
+    world = World(parse_program(law), size=8, seed=0)
+    world.state["x"][:] = 10.0                   # large input saturates near 1
+    world.step()
+    assert np.allclose(world.state["y"], np.tanh(10.0))
+    assert (world.state["y"] < 1.0).all() and (world.state["y"] > 0.99).all()
+
+
 def test_blinker_oscillates():
     world = make_gol()
     world.state["alive"][5, 4:7] = 1.0          # horizontal blinker

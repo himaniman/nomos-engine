@@ -1,0 +1,63 @@
+# v1 LM-CELL forage brain: every cell is a tiny 2-layer network that LEARNS
+# online by a local, reward-modulated Hebbian rule — no gradients, no PyTorch,
+# all in the DSL. This is the "cell = small perceptron" idea, minimal form.
+#
+# Design (the safe reservoir/extreme-learning trick):
+#  - HIDDEN layer = a FIXED RANDOM projection. Each cell's hidden weights are
+#    init'd to per-cell random values (uniform(-1,1), different every cell
+#    because init sees the world RNG) and NEVER change. A random nonlinear
+#    feature bank — cheap, and it keeps the learning stable (only the readout
+#    moves, so Hebbian drift can't corrupt the features).
+#  - READOUT = LEARNED. The hidden->motor and hidden->avoid weights start tiny
+#    (+ noise to break symmetry) and adapt by THREE-FACTOR Hebb:
+#        dV = lr * reward * pre(hidden) * post(output)   (minus a small decay)
+#    so a readout weight grows only when its hidden unit AND its output fired
+#    AND a meal followed (the global `reward` pulse) — the brain strengthens
+#    exactly the pathways that led to eating. Weights diverge cell-by-cell from
+#    a shared start, so the sheet DIFFERENTIATES through experience.
+#
+# The direct `+ food` / `+ wall` terms keep the untrained brain at the reactive
+# baseline (it still forages before it has learned anything); learning only
+# adds structure on top. Snapshot semantics mean signals cross one layer per
+# tick (food->hidden->readout->learn), which the 32 ticks/move easily cover.
+
+channel food
+channel wall
+channel sight
+channel temperature
+channel reward
+channel motor
+channel avoid
+
+# fixed random hidden projection (set once at init, never learned)
+channel wh0_food: init uniform(-1, 1)
+channel wh0_sight: init uniform(-1, 1)
+channel wh0_wall: init uniform(-1, 1)
+channel wh1_food: init uniform(-1, 1)
+channel wh1_sight: init uniform(-1, 1)
+channel wh1_wall: init uniform(-1, 1)
+channel h0: init 0
+channel h1: init 0
+
+# learned readout weights (small + noise to break symmetry)
+channel vm0: init uniform(0, 0.2)
+channel vm1: init uniform(0, 0.2)
+channel va0: init uniform(0, 0.2)
+channel va1: init uniform(0, 0.2)
+
+rule hidden:
+  when 1
+  set h0 = tanh(wh0_food*food + wh0_sight*sight + wh0_wall*wall)
+  set h1 = tanh(wh1_food*food + wh1_sight*sight + wh1_wall*wall)
+
+rule readout:
+  when 1
+  set motor = max(0, food + 2*sight + vm0*h0 + vm1*h1)
+  set avoid = max(0, wall + va0*h0 + va1*h1)
+
+rule learn:
+  when 1
+  set vm0 = clamp(vm0 + 0.05*reward*h0*motor - 0.001*vm0, -2, 2)
+  set vm1 = clamp(vm1 + 0.05*reward*h1*motor - 0.001*vm1, -2, 2)
+  set va0 = clamp(va0 + 0.05*reward*h0*avoid - 0.001*va0, -2, 2)
+  set va1 = clamp(va1 + 0.05*reward*h1*avoid - 0.001*va1, -2, 2)

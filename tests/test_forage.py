@@ -240,6 +240,39 @@ def test_play_forage_requires_food_and_motor():
         play_forage("channel a\nrule r: when 1 set a = 1\n", moves=1)
 
 
+def test_lmcell_brain_learns_and_plays():
+    from pathlib import Path
+    from nomos.dsl import parse_program
+    from nomos.engine import World
+    law = Path("laws/forage_brain_lmcell.nomos").read_text()
+    # deterministic despite random-init weights (init uses the seeded world RNG)
+    a = play_forage(law, seed=1, moves=20, ticks_per_move=4)
+    b = play_forage(law, seed=1, moves=20, ticks_per_move=4)
+    assert a["move_seq"] == b["move_seq"]
+    # under a reward pulse the learned readout weights actually MOVE and the
+    # cells DIVERGE from their shared start (differentiation through experience)
+    w = World(parse_program(law), 48, seed=1)
+    before = float(w.state["vm0"].mean())
+    for _ in range(30):
+        w.state["food"][:] = 0.5
+        w.state["reward"][:] = 1.0
+        w.step()
+    assert abs(float(w.state["vm0"].mean()) - before) > 1e-4   # weights learned
+    assert float(w.state["vm0"].std()) > 0.05                  # cells diverged
+
+
+def test_reward_channel_is_injected_and_pulses():
+    # a brain that just copies reward into motor stays deterministic and the
+    # reward field is non-zero only around meals (here: never eats -> decays to 0)
+    law = ("channel food\nchannel reward\nchannel motor: init 0\n"
+           "rule t: when 1 set motor = reward\n")
+    a = play_forage(law, world_size=24, game_size=12, seed=0, moves=20,
+                    ticks_per_move=2, starve_after=15)
+    b = play_forage(law, world_size=24, game_size=12, seed=0, moves=20,
+                    ticks_per_move=2, starve_after=15)
+    assert a["move_seq"] == b["move_seq"]
+
+
 def test_idle_brain_starves():
     idle = "channel food\nchannel motor: init 0\nrule t: when 1 set motor = 0\n"
     r = play_forage(idle, world_size=24, game_size=12, seed=0, moves=200,

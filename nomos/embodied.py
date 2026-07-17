@@ -25,6 +25,8 @@ DANGER_CHANNEL = "danger"           # optional sensor: the snake's own body
 WALL_CHANNEL = "wall"               # optional sensor (forage): near-field wall vision
 SIGHT_CHANNEL = "sight"             # optional sensor (forage): food in line of sight
 TEMPERATURE_CHANNEL = "temperature"  # optional sensor: hunger, uniform over the grid
+REWARD_CHANNEL = "reward"           # optional sensor: a global reward pulse (forage:
+                                    # 1.0 the move food was eaten, decaying otherwise)
 MOTOR_CHANNEL = "motor"             # 'go toward' output layer
 AVOID_CHANNEL = "avoid"             # optional 'stay away' output layer (non-interfering)
 
@@ -372,7 +374,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 food_count: int | None = None, starve_after: int = 120,
                 wall_radius: int | None = None, view_radius: int = 32,
                 view_fade: float | None = 0.7, view_fog: bool = True,
-                render_cap: int = 128) -> dict:
+                render_cap: int = 128, reward_decay: float = 0.6) -> dict:
     """Run the coupled brain+forage loop until the player starves (or `moves` —
     the safety cap; a brain still alive then kept feeding itself the whole run).
     Same contract as `play`: senses re-asserted every physics tick, one game move
@@ -393,9 +395,12 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     has_wall = WALL_CHANNEL in names
     has_sight = SIGHT_CHANNEL in names
     has_temp = TEMPERATURE_CHANNEL in names
+    has_reward = REWARD_CHANNEL in names
     has_avoid = AVOID_CHANNEL in names
     world = World(program, world_size, seed)
     game = Forage(game_size, seed, food_count=food_count, starve_after=starve_after)
+    reward_val = 0.0
+    prev_score = 0
     life_frames: list[np.ndarray] = []
     avoid_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
@@ -418,11 +423,19 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 world.state[SIGHT_CHANNEL] = sight
             if has_temp:
                 world.state[TEMPERATURE_CHANNEL][:] = temp   # uniform hunger field
+            if has_reward:
+                world.state[REWARD_CHANNEL][:] = reward_val  # uniform reward pulse
             world.step()
         ranked = read_ranked(world, MOTOR_CHANNEL,
                              avoid=AVOID_CHANNEL if has_avoid else None)
         move = _slide(ranked, game)
         game.step(move)
+        # reward pulses to 1.0 the move a meal is eaten, then decays — a global
+        # 'that paid off' signal a learning rule can multiply into its weight
+        # update (three-factor Hebbian). Set AFTER the move so the next think
+        # cycle feels the reward for what it just did.
+        reward_val = 1.0 if game.score > prev_score else reward_val * reward_decay
+        prev_score = game.score
         move_seq.append(move)
         if collect_frames:
             life_frames.append(_block_mean(world.state[life_channel], render_cap))

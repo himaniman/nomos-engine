@@ -56,9 +56,12 @@ def genome_name(genome: Genome) -> str:
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
-         selected: int | None = None, hud: dict | None = None) -> pygame.Surface:
+         selected: int | None = None, hud: dict | None = None,
+         leader=None, hitboxes=None) -> pygame.Surface:
     """Render one frame to a Surface: the world on the left, HUD + (optional)
-    inspected-agent panel on the right."""
+    inspected-agent panel on the right. `leader` (a Genome) pins a clicked
+    leader in the inspector; `hitboxes` (a list) is filled with the clickable
+    (rect, genome) of each leader row for the event loop."""
     W, H = world.w * cell_px, world.h * cell_px
     surf = pygame.Surface((W + panel_w, H))
     surf.fill((12, 12, 16))
@@ -91,11 +94,12 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
         pygame.draw.line(surf, (0, 0, 0), (cxp, cyp),
                          (cxp + dx * cell_px // 2, cyp + dy * cell_px // 2), 1)
 
-    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud)
+    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes)
     return surf
 
 
-def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None):
+def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
+                leader=None, hitboxes=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}", f"food {s['food']}",
@@ -106,26 +110,41 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None):
         surf.blit(font.render(t, True, (220, 220, 230)), (x0 + 12, 10 + i * 20))
     y = 10 + len(lines) * 20 + 10
 
-    # top-3 longest-lived lineages by name, with a colour swatch
-    surf.blit(small.render("leaders (age / name / net):", True, (150, 160, 180)),
+    # top-3 longest-lived lineages — clickable to inspect their genome
+    surf.blit(small.render("leaders (click to inspect):", True, (150, 160, 180)),
               (x0 + 12, y)); y += 18
+    if hitboxes is not None:
+        hitboxes.clear()
     for age, g in world.hall[:3]:
         nh, nc = g.complexity()
         pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
         surf.blit(small.render(f"{age:>4} {genome_name(g)}  h{nh} c{nc}", True,
-                               (210, 215, 230)), (x0 + 28, y)); y += 17
+                               (210, 215, 230)), (x0 + 28, y))
+        if hitboxes is not None:
+            hitboxes.append((pygame.Rect(x0, y, panel_w, 17), g))
+        y += 17
     y += 8
 
-    a = world.agents.get(selected) if selected is not None else None
-    if a is None:
+    # inspector: a clicked leader genome takes priority, else the selected agent
+    if leader is not None:
+        _draw_inspector(surf, leader, None, x0, y, panel_w, H, font, small,
+                        title="LEADER")
         return
-    g = a.brain.genome
-    nh, nc = g.complexity()
+    a = world.agents.get(selected) if selected is not None else None
+    if a is not None:
+        _draw_inspector(surf, a.brain.genome, a, x0, y, panel_w, H, font, small)
+
+
+def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 3, 12, 12))
-    surf.blit(font.render(genome_name(g), True, (235, 235, 245)), (x0 + 30, y))
+    label = genome_name(g) + (f"  ({title})" if title else "")
+    surf.blit(font.render(label, True, (235, 235, 245)), (x0 + 30, y))
     y += 24
-    for t in [f"agent #{a.id}", f"energy {a.energy:.1f}", f"age {a.age}",
-              f"hidden {nh}  conns {nc}"]:
+    nh, nc = g.complexity()
+    info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
+            if agent is not None else [])
+    info.append(f"hidden {nh}  conns {nc}")
+    for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
     _draw_net(surf, g, x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
 
@@ -188,6 +207,8 @@ def main(argv=None) -> int:
     # rate) lets the simulation outrun the display for fast-forward. The HUD shows
     # the measured FPS, the speed, and the resulting steps/sec.
     paused, speed, selected = False, 1, None
+    leader = None                                    # a pinned leader genome to inspect
+    leader_boxes = []                                # (rect, genome) hitboxes, filled by draw
     running = True
     while running:
         for e in pygame.event.get():
@@ -208,9 +229,16 @@ def main(argv=None) -> int:
                     world._reseed()
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = e.pos
-                gx, gy = mx // a.cell, my // a.cell
-                if 0 <= gy < world.h and 0 <= gx < world.w and world.occ[gy, gx] >= 0:
-                    selected = int(world.occ[gy, gx])
+                hit = next((g for rect, g in leader_boxes if rect.collidepoint(mx, my)),
+                           None)
+                if hit is not None:                  # clicked a leader row -> pin it
+                    leader = hit
+                else:
+                    gx, gy = mx // a.cell, my // a.cell
+                    if 0 <= gy < world.h and 0 <= gx < world.w \
+                            and world.occ[gy, gx] >= 0:
+                        selected = int(world.occ[gy, gx])
+                        leader = None                # a live agent unpins the leader
         if not paused:
             for _ in range(speed):
                 world.step()
@@ -218,7 +246,8 @@ def main(argv=None) -> int:
             selected = None
         fps = clock.get_fps()
         hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0)}
-        screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud), (0, 0))
+        screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,
+                         leader=leader, hitboxes=leader_boxes), (0, 0))
         pygame.display.flip()
         clock.tick(60 if speed <= 2 else 0)          # uncap the frame rate when fast
     pygame.quit()

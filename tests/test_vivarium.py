@@ -149,6 +149,13 @@ def test_app_renders_headless():
     # a genome maps to a stable colour
     g = next(iter(w.agents.values())).brain.genome
     assert genome_color(g) == genome_color(g.copy())
+    # leader rows expose clickable hitboxes, and a pinned leader renders
+    boxes = []
+    draw(w, cell_px=6, panel_w=200, font=font, small=small, hitboxes=boxes)
+    assert len(boxes) == min(3, len(w.hall)) and len(boxes) > 0
+    rect, glead = boxes[0]
+    surf2 = draw(w, cell_px=6, panel_w=200, font=font, small=small, leader=glead)
+    assert surf2.get_width() == w.w * 6 + 200
     pygame.quit()
 
 

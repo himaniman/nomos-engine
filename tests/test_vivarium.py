@@ -70,6 +70,29 @@ def test_corpse_blocks_then_decays():
     assert w.corpse[y, x] == 0          # it has decayed away
 
 
+def test_app_renders_headless():
+    # the drawing must work without a display, so screenshots/tests are possible
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    import pygame
+    from vivarium.app import draw, genome_color
+    pygame.init()
+    font = pygame.font.SysFont("consolas", 16)
+    small = pygame.font.SysFont("consolas", 13)
+    w = World(Config(size=32, seed=1, init_population=15))
+    for _ in range(50):
+        w.step()
+    sel = next(iter(w.agents), None)
+    surf = draw(w, cell_px=6, panel_w=200, font=font, small=small, selected=sel)
+    assert surf.get_width() == w.w * 6 + 200
+    assert surf.get_height() == w.h * 6
+    # a genome maps to a stable colour
+    g = next(iter(w.agents.values())).brain.genome
+    assert genome_color(g) == genome_color(g.copy())
+    pygame.quit()
+
+
 def test_reproduction_can_occur():
     # a brain hardwired to always REPRODUCE, dropped into a fed world, breeds
     from vivarium.brain import REPRODUCE

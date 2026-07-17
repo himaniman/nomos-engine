@@ -143,20 +143,29 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     from nomos.embodied import play
     from nomos.evolve import evolve, law_from_genome
 
+    from nomos.embodied import play_forage
+    from nomos.evolve import GAMES
+
     gif_dir = Path(args.gif_dir) if args.gif_dir and args.gif_dir.lower() != "none" else None
     seeds = tuple(range(args.eval_seeds))
+    cfg = GAMES[args.game]
+    for name in ("world_size", "game_size", "moves", "ticks"):
+        if getattr(args, name) is None:
+            setattr(args, name, cfg[name])
+    play_fn = play_forage if args.game == "forage" else play
 
     def on_generation(gen, genome, fit):
         print(f"[gen {gen}] best score={fit['score']:.2f} survival={fit['survival']:.0f} "
               f"fitness={fit['fitness']:.1f} genome={ {k: round(v, 3) for k, v in genome.items()} }",
               file=sys.stderr)
         if gif_dir is not None:
-            r = play(law_from_genome(genome), world_size=args.world_size,
-                     game_size=args.game_size, seed=args.show_seed, moves=args.moves,
-                     ticks_per_move=args.ticks, collect_frames=True)
+            r = play_fn(law_from_genome(genome, args.game), world_size=args.world_size,
+                        game_size=args.game_size, seed=args.show_seed, moves=args.moves,
+                        ticks_per_move=args.ticks, collect_frames=True)
             gif_dir.mkdir(parents=True, exist_ok=True)
             images = split_images(r["life_frames"], r["game_frames"], scale=args.scale,
-                                  life_frames2=r["avoid_frames"] or None)
+                                  life_frames2=r["avoid_frames"] or None,
+                                  hunger_frames=r.get("temp_frames") or None)
             path = gif_dir / f"gen{gen:02d}-score{r['score']}.gif"
             save_gif(images, str(path), fps=args.fps)
             print(f"         wrote {path} (show-seed score={r['score']})", file=sys.stderr)
@@ -164,7 +173,7 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     result = evolve(args.generations, lam=args.lam, seeds=seeds,
                     world_size=args.world_size, game_size=args.game_size,
                     moves=args.moves, ticks=args.ticks, rng_seed=args.seed,
-                    on_generation=on_generation)
+                    on_generation=on_generation, game=args.game)
 
     best = {"best_genome": {k: round(v, 4) for k, v in result["best_genome"].items()},
             "best_score": result["best_fitness"]["score"],
@@ -173,7 +182,7 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     print(json.dumps(best, indent=2))
     if args.save_law:
         Path(args.save_law).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.save_law).write_text(law_from_genome(result["best_genome"]),
+        Path(args.save_law).write_text(law_from_genome(result["best_genome"], args.game),
                                        encoding="utf-8")
         print(f"best brain law -> {args.save_law}", file=sys.stderr)
     return 0
@@ -256,7 +265,9 @@ def main(argv: list[str] | None = None) -> int:
     fo.add_argument("--gif", default=None, help="write the split life|game GIF here")
     fo.set_defaults(func=cmd_forage)
 
-    ev = sub.add_parser("evolve", help="evolve a Snake brain across runs (Phase B)")
+    ev = sub.add_parser("evolve", help="evolve a game brain across runs (Phase B)")
+    ev.add_argument("--game", choices=["snake", "forage"], default="snake",
+                    help="which external world to evolve a brain for (default snake)")
     ev.add_argument("--generations", type=int, default=8)
     ev.add_argument("--lam", type=int, default=6, help="offspring per generation")
     ev.add_argument("--eval-seeds", type=int, default=3, dest="eval_seeds",
@@ -264,10 +275,14 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--seed", type=int, default=0, help="RNG seed for the evolution itself")
     ev.add_argument("--show-seed", type=int, default=0, dest="show_seed",
                     help="board seed used for the per-generation GIF")
-    ev.add_argument("--world-size", type=int, default=48, dest="world_size")
-    ev.add_argument("--game-size", type=int, default=16, dest="game_size")
-    ev.add_argument("--moves", type=int, default=600, help="max game ticks (cap; ends at death)")
-    ev.add_argument("--ticks", type=int, default=64)
+    ev.add_argument("--world-size", type=int, default=None, dest="world_size",
+                    help="brain grid side (default: per game)")
+    ev.add_argument("--game-size", type=int, default=None, dest="game_size",
+                    help="board/map side (default: per game)")
+    ev.add_argument("--moves", type=int, default=None,
+                    help="max game ticks (cap; ends at death; default: per game)")
+    ev.add_argument("--ticks", type=int, default=None,
+                    help="physics steps per game move (default: per game)")
     ev.add_argument("--scale", type=int, default=6)
     ev.add_argument("--fps", type=int, default=6)
     ev.add_argument("--gif-dir", default="out/evolve", dest="gif_dir",

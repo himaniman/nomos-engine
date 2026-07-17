@@ -1,0 +1,39 @@
+{
+  // Ctrl+Shift+B runs the default build task (watch the vivarium).
+  // Terminal > Run Task... lists the rest.
+  "version": "2.0.0",
+  "options": { "cwd": "${workspaceFolder}" },
+  "presentation": { "reveal": "always", "panel": "dedicated" },
+  "tasks": [
+    {
+      "label": "vivarium: watch",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "vivarium.app", "--seed", "1", "--cell", "7"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "vivarium: headless run",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "vivarium.run", "--ticks", "8000", "--every", "500", "--seed", "1"],
+      "problemMatcher": []
+    },
+    {
+      "label": "vivarium: tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/test_vivarium.py", "-q"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "all tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests", "-q"],
+      "problemMatcher": []
+    }
+  ]
+}

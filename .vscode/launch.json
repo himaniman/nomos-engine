@@ -1,0 +1,65 @@
+{
+  // F5 launch configs for the vivarium playground (and nomos).
+  // All use the project's .venv interpreter explicitly, so they work no matter
+  // which interpreter VS Code has selected.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "vivarium: watch (pygame)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.app",
+      "args": ["--size", "96", "--seed", "1", "--cell", "7"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "vivarium: watch seeded (from pool)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.app",
+      "args": ["--seed", "5", "--cell", "7",
+               "--load-genomes", "vivarium/pools/open_evolved.npz"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "vivarium: headless run",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.run",
+      "args": ["--ticks", "8000", "--every", "500", "--seed", "1"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "vivarium: evolve open + save pool",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.run",
+      "args": ["--ticks", "12000", "--every", "1000", "--seed", "1",
+               "--wall-density", "0",
+               "--save-genomes", "vivarium/pools/open_evolved.npz"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    }
+  ]
+}

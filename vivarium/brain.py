@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import numpy as np
 
-# action ids returned by act()
-FORWARD, TURN_LEFT, TURN_RIGHT, REPRODUCE = 0, 1, 2, 3
-N_ACTIONS = 4
+# action ids returned by act(). Reproduction is NOT here: it is an automatic
+# innate drive (fires whenever energy allows), not a move the brain must choose —
+# otherwise evolution has to discover "press the breed button" before any
+# foraging skill can compound, and the population never bootstraps.
+FORWARD, TURN_LEFT, TURN_RIGHT = 0, 1, 2
+N_ACTIONS = 3
 
 
 def input_size(n_rays: int) -> int:

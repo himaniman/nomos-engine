@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from vivarium.brain import (FORWARD, REPRODUCE, TURN_LEFT, TURN_RIGHT, Brain,
-                            input_size)
+from vivarium.brain import FORWARD, TURN_LEFT, TURN_RIGHT, Brain, input_size
 from vivarium.config import Config
 
 # heading -> (dy, dx): 0=N(up), 1=E, 2=S(down), 3=W
@@ -208,7 +207,7 @@ class World:
             elif action == TURN_RIGHT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading + 1) % 4
-            elif action == REPRODUCE:
+            if a.energy >= c.repro_min_energy:         # innate drive: breed when able
                 self._try_reproduce(a)
             a.age += 1
             if a.energy <= 0:

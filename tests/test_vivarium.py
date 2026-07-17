@@ -156,17 +156,11 @@ def test_living_walls_drift_but_hold_density():
     assert w.walls[0, :].all() and w.walls[:, 0].all()        # border intact
 
 
-def test_reproduction_can_occur():
-    # a brain hardwired to always REPRODUCE, dropped into a fed world, breeds
-    from vivarium.brain import REPRODUCE
-    w = World(Config(size=30, seed=0, init_population=6, repro_min_energy=10.0,
-                     start_energy=40.0))
-    for a in w.agents.values():
-        # bias the reproduce output high so argmax picks it
-        a.brain.b2[:] = 0.0
-        a.brain.b2[REPRODUCE] = 10.0
-        a.brain.w2[:] = 0.0
+def test_reproduction_is_automatic_when_well_fed():
+    # reproduction is an innate drive: a well-fed agent breeds without choosing to
+    w = World(Config(size=30, seed=0, init_population=6, repro_min_energy=20.0,
+                     start_energy=50.0))
     before = w.population()
     w.step()
-    assert w.stats["births"] > 0
+    assert w.stats["births"] > 0                 # well-fed agents bred automatically
     assert w.population() > before

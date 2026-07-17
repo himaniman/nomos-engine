@@ -1,0 +1,8 @@
+{
+  // Use the project's virtualenv and wire up pytest, so F5 / the test panel
+  // just work out of the box.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"]
+}

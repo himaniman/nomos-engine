@@ -374,7 +374,8 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 food_count: int | None = None, starve_after: int = 120,
                 wall_radius: int | None = None, view_radius: int = 32,
                 view_fade: float | None = 0.7, view_fog: bool = True,
-                render_cap: int = 128, reward_decay: float = 0.6) -> dict:
+                render_cap: int = 128, reward_decay: float = 0.6,
+                reward_shaping: float = 0.5) -> dict:
     """Run the coupled brain+forage loop until the player starves (or `moves` —
     the safety cap; a brain still alive then kept feeding itself the whole run).
     Same contract as `play`: senses re-asserted every physics tick, one game move
@@ -401,6 +402,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
     game = Forage(game_size, seed, food_count=food_count, starve_after=starve_after)
     reward_val = 0.0
     prev_score = 0
+    prev_dist = game.nearest_food_distance() if has_reward else None
     life_frames: list[np.ndarray] = []
     avoid_frames: list[np.ndarray] = []
     game_frames: list[np.ndarray] = []
@@ -430,12 +432,23 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                              avoid=AVOID_CHANNEL if has_avoid else None)
         move = _slide(ranked, game)
         game.step(move)
-        # reward pulses to 1.0 the move a meal is eaten, then decays — a global
-        # 'that paid off' signal a learning rule can multiply into its weight
-        # update (three-factor Hebbian). Set AFTER the move so the next think
-        # cycle feels the reward for what it just did.
-        reward_val = 1.0 if game.score > prev_score else reward_val * reward_decay
+        # Reward, set AFTER the move so the next think cycle feels it: a big pulse
+        # (1.0) the move a meal is eaten, plus a DENSE shaping term for closing
+        # the geodesic gap to the nearest food (+ when the walking distance drops,
+        # - when it grows). The pulse alone fires 2-4 times a life — far too
+        # sparse to drive a Hebbian readout; the shaping gives a signed reward
+        # almost every move, so 'moved toward food' is what gets reinforced.
+        if game.score > prev_score:
+            reward_val = 1.0
+        elif has_reward and reward_shaping and prev_dist is not None:
+            cur = game.nearest_food_distance()
+            step_gain = (prev_dist - cur) if cur is not None else 0.0
+            reward_val = float(np.clip(reward_shaping * step_gain, -1.0, 1.0))
+        else:
+            reward_val = reward_val * reward_decay
         prev_score = game.score
+        if has_reward:
+            prev_dist = game.nearest_food_distance()
         move_seq.append(move)
         if collect_frames:
             life_frames.append(_block_mean(world.state[life_channel], render_cap))

@@ -1,0 +1,24 @@
+channel food
+channel wall
+channel sight
+channel temperature
+channel motor
+channel avoid
+channel mem: init 0
+channel noise: init 0
+
+rule integrate_mem:
+  when 1
+  add mem = 0.1443 * (food - mem)
+
+rule add_noise:
+  when 1
+  add noise = 0.0825 * (rand() - 0.5) * temperature
+
+rule set_motor:
+  when 1
+  set motor = max(0, food + 0.7157*mem + noise + 1.1591*sight)
+
+rule set_avoid:
+  when 1
+  set avoid = 0.9167 * wall

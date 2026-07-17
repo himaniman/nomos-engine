@@ -151,6 +151,18 @@ class Forage:
             self._scent_cache[food] = dist
         return self._scent_cache[food]
 
+    def nearest_food_distance(self) -> float | None:
+        """Geodesic (walking) distance from the player to the nearest reachable
+        food, using the cached scent maps — or None if nothing is reachable. Lets
+        the harness shape a dense reward from whether the player is closing in."""
+        py, px = self.pos
+        best = None
+        for food in self.foods:
+            d = int(self.scent(food)[py, px])
+            if d >= 0 and (best is None or d < best):
+                best = d
+        return None if best is None else float(best)
+
     def blocked(self, move: str | None) -> bool:
         """Would this move run into a wall (or off the map)?"""
         if move not in DIRECTIONS:

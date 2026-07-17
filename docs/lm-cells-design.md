@@ -229,3 +229,40 @@ weaker hardwired drive so learned weights carry the decision, longer lives, or
 tuning the learning constants (lr, decay, reward window) — the last is exactly
 an `evolve.py` / `brain_lab` job now that the substrate exists. That is the next
 experiment, and it's cleanly set up.
+
+---
+
+## v2 (2026-07-17): reward made dense, learning now BITES
+
+v1's ablation said learning was inert. Two changes fixed it:
+
+1. **Dense shaped reward** (harness). The old reward pulsed only on eating (2-4
+   times a life). Now the forage harness also shapes it by the change in
+   GEODESIC distance to the nearest food (`Forage.nearest_food_distance()` off
+   the cached scent maps): `reward = clamp(0.5*(prev_dist - cur_dist), -1, 1)`
+   every move, plus the 1.0 eat pulse. So "moved toward food" is rewarded
+   almost every step — enough signal for a Hebbian readout to accumulate.
+2. **Weaker hardwired drive** (law). v1's motor was `food + 2*sight + readout`,
+   which drowned the learned term. v2 is `0.4*food + readout` (+ a hunger-gated
+   exploration speck to bootstrap), so the LEARNED weights carry the decision
+   and adapting them actually changes behaviour. lr up 0.05 -> 0.15.
+
+Ablation, 6 seeds, learning vs the same brain with lr forced to 0:
+`learning mean 5.00 (per 3,0,0,13,0,14)` vs `frozen mean 0.50 (1,0,1,0,0,1)`.
+A 10x gap — learning is now the difference between foraging and starving. On
+seed 5 the learned brain ate 14 and survived the full 400-move cap (immortal).
+
+Watchable proof (`out/lmcell_weights_s5.gif`): rendering the readout weight
+field `vm0` over one life shows it start near-uniform and DIFFERENTIATE into
+spatial structure as reward-modulated Hebb reshapes it (field std 0.108 ->
+0.217). This is the self-organizing-brain picture literally on screen — the
+sheet growing internal structure from experience, not from design.
+
+Caveat kept honest: high variance (three of six seeds still score 0). Online
+learning over a single life on a sparse-food maze is a hard bootstrap — if the
+brain doesn't luck into food early, it never earns the reward to learn from.
+Reducing that variance (persistent exploration, a warm-up phase, or carrying
+learned weights across lives) is the next lever, and tuning lr/decay/shaping is
+now an `evolve.py`/`brain_lab` job. But the core claim is settled: a locally,
+online-learning network brain, no gradients, learns to forage — and you can
+watch its weights organize.

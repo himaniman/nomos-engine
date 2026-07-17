@@ -40,24 +40,37 @@ channel h0: init 0
 channel h1: init 0
 
 # learned readout weights (small + noise to break symmetry)
-channel vm0: init uniform(0, 0.2)
-channel vm1: init uniform(0, 0.2)
-channel va0: init uniform(0, 0.2)
-channel va1: init uniform(0, 0.2)
+channel vm0: init uniform(0, 0.4)
+channel vm1: init uniform(0, 0.4)
+channel va0: init uniform(0, 0.4)
+channel va1: init uniform(0, 0.4)
 
 rule hidden:
   when 1
   set h0 = tanh(wh0_food*food + wh0_sight*sight + wh0_wall*wall)
   set h1 = tanh(wh1_food*food + wh1_sight*sight + wh1_wall*wall)
 
+# Only a WEAK hardwired drive (0.4*food) so the untrained brain forages enough
+# to earn the shaping reward; the bulk of the motor comes from the LEARNED
+# readout of the hidden features, so as the weights adapt the behaviour
+# genuinely changes (v1's hardwired food+2*sight drowned the readout — learning
+# was inert). lr is up to 0.15 and the dense shaped reward drives it.
 rule readout:
   when 1
-  set motor = max(0, food + 2*sight + vm0*h0 + vm1*h1)
-  set avoid = max(0, wall + va0*h0 + va1*h1)
+  set motor = max(0, 0.4*food + vm0*h0 + vm1*h1)
+  set avoid = max(0, 0.4*wall + va0*h0 + va1*h1)
+
+# Hunger-gated exploration specks: when starving and the readout is quiet, a few
+# random motor points keep the creature MOVING so it stumbles onto food, earns
+# the shaping reward, and bootstraps its learning. Without this the brain can
+# sit at zero on boards where it never happens to approach food early.
+rule explore:
+  when temperature > 0.3
+  add motor = 0.15 * bernoulli(0.003) * temperature
 
 rule learn:
   when 1
-  set vm0 = clamp(vm0 + 0.05*reward*h0*motor - 0.001*vm0, -2, 2)
-  set vm1 = clamp(vm1 + 0.05*reward*h1*motor - 0.001*vm1, -2, 2)
-  set va0 = clamp(va0 + 0.05*reward*h0*avoid - 0.001*va0, -2, 2)
-  set va1 = clamp(va1 + 0.05*reward*h1*avoid - 0.001*va1, -2, 2)
+  set vm0 = clamp(vm0 + 0.15*reward*h0*motor - 0.002*vm0, -3, 3)
+  set vm1 = clamp(vm1 + 0.15*reward*h1*motor - 0.002*vm1, -3, 3)
+  set va0 = clamp(va0 + 0.15*reward*h0*avoid - 0.002*va0, -3, 3)
+  set va1 = clamp(va1 + 0.15*reward*h1*avoid - 0.002*va1, -3, 3)

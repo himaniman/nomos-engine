@@ -144,16 +144,21 @@ def test_genome_pool_seeds_the_population():
         assert np.abs(a.brain.genome - base).mean() < 0.1     # near the pool genome
 
 
-def test_living_walls_drift_but_hold_density():
-    w = World(Config(size=64, seed=1, init_population=5, wall_drift_every=10,
-                     wall_drift_frac=0.05))
+def test_walking_walls_shift_but_keep_shape():
+    w = World(Config(size=64, seed=1, init_population=5, wall_drift_every=5,
+                     wall_step_prob=1.0))
     before = w.walls.copy()
     d0 = int(before.sum())
-    for _ in range(40):
+    for _ in range(30):
         w.step()
-    assert not np.array_equal(before, w.walls)               # the map has shifted
-    assert abs(int(w.walls.sum()) - d0) <= d0 * 0.2 + 10      # density roughly held
+    assert not np.array_equal(before, w.walls)               # positions shifted
+    # strokes keep their shape, so total wall count barely changes (only clipping
+    # at the border / centre patch moves it a little)
+    assert abs(int(w.walls.sum()) - d0) <= d0 * 0.25 + 20
     assert w.walls[0, :].all() and w.walls[:, 0].all()        # border intact
+    # each stroke is still a straight line of its original length
+    for s in w.strokes:
+        assert s["axis"] in ("h", "v") and s["length"] >= 3
 
 
 def test_reproduction_is_automatic_when_well_fed():

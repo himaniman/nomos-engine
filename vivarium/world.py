@@ -46,7 +46,9 @@ class World:
         self.tick = 0
         self._next_id = 0
 
-        self.walls = self._generate_walls()
+        self.strokes = self._generate_strokes()
+        self.walls = np.zeros((self.h, self.w), dtype=bool)
+        self._rasterize_walls()
         self.food = np.zeros((self.h, self.w), dtype=bool)
         self.occ = np.full((self.h, self.w), -1, dtype=np.int64)   # agent id or -1
         self.corpse = np.zeros((self.h, self.w), dtype=np.int64)   # ticks remaining
@@ -75,39 +77,53 @@ class World:
 
     # -- map ----------------------------------------------------------------
 
-    def _generate_walls(self) -> np.ndarray:
-        """Border walls + inner strokes, each pierced by one doorway so the maze
-        partitions the space into rooms/corridors without sealing it. Strokes are
-        laid until ~`wall_density` of the interior is wall; a clear centre patch
-        guarantees room to (re)spawn. Seeded -> the map is part of the run's
-        determinism."""
-        walls = np.zeros((self.h, self.w), dtype=bool)
-        walls[0, :] = walls[-1, :] = True
-        walls[:, 0] = walls[:, -1] = True
+    def _generate_strokes(self) -> list[dict]:
+        """Inner wall strokes as OBJECTS — each a line with one doorway and a walk
+        direction (+1/-1 along its own axis). Laid until ~`wall_density` of the
+        interior is covered. Seeded -> the map is part of the run's determinism."""
         target = int(self.cfg.wall_density * (self.h - 2) * (self.w - 2))
         lo = max(3, min(self.h, self.w) // 10)
         hi = max(lo + 1, min(self.h, self.w) // 3)
-        placed = 0
+        strokes, placed = [], 0
         for _ in range(20_000):
             if placed >= target:
                 break
             length = int(self.rng.integers(lo, hi + 1))
-            door = int(self.rng.integers(length))
-            if self.rng.random() < 0.5:                     # horizontal stroke
+            axis = "h" if self.rng.random() < 0.5 else "v"
+            if axis == "h":
                 y = int(self.rng.integers(2, self.h - 2))
-                x0 = int(self.rng.integers(1, max(2, self.w - length)))
-                cells = [(y, x0 + i) for i in range(length)]
-            else:                                           # vertical stroke
+                x = int(self.rng.integers(1, max(2, self.w - length)))
+            else:
                 x = int(self.rng.integers(2, self.w - 2))
-                y0 = int(self.rng.integers(1, max(2, self.h - length)))
-                cells = [(y0 + i, x) for i in range(length)]
-            for i, (yy, xx) in enumerate(cells):
-                if i != door and 0 < yy < self.h - 1 and 0 < xx < self.w - 1:
-                    placed += int(not walls[yy, xx])
-                    walls[yy, xx] = True
+                y = int(self.rng.integers(1, max(2, self.h - length)))
+            s = {"axis": axis, "y": y, "x": x, "length": length,
+                 "door": int(self.rng.integers(length)),
+                 "dir": 1 if self.rng.random() < 0.5 else -1}
+            strokes.append(s)
+            placed += length - 1                            # minus the doorway
+        return strokes
+
+    def _stroke_cells(self, s: dict):
+        """The wall cells of a stroke (doorway excluded), clipped to the interior."""
+        for i in range(s["length"]):
+            if i == s["door"]:
+                continue
+            yy = s["y"] + (i if s["axis"] == "v" else 0)
+            xx = s["x"] + (i if s["axis"] == "h" else 0)
+            if 0 < yy < self.h - 1 and 0 < xx < self.w - 1:
+                yield yy, xx
+
+    def _rasterize_walls(self) -> None:
+        """Rebuild the wall grid from the border + current stroke positions, with
+        a clear centre patch for (re)spawns."""
+        self.walls[:] = False
+        self.walls[0, :] = self.walls[-1, :] = True
+        self.walls[:, 0] = self.walls[:, -1] = True
+        for s in self.strokes:
+            for yy, xx in self._stroke_cells(s):
+                self.walls[yy, xx] = True
         cy, cx = self.h // 2, self.w // 2
-        walls[cy - 2:cy + 3, cx - 2:cx + 3] = False         # clear centre for spawns
-        return walls
+        self.walls[cy - 2:cy + 3, cx - 2:cx + 3] = False
 
     # -- helpers ------------------------------------------------------------
 
@@ -222,25 +238,35 @@ class World:
             self._reseed()
 
     def _drift_walls(self) -> None:
-        """The landscape lives: every `wall_drift_every` ticks erode some inner
-        walls and grow as many new ones elsewhere, so the maze slowly reshapes
-        while keeping roughly constant density. Never walls an occupied/food cell
-        (uses `_random_free_cell`), so it can't bury an agent or a meal."""
+        """The landscape lives: every `wall_drift_every` ticks each stroke may WALK
+        one cell along its own axis (leading with either end, like a snake),
+        keeping its shape. A stroke that would leave the interior, or whose new
+        cells are occupied by an agent, reverses instead of moving — so walking
+        walls never bury a creature. Topology stays roughly constant; positions
+        drift slowly."""
         c = self.cfg
         if c.wall_drift_every <= 0 or self.tick % c.wall_drift_every != 0:
             return
-        inner = np.argwhere(self.walls)
-        inner = [(y, x) for y, x in inner if 0 < y < self.h - 1 and 0 < x < self.w - 1]
-        if not inner:
-            return
-        k = max(1, int(len(inner) * c.wall_drift_frac))
-        for i in self.rng.choice(len(inner), size=min(k, len(inner)), replace=False):
-            y, x = inner[i]
-            self.walls[y, x] = False                    # erode
-        for _ in range(k):
-            cell = self._random_free_cell()
-            if cell is not None:
-                self.walls[cell] = True                 # regrow elsewhere
+        moved = False
+        for s in self.strokes:
+            if self.rng.random() >= c.wall_step_prob:
+                continue
+            ny = s["y"] + (s["dir"] if s["axis"] == "v" else 0)
+            nx = s["x"] + (s["dir"] if s["axis"] == "h" else 0)
+            cand = dict(s, y=ny, x=nx)
+            cells = list(self._stroke_cells(cand))
+            end = (ny + (cand["length"] - 1 if cand["axis"] == "v" else 0),
+                   nx + (cand["length"] - 1 if cand["axis"] == "h" else 0))
+            in_bounds = 1 <= ny and 1 <= nx and 0 < end[0] < self.h - 1 \
+                and 0 < end[1] < self.w - 1
+            blocked = any(self.occ[yy, xx] >= 0 for yy, xx in cells)
+            if in_bounds and not blocked:
+                s["y"], s["x"] = ny, nx
+                moved = True
+            else:
+                s["dir"] *= -1                          # hit a wall/agent: turn back
+        if moved:
+            self._rasterize_walls()
 
     def _try_reproduce(self, a: Agent) -> None:
         c = self.cfg

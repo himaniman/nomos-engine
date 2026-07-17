@@ -15,10 +15,12 @@ class Config:
                                        # (strokes with doorways) — mostly open space
                                        # with occasional walls; vision rays stop at
                                        # walls so agents can't see food behind them
-    # "living" landscape: walls slowly drift (some erode, as many regrow) so the
-    # world reshapes over time instead of being fixed. drift_every=0 turns it off.
-    wall_drift_every: int = 60         # reshape the walls every N ticks
-    wall_drift_frac: float = 0.03      # fraction of walls moved per drift
+    # "living" landscape: each wall STROKE keeps its shape but slowly WALKS along
+    # its own line (like a snake that can lead with either end), sliding back and
+    # forth. The maze's topology stays roughly the same; only positions drift.
+    # drift_every=0 freezes the walls.
+    wall_drift_every: int = 120        # a walk opportunity every N ticks (slow)
+    wall_step_prob: float = 0.5        # chance each stroke steps on a walk tick
 
     # food (the carrying-capacity knob)
     food_target: float = 0.05          # fraction of open cells that should hold food

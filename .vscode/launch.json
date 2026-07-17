@@ -28,6 +28,20 @@
       "justMyCode": true
     },
     {
+      "name": "vivarium: watch NCA brains (continue from session)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.app",
+      "args": ["--brain", "nca", "--size", "48", "--seed", "1", "--cell", "12",
+               "--population", "25",
+               "--load-genomes", "vivarium/pools/session.json",
+               "--save-genomes", "vivarium/pools/session.json"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "vivarium: headless NCA run",
       "type": "debugpy",
       "request": "launch",

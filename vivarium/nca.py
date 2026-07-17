@@ -158,6 +158,13 @@ class Phenotype:
                           for k in range(genome.n_types)]
         self.last_input = None
         self.last_logits = None
+        # when `record` is on (set only for the inspected agent), act() keeps a per
+        # sub-tick TRACE of the grid state so the viewer can animate the brain
+        # thinking; `show_state`, if set, is what the inspector draws instead of the
+        # live final state (one trace frame). Neither affects the computation.
+        self.record = False
+        self.trace: list = []
+        self.show_state = None
 
     def _perceive(self, s: np.ndarray) -> np.ndarray:
         """3x3 neighbourhood of every cell, BOUNDED (zero-padded, no torus wrap),
@@ -172,6 +179,8 @@ class Phenotype:
         g = self.genome
         drive = inputs @ g.P_in                              # (C,) sensory current
         st = self.state
+        if self.record:
+            self.trace = []
         single = g.n_types == 1                              # common case: fast path
         for _ in range(self.subticks):
             perc = self._perceive(st)                        # (G, G, 9C)
@@ -187,6 +196,8 @@ class Phenotype:
                     delta[sel] = hk @ g.W2[k].T + g.b2[k]           # (n_k, C)
             st = np.tanh(st + delta + drive)                 # residual + clamped
             st = st * self._m                                # dead cells stay 0
+            if self.record:
+                self.trace.append(st.copy())                 # one frame per sub-tick
         self.state = st
         pooled = st[g.mask].mean(axis=0)                     # (C,) mean over alive
         logits = pooled @ g.P_out + g.b_out                  # (n_out,)

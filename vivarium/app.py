@@ -10,7 +10,8 @@ you click an agent, that agent's brain (its MLP, edges coloured by weight) and
 gene stats.
 
 Controls: SPACE pause/resume · S single-step · +/- speed · click an agent to
-inspect · R reseed-from-hall · ESC/Q quit.
+inspect · T animate the selected NCA brain's sub-ticks (at x1) · W save the current
+top genomes (--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
 
 The drawing is split from the loop (`draw` returns a Surface) so it can be
 rendered headless (SDL dummy) for tests/screenshots without a display.
@@ -26,6 +27,7 @@ import numpy as np
 import pygame
 
 from vivarium.config import Config
+from vivarium.genome_io import save_genomes
 from vivarium.neat import Genome
 from vivarium.world import World
 
@@ -37,10 +39,21 @@ def _genome_hash(genome: Genome) -> int:
 
 
 def genome_color(genome: Genome) -> tuple[int, int, int]:
-    """Colour from the HERITABLE lineage hue — a family shares a colour and it
-    drifts only slowly, so you can watch lineages spread, split and diverge.
-    (The brain fingerprint `key` is used for the NAME, not the colour.)"""
-    r, g, b = colorsys.hsv_to_rgb(genome.hue, 0.85, 1.0)
+    """Colour on two axes so lineage AND structure both read at a glance:
+      HUE        = the heritable lineage hue (families share a colour, drifts slowly);
+      SATURATION = brain STRUCTURAL complexity (NCA: type diversity; NEAT: hidden
+                   nodes), so a richer, more differentiated brain looks more VIVID
+                   and a simple one looks pale — without breaking family visibility.
+    (Brightness is added by the caller from energy. The brain fingerprint `key` is
+    used for the NAME, not the colour — deliberately: tying colour to the hash would
+    flip a family's colour on every mutation, hiding lineages.)"""
+    nh, nc = genome.complexity()
+    if getattr(genome, "kind", "neat") == "nca":
+        frac = max(0.0, min(1.0, (nc - 1) / 3.0))       # type diversity: 1->pale, 4->vivid
+    else:
+        frac = max(0.0, min(1.0, nh / 6.0))             # hidden-node count
+    sat = 0.45 + 0.5 * frac
+    r, g, b = colorsys.hsv_to_rgb(genome.hue, sat, 1.0)
     return int(r * 255), int(g * 255), int(b * 255)
 
 
@@ -53,6 +66,14 @@ def genome_name(genome: Genome) -> str:
         letters.append(_CONSONANTS[n % len(_CONSONANTS)])
         n //= len(_CONSONANTS)
     return "".join(letters)
+
+
+def _brain_tag(genome) -> str:
+    """Compact structure readout for a genome: NCA shows alive cells + type
+    diversity (its 'neuron diversity'); NEAT shows hidden nodes + connections."""
+    nh, nc = genome.complexity()
+    return f"{nh}c {nc}t" if getattr(genome, "kind", "neat") == "nca" \
+        else f"h{nh} c{nc}"
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
@@ -105,10 +126,14 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
              f"food {s['food']}", f"births {s['births']}", f"deaths {s['deaths']}"]
     if hud is not None:
-        lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s")
+        think = "  THINK" if hud.get("think") else ""
+        lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s{think}")
     for i, t in enumerate(lines):
         surf.blit(font.render(t, True, (220, 220, 230)), (x0 + 12, 10 + i * 20))
     y = 10 + len(lines) * 20 + 10
+    if hud is not None and hud.get("msg"):
+        surf.blit(small.render(hud["msg"], True, (150, 230, 160)), (x0 + 12, y))
+        y += 18
 
     # top-3 longest-lived lineages — clickable to inspect their genome
     surf.blit(small.render("leaders (click to inspect):", True, (150, 160, 180)),
@@ -116,9 +141,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     if hitboxes is not None:
         hitboxes.clear()
     for age, g in world.hall[:3]:
-        nh, nc = g.complexity()
         pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
-        surf.blit(small.render(f"{age:>4} {genome_name(g)}  h{nh} c{nc}", True,
+        surf.blit(small.render(f"{age:>4} {genome_name(g)}  {_brain_tag(g)}", True,
                                (210, 215, 230)), (x0 + 28, y))
         if hitboxes is not None:
             hitboxes.append((pygame.Rect(x0, y, panel_w, 17), g))
@@ -143,7 +167,7 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     nh, nc = g.complexity()
     info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
             if agent is not None else [])
-    info.append(f"cells {nh}  chan {nc}" if getattr(g, "kind", "neat") == "nca"
+    info.append(f"cells {nh}  types {nc}" if getattr(g, "kind", "neat") == "nca"
                 else f"hidden {nh}  conns {nc}")
     for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
@@ -170,7 +194,10 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
     SENSES left, output MOTOR logits right (argmax highlighted). Bottom: each cell
     TYPE's update rule drawn as a compact layered net (channels -> hidden -> channel
     delta), so you see the diversity of nets the cells are made of."""
-    state = phenotype.state if phenotype is not None else None
+    state = None
+    if phenotype is not None:
+        state = phenotype.show_state if getattr(phenotype, "show_state", None) \
+            is not None else phenotype.state
     inp = getattr(phenotype, "last_input", None) if phenotype is not None else None
     logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
 
@@ -302,6 +329,9 @@ def main(argv=None) -> int:
                    help="brain model: neat graph or nca cellular-automaton")
     p.add_argument("--load-genomes", default=None, dest="load_genomes",
                    help="seed the world from an evolved genome pool (.json)")
+    p.add_argument("--save-genomes", default="vivarium/pools/session.json",
+                   dest="save_genomes",
+                   help="press W in the window to save the current top genomes here")
     a = p.parse_args(argv)
 
     cfg = Config(size=a.size, seed=a.seed, init_population=a.population,
@@ -326,6 +356,11 @@ def main(argv=None) -> int:
     paused, speed, selected = False, 1, None
     leader = None                                    # a pinned leader genome to inspect
     leader_boxes = []                                # (rect, genome) hitboxes, filled by draw
+    think = False                                    # subtick-animation mode (T), x1 only
+    sub = 0                                          # which subtick frame we're showing
+    recorded = None                                  # which agent is tracing its subticks
+    msg, msg_frames = "", 0                          # transient HUD flash
+    is_nca = cfg.brain == "nca"
     running = True
     while running:
         for e in pygame.event.get():
@@ -344,6 +379,14 @@ def main(argv=None) -> int:
                     speed = max(1, speed // 2)
                 elif e.key == pygame.K_r:
                     world._reseed()
+                elif e.key == pygame.K_t:            # toggle subtick "thinking" view
+                    think = not think
+                    sub = 0
+                elif e.key == pygame.K_w:            # write the current top genomes
+                    genomes = world.hall_genomes() or \
+                        [ag.brain.genome.copy() for ag in world.agents.values()]
+                    save_genomes(a.save_genomes, genomes)
+                    msg, msg_frames = f"saved {len(genomes)} -> {a.save_genomes}", 150
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = e.pos
                 hit = next((g for rect, g in leader_boxes if rect.collidepoint(mx, my)),
@@ -356,17 +399,45 @@ def main(argv=None) -> int:
                             and world.occ[gy, gx] >= 0:
                         selected = int(world.occ[gy, gx])
                         leader = None                # a live agent unpins the leader
+
+        # only the selected NCA agent records its subtick trace (for the T view)
+        if is_nca and recorded != selected:
+            if recorded in world.agents:
+                world.agents[recorded].brain.record = False
+                world.agents[recorded].brain.show_state = None
+            recorded = selected
+        anim = think and speed == 1 and is_nca and not paused and selected in world.agents
+        if is_nca and selected in world.agents:
+            world.agents[selected].brain.record = anim
+
         if not paused:
-            for _ in range(speed):
-                world.step()
+            if anim:                                 # 1 world tick per K frames; play it out
+                if sub == 0:
+                    world.step()
+                if selected in world.agents:
+                    tr = world.agents[selected].brain.trace
+                    if tr:
+                        world.agents[selected].brain.show_state = tr[min(sub, len(tr) - 1)]
+                        sub = (sub + 1) % len(tr)
+                    else:
+                        sub = 0
+                else:
+                    sub = 0
+            else:
+                for _ in range(speed):
+                    world.step()
+                sub = 0
         if selected is not None and selected not in world.agents:
             selected = None
         fps = clock.get_fps()
-        hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0)}
+        hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0),
+               "think": anim, "msg": msg if msg_frames > 0 else ""}
+        if msg_frames > 0:
+            msg_frames -= 1
         screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,
                          leader=leader, hitboxes=leader_boxes), (0, 0))
         pygame.display.flip()
-        clock.tick(60 if speed <= 2 else 0)          # uncap the frame rate when fast
+        clock.tick(60 if (speed <= 2 or anim) else 0)   # capped when slow/animating
     pygame.quit()
     return 0
 

@@ -266,3 +266,46 @@ learned weights across lives) is the next lever, and tuning lr/decay/shaping is
 now an `evolve.py`/`brain_lab` job. But the core claim is settled: a locally,
 online-learning network brain, no gradients, learns to forage — and you can
 watch its weights organize.
+
+---
+
+## Lamarckian transfer (2026-07-17): acquired skill IS inherited — on mazes seen
+
+Built cross-life weight inheritance (`nomos/lamarck.py`, `nomos lamarck`): each
+life the LM-cell brain learns online (Hebbian), and the best child's LEARNED
+weight FIELD — hidden projection + readout together — is carried, mutated
+lightly, into the next life. A (1+lambda) lineage; mazes rotate across lives;
+offspring run in parallel (ProcessPoolExecutor, ~2.3x on 4 cores).
+
+A 16-life lineage (lam 6, 4 rotated mazes) scored per-life, regrouped by which
+maze each life saw:
+
+```
+seed 0 visits: [3, 3, 0, 3]
+seed 1 visits: [0, 0, 2, 0]
+seed 2 visits: [0, 9, 9, 9]   <- accumulation: first visit 0, then locks at 9
+seed 3 visits: [13, 15, 15, 13]
+```
+
+The result, read honestly:
+- **Acquired skill is inherited on mazes the lineage has seen.** seed 2 is the
+  clean demonstration: the FIRST life on it scored 0, but once the lineage
+  carried weights back to it, every later visit locked at 9. seed 3 sits high
+  and steady (13-15). This is the Lamarckian claim working: learned weights
+  passed across lives raise the floor on familiar mazes — heredity of an
+  acquired characteristic, no gradients.
+- **But one shared weight field cannot be good at every maze at once.** seeds 0
+  and 1 stay poor throughout, and replaying the best lineage weights (learned
+  mostly on seeds 2/3) on the held-out seed 0 scored 0 — the inherited weights
+  carry maze-flavoured structure, not purely general skill, and can even hurt
+  on a layout they weren't shaped by. The lineage partially SPECIALIZES toward
+  the mazes where it succeeds.
+
+So Lamarckian transfer is real but its unit of "knowledge" here is closer to
+maze-specific competence than universal navigation. Making it general is the
+next question, and the levers are clear: train each life on MORE mazes (so the
+carried weights must average to features that work everywhere), weaken the
+within-life learning rate (so inheritance carries more of the load than fresh
+re-learning each life), or measure/seek a head-start on UNSEEN mazes rather than
+end-of-life score on seen ones. The mechanism, the parallel infrastructure, and
+an honest first measurement are in place.

@@ -1,10 +1,11 @@
 # Design note — cells as tiny learning networks ("LM-cells")
 
-Status: DESIGN / discussion. Nothing here is built yet. Written 2026-07-17 after
-the user proposed making each brain cell a small multi-layer perceptron that
-learns its own weights, with the external LLM (DeepSeek) designing the
-structure and the *learning rule*, cells joined by axons, and some cells wired
-to the external world.
+Status: v1 BUILT (see the last section); axons deferred by the user. Written
+2026-07-17 after the user proposed making each brain cell a small multi-layer
+perceptron that learns its own weights, with the external LLM (DeepSeek)
+designing the structure and the *learning rule*, cells joined by axons, and some
+cells wired to the external world. The user later dropped axons as premature, so
+the built path is the no-new-primitive one below.
 
 The headline finding of this note: **most of the idea already fits the current
 engine with no new machinery.** A per-cell perceptron whose weights are extra

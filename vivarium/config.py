@@ -82,9 +82,18 @@ class Config:
     # weights both evolve.
     nca_grid: int = 12                 # max brain lattice side (the mask lives here)
     nca_channels: int = 8              # state channels per cell
-    nca_hidden: int = 16               # hidden units in the shared update rule
+    nca_hidden: int = 16               # hidden units in each cell-type's update rule
     nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
     nca_start: int = 2                 # side of the fresh alive block (2 -> 2x2)
     nca_max_cells: int = 48            # cap on alive cells (bounds per-agent compute)
     nca_grow_prob: float = 0.06        # chance a mutation activates a new adjacent cell
     nca_shrink_prob: float = 0.02      # chance a mutation deactivates a cell
+    # v1 — cell TYPES: the genome carries several update rules; each cell has a TYPE
+    # pointing at one, so cells DIFFERENTIATE (a set of rules, not one shared rule).
+    nca_max_types: int = 4             # cap on distinct cell-type rules
+    nca_retype_prob: float = 0.05      # chance a mutation re-types one cell
+    nca_split_prob: float = 0.02       # chance a mutation SPLITS a type into a new one
+                                       # (clone+jitter a rule, reassign ~half its cells)
+    nca_cell_cost: float = 0.02        # energy per brain cell per tick (NCA only): makes
+                                       # a bigger brain COST more, so shape/size is under
+                                       # selection, not a free random drift

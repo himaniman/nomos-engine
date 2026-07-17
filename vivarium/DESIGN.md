@@ -331,3 +331,24 @@ are solid; making the NCA ecology robustly LIVELY is the tuning frontier, exactl
 as it was for NEAT. Open: does the CA brain, given the think-time, forage BETTER
 than the reactive NEAT graph once tuned — the A/B the shared World now makes
 trivial (`--brain neat` vs `--brain nca`, same world, same seed).
+
+**v1 DONE — cell TYPES (a set of rules) + size under selection + the brain-net
+viz.** The genome now carries a SET of update rules (rule arrays gained a leading
+type axis: W1 (K,H,9C) etc.) and a per-cell `type_map`; each cell runs ITS type's
+rule, so cells DIFFERENTIATE. v0 is the K=1 special case. Mutations: RE-TYPE a cell
+(`nca_retype_prob`) and SPLIT a type (`nca_split_prob` — clone+jitter a rule into a
+new type, hand it ~half the source type's cells); grown cells inherit a neighbour's
+type so types form spatial regions. Crossover mixes rules by shared type index
+(fitter supplies shape/type-map/extra types). A prompted fix to the "cell count
+never moved" observation: in v0 brain size was a FREE random drift (no cost, and
+founders/reseeds never mutate, so the inspected long-lived agents stayed 2x2). Now
+`nca_cell_cost` charges energy per brain cell per tick (NCA only), so a bigger brain
+must EARN its keep — size is under selection, not drift. **Viz** (user's request:
+"draw the neural net by layers, like main; show what cells the brain is made of"):
+the inspector now (a) borders each texture cell by its TYPE colour and (b) draws
+each cell-type's rule as a compact layered net (input channels -> hidden -> channel
+delta, strongest edges only). So you see the shape, the type regions, AND the little
+nets the cells are made of. 155 tests pass (11 NCA: + type split, cross-type-count
+crossover). Still ahead (v2): NEAT topology growth INSIDE a rule; sensory organs on
+the edge; and the real tuning question — do differentiated multi-type brains, paid
+for by the per-cell cost, out-forage the single-rule ones.

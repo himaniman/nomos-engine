@@ -344,6 +344,38 @@ def test_nca_crossover_is_a_valid_runnable_brain():
     assert nca.Phenotype(child, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
 
 
+def test_nca_type_split_adds_a_rule_and_differentiates_cells():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(4)
+    # a brain with several cells so a split has cells to hand out
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng,
+                          cfg=_nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0))
+    for _ in range(6):
+        g, _ = nca.mutate(g, rng, _nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0), 0)
+    assert g.n_types == 1                          # starts single-type (v0 case)
+    split = _nca_cfg(nca_split_prob=1.0, nca_grow_prob=0.0, nca_shrink_prob=0.0)
+    g, _ = nca.mutate(g, rng, split, 0)
+    assert g.n_types == 2                          # a new rule appeared
+    assert g.complexity()[1] >= 1                  # types are in use
+    # still a valid runnable brain after differentiation
+    assert nca.Phenotype(g, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
+def test_nca_crossover_across_different_type_counts_is_valid():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(5)
+    cfg = _nca_cfg()
+    g1 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)     # 1 type
+    g2 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    g2, _ = nca.mutate(g2, rng, _nca_cfg(nca_split_prob=1.0), 0)  # 2 types
+    child_a = nca.crossover(g2, g1, rng)           # fitter has more types
+    child_b = nca.crossover(g1, g2, rng)           # fitter has fewer types
+    for child in (child_a, child_b):
+        assert nca.Phenotype(child, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
 def test_nca_world_runs_and_is_deterministic():
     cfg = _nca_cfg(size=32, seed=5, init_population=12)
     a = run_headless(cfg, ticks=60, every=20)

@@ -154,35 +154,43 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
         _draw_net(surf, g, *box)
 
 
+# distinct colours per cell-TYPE, so you see what the brain is made of
+_TYPE_COLORS = [(230, 120, 120), (120, 205, 140), (130, 160, 245), (232, 200, 120),
+                (205, 130, 232), (120, 212, 212)]
+
+
+def _type_color(k):
+    return _TYPE_COLORS[k % len(_TYPE_COLORS)]
+
+
 def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
-    """Draw the agent's CA brain: the G x G lattice in the middle (dead cells dark,
-    alive cells coloured by their first three state CHANNELS -> RGB), flanked by the
-    small "neurons" wired to it — the input SENSES on the left and the output MOTOR
-    logits on the right (the argmax action highlighted). This is the "watch it
-    think" view: senses in, texture relaxes, a decision comes out."""
+    """Draw the agent's CA brain in two rows. Top: the G x G lattice (dead cells
+    dark; alive cells filled by their first three state CHANNELS -> RGB, bordered by
+    their cell-TYPE colour), flanked by the small "neurons" wired to it — input
+    SENSES left, output MOTOR logits right (argmax highlighted). Bottom: each cell
+    TYPE's update rule drawn as a compact layered net (channels -> hidden -> channel
+    delta), so you see the diversity of nets the cells are made of."""
     state = phenotype.state if phenotype is not None else None
     inp = getattr(phenotype, "last_input", None) if phenotype is not None else None
     logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
 
-    # thin input/output columns flank the central grid
-    col_w = 6
-    pad = 6
+    grid_h = int(h * 0.55)                                 # top row height
+    col_w, pad = 6, 6
     gx0 = x + (col_w + pad if inp is not None else 0)
     gx1 = x + w - (col_w + pad if logits is not None else 0)
-    gw = gx1 - gx0
     G = genome.G
-    side = max(1, min(gw, h) // G)
+    side = max(1, min(gx1 - gx0, grid_h) // G)
 
     def strip(vals, sx, hi=None, signed=False):
         n = len(vals)
-        ch = max(1, min(10, h // n))
+        ch = max(1, min(10, grid_h // n))
         for i, v in enumerate(vals):
             if signed:                                     # motor logits: red<0, green>0
                 t = float(np.tanh(v))
                 col = (int(140 * max(0, -t)) + 30, int(140 * max(0, t)) + 30, 40)
             else:                                          # senses: green intensity
-                g = int(200 * min(1.0, abs(float(v))))
-                col = (20, g + 25, 30)
+                gi = int(200 * min(1.0, abs(float(v))))
+                col = (20, gi + 25, 30)
             rect = (sx, y + i * ch, col_w, ch - 1)
             surf.fill(col, rect)
             if hi is not None and i == hi:
@@ -203,8 +211,56 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
             else:
                 col = (150, 160, 200)                      # shape only (no live state)
             surf.fill(col, rect)
+            if side >= 4:                                  # border = cell type
+                pygame.draw.rect(surf, _type_color(int(genome.type_map[gy, gx])),
+                                 rect, 1)
     if logits is not None:
         strip(logits, x + w - col_w, hi=int(np.argmax(logits)), signed=True)
+
+    # bottom row: one compact rule-net per cell type
+    ny = y + grid_h + 4
+    nh = y + h - ny
+    used = [k for k in range(genome.n_types)
+            if (genome.mask & (genome.type_map == k)).any()] or [0]
+    nw = w // len(used)
+    for i, k in enumerate(used):
+        _draw_rule_net(surf, genome, k, x + i * nw, ny, nw - 6, nh)
+
+
+def _draw_rule_net(surf, genome, k, x, y, w, h):
+    """A cell TYPE's update rule as a small 3-layer net: input CHANNELS (left, the
+    9-neighbour weights averaged per channel) -> HIDDEN (middle) -> output channel
+    delta (right). Only the strongest edges are drawn so the shape reads at a glance;
+    the header dot is the type's colour."""
+    C, H = genome.C, genome.H
+    W_ih = genome.W1[k].reshape(H, 9, C).mean(axis=1)      # (H, C) neighbour-averaged
+    W_ho = genome.W2[k]                                    # (C, H)
+    top = max(6, y)
+    x0, x1, xm = x + 8, x + w - 8, x + w // 2
+    def ys(n):
+        return [top + int((j + 0.5) / max(1, n) * (h - 8)) for j in range(n)]
+    yi, yh, yo = ys(C), ys(H), ys(C)
+    pygame.draw.rect(surf, _type_color(k), (x, top - 4, 6, 6))
+
+    def edges(Wm, xa, ya, xb, yb):
+        m = np.abs(Wm).max() + 1e-6
+        thr = 0.55 * m                                     # only strong edges
+        for a in range(Wm.shape[0]):
+            for b in range(Wm.shape[1]):
+                wv = Wm[a, b]
+                if abs(wv) < thr:
+                    continue
+                col = (90, 160, 255) if wv >= 0 else (255, 110, 90)
+                pygame.draw.line(surf, col, (xa, ya[b]), (xb, yb[a]),
+                                 1 if abs(wv) < 0.8 * m else 2)
+    edges(W_ih, x0, yi, xm, yh)                            # channels -> hidden
+    edges(W_ho, xm, yh, x1, yo)                            # hidden -> channel delta
+    for yy in yi:
+        pygame.draw.circle(surf, (140, 220, 150), (x0, yy), 3)
+    for yy in yh:
+        pygame.draw.circle(surf, (210, 210, 230), (xm, yy), 2)
+    for yy in yo:
+        pygame.draw.circle(surf, (240, 200, 120), (x1, yy), 3)
 
 
 def _draw_net(surf, genome, x, y, w, h):

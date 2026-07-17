@@ -258,6 +258,10 @@ class World:
                 continue
             action = a.brain.act(self._sense(a))
             a.energy -= c.base_cost
+            if c.brain == "nca":                   # a bigger brain costs more to run,
+                a.energy -= c.nca_cell_cost * int(a.brain.genome.mask.sum())  # so size
+                                                   # is under selection, not free drift
+            action = int(action)
             if action == FORWARD:
                 a.energy -= c.move_cost
                 dy, dx = _HEAD_VEC[a.heading]

@@ -95,7 +95,7 @@ def main(argv=None) -> int:
     p.add_argument("--subset", type=int, default=6,
                    help="migrants each next island is seeded with (partial migration)")
     p.add_argument("--workers", type=int, default=1, help="parallel island processes")
-    p.add_argument("--size", type=int, default=96)
+    p.add_argument("--size", type=int, default=64)
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",
                    help="brain model evolved on each island")
     p.add_argument("--wall-density", type=float, default=0.0, dest="wall_density",

@@ -44,7 +44,8 @@ class Genome:
     leading type axis: W1 (K,H,9C), b1 (K,H), W2 (K,C,H), b2 (K,C)."""
 
     def __init__(self, n_in, n_out, mask, type_map, W1, b1, W2, b2,
-                 P_in, P_out, b_out, channels, hidden, hue=0.0):
+                 P_in, P_out, b_out, channels, hidden, hue=0.0,
+                 diet=0.5, carnivore=0.0):
         self.kind = "nca"
         self.n_in = n_in
         self.n_out = n_out
@@ -60,6 +61,8 @@ class Genome:
         self.P_out = np.asarray(P_out, dtype=np.float64)  # (C, n_out) pooled -> logits
         self.b_out = np.asarray(b_out, dtype=np.float64)  # (n_out,)
         self.hue = hue                              # heritable lineage colour
+        self.diet = diet                            # heritable niche traits (see neat.py):
+        self.carnivore = carnivore                  # diet type + herbivore/carnivore mix
 
     @property
     def G(self) -> int:
@@ -73,7 +76,7 @@ class Genome:
         return Genome(self.n_in, self.n_out, self.mask.copy(), self.type_map.copy(),
                       self.W1.copy(), self.b1.copy(), self.W2.copy(), self.b2.copy(),
                       self.P_in.copy(), self.P_out.copy(), self.b_out.copy(),
-                      self.C, self.H, self.hue)
+                      self.C, self.H, self.hue, self.diet, self.carnivore)
 
     def max_node_id(self) -> int:
         # NCA has no node-id bookkeeping; a harmless value for the World's shared
@@ -88,6 +91,7 @@ class Genome:
     def to_dict(self) -> dict:
         return {"brain": "nca", "n_in": self.n_in, "n_out": self.n_out,
                 "C": self.C, "H": self.H, "hue": self.hue,
+                "diet": self.diet, "carnivore": self.carnivore,
                 "mask": self.mask.astype(int).tolist(),
                 "type_map": self.type_map.tolist(),
                 "W1": self.W1.tolist(), "b1": self.b1.tolist(),
@@ -100,7 +104,8 @@ class Genome:
         return cls(int(d["n_in"]), int(d["n_out"]), np.array(d["mask"], dtype=bool),
                    np.array(d["type_map"]), d["W1"], d["b1"], d["W2"], d["b2"],
                    d["P_in"], d["P_out"], d["b_out"], int(d["C"]), int(d["H"]),
-                   float(d.get("hue", 0.0)))
+                   float(d.get("hue", 0.0)), float(d.get("diet", 0.5)),
+                   float(d.get("carnivore", 0.0)))
 
     def key(self) -> bytes:
         """Canonical fingerprint of shape + types + rules (rounded)."""
@@ -139,7 +144,8 @@ def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
     b_out = np.zeros(n_out)
     b_out[FORWARD] += forward_bias
     return Genome(n_in, n_out, mask, type_map, W1, b1, W2, b2, P_in, P_out, b_out,
-                  C, H, hue=float(rng.random()))
+                  C, H, hue=float(rng.random()),
+                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6)
 
 
 class Phenotype:
@@ -242,6 +248,11 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int):
     g = genome.copy()
     if rng.random() < cfg.hue_drift_prob:
         g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
+    if rng.random() < cfg.trait_drift_prob:              # niche traits drift slowly
+        g.diet = min(1.0, max(0.0, g.diet + float(rng.normal(0.0, cfg.trait_drift))))
+    if rng.random() < cfg.trait_drift_prob:
+        g.carnivore = min(1.0, max(0.0,
+                          g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
     for arr in (g.W1, g.b1, g.W2, g.b2, g.P_in, g.P_out, g.b_out):
         _jitter(arr, rng, cfg.weight_mut_prob, cfg.weight_mut)
 
@@ -309,5 +320,8 @@ def crossover(g_fit: Genome, g_other: Genome, rng) -> Genome:
     P_out = mix(g_fit.P_out, g_other.P_out)
     b_out = mix(g_fit.b_out, g_other.b_out)
     hue = g_fit.hue if rng.random() < 0.5 else g_other.hue
+    diet = g_fit.diet if rng.random() < 0.5 else g_other.diet
+    carn = g_fit.carnivore if rng.random() < 0.5 else g_other.carnivore
     return Genome(g_fit.n_in, g_fit.n_out, g_fit.mask.copy(), g_fit.type_map.copy(),
-                  W1, b1, W2, b2, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue)
+                  W1, b1, W2, b2, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue,
+                  diet=diet, carnivore=carn)

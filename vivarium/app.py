@@ -32,6 +32,8 @@ from vivarium.neat import Genome
 from vivarium.world import World
 
 _CONSONANTS = "BCDFGHJKLMNPQRSTVWXZ"
+# food type -> colour (green, amber, cyan, ...), so dietary niches read on the map
+_FOOD_COLORS = [(60, 200, 90), (220, 170, 60), (70, 180, 220), (200, 90, 170)]
 
 
 def _genome_hash(genome: Genome) -> int:
@@ -95,11 +97,17 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
     cy, cx = np.where(world.corpse > 0)
     for y, x in zip(cy, cx):
         surf.fill((70, 40, 30), (x * cell_px, y * cell_px, cell_px, cell_px))
-    # food
-    fy, fx = np.where(world.food)
+    # food halos (faint disc marking where each food type is spawning right now)
+    for k, (hy, hx) in enumerate(world.halos):
+        pygame.draw.circle(surf, tuple(c // 5 for c in _FOOD_COLORS[k % len(_FOOD_COLORS)]),
+                           (int(hx) * cell_px, int(hy) * cell_px),
+                           max(2, int(world.cfg.food_halo_sigma * world.w * cell_px)), 1)
+    # food, coloured by type
+    fy, fx = np.where(world.food > 0)
     fr = max(1, cell_px // 2)
     for y, x in zip(fy, fx):
-        pygame.draw.circle(surf, (60, 200, 90),
+        col = _FOOD_COLORS[(int(world.food[y, x]) - 1) % len(_FOOD_COLORS)]
+        pygame.draw.circle(surf, col,
                            (x * cell_px + cell_px // 2, y * cell_px + cell_px // 2), fr)
     # agents
     for a in world.agents.values():
@@ -124,7 +132,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
-             f"food {s['food']}", f"births {s['births']}", f"deaths {s['deaths']}"]
+             f"food {s['food']}  carn {s['carnivores'] * 100:.0f}%",
+             f"births {s['births']}", f"deaths {s['deaths']}"]
     if hud is not None:
         think = "  THINK" if hud.get("think") else ""
         lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s{think}")
@@ -169,6 +178,8 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
             if agent is not None else [])
     info.append(f"cells {nh}  types {nc}" if getattr(g, "kind", "neat") == "nca"
                 else f"hidden {nh}  conns {nc}")
+    info.append(f"diet {g.diet:.2f}  "
+                + ("CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"))
     for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
     box = (x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
@@ -321,9 +332,9 @@ def _draw_net(surf, genome, x, y, w, h):
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="vivarium.app", description="watch a vivarium")
-    p.add_argument("--size", type=int, default=96)
+    p.add_argument("--size", type=int, default=64)
     p.add_argument("--seed", type=int, default=1)
-    p.add_argument("--population", type=int, default=60)
+    p.add_argument("--population", type=int, default=40)
     p.add_argument("--cell", type=int, default=7, help="pixels per cell")
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",
                    help="brain model: neat graph or nca cellular-automaton")

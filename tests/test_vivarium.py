@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from vivarium.config import Config
 from vivarium.neat import N_ACTIONS, Genome, Phenotype, crossover, random_genome
@@ -81,7 +82,7 @@ def test_food_stays_near_target_and_sim_survives_long_run():
     target = cfg.food_target * open_cells
     for _ in range(500):
         w.step()
-        assert w.food.sum() <= target + cfg.food_regrow + 1   # regrow is capped
+        assert (w.food > 0).sum() <= target + cfg.food_regrow + 1   # regrow is capped
     # the world never gets stuck empty: reseed keeps life going
     assert w.population() > 0
 
@@ -278,6 +279,73 @@ def test_island_evolution_runs_and_migrates():
     # every migrant is a valid runnable brain
     for g in pool:
         assert Phenotype(g).act(np.zeros(g.n_in)) in range(g.n_out)
+
+
+def test_food_carries_types_from_drifting_halos():
+    w = World(Config(size=40, seed=1, init_population=5, n_food_types=2))
+    types = set(int(t) for t in np.unique(w.food) if t > 0)
+    assert types.issubset({1, 2}) and types                 # food is typed 1..K
+    halos0 = w.halos.copy()
+    for _ in range(80):                                     # long enough to drift
+        w.step()
+    assert not np.array_equal(halos0, w.halos)              # halo centres wandered
+    assert (w.halos >= 2).all() and (w.halos[:, 0] <= w.h - 2).all()  # stay in bounds
+
+
+def test_diet_efficiency_prefers_matching_food_type():
+    w = World(Config(size=30, seed=0, init_population=1, n_food_types=2,
+                     diet_min_eff=0.3))
+    assert w._diet_eff(0.0, 1) == 1.0                       # diet 0 digests type 1 fully
+    assert w._diet_eff(1.0, 2) == 1.0                       # diet 1 digests type 2 fully
+    assert w._diet_eff(0.0, 2) == pytest.approx(0.3)        # worst match -> the floor
+    assert w._diet_eff(1.0, 1) == pytest.approx(0.3)
+
+
+def test_diet_traits_inherit_and_drift():
+    from vivarium.neat import mutate, random_genome, crossover, N_ACTIONS
+    rng = np.random.default_rng(0)
+    n_in = input_size(5)
+    g1 = random_genome(n_in, N_ACTIONS, rng)
+    g2 = random_genome(n_in, N_ACTIONS, rng)
+    g1.diet = g2.diet = 0.4
+    g1.carnivore = g2.carnivore = 0.7
+    child = crossover(g1, g2, rng)
+    assert child.diet == 0.4 and child.carnivore == 0.7     # both parents same -> child same
+    cfg = Config(trait_drift_prob=1.0, trait_drift=0.05)
+    m, _ = mutate(child, rng, cfg, n_in + N_ACTIONS)
+    assert 0.0 <= m.diet <= 1.0 and abs(m.diet - 0.4) < 0.3  # drifts a little, stays in [0,1]
+    assert 0.0 <= m.carnivore <= 1.0
+
+
+def test_carnivore_eats_the_agent_ahead():
+    w = World(Config(size=20, seed=0, init_population=2, predation=True,
+                     carnivore_threshold=0.5, meat_energy=30.0))
+    w.food[:] = 0
+    w.occ[:] = -1
+    pred, prey = list(w.agents.values())
+    pred.y, pred.x, pred.heading = 10, 10, 1              # facing east, prey just ahead
+    prey.y, prey.x = 10, 11
+    w.occ[10, 10] = pred.id
+    w.occ[10, 11] = prey.id
+    pred.brain.genome.carnivore = 1.0                    # a committed carnivore
+    pred.energy = 20.0
+    e0, before = pred.energy, w.population()
+    w._predate(pred, 10, 11)
+    assert prey.id not in w.agents                        # prey consumed (no corpse)
+    assert w.corpse[10, 11] == 0
+    assert pred.energy > e0                               # predator fed
+    assert (pred.y, pred.x) == (10, 11)                   # took the cell
+    assert w.population() == before - 1
+
+
+def test_nca_genome_carries_diet_and_carnivore():
+    from vivarium import nca
+    rng = np.random.default_rng(0)
+    g = nca.random_genome(input_size(5), nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    assert 0.0 <= g.diet <= 1.0 and 0.0 <= g.carnivore <= 1.0
+    d = g.to_dict()
+    back = nca.Genome.from_dict(d)
+    assert back.diet == g.diet and back.carnivore == g.carnivore   # survive round-trip
 
 
 def test_species_count_clusters_hues():

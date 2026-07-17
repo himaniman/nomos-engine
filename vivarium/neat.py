@@ -35,12 +35,17 @@ class Genome:
     larger."""
 
     def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict],
-                 hue: float = 0.0):
+                 hue: float = 0.0, diet: float = 0.5, carnivore: float = 0.0):
         self.kind = "neat"
         self.n_in = n_in
         self.n_out = n_out
         self.nodes = nodes
         self.conns = conns
+        # heritable NICHE traits (inherited from a parent, drift slowly):
+        #   diet      — which food TYPE this creature digests best (0..1)
+        #   carnivore — plant-vs-meat allocation (0..1): 0 herbivore, 1 predator
+        self.diet = diet
+        self.carnivore = carnivore
         # A HERITABLE lineage hue (0..1): children inherit a parent's hue and it
         # drifts only slowly, so a family shares a colour and related lineages sit
         # near each other in hue-space — unlike the brain fingerprint (`key`),
@@ -49,7 +54,8 @@ class Genome:
 
     def copy(self) -> "Genome":
         return Genome(self.n_in, self.n_out, dict(self.nodes),
-                      [dict(c) for c in self.conns], self.hue)
+                      [dict(c) for c in self.conns], self.hue,
+                      self.diet, self.carnivore)
 
     def max_node_id(self) -> int:
         return max(self.nodes) if self.nodes else self.n_in + self.n_out - 1
@@ -61,7 +67,7 @@ class Genome:
 
     def to_dict(self) -> dict:
         return {"brain": "neat", "n_in": self.n_in, "n_out": self.n_out,
-                "hue": self.hue,
+                "hue": self.hue, "diet": self.diet, "carnivore": self.carnivore,
                 "nodes": [[i, k] for i, k in self.nodes.items()],
                 "conns": [[c["in"], c["out"], c["w"], c["enabled"]] for c in self.conns]}
 
@@ -71,7 +77,8 @@ class Genome:
         conns = [{"in": int(a), "out": int(b), "w": float(w), "enabled": bool(e)}
                  for a, b, w, e in d["conns"]]
         return cls(int(d["n_in"]), int(d["n_out"]), nodes, conns,
-                   float(d.get("hue", 0.0)))
+                   float(d.get("hue", 0.0)), float(d.get("diet", 0.5)),
+                   float(d.get("carnivore", 0.0)))
 
     def key(self) -> bytes:
         """A canonical fingerprint of the topology + weights, for naming/colour."""
@@ -94,7 +101,8 @@ def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
             if i == n_in - 1 and j == FORWARD:
                 w += forward_bias
             conns.append({"in": i, "out": n_in + j, "w": w, "enabled": True})
-    return Genome(n_in, n_out, nodes, conns, hue=float(rng.random()))
+    return Genome(n_in, n_out, nodes, conns, hue=float(rng.random()),
+                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6)
 
 
 class Phenotype:
@@ -134,6 +142,11 @@ def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
     g = genome.copy()
     if rng.random() < cfg.hue_drift_prob:                # the lineage colour drifts slowly
         g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
+    if rng.random() < cfg.trait_drift_prob:              # niche traits drift slowly
+        g.diet = min(1.0, max(0.0, g.diet + float(rng.normal(0.0, cfg.trait_drift))))
+    if rng.random() < cfg.trait_drift_prob:
+        g.carnivore = min(1.0, max(0.0,
+                          g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
     for c in g.conns:
         if rng.random() < cfg.weight_mut_prob:
             c["w"] += float(rng.normal(0.0, cfg.weight_mut))
@@ -186,5 +199,9 @@ def crossover(g_fit: Genome, g_other: Genome, rng: np.random.Generator) -> Genom
         for nid in (c["in"], c["out"]):
             if nid not in nodes:
                 nodes[nid] = "hidden"
-    hue = g_fit.hue if rng.random() < 0.5 else g_other.hue    # inherit a parent's colour
-    return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns, hue=hue)
+    # each heritable trait inherited independently from a random parent
+    hue = g_fit.hue if rng.random() < 0.5 else g_other.hue
+    diet = g_fit.diet if rng.random() < 0.5 else g_other.diet
+    carn = g_fit.carnivore if rng.random() < 0.5 else g_other.carnivore
+    return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns, hue=hue,
+                  diet=diet, carnivore=carn)

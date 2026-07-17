@@ -352,3 +352,33 @@ nets the cells are made of. 155 tests pass (11 NCA: + type split, cross-type-cou
 crossover). Still ahead (v2): NEAT topology growth INSIDE a rule; sensory organs on
 the edge; and the real tuning question — do differentiated multi-type brains, paid
 for by the per-cell cost, out-forage the single-rule ones.
+
+---
+
+## Reviving the ecology first (stage 4, before v2) — food niches + drifting halos + predation (2026-07-17)
+
+Plan agreed with the user: do the ecology-liveliness pass (б) BEFORE the v2 brain
+(а). Our own take on niches, deliberately different from main's static Voronoi zones:
+- **Food TYPES + DRIFTING HALOS**: food carries a type (`n_food_types`, default 2);
+  each type spawns from a HALO centre that random-walks the map (`food_halo_*`), so
+  food is a MOVING resource patch to track, not a uniform sprinkle (and not a fixed
+  zone). Concentrated patches are also meant to help a lucky forager bootstrap.
+- **DIET gene** (heritable, on both genomes): which food type you digest best (1.0
+  own type, down to `diet_min_eff`); vision dims indigestible food (diet-aware).
+- **PREDATION**: a heritable `carnivore` trait; a committed carnivore that steps into
+  another agent eats it (no corpse), plant energy scales with (1-carnivore).
+Both diet + carnivore are heritable analog traits added to neat.Genome AND
+nca.Genome (inherit from a random parent, drift slowly), serialized, shown in the
+inspector; HUD shows carnivore %. The world's `food` became int8 (type per cell);
+`_regrow_food` samples near a random halo. Per the user, the default world also shrank
+(size 96 -> 64; CLI + Config) so there are fewer mouths and the sim runs faster.
+160 tests pass. The app draws food coloured by type, faint halo discs, diet/carn.
+
+HONEST STATUS: the mechanics all work and the world is visibly richer, but — exactly
+like NEAT and like main's niche experiment — takeoff from random brains is NOT
+automatic: food stays pinned at target, foraging stays weak, population oscillates
+low (1-10) instead of filling the map. Concentrated halos may even HURT random-brain
+bootstrap (most of the map is empty). Tuning the regime (food richness / metabolism /
+halo width) and/or the seed-pool scaffold (evolve an easy uniform-food world -> seed
+the halo/predation world) is the live work. v2 waits until the ecology is
+demonstrably lively.

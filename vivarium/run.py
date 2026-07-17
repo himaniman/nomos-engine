@@ -35,7 +35,7 @@ def main(argv=None) -> int:
                                 description="headless vivarium ecology")
     p.add_argument("--ticks", type=int, default=2000)
     p.add_argument("--every", type=int, default=100)
-    p.add_argument("--size", type=int, default=96)
+    p.add_argument("--size", type=int, default=64)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--population", type=int, default=40)
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",

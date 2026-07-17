@@ -9,7 +9,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Config:
     # world
-    size: int = 96                     # grid side (bounded, walls on the border)
+    size: int = 64                     # grid side (bounded, walls on the border);
+                                       # smaller world = fewer mouths = faster sim
     seed: int = 0
     wall_density: float = 0.05         # fraction of the interior that is INNER wall
                                        # (strokes with doorways) — mostly open space
@@ -23,9 +24,31 @@ class Config:
     wall_step_prob: float = 0.5        # chance each stroke steps on a walk tick
 
     # food (the carrying-capacity knob)
-    food_target: float = 0.05          # fraction of open cells that should hold food
-    food_regrow: int = 6               # at most this many food items appear per tick
-    food_energy: float = 26.0          # energy gained per food eaten
+    food_target: float = 0.06          # fraction of open cells that should hold food
+    food_regrow: int = 8               # at most this many food items appear per tick
+    food_energy: float = 30.0          # energy gained per food eaten
+
+    # food diversity + DRIFTING HALOS (our take on niches — different from a static
+    # zoning): food carries a TYPE, and each type spawns from a HALO centre that
+    # slowly DRIFTS around the map, so food is a moving resource PATCH to track, not
+    # a uniform sprinkle. Concentrated patches also help random foragers bootstrap.
+    n_food_types: int = 2              # distinct food types (a dietary niche axis)
+    food_halo_sigma: float = 0.16      # halo radius as a fraction of the grid side
+    food_halo_drift: float = 2.0       # cells a halo centre may step when it drifts
+    food_halo_drift_every: int = 40    # ticks between halo drifts (0 = static halos)
+
+    # diet niche: a heritable trait sets which food TYPE an agent digests best (1.0 on
+    # its own type, down to diet_min_eff on the far one); vision dims food it can't eat
+    diet_min_eff: float = 0.35         # digestion efficiency on the worst-matched type
+    trait_drift_prob: float = 0.10     # chance the diet / carnivore traits drift
+    trait_drift: float = 0.05          # size of that drift (clamped to [0, 1])
+
+    # predation (trophic niche): a heritable carnivore trait; a committed carnivore
+    # that steps into another agent eats it (no corpse). Plant energy scales with
+    # (1 - carnivore), so it's a real herbivore/carnivore allocation.
+    predation: bool = True
+    carnivore_threshold: float = 0.5   # min carnivore gene to hunt at all
+    meat_energy: float = 34.0          # energy a kill yields (scaled by carnivore)
 
     # metabolism (energy drained per tick; standing still is cheapest)
     base_cost: float = 0.35            # paid every tick just to exist

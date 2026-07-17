@@ -81,7 +81,12 @@ class Config:
 
     # population
     init_population: int = 40
-    reseed_count: int = 6              # individuals dropped when the world goes extinct
+    reseed_count: int = 8              # individuals dropped when the world goes extinct
+    reseed_elites: int = 3             # of those, this many are the best genomes AS-IS;
+                                       # the rest are STRONGLY-mutated variants of them,
+                                       # so a collapse injects fresh variation instead of
+                                       # replaying the population that just died
+    reseed_mutate_passes: int = 5      # compounded mutation passes for a reseed mutant
     hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age in
                                        # the hall-of-fame's success score (fecundity
                                        # + longevity, not longevity alone)

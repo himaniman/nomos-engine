@@ -348,6 +348,22 @@ def test_nca_genome_carries_diet_and_carnivore():
     assert back.diet == g.diet and back.carnivore == g.carnivore   # survive round-trip
 
 
+def test_reseed_injects_strongly_mutated_variants():
+    # on extinction, reseed drops the elites AS-IS plus strongly-mutated variants,
+    # so the repopulated world is not N identical copies (which would stall evolution)
+    w = World(Config(size=30, seed=0, init_population=6, reseed_count=8,
+                     reseed_elites=2, reseed_mutate_passes=5))
+    for ag in list(w.agents.values())[:3]:      # seed the hall with a few genomes
+        ag.age = 100
+        w._remember(ag)
+    w.agents.clear()
+    w.occ[:] = -1
+    w._reseed()
+    assert w.population() == 8                   # full reseed batch
+    keys = {ag.brain.genome.key() for ag in w.agents.values()}
+    assert len(keys) > w.cfg.reseed_elites       # mutants added real variation
+
+
 def test_species_count_clusters_hues():
     w = World(Config(size=30, seed=1, init_population=6))
     for a, h in zip(w.agents.values(), [0.10, 0.10, 0.50, 0.50, 0.50, 0.90]):

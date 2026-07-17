@@ -453,14 +453,29 @@ class World:
         """The k most successful genomes recorded (for island migration)."""
         return [g.copy() for _, g in self.hall[:k]]
 
+    def _strong_mutate(self, g):
+        """A big-JUMP variant: several compounded mutation passes, so an extinction
+        reseed can escape the basin the last population died in instead of replaying
+        the same genome."""
+        for _ in range(self.cfg.reseed_mutate_passes):
+            g = self._mutate(g)
+        return g
+
     def _reseed(self) -> None:
-        """Extinction: repopulate from the longest-lived genomes, else the seed
-        pool, else random."""
-        genomes = [g for _, g in self.hall[:self.cfg.reseed_count]]
-        if not genomes:
-            genomes = [self._seed_genome() for _ in range(self.cfg.reseed_count)]
-        for g in genomes:
-            self._spawn_agent(g.copy())
+        """Extinction: repopulate from the best-so-far genomes AND strongly-mutated
+        variants of them. Re-dropping only the elites replays the population that just
+        died (no new variation -> evolution stalls); the mutants inject exploration on
+        every collapse. Falls back to the seed pool / random when the hall is empty."""
+        elites = [g for _, g in self.hall[:self.cfg.reseed_elites]]
+        if not elites:
+            elites = [self._seed_genome()
+                      for _ in range(min(self.cfg.reseed_elites, self.cfg.reseed_count))]
+        for i in range(self.cfg.reseed_count):
+            if i < len(elites):
+                self._spawn_agent(elites[i].copy())         # keep the best ideas intact
+            else:                                           # + big-jump mutants of them
+                parent = elites[int(self.rng.integers(len(elites)))]
+                self._spawn_agent(self._strong_mutate(parent))
 
     # -- observation --------------------------------------------------------
 

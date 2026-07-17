@@ -49,3 +49,6 @@ class Config:
     fov: float = 1.4                   # total angular spread of the rays (radians)
     ray_length: int = 12               # how far a ray sees (cells)
     hidden: int = 8                    # hidden units in the fixed-topology v1 net
+    init_forward_bias: float = 1.5     # fresh brains lean toward moving forward, so
+                                       # the population forages from tick 0 and
+                                       # evolution has material to select on

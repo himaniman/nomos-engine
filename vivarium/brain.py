@@ -42,8 +42,15 @@ class Brain:
         return n_in * n_hidden + n_hidden + n_hidden * N_ACTIONS + N_ACTIONS
 
     @classmethod
-    def random(cls, n_in: int, n_hidden: int, rng: np.random.Generator) -> "Brain":
+    def random(cls, n_in: int, n_hidden: int, rng: np.random.Generator,
+               forward_bias: float = 0.0) -> "Brain":
+        """A random genome. `forward_bias` lifts the FORWARD output bias so a
+        fresh brain TENDS TO MOVE rather than spin in place — without it a random
+        MLP usually picks one constant action and the population is full of
+        degenerate spinners that never forage, so evolution can't bootstrap.
+        A mild motor prior (real animals have one); sensing still overrides it."""
         g = rng.normal(0.0, 1.0, size=cls.genome_size(n_in, n_hidden))
+        g[-N_ACTIONS + FORWARD] += forward_bias      # b2[FORWARD] slot
         return cls(n_in, n_hidden, g)
 
     def act(self, inputs: np.ndarray) -> int:

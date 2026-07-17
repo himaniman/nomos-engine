@@ -67,7 +67,8 @@ class World:
         if self.genome_pool:
             g = self.genome_pool[self.rng.integers(len(self.genome_pool))]
             return g + self.rng.normal(0.0, self.cfg.mutation, size=g.shape)
-        return Brain.random(self.n_in, self.cfg.hidden, self.rng).genome
+        return Brain.random(self.n_in, self.cfg.hidden, self.rng,
+                            forward_bias=self.cfg.init_forward_bias).genome
 
     def hall_genomes(self) -> list[np.ndarray]:
         """The longest-lived genomes recorded so far (for saving / reseeding)."""

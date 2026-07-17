@@ -169,3 +169,40 @@ This mirrors brain_lab, but the objective is open-ended survival, not a score.
   (e.g. by a stable id) so the run stays reproducible as agents are born/die.
 - **Predation?** Not in v1, but the sensors already distinguish agents — eating
   other agents is a natural later axis (herbivore/carnivore split).
+
+---
+
+## Progress (2026-07-17): stages 0-2 built; the bootstrap problem
+
+Built and tested (13 tests): the world (bounded grid, inner walls with doorways,
+renewable food, heading+turn movement, ray vision that stops at walls, energy
+metabolism, asexual clone+mutate reproduction, corpse-as-decaying-obstacle,
+extinction reseed), the v1 fixed-MLP brain (weights = genome), the pygame view
+(global camera, agents coloured by genome, click to inspect a brain), genome
+save/load + a seed pool, and "living walls" that slowly drift.
+
+**The central finding so far — the bootstrap problem.** A thriving ecology does
+emerge, but NOT reliably: with random initial brains, evolutionary takeoff (pop
+exploding from ~2 to ~180, food actively eaten, births≈deaths) happened on only
+1 of 3 seeds in an open world, and NEVER once inner walls were added. Two causes:
+- Random MLPs are mostly DEGENERATE — argmax over 4 actions with random weights
+  usually yields one constant action, so the population fills with spinners that
+  never forage and evolution has nothing to select.
+- Even sparse inner walls stop a random forager from sweeping food, killing the
+  one bootstrap path the open world afforded.
+
+Two fixes, both now in:
+1. **Forward-bias on fresh brains** (`init_forward_bias`): lift the FORWARD
+   output bias so a new brain tends to MOVE, giving evolution a foraging
+   substrate from tick 0 instead of a field of spinners. (A mild motor prior;
+   sensing still overrides.)
+2. **Scaffold via the seed pool**: evolve competence in an EASY open world, save
+   the longest-lived genomes, seed a HARD walled world from them (+mutation).
+   Random brains can't bootstrap inside a maze, but evolved foragers dropped in
+   live at once. This is also what the LLM will read/write later (stage 5).
+
+The honest status: the *engine and the tooling* are solid; making the ecology
+robustly LIVELY (and interesting to watch — foraging, fleeing, clustering) is
+the live tuning problem (stage 4), and forward-bias + scaffolding are the levers.
+Still ahead: NEAT-lite topology + sexual crossover (stage 3), then the LLM
+meta-designer (stage 5).

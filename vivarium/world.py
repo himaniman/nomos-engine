@@ -33,7 +33,7 @@ _HEAD_ANG = {0: -np.pi / 2, 1: 0.0, 2: np.pi / 2, 3: np.pi}
 
 
 class Agent:
-    __slots__ = ("id", "y", "x", "heading", "energy", "age", "brain")
+    __slots__ = ("id", "y", "x", "heading", "energy", "age", "brain", "offspring")
 
     def __init__(self, aid, y, x, heading, energy, brain):
         self.id = aid
@@ -41,6 +41,7 @@ class Agent:
         self.heading = heading
         self.energy = energy
         self.age = 0
+        self.offspring = 0            # children produced (the fecundity signal)
         self.brain = brain
 
 
@@ -326,14 +327,18 @@ class World:
             mate.energy -= c.repro_cost / 2
             bred.add(a.id)
             bred.add(mate.id)
+            parents = (a, mate)
         elif a.energy >= c.asexual_energy:
             child_g = self._mutate(a.brain.genome)
             a.energy -= c.repro_cost
             bred.add(a.id)
+            parents = (a,)
         else:
             return
         if self._spawn_agent(child_g, cell=cell, energy=c.repro_cost * 0.8) is not None:
             self.stats["births"] += 1
+            for p in parents:
+                p.offspring += 1
 
     def _kill(self, a: Agent) -> None:
         self.occ[a.y, a.x] = -1
@@ -343,10 +348,17 @@ class World:
         self._remember(a)
 
     def _remember(self, a: Agent) -> None:
-        """Keep a small hall-of-fame of the longest-lived genomes, for reseeding."""
-        self.hall.append((a.age, a.brain.genome.copy()))
+        """Hall-of-fame of the most SUCCESSFUL genomes = long-lived AND fecund
+        (age + a weight per child), so the saved pool selects for genomes that
+        both survive and reproduce, not just old survivors."""
+        success = a.age + self.cfg.hall_offspring_weight * a.offspring
+        self.hall.append((success, a.brain.genome.copy()))
         self.hall.sort(key=lambda t: t[0], reverse=True)
         del self.hall[max(self.cfg.reseed_count, 12):]
+
+    def top_genomes(self, k: int) -> list[neat.Genome]:
+        """The k most successful genomes recorded (for island migration)."""
+        return [g.copy() for _, g in self.hall[:k]]
 
     def _reseed(self) -> None:
         """Extinction: repopulate from the longest-lived genomes, else the seed

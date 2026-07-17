@@ -59,6 +59,9 @@ class Config:
     # population
     init_population: int = 40
     reseed_count: int = 6              # individuals dropped when the world goes extinct
+    hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age in
+                                       # the hall-of-fame's success score (fecundity
+                                       # + longevity, not longevity alone)
 
     # brain / senses
     n_rays: int = 5                    # vision rays fanned around the heading

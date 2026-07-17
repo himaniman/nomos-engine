@@ -253,6 +253,33 @@ def test_species_isolation_by_colour():
     assert w.stats["births"] == 1                # same species -> crossover child
 
 
+def test_hall_rewards_fecundity_not_just_age():
+    # an agent with children outranks an equally-old childless one in the hall
+    w = World(Config(size=20, seed=0, init_population=2, hall_offspring_weight=25.0))
+    a, b = list(w.agents.values())
+    a.age = b.age = 100
+    a.offspring, b.offspring = 3, 0
+    w._remember(a)
+    w._remember(b)
+    top_genome = w.hall[0][1]
+    assert top_genome is not None
+    assert w.hall[0][0] == 100 + 25 * 3            # the fecund one ranks first
+    assert w.hall[0][0] > w.hall[1][0]
+
+
+def test_island_evolution_runs_and_migrates():
+    from vivarium.island import evolve_islands
+    cfg = {"size": 48, "wall_density": 0.0, "init_population": 30}
+    pool = evolve_islands(rounds=2, n_islands=3, ticks=150, top_k=2, subset=3,
+                          workers=1, config=cfg, rng_seed=0)
+    assert len(pool) == 3 * 2                       # 3 islands x top-2 each
+    from vivarium.neat import Phenotype
+    import numpy as np
+    # every migrant is a valid runnable brain
+    for g in pool:
+        assert Phenotype(g).act(np.zeros(g.n_in)) in range(g.n_out)
+
+
 def test_species_count_clusters_hues():
     w = World(Config(size=30, seed=1, init_population=6))
     for a, h in zip(w.agents.values(), [0.10, 0.10, 0.50, 0.50, 0.50, 0.90]):

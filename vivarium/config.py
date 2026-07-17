@@ -22,10 +22,12 @@ class Config:
     wall_drift_every: int = 120        # a walk opportunity every N ticks (slow)
     wall_step_prob: float = 0.5        # chance each stroke steps on a walk tick
 
-    # food (the carrying-capacity knob)
-    food_target: float = 0.05          # fraction of open cells that should hold food
-    food_regrow: int = 6               # at most this many food items appear per tick
-    food_energy: float = 26.0          # energy gained per food eaten
+    # food (the carrying-capacity knob). Richer than a bare world because niches
+    # (diet specialisation + spatial zones) make foraging harder — without this
+    # the population can't bootstrap from random brains once niches are on.
+    food_target: float = 0.07          # fraction of open cells that should hold food
+    food_regrow: int = 8               # at most this many food items appear per tick
+    food_energy: float = 30.0          # energy gained per food eaten
 
     # metabolism (energy drained per tick; standing still is cheapest)
     base_cost: float = 0.35            # paid every tick just to exist
@@ -53,7 +55,8 @@ class Config:
 
     # niches: food types + diet
     n_food_types: int = 2              # distinct food types (a dietary niche axis)
-    diet_min_eff: float = 0.2          # digestion efficiency on your WORST food type
+    diet_min_eff: float = 0.35         # digestion efficiency on your WORST food type
+                                       # (a real trade-off, but soft enough to bootstrap)
     # niches: predation (trophic)
     predation: bool = True             # carnivores can eat other agents
     carnivore_threshold: float = 0.5   # min carnivore gene to hunt at all

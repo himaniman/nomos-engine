@@ -102,7 +102,7 @@ def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
                 w += forward_bias
             conns.append({"in": i, "out": n_in + j, "w": w, "enabled": True})
     return Genome(n_in, n_out, nodes, conns, hue=float(rng.random()),
-                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.25)
+                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6)
 
 
 class Phenotype:

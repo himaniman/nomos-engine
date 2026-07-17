@@ -206,7 +206,9 @@ class World:
         """How well a genome's diet digests a food type: 1.0 on its preferred type,
         down to `diet_min_eff` on the farthest — the dietary-niche trade-off."""
         k = self.cfg.n_food_types
-        target = (food_type - 1) / (k - 1) if k > 1 else 0.0
+        if k <= 1:
+            return 1.0                                   # one food type: diet is moot
+        target = (food_type - 1) / (k - 1)
         return max(self.cfg.diet_min_eff, 1.0 - abs(diet - target))
 
     # -- vision -------------------------------------------------------------

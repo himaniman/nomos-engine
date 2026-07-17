@@ -1,0 +1,216 @@
+"""The vivarium world: a bounded grid where agents live, eat, collide and breed.
+
+Deterministic in (Config.seed, Config). One agent per cell (opacity), heading +
+turn movement, ray vision, energy metabolism, asexual clone+mutate reproduction,
+corpses as decaying obstacles, and reseed-from-the-longest-lived on extinction.
+Agents update in a fixed id order so a dynamic population stays reproducible.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from vivarium.brain import (FORWARD, REPRODUCE, TURN_LEFT, TURN_RIGHT, Brain,
+                            input_size)
+from vivarium.config import Config
+
+# heading -> (dy, dx): 0=N(up), 1=E, 2=S(down), 3=W
+_HEAD_VEC = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
+# heading -> base ray angle (x=cos, y=sin, y points down)
+_HEAD_ANG = {0: -np.pi / 2, 1: 0.0, 2: np.pi / 2, 3: np.pi}
+
+
+class Agent:
+    __slots__ = ("id", "y", "x", "heading", "energy", "age", "brain")
+
+    def __init__(self, aid, y, x, heading, energy, brain):
+        self.id = aid
+        self.y, self.x = y, x
+        self.heading = heading
+        self.energy = energy
+        self.age = 0
+        self.brain = brain
+
+
+class World:
+    def __init__(self, config: Config | None = None):
+        self.cfg = config or Config()
+        c = self.cfg
+        self.rng = np.random.default_rng(c.seed)
+        self.h = self.w = c.size
+        self.tick = 0
+        self._next_id = 0
+
+        self.walls = np.zeros((self.h, self.w), dtype=bool)
+        self.walls[0, :] = self.walls[-1, :] = True
+        self.walls[:, 0] = self.walls[:, -1] = True
+        self.food = np.zeros((self.h, self.w), dtype=bool)
+        self.occ = np.full((self.h, self.w), -1, dtype=np.int64)   # agent id or -1
+        self.corpse = np.zeros((self.h, self.w), dtype=np.int64)   # ticks remaining
+
+        self.agents: dict[int, Agent] = {}
+        self.hall: list[tuple[int, np.ndarray]] = []   # (age, genome), longest-lived
+        self.n_in = input_size(c.n_rays)
+        self.stats = {"births": 0, "deaths": 0}
+
+        self._open_cells_target = None
+        for _ in range(c.init_population):
+            self._spawn_agent(Brain.random(self.n_in, c.hidden, self.rng).genome)
+        self._regrow_food()
+
+    # -- helpers ------------------------------------------------------------
+
+    def _free(self, y: int, x: int) -> bool:
+        """A cell an agent may occupy: in bounds, not wall/corpse/agent."""
+        return (0 <= y < self.h and 0 <= x < self.w and not self.walls[y, x]
+                and self.corpse[y, x] == 0 and self.occ[y, x] < 0)
+
+    def _random_free_cell(self):
+        free = np.argwhere((~self.walls) & (self.occ < 0) & (self.corpse == 0)
+                           & (~self.food))
+        if len(free) == 0:
+            return None
+        return tuple(free[self.rng.integers(len(free))])
+
+    def _spawn_agent(self, genome: np.ndarray, cell=None, heading=None) -> Agent | None:
+        cell = cell or self._random_free_cell()
+        if cell is None:
+            return None
+        y, x = cell
+        h = self.rng.integers(4) if heading is None else heading
+        a = Agent(self._next_id, y, x, int(h), self.cfg.start_energy,
+                  Brain(self.n_in, self.cfg.hidden, genome))
+        self.agents[a.id] = a
+        self.occ[y, x] = a.id
+        self._next_id += 1
+        return a
+
+    def _regrow_food(self) -> None:
+        open_cells = int((~self.walls).sum())
+        target = int(self.cfg.food_target * open_cells)
+        deficit = target - int(self.food.sum())
+        for _ in range(min(self.cfg.food_regrow, max(0, deficit))):
+            cell = self._random_free_cell()
+            if cell is None:
+                break
+            self.food[cell] = True
+
+    # -- vision -------------------------------------------------------------
+
+    def _sense(self, a: Agent) -> np.ndarray:
+        """Ray vision fanned around the heading + interoception, as the brain's
+        input vector. Each ray reports the first thing it hits (food / obstacle /
+        agent) and how near it is."""
+        c = self.cfg
+        vec = np.zeros(self.n_in)
+        base = _HEAD_ANG[a.heading]
+        angles = base + np.linspace(-c.fov / 2, c.fov / 2, c.n_rays)
+        for i, ang in enumerate(angles):
+            dx, dy = np.cos(ang), np.sin(ang)
+            hit_type, hit_dist = -1, c.ray_length
+            for k in range(1, c.ray_length + 1):
+                cy = a.y + int(round(dy * k))
+                cx = a.x + int(round(dx * k))
+                if not (0 <= cy < self.h and 0 <= cx < self.w) or self.walls[cy, cx] \
+                        or self.corpse[cy, cx] > 0:
+                    hit_type, hit_dist = 1, k          # obstacle
+                    break
+                if self.occ[cy, cx] >= 0 and self.occ[cy, cx] != a.id:
+                    hit_type, hit_dist = 2, k          # another agent
+                    break
+                if self.food[cy, cx]:
+                    hit_type, hit_dist = 0, k          # food
+                    break
+            if hit_type >= 0:
+                vec[i * 3 + hit_type] = 1.0 - hit_dist / c.ray_length
+        vec[-2] = a.energy / c.max_energy               # interoception
+        vec[-1] = 1.0                                    # bias
+        return vec
+
+    # -- one tick -----------------------------------------------------------
+
+    def step(self) -> None:
+        c = self.cfg
+        self._regrow_food()
+        dead: list[Agent] = []
+        for aid in sorted(self.agents):            # fixed order -> reproducible
+            a = self.agents.get(aid)
+            if a is None:
+                continue
+            action = a.brain.act(self._sense(a))
+            a.energy -= c.base_cost
+            if action == FORWARD:
+                a.energy -= c.move_cost
+                dy, dx = _HEAD_VEC[a.heading]
+                ny, nx = a.y + dy, a.x + dx
+                if self._free(ny, nx):
+                    self.occ[a.y, a.x] = -1
+                    a.y, a.x = ny, nx
+                    self.occ[ny, nx] = a.id
+                    if self.food[ny, nx]:               # step onto food = eat
+                        self.food[ny, nx] = False
+                        a.energy = min(c.max_energy, a.energy + c.food_energy)
+            elif action == TURN_LEFT:
+                a.energy -= c.turn_cost
+                a.heading = (a.heading - 1) % 4
+            elif action == TURN_RIGHT:
+                a.energy -= c.turn_cost
+                a.heading = (a.heading + 1) % 4
+            elif action == REPRODUCE:
+                self._try_reproduce(a)
+            a.age += 1
+            if a.energy <= 0:
+                dead.append(a)
+
+        for a in dead:
+            self._kill(a)
+        self.corpse[self.corpse > 0] -= 1              # corpses decay away
+        self.tick += 1
+        if not self.agents:
+            self._reseed()
+
+    def _try_reproduce(self, a: Agent) -> None:
+        c = self.cfg
+        if a.energy < c.repro_min_energy:
+            return
+        for dy, dx in ((-1, 0), (0, 1), (1, 0), (0, -1)):   # fixed order = reproducible
+            ny, nx = a.y + dy, a.x + dx
+            if self._free(ny, nx):
+                a.energy -= c.repro_cost
+                child = self._spawn_agent(a.brain.child_genome(self.rng, c.mutation),
+                                          cell=(ny, nx))
+                if child is not None:
+                    child.energy = c.repro_cost * 0.8
+                    self.stats["births"] += 1
+                return
+
+    def _kill(self, a: Agent) -> None:
+        self.occ[a.y, a.x] = -1
+        self.corpse[a.y, a.x] = self.cfg.corpse_decay      # body blocks, then decays
+        self.agents.pop(a.id, None)
+        self.stats["deaths"] += 1
+        self._remember(a)
+
+    def _remember(self, a: Agent) -> None:
+        """Keep a small hall-of-fame of the longest-lived genomes, for reseeding."""
+        self.hall.append((a.age, a.brain.genome.copy()))
+        self.hall.sort(key=lambda t: t[0], reverse=True)
+        del self.hall[max(self.cfg.reseed_count, 12):]
+
+    def _reseed(self) -> None:
+        """Extinction: drop fresh individuals of the longest-lived genomes."""
+        genomes = [g for _, g in self.hall[:self.cfg.reseed_count]] or \
+                  [Brain.random(self.n_in, self.cfg.hidden, self.rng).genome
+                   for _ in range(self.cfg.reseed_count)]
+        for g in genomes:
+            self._spawn_agent(g.copy())
+
+    # -- observation --------------------------------------------------------
+
+    def population(self) -> int:
+        return len(self.agents)
+
+    def snapshot(self) -> dict:
+        return {"tick": self.tick, "population": self.population(),
+                "food": int(self.food.sum()), "corpses": int((self.corpse > 0).sum()),
+                "births": self.stats["births"], "deaths": self.stats["deaths"]}

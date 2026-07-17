@@ -145,6 +145,10 @@ class Phenotype:
         G, C = genome.G, genome.C
         self.state = np.zeros((G, G, C), dtype=np.float64)
         self._m = genome.mask[:, :, None]        # (G, G, 1) broadcast mask
+        # last senses/decision, kept only so the inspector can draw the input and
+        # output "neurons" around the CA texture — not used by the computation
+        self.last_input = None
+        self.last_logits = None
 
     def _perceive(self, s: np.ndarray) -> np.ndarray:
         """3x3 neighbourhood of every cell, BOUNDED (zero-padded, no torus wrap),
@@ -168,6 +172,8 @@ class Phenotype:
         self.state = st
         pooled = st[g.mask].mean(axis=0)                     # (C,) mean over alive
         logits = pooled @ g.P_out + g.b_out                  # (n_out,)
+        self.last_input = inputs
+        self.last_logits = logits
         return int(np.argmax(logits))
 
 

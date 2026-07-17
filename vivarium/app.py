@@ -155,17 +155,44 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
 
 
 def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
-    """Draw the agent's CA brain as a texture: the G x G lattice with dead cells
-    dark, alive cells coloured by their first three state CHANNELS (RGB) if a live
-    phenotype is given, else just the alive shape. This is the "watch it think"
-    view — the whole point of the NCA brain."""
-    G = genome.G
-    side = max(1, min(w, h) // G)
-    ox, oy = x, y
+    """Draw the agent's CA brain: the G x G lattice in the middle (dead cells dark,
+    alive cells coloured by their first three state CHANNELS -> RGB), flanked by the
+    small "neurons" wired to it — the input SENSES on the left and the output MOTOR
+    logits on the right (the argmax action highlighted). This is the "watch it
+    think" view: senses in, texture relaxes, a decision comes out."""
     state = phenotype.state if phenotype is not None else None
+    inp = getattr(phenotype, "last_input", None) if phenotype is not None else None
+    logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
+
+    # thin input/output columns flank the central grid
+    col_w = 6
+    pad = 6
+    gx0 = x + (col_w + pad if inp is not None else 0)
+    gx1 = x + w - (col_w + pad if logits is not None else 0)
+    gw = gx1 - gx0
+    G = genome.G
+    side = max(1, min(gw, h) // G)
+
+    def strip(vals, sx, hi=None, signed=False):
+        n = len(vals)
+        ch = max(1, min(10, h // n))
+        for i, v in enumerate(vals):
+            if signed:                                     # motor logits: red<0, green>0
+                t = float(np.tanh(v))
+                col = (int(140 * max(0, -t)) + 30, int(140 * max(0, t)) + 30, 40)
+            else:                                          # senses: green intensity
+                g = int(200 * min(1.0, abs(float(v))))
+                col = (20, g + 25, 30)
+            rect = (sx, y + i * ch, col_w, ch - 1)
+            surf.fill(col, rect)
+            if hi is not None and i == hi:
+                pygame.draw.rect(surf, (255, 255, 255), rect, 1)
+
+    if inp is not None:
+        strip(inp, x)                                      # input senses (left)
     for gy in range(G):
         for gx in range(G):
-            rect = (ox + gx * side, oy + gy * side, side - 1, side - 1)
+            rect = (gx0 + gx * side, y + gy * side, side - 1, side - 1)
             if not genome.mask[gy, gx]:
                 surf.fill((30, 30, 38), rect)              # dead cell
                 continue
@@ -176,6 +203,8 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
             else:
                 col = (150, 160, 200)                      # shape only (no live state)
             surf.fill(col, rect)
+    if logits is not None:
+        strip(logits, x + w - col_w, hi=int(np.argmax(logits)), signed=True)
 
 
 def _draw_net(surf, genome, x, y, w, h):

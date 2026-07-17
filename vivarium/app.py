@@ -56,7 +56,7 @@ def genome_name(genome: Genome) -> str:
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
-         selected: int | None = None) -> pygame.Surface:
+         selected: int | None = None, hud: dict | None = None) -> pygame.Surface:
     """Render one frame to a Surface: the world on the left, HUD + (optional)
     inspected-agent panel on the right."""
     W, H = world.w * cell_px, world.h * cell_px
@@ -91,15 +91,17 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
         pygame.draw.line(surf, (0, 0, 0), (cxp, cyp),
                          (cxp + dx * cell_px // 2, cyp + dy * cell_px // 2), 1)
 
-    _draw_panel(surf, world, W, panel_w, H, font, small, selected)
+    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud)
     return surf
 
 
-def _draw_panel(surf, world, x0, panel_w, H, font, small, selected):
+def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}", f"food {s['food']}",
              f"births {s['births']}", f"deaths {s['deaths']}"]
+    if hud is not None:
+        lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s")
     for i, t in enumerate(lines):
         surf.blit(font.render(t, True, (220, 220, 230)), (x0 + 12, 10 + i * 20))
     y = 10 + len(lines) * 20 + 10
@@ -181,7 +183,11 @@ def main(argv=None) -> int:
     pygame.display.set_caption("vivarium")
     clock = pygame.time.Clock()
 
-    paused, steps_per_frame, selected = False, 1, None
+    # `speed` = simulation steps per RENDERED frame. Rendering is the bottleneck,
+    # so running many steps per draw (and, at high speed, uncapping the frame
+    # rate) lets the simulation outrun the display for fast-forward. The HUD shows
+    # the measured FPS, the speed, and the resulting steps/sec.
+    paused, speed, selected = False, 1, None
     running = True
     while running:
         for e in pygame.event.get():
@@ -195,9 +201,9 @@ def main(argv=None) -> int:
                 elif e.key == pygame.K_s:
                     world.step()
                 elif e.key in (pygame.K_PLUS, pygame.K_EQUALS):
-                    steps_per_frame = min(64, steps_per_frame * 2)
+                    speed = min(1024, speed * 2)
                 elif e.key == pygame.K_MINUS:
-                    steps_per_frame = max(1, steps_per_frame // 2)
+                    speed = max(1, speed // 2)
                 elif e.key == pygame.K_r:
                     world._reseed()
             elif e.type == pygame.MOUSEBUTTONDOWN:
@@ -206,13 +212,15 @@ def main(argv=None) -> int:
                 if 0 <= gy < world.h and 0 <= gx < world.w and world.occ[gy, gx] >= 0:
                     selected = int(world.occ[gy, gx])
         if not paused:
-            for _ in range(steps_per_frame):
+            for _ in range(speed):
                 world.step()
         if selected is not None and selected not in world.agents:
             selected = None
-        screen.blit(draw(world, a.cell, panel_w, font, small, selected), (0, 0))
+        fps = clock.get_fps()
+        hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0)}
+        screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud), (0, 0))
         pygame.display.flip()
-        clock.tick(30)
+        clock.tick(60 if speed <= 2 else 0)          # uncap the frame rate when fast
     pygame.quit()
     return 0
 

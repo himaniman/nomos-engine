@@ -234,9 +234,10 @@ def test_sexual_reproduction_by_proximity():
 
 
 def test_species_isolation_by_colour():
-    # two adjacent fed agents of DIFFERENT colour-species do not crossbreed
+    # with mate_within_species ON, two adjacent fed agents of DIFFERENT colour do
+    # not crossbreed
     w = World(Config(size=20, seed=0, init_population=2, asexual_energy=9999.0,
-                     species_hue=0.08))
+                     species_hue=0.08, mate_within_species=True))
     w.food[:] = False
     w.occ[:] = -1
     a0, a1 = list(w.agents.values())

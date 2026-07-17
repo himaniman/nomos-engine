@@ -323,9 +323,9 @@ class World:
                 and 0 <= a.x + dx < self.w else -1
             if oid >= 0 and oid != a.id and oid not in bred:
                 b = self.agents.get(oid)
-                # reproductive isolation by colour: mate only within the species
-                if (b is not None and b.energy >= c.repro_min_energy
-                        and _hue_dist(a.brain.genome.hue, b.brain.genome.hue)
+                if b is not None and b.energy >= c.repro_min_energy and (
+                        not c.mate_within_species
+                        or _hue_dist(a.brain.genome.hue, b.brain.genome.hue)
                         <= c.species_hue):
                     mate = b
                     break

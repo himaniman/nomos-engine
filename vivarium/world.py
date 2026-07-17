@@ -77,6 +77,7 @@ class World:
         self.agents: dict[int, Agent] = {}
         self.hall: list[tuple[int, neat.Genome]] = []   # (age, genome), longest-lived
         self.stats = {"births": 0, "deaths": 0}
+        self._ray_offsets = self._build_ray_offsets()   # precomputed vision rays
 
         for _ in range(c.init_population):
             self._spawn_agent(self._seed_genome())
@@ -191,32 +192,45 @@ class World:
 
     # -- vision -------------------------------------------------------------
 
+    def _build_ray_offsets(self):
+        """Precompute, per heading, the integer (dy, dx) cell offsets along each
+        vision ray. These depend only on (heading, fov, n_rays, ray_length) — all
+        fixed — so casting a ray at run time is just walking a precomputed list,
+        with no per-step round()/linspace (which the profiler showed were ~half of
+        the whole simulation's time)."""
+        c = self.cfg
+        offsets = {}
+        for heading, base in _HEAD_ANG.items():
+            rays = []
+            for ang in base + np.linspace(-c.fov / 2, c.fov / 2, c.n_rays):
+                dx, dy = np.cos(ang), np.sin(ang)
+                rays.append([(int(round(dy * k)), int(round(dx * k)))
+                             for k in range(1, c.ray_length + 1)])
+            offsets[heading] = rays
+        return offsets
+
     def _sense(self, a: Agent) -> np.ndarray:
         """Ray vision fanned around the heading + interoception, as the brain's
         input vector. Each ray reports the first thing it hits (food / obstacle /
-        agent) and how near it is."""
+        agent) and how near it is — walked over precomputed ray offsets."""
         c = self.cfg
+        walls, corpse, occ, food = self.walls, self.corpse, self.occ, self.food
+        H, W, rl = self.h, self.w, c.ray_length
         vec = np.zeros(self.n_in)
-        base = _HEAD_ANG[a.heading]
-        angles = base + np.linspace(-c.fov / 2, c.fov / 2, c.n_rays)
-        for i, ang in enumerate(angles):
-            dx, dy = np.cos(ang), np.sin(ang)
-            hit_type, hit_dist = -1, c.ray_length
-            for k in range(1, c.ray_length + 1):
-                cy = a.y + int(round(dy * k))
-                cx = a.x + int(round(dx * k))
-                if not (0 <= cy < self.h and 0 <= cx < self.w) or self.walls[cy, cx] \
-                        or self.corpse[cy, cx] > 0:
-                    hit_type, hit_dist = 1, k          # obstacle
+        ay, ax, aid = a.y, a.x, a.id
+        for i, ray in enumerate(self._ray_offsets[a.heading]):
+            for k, (dy, dx) in enumerate(ray, start=1):
+                cy, cx = ay + dy, ax + dx
+                if not (0 <= cy < H and 0 <= cx < W) or walls[cy, cx] or corpse[cy, cx]:
+                    vec[i * 3 + 1] = 1.0 - k / rl       # obstacle
                     break
-                if self.occ[cy, cx] >= 0 and self.occ[cy, cx] != a.id:
-                    hit_type, hit_dist = 2, k          # another agent
+                o = occ[cy, cx]
+                if o >= 0 and o != aid:
+                    vec[i * 3 + 2] = 1.0 - k / rl       # another agent
                     break
-                if self.food[cy, cx]:
-                    hit_type, hit_dist = 0, k          # food
+                if food[cy, cx]:
+                    vec[i * 3] = 1.0 - k / rl           # food
                     break
-            if hit_type >= 0:
-                vec[i * 3 + hit_type] = 1.0 - hit_dist / c.ray_length
         vec[-2] = a.energy / c.max_energy               # interoception
         vec[-1] = 1.0                                    # bias
         return vec

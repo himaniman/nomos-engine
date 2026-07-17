@@ -927,3 +927,34 @@ its measurement are in place. Idle-cost note: the three laws' scores were
 unchanged by the metabolism change on these seeds — none of the current brains
 ever stands still (commitment always commands); the pressure is there for
 FUTURE brains to exploit.
+
+---
+
+## 2026-07-17 (evening) — The 512 mystery and fog of war
+
+**A dense brain is a different mind, and it's not about diffusion speed.** The
+512^2 showcase run (same desperate law, 32 ticks) scored 0/120 where 128^2
+scores 3/363. First hypothesis: avg8 spreads 1 cell/tick, so a 4x bigger grid
+gets 4x less relative "thinking spread" per move — the user's "no time to
+think", literally. FALSIFIED by the cheap reverse experiment: if relative
+diffusion were the cause, 128^2 @ 8 ticks (same ratio as 512 @ 32) should fail
+the same way. It doesn't: ticks {8: 2 meals, 16: 1, 32: 3, 64: 0}. The scan is
+non-monotonic, and MORE thinking time kills the 128 brain exactly like the
+dense grid did. Reading: the commitment channel's constants (0.99 decay, 0.02
+feed, clamp 2) are a PSYCHOLOGY calibrated in ticks — at 64 ticks/move the
+integrator accumulates twice as much per decision, saturates early, and the
+brain over-commits into a trap. A law is not scale-invariant in grid OR time;
+"how long should a thought take" is itself a parameter of mind. Proper
+constant-vs-cadence sweeps are brain_lab/evolve territory now.
+
+**Fog of war (user's call: no seeing through walls).** The brain was already
+honest — food is SMELL (geodesic, flows around walls, sealed pockets are
+scentless) and the wall sense is 4 rays (line of sight by construction). The
+only cheat was the VIEWER's: the game camera showed everything in the window.
+`Forage.view(fog=True)` (default in play) now masks the window by Bresenham
+line of sight, cached per position: the blocking wall surface stays lit,
+everything behind it is black, visible floor gets a faint glow so the lit room
+reads against the fog. The GIF now shows what the player actually perceives —
+a small lamp of a room with rays escaping through doorways — which makes the
+case for MEMORY brains visually self-evident: almost everything the player
+knows at any moment is remembered, not seen.

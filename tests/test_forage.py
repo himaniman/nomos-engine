@@ -182,6 +182,18 @@ def test_view_keeps_player_centred_and_pads_with_wall():
     assert v[0, 0] == 0.3                          # beyond the map reads as wall
 
 
+def test_view_fog_hides_whats_behind_walls():
+    g = _open_arena(24)
+    py, px = g.pos
+    g.walls[py - 2, px - 2:px + 3] = True          # a wall bar above the player
+    g._vis_cache.clear()
+    v = g.view(radius=6, fog=True)
+    assert v[6 - 2, 6] == 0.3                      # the blocking wall is visible
+    assert v[6 - 4, 6] == 0.0                      # behind it: fog, pure black
+    assert v[6, 6] in (0.85, 1.0)                  # the player sees itself
+    assert v[6, 6 + 4] == 0.08                     # visible floor glows vs the fog
+
+
 def test_view_fade_dims_the_periphery_not_the_player():
     g = Forage(24, seed=0)
     plain = g.view(radius=10)

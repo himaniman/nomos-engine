@@ -50,6 +50,7 @@ class Forage:
         self.hunger = 0.0                                # grows until the next meal
         self.foods: set[tuple[int, int]] = set()
         self._scent_cache: dict[tuple[int, int], np.ndarray] = {}
+        self._vis_cache: dict[tuple[tuple[int, int], int], np.ndarray] = {}
         if food_count is None:
             food_count = max(4, (self.h * self.w) // 768)
         for _ in range(food_count):
@@ -196,13 +197,56 @@ class Forage:
         f[self.pos] = 1.0 if self.starved else 0.85
         return f
 
-    def view(self, radius: int = 32, fade: float | None = None) -> np.ndarray:
+    def _los(self, ty: int, tx: int) -> bool:
+        """Bresenham line of sight from the player to (ty, tx): true when no
+        wall stands strictly between (the target itself may be a wall — that
+        is the visible surface)."""
+        y0, x0 = self.pos
+        dy, dx = abs(ty - y0), abs(tx - x0)
+        sy = 1 if ty > y0 else -1
+        sx = 1 if tx > x0 else -1
+        err = dy - dx
+        y, x = y0, x0
+        while (y, x) != (ty, tx):
+            if (y, x) != (y0, x0) and self.walls[y, x]:
+                return False
+            e2 = 2 * err
+            if e2 > -dx:
+                err -= dx
+                y += sy
+            if e2 < dy:
+                err += dy
+                x += sx
+        return True
+
+    def visibility(self, radius: int) -> np.ndarray:
+        """Boolean line-of-sight mask over the egocentric window, cached per
+        (position, radius) — walls are static, so a revisited cell is free."""
+        key = (self.pos, radius)
+        if key not in self._vis_cache:
+            side = 2 * radius + 1
+            mask = np.zeros((side, side), dtype=bool)
+            py, px = self.pos
+            for wy in range(side):
+                for wx in range(side):
+                    ty, tx = py + wy - radius, px + wx - radius
+                    if 0 <= ty < self.h and 0 <= tx < self.w:
+                        mask[wy, wx] = self._los(ty, tx)
+            self._vis_cache[key] = mask
+        return self._vis_cache[key]
+
+    def view(self, radius: int = 32, fade: float | None = None,
+             fog: bool = False) -> np.ndarray:
         """Egocentric crop of `field()`: a (2*radius+1)^2 window with the player
         always at the CENTRE — the camera follows the player through the wide
         world. Cells beyond the map read as wall. With `fade` (a fraction of
         the radius, e.g. 0.7) the surroundings dim under a Gaussian vignette —
         the render matches how perception attenuates with distance — with a
-        small floor so the layout stays legible; the centre cell is untouched."""
+        small floor so the layout stays legible; the centre cell is untouched.
+        With `fog` the window is masked by LINE OF SIGHT: anything behind a
+        wall is black — the player does not see through walls (the blocking
+        wall itself stays lit; it is the visible surface). Food behind a wall
+        is smelled, never seen."""
         f = self.field()
         side = 2 * radius + 1
         out = np.full((side, side), 0.3, dtype=np.float64)
@@ -211,6 +255,10 @@ class Forage:
         x0, x1 = max(0, px - radius), min(self.w, px + radius + 1)
         out[y0 - py + radius:y1 - py + radius,
             x0 - px + radius:x1 - px + radius] = f[y0:y1, x0:x1]
+        if fog:
+            mask = self.visibility(radius)
+            out *= mask
+            out[mask & (out < 0.08)] = 0.08   # visible floor glows against the fog
         if fade is not None:
             yy, xx = np.ogrid[-radius:radius + 1, -radius:radius + 1]
             sigma = fade * radius

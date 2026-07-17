@@ -344,7 +344,8 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
                 sensor_gain: float = 0.9, death_hold: int = 6,
                 food_count: int | None = None, starve_after: int = 120,
                 wall_radius: int | None = None, view_radius: int = 32,
-                view_fade: float | None = 0.7, render_cap: int = 128) -> dict:
+                view_fade: float | None = 0.7, view_fog: bool = True,
+                render_cap: int = 128) -> dict:
     """Run the coupled brain+forage loop until the player starves (or `moves` —
     the safety cap; a brain still alive then kept feeding itself the whole run).
     Same contract as `play`: senses re-asserted every physics tick, one game move
@@ -396,7 +397,7 @@ def play_forage(law_text: str, world_size: int = 128, game_size: int = 96,
             life_frames.append(_block_mean(world.state[life_channel], render_cap))
             if has_avoid:
                 avoid_frames.append(_block_mean(world.state[AVOID_CHANNEL], render_cap))
-            game_frames.append(game.view(view_radius, fade=view_fade))
+            game_frames.append(game.view(view_radius, fade=view_fade, fog=view_fog))
             temp_frames.append(game.hunger_fraction())
 
     if collect_frames and not game.alive and game_frames:

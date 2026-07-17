@@ -38,6 +38,8 @@ def main(argv=None) -> int:
     p.add_argument("--size", type=int, default=96)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--population", type=int, default=40)
+    p.add_argument("--brain", choices=("neat", "nca"), default="neat",
+                   help="brain model: neat graph or nca cellular-automaton")
     p.add_argument("--wall-density", type=float, default=None, dest="wall_density",
                    help="override inner-wall density (0 = open world)")
     p.add_argument("--save-genomes", default=None, dest="save_genomes",
@@ -46,7 +48,8 @@ def main(argv=None) -> int:
                    help="seed the population from this genome pool (.npz)")
     a = p.parse_args(argv)
     kw = {} if a.wall_density is None else {"wall_density": a.wall_density}
-    cfg = Config(size=a.size, seed=a.seed, init_population=a.population, **kw)
+    cfg = Config(size=a.size, seed=a.seed, init_population=a.population,
+                 brain=a.brain, **kw)
     pool = load_genomes(a.load_genomes) if a.load_genomes else None
 
     def log(s):

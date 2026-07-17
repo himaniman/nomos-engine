@@ -16,6 +16,31 @@
       "justMyCode": true
     },
     {
+      "name": "vivarium: watch NCA brains (pygame)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.app",
+      "args": ["--brain", "nca", "--size", "48", "--seed", "1", "--cell", "12",
+               "--population", "25"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "vivarium: headless NCA run",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "vivarium.run",
+      "args": ["--brain", "nca", "--size", "48", "--seed", "1",
+               "--population", "25", "--wall-density", "0",
+               "--ticks", "4000", "--every", "250"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "vivarium: watch seeded (from pool)",
       "type": "debugpy",
       "request": "launch",

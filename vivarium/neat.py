@@ -36,6 +36,7 @@ class Genome:
 
     def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict],
                  hue: float = 0.0):
+        self.kind = "neat"
         self.n_in = n_in
         self.n_out = n_out
         self.nodes = nodes
@@ -59,7 +60,8 @@ class Genome:
         return n_hidden, n_enabled
 
     def to_dict(self) -> dict:
-        return {"n_in": self.n_in, "n_out": self.n_out, "hue": self.hue,
+        return {"brain": "neat", "n_in": self.n_in, "n_out": self.n_out,
+                "hue": self.hue,
                 "nodes": [[i, k] for i, k in self.nodes.items()],
                 "conns": [[c["in"], c["out"], c["w"], c["enabled"]] for c in self.conns]}
 
@@ -79,7 +81,7 @@ class Genome:
 
 
 def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
-                  forward_bias: float = 0.0) -> Genome:
+                  forward_bias: float = 0.0, cfg=None) -> Genome:
     """A minimal starting brain: inputs fully connected to outputs with small
     random weights (a reactive single layer). The bias input (last input) gets a
     `forward_bias` weight to the FORWARD output so fresh brains tend to move."""

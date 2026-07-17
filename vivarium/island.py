@@ -25,10 +25,17 @@ import random
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import replace
 
+from vivarium import nca, neat
 from vivarium.config import Config
 from vivarium.genome_io import load_genomes, save_genomes
-from vivarium.neat import Genome
 from vivarium.world import World
+
+_BRAINS = {"neat": neat.Genome, "nca": nca.Genome}
+
+
+def _from_dict(d: dict):
+    """Rebuild a genome of the right brain type from its serialized dict."""
+    return _BRAINS[d.get("brain", "neat")].from_dict(d)
 
 
 def run_island(job: dict) -> list[dict]:
@@ -36,7 +43,7 @@ def run_island(job: dict) -> list[dict]:
     Top-level so ProcessPoolExecutor can ship it to a worker / a k8s Job can call
     the same logic."""
     cfg = replace(Config(**job["config"]), seed=job["seed"])
-    pool = [Genome.from_dict(d) for d in job["pool"]] or None
+    pool = [_from_dict(d) for d in job["pool"]] or None
     world = World(cfg, genome_pool=pool)
     for _ in range(job["ticks"]):
         world.step()
@@ -74,7 +81,7 @@ def evolve_islands(rounds: int, n_islands: int, ticks: int, top_k: int = 3,
         if on_round is not None:
             on_round(r, merged)
 
-    return [Genome.from_dict(d) for d in merged]
+    return [_from_dict(d) for d in merged]
 
 
 def main(argv=None) -> int:
@@ -89,17 +96,20 @@ def main(argv=None) -> int:
                    help="migrants each next island is seeded with (partial migration)")
     p.add_argument("--workers", type=int, default=1, help="parallel island processes")
     p.add_argument("--size", type=int, default=96)
+    p.add_argument("--brain", choices=("neat", "nca"), default="neat",
+                   help="brain model evolved on each island")
     p.add_argument("--wall-density", type=float, default=0.0, dest="wall_density",
                    help="0 (open) is easiest to bootstrap; walls need a seed pool")
     p.add_argument("--load", default=None, help="start from this genome pool (.json)")
     p.add_argument("--out", required=True, help="write the final merged pool here (.json)")
     a = p.parse_args(argv)
 
-    cfg = {"size": a.size, "wall_density": a.wall_density, "init_population": 80}
+    cfg = {"size": a.size, "wall_density": a.wall_density, "init_population": 80,
+           "brain": a.brain}
     base = load_genomes(a.load) if a.load else None
 
     def on_round(r, merged):
-        hidden = [Genome.from_dict(d).complexity()[0] for d in merged]
+        hidden = [_from_dict(d).complexity()[0] for d in merged]
         print(f"[round {r}] merged pool={len(merged)} hidden(min/max)="
               f"{min(hidden)}/{max(hidden)}", flush=True)
 

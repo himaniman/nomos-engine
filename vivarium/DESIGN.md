@@ -265,3 +265,69 @@ Backlog (user ideas, after the above): occasional IMMIGRATION of fresh
 random-ish brains (test whether evolved always beats naive; maintains diversity)
 — pairs naturally with the niche/fitness-sharing work for real speciation. Then
 stage 5: the LLM meta-designer reading the JSON genomes.
+
+---
+
+## The NCA-brain pivot (branch `vivarium-nca`, 2026-07-17)
+
+A new direction the user proposed: make each agent's brain not a NEAT graph but a
+tiny **Neural Cellular Automaton** — a small grid of cells, each cell a little
+net, that evolves and mutates. Motivation: "perceptrons playing a game" has been
+done; a *population of CA brains* in an open ecology (with crossover, speciation,
+LLM meta-design) has not, and it closes the arc — nomos gave the CA substrate,
+vivarium the ecology, now the CA becomes the brain inside the ecology. This is
+Neural Cellular Automata (Mordvintsev 2020; HyperNCA 2022), but as an open-ended
+*evolving population*, which is the genuinely new part.
+
+**Design settled with the user (2026-07-17):**
+- **Grid + alive-MASK** (my synthesis, chosen over a free graph of cells): the
+  brain lives on a bounded G x G lattice, but a heritable boolean mask says which
+  cells are ALIVE, so the shape is GROWN and arbitrary (an L, a blob), not a fixed
+  square. This resolves grid-vs-graph cleanly: keeps grid neighbourhoods + the
+  killer "watch the texture think" visual + a single batchable tensor, while
+  giving the user's "a SET of cells, grown one at a time, non-square". Evolved
+  *connectivity* lives inside the rule's input weights over the neighbourhood, not
+  as an explicit edge set — cheap, and it's what the user meant by "связи геномом".
+- **Start 2x2**, grow/shrink by one cell per structural mutation. (Size 1 also
+  works — it degrades to a plain recurrent net — but 2x2 gives live neighbourhood
+  from tick 0, echoing the NEAT bootstrap lesson.)
+- **32 sub-ticks of brain per game tick** (the forage think-time lesson): the rule
+  relaxes across the grid so a signal injected at the senses reaches the motor
+  read-out before the agent acts. Bigger brain -> more compute -> slower sim, which
+  the user accepted (and which is thematically nice: intelligence costs time).
+- **Sensor/motor wiring is size-invariant** (survives growth): the sensor vector
+  is projected to a per-cell DRIVE broadcast into every alive cell each sub-tick;
+  the action is read from the mean-POOLED cell state through a motor projection.
+- **Language stays Python**; parallelism = batching + islands, not per-brain
+  threads. (Bench on the i7-12700: 50 agents / 12x12 / K16 ~ 42 world-ticks/s, near
+  realtime; 200 / 16x16 / K32 ~ 1.5/s, a night run. GPU/torch is the later lever.)
+
+**Complexity staged** (don't build it all at once — the user's "set of rules /
+NEAT-inside-the-cell + evolved brain size" is the full vision, reached in steps):
+- **v0 (DONE, this commit): single shared rule, one cell type**; evolve the rule
+  weights + the sensor/motor projections + the alive-mask SHAPE. `vivarium/nca.py`
+  mirrors `neat.py`'s public surface (Genome / Phenotype / random_genome / mutate /
+  crossover + action constants), so the World uses either brain via `brain="neat"|
+  "nca"` (a `_BRAINS` registry; `--brain nca` on run/app/island). genome_io and
+  islands dispatch on a `"brain"` tag in the JSON, so pools of either type load.
+  The app inspector draws the CA brain as a live texture (first 3 channels -> RGB)
+  instead of the NEAT graph. 27 tests green (9 new NCA ones: deterministic act,
+  shape grow/shrink, valid crossover, deterministic world, save/load, headless
+  render). The rule: perception (3x3, bounded, dead cells zeroed) -> MLP -> residual
+  tanh state update; motor = pooled state -> logits.
+- **v1 (next): cell TYPES = a SET of rules** — the genome carries K rule-nets, each
+  cell has a type pointing at one; mutation adds/retypes cells and can split a new
+  type. This is the real morphogenesis ("each cell its own").
+- **v2 (later): NEAT INSIDE the rule** (the cell's own net grows topology), maybe
+  sensory ORGANS on the shape's edge instead of uniform broadcast.
+
+**v0 behavioural status (first live runs, open world, size 48, 25 agents):** the
+ecology LIVES and is deterministic — population oscillates (7->1->10->3->19 over
+1500 ticks) with births accelerating, no collapse. But like the NEAT bootstrap
+problem (food stays pinned at target -> foraging is still weak), takeoff isn't
+automatic; the same levers apply (forward-bias prior — already in via `b_out`
+FORWARD bias; seed-pool scaffolding; open->walled curriculum). Engine + tooling
+are solid; making the NCA ecology robustly LIVELY is the tuning frontier, exactly
+as it was for NEAT. Open: does the CA brain, given the think-time, forage BETTER
+than the reactive NEAT graph once tuned — the A/B the shared World now makes
+trivial (`--brain neat` vs `--brain nca`, same world, same seed).

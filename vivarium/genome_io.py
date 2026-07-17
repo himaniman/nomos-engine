@@ -12,17 +12,21 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from vivarium.neat import Genome
+from vivarium import nca, neat
+
+_BRAINS = {"neat": neat.Genome, "nca": nca.Genome}
 
 
-def save_genomes(path: str, genomes: list[Genome]) -> None:
-    """Save a list of NEAT genomes as JSON."""
+def save_genomes(path: str, genomes: list) -> None:
+    """Save a list of genomes (NEAT or NCA) as JSON. Each genome's to_dict carries a
+    "brain" tag so load can rebuild the right type; a mixed list is fine."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    payload = {"format": "vivarium-neat-1", "genomes": [g.to_dict() for g in genomes]}
+    payload = {"format": "vivarium-2", "genomes": [g.to_dict() for g in genomes]}
     Path(path).write_text(json.dumps(payload), encoding="utf-8")
 
 
-def load_genomes(path: str) -> list[Genome]:
-    """Load genomes saved by `save_genomes` into a list (a seed pool)."""
+def load_genomes(path: str) -> list:
+    """Load genomes saved by `save_genomes` into a list (a seed pool). Dispatches on
+    each genome's "brain" tag; legacy files without it are NEAT."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [Genome.from_dict(d) for d in data["genomes"]]
+    return [_BRAINS[d.get("brain", "neat")].from_dict(d) for d in data["genomes"]]

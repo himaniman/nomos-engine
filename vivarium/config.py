@@ -64,6 +64,9 @@ class Config:
                                        # + longevity, not longevity alone)
 
     # brain / senses
+    brain: str = "neat"                # which brain module: "neat" (graph of scalar
+                                       # neurons) or "nca" (a small cellular automaton
+                                       # per agent — grid + evolvable alive-mask shape)
     n_rays: int = 5                    # vision rays fanned around the heading
     fov: float = 1.4                   # total angular spread of the rays (radians)
     ray_length: int = 12               # how far a ray sees (cells)
@@ -71,3 +74,17 @@ class Config:
     init_forward_bias: float = 1.5     # fresh brains lean toward moving forward, so
                                        # the population forages from tick 0 and
                                        # evolution has material to select on
+
+    # NCA brain (brain="nca"): each agent's brain is a G x G multi-channel CA with
+    # a heritable ALIVE-MASK (grown shape). One shared update rule (a small MLP over
+    # the 3x3 neighbourhood) relaxes `nca_subticks` steps per game tick; sensors are
+    # broadcast in, the action is read from the pooled cell state. Shape + rule
+    # weights both evolve.
+    nca_grid: int = 12                 # max brain lattice side (the mask lives here)
+    nca_channels: int = 8              # state channels per cell
+    nca_hidden: int = 16               # hidden units in the shared update rule
+    nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
+    nca_start: int = 2                 # side of the fresh alive block (2 -> 2x2)
+    nca_max_cells: int = 48            # cap on alive cells (bounds per-agent compute)
+    nca_grow_prob: float = 0.06        # chance a mutation activates a new adjacent cell
+    nca_shrink_prob: float = 0.02      # chance a mutation deactivates a cell

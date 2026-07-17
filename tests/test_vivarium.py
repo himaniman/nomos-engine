@@ -285,3 +285,102 @@ def test_species_count_clusters_hues():
     for a, h in zip(w.agents.values(), [0.10, 0.10, 0.50, 0.50, 0.50, 0.90]):
         a.brain.genome.hue = h
     assert w.species_count() == 3                # three colour clusters
+
+
+# --- NCA brain (brain="nca"): a cellular automaton per agent ------------------
+
+def _nca_cfg(**kw):
+    return Config(brain="nca", nca_grid=6, nca_channels=4, nca_hidden=6,
+                  nca_subticks=8, nca_start=2, **kw)
+
+
+def test_nca_genome_starts_as_a_small_block():
+    from vivarium import nca
+    rng = np.random.default_rng(0)
+    g = nca.random_genome(input_size(5), nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    assert g.kind == "nca"
+    assert g.mask.sum() == 4                      # 2x2 seed shape
+    assert g.G == 6
+
+
+def test_nca_phenotype_acts_deterministically():
+    from vivarium import nca
+    n_in = input_size(5)
+    rng = np.random.default_rng(0)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    x = rng.normal(size=n_in)
+    p1, p2 = nca.Phenotype(g, subticks=8), nca.Phenotype(g, subticks=8)
+    assert p1.act(x) == p2.act(x)                 # same genome+state -> same act
+    assert 0 <= p1.act(x) < nca.N_ACTIONS
+
+
+def test_nca_mutation_grows_and_shrinks_the_shape():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(2)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    base = int(g.mask.sum())
+    grow = _nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0)
+    for _ in range(6):
+        g, _ = nca.mutate(g, rng, grow, 0)
+    assert g.mask.sum() > base                    # shape grew
+    # grown cells stay 4-connected to the blob (grown at the frontier)
+    assert g.mask.sum() <= grow.nca_max_cells
+    grown = g.mask.sum()
+    shrink = _nca_cfg(nca_grow_prob=0.0, nca_shrink_prob=1.0)
+    for _ in range(3):
+        g, _ = nca.mutate(g, rng, shrink, 0)
+    assert 1 <= g.mask.sum() < grown              # shape shrank, never below 1
+
+
+def test_nca_crossover_is_a_valid_runnable_brain():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(1)
+    cfg = _nca_cfg()
+    g1 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    g2 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    child = nca.crossover(g1, g2, rng)
+    assert nca.Phenotype(child, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
+def test_nca_world_runs_and_is_deterministic():
+    cfg = _nca_cfg(size=32, seed=5, init_population=12)
+    a = run_headless(cfg, ticks=60, every=20)
+    b = run_headless(cfg, ticks=60, every=20)
+    assert a == b                                 # same seed -> same history
+    assert a[-1]["population"] >= 0
+
+
+def test_nca_genome_save_load_roundtrip(tmp_path):
+    from vivarium import nca
+    from vivarium.genome_io import load_genomes, save_genomes
+    rng = np.random.default_rng(0)
+    n_in = input_size(5)
+    genomes = [nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+               for _ in range(3)]
+    p = str(tmp_path / "pool.json")
+    save_genomes(p, genomes)
+    back = load_genomes(p)
+    assert len(back) == 3
+    for a, b in zip(genomes, back):
+        assert b.kind == "nca"
+        assert a.key() == b.key()                 # shape + rule survive the round-trip
+
+
+def test_nca_app_renders_brain_texture_headless():
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    import pygame
+    from vivarium.app import draw
+    pygame.init()
+    font = pygame.font.SysFont("consolas", 16)
+    small = pygame.font.SysFont("consolas", 13)
+    w = World(_nca_cfg(size=32, seed=1, init_population=10))
+    for _ in range(20):
+        w.step()
+    sel = next(iter(w.agents), None)
+    surf = draw(w, cell_px=6, panel_w=220, font=font, small=small, selected=sel)
+    assert surf.get_width() == w.w * 6 + 220      # inspector drew without crashing
+    pygame.quit()

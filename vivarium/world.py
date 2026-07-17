@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from vivarium import neat
+from vivarium import nca, neat
 from vivarium.config import Config
-from vivarium.neat import FORWARD, TURN_LEFT, TURN_RIGHT, Phenotype
+from vivarium.neat import FORWARD, TURN_LEFT, TURN_RIGHT
+
+_BRAINS = {"neat": neat, "nca": nca}
 
 
 def input_size(n_rays: int) -> int:
@@ -54,12 +56,13 @@ class World:
         # already-competent population be dropped into a HARD world (e.g. a maze,
         # where random brains can't bootstrap) and start living at once.
         self.genome_pool = list(genome_pool) if genome_pool else None
+        self.brain = _BRAINS[c.brain]              # neat or nca — the pluggable brain
         self.rng = np.random.default_rng(c.seed)
         self.h = self.w = c.size
         self.tick = 0
         self._next_id = 0
         self.n_in = input_size(c.n_rays)
-        self.n_out = neat.N_ACTIONS
+        self.n_out = self.brain.N_ACTIONS
         # unique-id counter for hidden nodes added by structural mutation; starts
         # above any id in the seed pool so inherited nodes never clash with new ones
         self._next_node_id = self.n_in + self.n_out
@@ -83,19 +86,26 @@ class World:
             self._spawn_agent(self._seed_genome())
         self._regrow_food()
 
-    def _mutate(self, g: neat.Genome) -> neat.Genome:
-        child, self._next_node_id = neat.mutate(g, self.rng, self.cfg,
-                                                self._next_node_id)
+    def _mutate(self, g):
+        child, self._next_node_id = self.brain.mutate(g, self.rng, self.cfg,
+                                                      self._next_node_id)
         return child
 
-    def _seed_genome(self) -> neat.Genome:
+    def _phenotype(self, genome):
+        """Build a runnable brain from a genome (NCA needs the think-time)."""
+        if self.cfg.brain == "nca":
+            return self.brain.Phenotype(genome, subticks=self.cfg.nca_subticks)
+        return self.brain.Phenotype(genome)
+
+    def _seed_genome(self):
         """A fresh starting genome: a mutated draw from the seed pool if one was
         supplied, otherwise a random minimal net."""
         if self.genome_pool:
             g = self.genome_pool[self.rng.integers(len(self.genome_pool))]
             return self._mutate(g)
-        return neat.random_genome(self.n_in, self.n_out, self.rng,
-                                  forward_bias=self.cfg.init_forward_bias)
+        return self.brain.random_genome(self.n_in, self.n_out, self.rng,
+                                        forward_bias=self.cfg.init_forward_bias,
+                                        cfg=self.cfg)
 
     def hall_genomes(self) -> list[neat.Genome]:
         """The longest-lived genomes recorded so far (for saving / reseeding)."""
@@ -174,7 +184,7 @@ class World:
         h = self.rng.integers(4) if heading is None else heading
         a = Agent(self._next_id, y, x, int(h),
                   self.cfg.start_energy if energy is None else energy,
-                  Phenotype(genome))
+                  self._phenotype(genome))
         self.agents[a.id] = a
         self.occ[y, x] = a.id
         self._next_id += 1
@@ -335,8 +345,8 @@ class World:
             return
         if mate is not None:
             fit, other = (a, mate) if a.energy >= mate.energy else (mate, a)
-            child_g = self._mutate(neat.crossover(fit.brain.genome,
-                                                  other.brain.genome, self.rng))
+            child_g = self._mutate(self.brain.crossover(fit.brain.genome,
+                                                        other.brain.genome, self.rng))
             a.energy -= c.repro_cost / 2
             mate.energy -= c.repro_cost / 2
             bred.add(a.id)

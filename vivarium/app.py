@@ -143,10 +143,39 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     nh, nc = g.complexity()
     info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
             if agent is not None else [])
-    info.append(f"hidden {nh}  conns {nc}")
+    info.append(f"cells {nh}  chan {nc}" if getattr(g, "kind", "neat") == "nca"
+                else f"hidden {nh}  conns {nc}")
     for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
-    _draw_net(surf, g, x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
+    box = (x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
+    if getattr(g, "kind", "neat") == "nca":
+        _draw_nca_brain(surf, g, agent.brain if agent is not None else None, *box)
+    else:
+        _draw_net(surf, g, *box)
+
+
+def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
+    """Draw the agent's CA brain as a texture: the G x G lattice with dead cells
+    dark, alive cells coloured by their first three state CHANNELS (RGB) if a live
+    phenotype is given, else just the alive shape. This is the "watch it think"
+    view — the whole point of the NCA brain."""
+    G = genome.G
+    side = max(1, min(w, h) // G)
+    ox, oy = x, y
+    state = phenotype.state if phenotype is not None else None
+    for gy in range(G):
+        for gx in range(G):
+            rect = (ox + gx * side, oy + gy * side, side - 1, side - 1)
+            if not genome.mask[gy, gx]:
+                surf.fill((30, 30, 38), rect)              # dead cell
+                continue
+            if state is not None:
+                ch = state[gy, gx]
+                col = tuple(int(128 + 127 * np.tanh(ch[k] if k < len(ch) else 0.0))
+                            for k in range(3))
+            else:
+                col = (150, 160, 200)                      # shape only (no live state)
+            surf.fill(col, rect)
 
 
 def _draw_net(surf, genome, x, y, w, h):
@@ -184,11 +213,14 @@ def main(argv=None) -> int:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--population", type=int, default=60)
     p.add_argument("--cell", type=int, default=7, help="pixels per cell")
+    p.add_argument("--brain", choices=("neat", "nca"), default="neat",
+                   help="brain model: neat graph or nca cellular-automaton")
     p.add_argument("--load-genomes", default=None, dest="load_genomes",
                    help="seed the world from an evolved genome pool (.json)")
     a = p.parse_args(argv)
 
-    cfg = Config(size=a.size, seed=a.seed, init_population=a.population)
+    cfg = Config(size=a.size, seed=a.seed, init_population=a.population,
+                 brain=a.brain)
     pool = None
     if a.load_genomes:
         from vivarium.genome_io import load_genomes

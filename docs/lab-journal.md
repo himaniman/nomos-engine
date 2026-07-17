@@ -958,3 +958,53 @@ reads against the fog. The GIF now shows what the player actually perceives —
 a small lamp of a room with rays escaping through doorways — which makes the
 case for MEMORY brains visually self-evident: almost everything the player
 knows at any moment is remembered, not seen.
+
+---
+
+## 2026-07-17 (night) — Two live forage lab runs; sight GENERALIZES, a random walk OVERFITS
+
+Ran the DeepSeek brain lab on the forage world twice, 8 brains each: once with
+the original senses (smell/wall/temperature), once after adding the `sight`
+sensor (the user's idea — food in unbroken line of sight painted strong and
+straight, `sight*3` in the winner). Then a train-vs-holdout check (seeds 0-2
+trained on, 3-7 held out) across every brain, hand-built and LLM-built:
+
+```
+                              train (0-2)   holdout (3-7)
+reactive baseline             0.67/166      0.80/143
+mem (commitment)              1.33/230      1.20/168
+desperate (hunger-gated melt) 1.33/234      1.60/237
+LLM no-sight (random walk)    3.00/245      0.80/146   <- collapses
+LLM sight champion            4.33/253      5.20/286   <- generalizes
+```
+
+Two findings, one expected and one not.
+
+**Expected: sight is a strong, real signal.** The champion (journal
+brain-forage-sight.md #2, saved `laws/forage_brain_llm.nomos`) mixes four
+things and the model weighted them well by hand: a fast leaky smell integrator
+(`mem += 0.2*(food-mem)`), exploration noise PROPORTIONAL to hunger (our binary
+desperation threshold reinvented as a smooth gradient), plain wall fear, and
+`sight*3` — seen food dominates everything, exactly the "certainty beats
+inference" the user was after. Best mean score in the project on this world.
+
+**Unexpected: the no-sight winner was an overfit.** The best brain WITHOUT
+sight (run 1 #7, `laws/forage_brain_llm_nosight.nomos`) is a correlated random
+walk — inertial compass channels, smell overrides near food, hunger reroll to
+escape. It scored 3.00 on its three training boards and I nearly filed it as
+"exploration beats commitment". The holdout says 0.80 — it collapses to below
+the reactive baseline. The 3.00 was a random walk whose seed happened to comb
+three specific mazes well; it carries no navigational skill to new ones. The
+sight brain, by contrast, IMPROVED out of sample (4.33 -> 5.20): a real
+perceptual signal transfers, luck does not. This is why the holdout split
+matters — it's the whole difference between a method and a coincidence, and
+here it flipped the ranking (no-sight #7 looked like the discovery; it was the
+trap). The champion generalizing UP while the random walk collapses is the
+cleanest single demonstration the forage world has produced.
+
+Lab mechanics held up: both runs deterministic bar the LLM, GIFs per brain,
+the model read its leaderboard and iterated (it explicitly diagnosed zero-food
+boards, tried commitment, tried random walk, tried sight-gated approach).
+`laws/forage_brain_llm.nomos` is the new forage champion to beat; obvious next
+step is evolving its four constants (the hybrid design+tune loop, now on the
+harder world) and a wider holdout to be sure 5.20 isn't its own lucky five.

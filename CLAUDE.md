@@ -274,6 +274,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   noise: 4/701 vs mem 4/689 over 3 seeds — the escape hatch opens but too
   late; tuning it is a brain_lab question. Current forage ladder: reactive
   2 meals < mem 4 < desperate 4 (slightly longer-lived) over seeds 0-2.
+- Done (two live forage lab runs + the sight sensor, 2026-07-17): ran DeepSeek
+  brain_lab on forage twice (8 brains each), before and after adding `sight`
+  (user's idea: food in unbroken line of sight, painted strong+straight).
+  Train/holdout check (train seeds 0-2, holdout 3-7) across all brains found
+  the key result: the sight champion (`laws/forage_brain_llm.nomos`: fast smell
+  integrator + hunger-proportional noise + wall fear + `sight*3`) GENERALIZES
+  (4.33 train -> 5.20 holdout, best in the project), while the best no-sight
+  brain (`laws/forage_brain_llm_nosight.nomos`, a correlated random walk)
+  OVERFIT (3.00 train -> 0.80 holdout, below baseline). The 3.00 was luck tuned
+  to three mazes; sight is a real perceptual signal that transfers. The holdout
+  split flipped the ranking — cleanest demo the forage world has produced.
+  Next: evolve the champion's four constants (hybrid design+tune, harder world)
+  + wider holdout to confirm 5.20.
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

@@ -1,0 +1,34 @@
+# The LLM-designed forage champion (brain lab, sight run, brain #2; deepseek).
+# Score 4.33 mean (4, 8, 1) over seeds 0-2 vs 3.00 for the best no-sight brain
+# and 1.33 for our hand-built commitment brains. Four ingredients:
+#  - mem: a fast leaky integrator of the smell (persists the gradient),
+#  - noise: exploration PROPORTIONAL to hunger (our binary 'desperation'
+#    threshold, reinvented as a smooth gradient),
+#  - sight * 3: seen food dominates everything (the user's sensor, weighted
+#    by the model exactly as intended - certainty beats inference),
+#  - avoid = wall: plain touch fear.
+
+channel food
+channel wall
+channel sight
+channel temperature
+channel motor
+channel avoid
+channel mem: init 0
+channel noise: init 0
+
+rule integrate_mem:
+    when 1
+    add mem = 0.2 * (food - mem)
+
+rule add_noise:
+    when 1
+    add noise = 0.5 * (rand() - 0.5) * temperature
+
+rule set_motor:
+    when 1
+    set motor = max(0, food + mem + noise + sight * 3)
+
+rule set_avoid:
+    when 1
+    set avoid = wall

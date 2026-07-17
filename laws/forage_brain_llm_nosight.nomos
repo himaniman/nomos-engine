@@ -1,0 +1,34 @@
+# The best forage brain the LLM found WITHOUT a sight sensor (brain lab run 1,
+# brain #7; deepseek). Score 3.00 mean (3, 2, 4) over seeds 0-2. A correlated
+# random walk: two 'compass' channels with inertia (0.95 keep + 0.05 fresh
+# noise) give a smoothly-turning heading; the food smell overrides it near
+# food; a hunger>0.9 gate rerolls the compass to escape dead ends. The model
+# diagnosed its own zero-score boards as an EXPLORATION failure, not weak
+# commitment - and was right (adding commitment in brain #8 regressed it).
+
+channel food
+channel motor
+channel avoid
+channel wall
+channel temperature
+channel wander_dx: init 0.1
+channel wander_dy: init 0.1
+
+rule wall_avoid:
+    when wall > 0
+    set avoid = clamp(wall * 1, 0, 1e6)
+
+rule random_walk:
+    when 1
+    set wander_dx = 0.95 * wander_dx + 0.05 * uniform(-1, 1)
+    set wander_dy = 0.95 * wander_dy + 0.05 * uniform(-1, 1)
+
+rule motor_drive:
+    when 1
+    set motor = clamp(food + wander_dx, 0, 1e6)
+    add motor = clamp(wander_dy, 0, 1e6)
+
+rule reset:
+    when temperature > 0.9
+    set wander_dx = uniform(-1, 1)
+    set wander_dy = uniform(-1, 1)

@@ -226,7 +226,35 @@ def test_sexual_reproduction_by_proximity():
     w.occ[10, 10] = a0.id
     w.occ[10, 11] = a1.id
     a0.energy = a1.energy = 50.0
+    a0.brain.genome.hue = a1.brain.genome.hue = 0.5   # same species -> may mate
     # call reproduction directly (a normal step would let them move apart first)
     w._try_reproduce(a0, set())
     assert w.stats["births"] > 0                 # only sexual could have fired
     assert w.population() == 3                    # a child was added
+
+
+def test_species_isolation_by_colour():
+    # two adjacent fed agents of DIFFERENT colour-species do not crossbreed
+    w = World(Config(size=20, seed=0, init_population=2, asexual_energy=9999.0,
+                     species_hue=0.08))
+    w.food[:] = False
+    w.occ[:] = -1
+    a0, a1 = list(w.agents.values())
+    a0.y, a0.x = 10, 10
+    a1.y, a1.x = 10, 11
+    w.occ[10, 10] = a0.id
+    w.occ[10, 11] = a1.id
+    a0.energy = a1.energy = 50.0
+    a0.brain.genome.hue, a1.brain.genome.hue = 0.10, 0.60    # far apart
+    w._try_reproduce(a0, set())
+    assert w.stats["births"] == 0                # different species, no asexual -> none
+    a1.brain.genome.hue = 0.12                   # now within tolerance
+    w._try_reproduce(a0, set())
+    assert w.stats["births"] == 1                # same species -> crossover child
+
+
+def test_species_count_clusters_hues():
+    w = World(Config(size=30, seed=1, init_population=6))
+    for a, h in zip(w.agents.values(), [0.10, 0.10, 0.50, 0.50, 0.50, 0.90]):
+        a.brain.genome.hue = h
+    assert w.species_count() == 3                # three colour clusters

@@ -20,6 +20,12 @@ def input_size(n_rays: int) -> int:
     plus interoceptive energy and a constant bias input."""
     return n_rays * 3 + 2
 
+def _hue_dist(a: float, b: float) -> float:
+    """Circular distance between two hues in [0, 0.5]."""
+    d = abs(a - b) % 1.0
+    return min(d, 1.0 - d)
+
+
 # heading -> (dy, dx): 0=N(up), 1=E, 2=S(down), 3=W
 _HEAD_VEC = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
 # heading -> base ray angle (x=cos, y=sin, y points down)
@@ -302,7 +308,10 @@ class World:
                 and 0 <= a.x + dx < self.w else -1
             if oid >= 0 and oid != a.id and oid not in bred:
                 b = self.agents.get(oid)
-                if b is not None and b.energy >= c.repro_min_energy:
+                # reproductive isolation by colour: mate only within the species
+                if (b is not None and b.energy >= c.repro_min_energy
+                        and _hue_dist(a.brain.genome.hue, b.brain.genome.hue)
+                        <= c.species_hue):
                     mate = b
                     break
         cell = next(((a.y + dy, a.x + dx) for dy, dx in neigh
@@ -353,7 +362,18 @@ class World:
     def population(self) -> int:
         return len(self.agents)
 
+    def species_count(self) -> int:
+        """How many distinct colour-species are alive: sort the lineage hues and
+        split wherever the gap exceeds the mating tolerance (with wrap-around)."""
+        hues = sorted(a.brain.genome.hue for a in self.agents.values())
+        if not hues:
+            return 0
+        gaps = [hues[i] - hues[i - 1] for i in range(1, len(hues))]
+        gaps.append(1.0 - hues[-1] + hues[0])          # wrap seam
+        return max(1, sum(1 for g in gaps if g > self.cfg.species_hue))
+
     def snapshot(self) -> dict:
         return {"tick": self.tick, "population": self.population(),
                 "food": int(self.food.sum()), "corpses": int((self.corpse > 0).sum()),
-                "births": self.stats["births"], "deaths": self.stats["deaths"]}
+                "births": self.stats["births"], "deaths": self.stats["deaths"],
+                "species": self.species_count()}

@@ -102,8 +102,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
                 leader=None, hitboxes=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
-    lines = [f"tick {s['tick']}", f"pop  {s['population']}", f"food {s['food']}",
-             f"births {s['births']}", f"deaths {s['deaths']}"]
+    lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
+             f"food {s['food']}", f"births {s['births']}", f"deaths {s['deaths']}"]
     if hud is not None:
         lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s")
     for i, t in enumerate(lines):

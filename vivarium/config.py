@@ -48,6 +48,10 @@ class Config:
     toggle_prob: float = 0.02          # chance to flip a connection on/off
     hue_drift_prob: float = 0.08       # chance the heritable lineage colour drifts
     hue_drift: float = 0.02            # size of that colour drift (wraps at 1.0)
+    species_hue: float = 0.08          # mating hue tolerance = reproductive isolation
+                                       # by colour; a lineage that drifts past it from
+                                       # its kin becomes a new species (also the gap
+                                       # that separates species in the HUD count)
 
     # corpse: an OBSTACLE (not food) that decays away
     corpse_decay: int = 40             # ticks a corpse blocks its cell before clearing

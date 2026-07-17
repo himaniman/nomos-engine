@@ -374,11 +374,30 @@ inspector; HUD shows carnivore %. The world's `food` became int8 (type per cell)
 (size 96 -> 64; CLI + Config) so there are fewer mouths and the sim runs faster.
 160 tests pass. The app draws food coloured by type, faint halo discs, diet/carn.
 
-HONEST STATUS: the mechanics all work and the world is visibly richer, but — exactly
-like NEAT and like main's niche experiment — takeoff from random brains is NOT
-automatic: food stays pinned at target, foraging stays weak, population oscillates
-low (1-10) instead of filling the map. Concentrated halos may even HURT random-brain
-bootstrap (most of the map is empty). Tuning the regime (food richness / metabolism /
-halo width) and/or the seed-pool scaffold (evolve an easy uniform-food world -> seed
-the halo/predation world) is the live work. v2 waits until the ecology is
-demonstrably lively.
+UPDATE — the ecology is now demonstrably LIVELY (takeoff solved + tuned):
+- **Takeoff** came from RICH STANDING food (`food_target` 0.10 — a findable larder) +
+  CHEAP metabolism (base 0.25 / move 0.35) + WIDE halos (sigma 0.30, so food is
+  findable, not concentrated where random brains can't reach). Confirmed: food is
+  actively eaten below target, mean lifespan climbs (foraging evolves), pop fills in.
+- **Population homeostasis** (user's idea): carrying capacity is set by food THROUGH-
+  PUT (regrow x energy), NOT world size. An ADAPTIVE controller (`_effective_regrow`)
+  sows generously while pop <= `food_pop_target` (learners get plenty) and throttles
+  proportionally above it (`food_regrow_gain`), holding a bounded pop (~30-50 with the
+  defaults; a standing-food buffer keeps it above the raw target). Shrinking the world
+  is NOT the pop knob (restored size to 48); food throughput is.
+- **Extinction reseed** now re-drops the elites AND strongly-mutated variants (user's
+  fix) so a collapse injects variation instead of replaying the dead population.
+- **Diversity**: dietary DIVERSITY now persists (diet spread 0.1-1.0, both food types
+  eaten) once `diet_min_eff` dropped to 0.15 — off-diet food is nearly inedible, so
+  the second food type is a PROTECTED niche a specialist can own (competitive exclusion
+  no longer collapses it). Lineage diversity is seeded by rare MACRO-mutations (a big
+  weight jolt + a hue/diet/carnivore jump = a visible new species) and by IMMIGRATION
+  (competent hall genomes re-coloured as a fresh lineage with a fresh diet — "smart
+  like the brothers, different род"). Species count now reaches 2-3 (was pinned at 1).
+- **Lifespan stat** (user's request): rolling mean/median age-at-death over
+  `lifespan_window` ticks, in the HUD + headless log.
+- **Sim fixes** (user): food never spawns on walls, and a walking wall now CRUSHES any
+  agent/food it drifts onto (`_clear_under_walls`) instead of reversing.
+Open frontier still: carnivores rarely establish (0% — macro-mut now gives them a
+shot); holding pop nearer the target needs a smaller food buffer (tension with
+bootstrap findability). Good enough to move to the v2 brain.

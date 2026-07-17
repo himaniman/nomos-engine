@@ -133,7 +133,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
              f"food {s['food']}  carn {s['carnivores'] * 100:.0f}%",
-             f"births {s['births']}", f"deaths {s['deaths']}"]
+             f"births {s['births']}", f"deaths {s['deaths']}",
+             f"lifespan  mean {s['life_mean']:.0f}  med {s['life_median']:.0f}"]
     if hud is not None:
         think = "  THINK" if hud.get("think") else ""
         lines.append(f"fps {hud['fps']:.0f}  x{hud['speed']}  {hud['sps']:.0f}/s{think}")
@@ -332,9 +333,9 @@ def _draw_net(surf, genome, x, y, w, h):
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="vivarium.app", description="watch a vivarium")
-    p.add_argument("--size", type=int, default=64)
+    p.add_argument("--size", type=int, default=40)
     p.add_argument("--seed", type=int, default=1)
-    p.add_argument("--population", type=int, default=40)
+    p.add_argument("--population", type=int, default=30)
     p.add_argument("--cell", type=int, default=7, help="pixels per cell")
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",
                    help="brain model: neat graph or nca cellular-automaton")

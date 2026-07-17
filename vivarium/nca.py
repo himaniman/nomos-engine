@@ -250,9 +250,12 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int):
         g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
     if rng.random() < cfg.trait_drift_prob:              # niche traits drift slowly
         g.diet = min(1.0, max(0.0, g.diet + float(rng.normal(0.0, cfg.trait_drift))))
-    if rng.random() < cfg.trait_drift_prob:
-        g.carnivore = min(1.0, max(0.0,
-                          g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
+    if rng.random() < cfg.macro_mut_prob:                # rare SPECIATION jolt: a big
+        g.hue = float(rng.random())                      # colour jump (new lineage) +
+        g.diet = float(rng.random())                     # a new diet + maybe a predator
+        g.carnivore = float(rng.random())                # + strong rewiring
+        for arr in (g.W1, g.b1, g.W2, g.b2, g.P_in, g.P_out, g.b_out):
+            _jitter(arr, rng, 1.0, cfg.weight_mut * cfg.macro_mut_scale)
     for arr in (g.W1, g.b1, g.W2, g.b2, g.P_in, g.P_out, g.b_out):
         _jitter(arr, rng, cfg.weight_mut_prob, cfg.weight_mut)
 

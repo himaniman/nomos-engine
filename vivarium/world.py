@@ -8,6 +8,8 @@ Agents update in a fixed id order so a dynamic population stays reproducible.
 
 from __future__ import annotations
 
+from collections import deque
+
 import numpy as np
 
 from vivarium import nca, neat
@@ -85,6 +87,7 @@ class World:
         self.agents: dict[int, Agent] = {}
         self.hall: list[tuple[int, neat.Genome]] = []   # (age, genome), longest-lived
         self.stats = {"births": 0, "deaths": 0}
+        self.deaths_log: deque = deque()                 # (tick, age) of recent deaths
         self._ray_offsets = self._build_ray_offsets()   # precomputed vision rays
 
         for _ in range(c.init_population):
@@ -199,13 +202,25 @@ class World:
         return (0 < y < self.h - 1 and 0 < x < self.w - 1 and not self.walls[y, x]
                 and self.corpse[y, x] == 0 and self.occ[y, x] < 0 and self.food[y, x] == 0)
 
+    def _effective_regrow(self) -> int:
+        """Food throughput this tick. With the adaptive controller on, it's generous
+        while the population is at/under target (so learners have plenty) and throttled
+        proportionally as the population climbs past it — homeostasis around the
+        target. Off (food_pop_target <= 0) it's the fixed food_regrow."""
+        c = self.cfg
+        if c.food_pop_target <= 0:
+            return c.food_regrow
+        over = len(self.agents) - c.food_pop_target
+        return int(round(min(c.food_regrow_boot,
+                             max(0.0, c.food_regrow_boot - c.food_regrow_gain * over))))
+
     def _regrow_food(self) -> None:
         c = self.cfg
         open_cells = int((~self.walls).sum())
         target = int(c.food_target * open_cells)
         deficit = target - int((self.food > 0).sum())
         sigma = c.food_halo_sigma * min(self.h, self.w)
-        for _ in range(min(c.food_regrow, max(0, deficit))):
+        for _ in range(min(self._effective_regrow(), max(0, deficit))):
             k = int(self.rng.integers(c.n_food_types))     # a random food type...
             cy, cx = self.halos[k]                          # ...spawns near its halo
             y = int(round(cy + self.rng.normal(0.0, sigma)))
@@ -336,16 +351,20 @@ class World:
         self.corpse[self.corpse > 0] -= 1              # corpses decay away
         self._drift_walls()                            # the living landscape shifts
         self._drift_halos()                            # the food patches wander
+        self._immigrate()                              # competent newcomers, new lineage
+        cutoff = self.tick - self.cfg.lifespan_window   # forget old death records
+        while self.deaths_log and self.deaths_log[0][0] < cutoff:
+            self.deaths_log.popleft()
         self.tick += 1
         if not self.agents:
             self._reseed()
 
     def _drift_walls(self) -> None:
         """The landscape lives: every `wall_drift_every` ticks each stroke may WALK
-        one cell along its own axis (leading with either end, like a snake),
-        keeping its shape. A stroke that would leave the interior, or whose new
-        cells are occupied by an agent, reverses instead of moving — so walking
-        walls never bury a creature. Topology stays roughly constant; positions
+        one cell along its own axis (leading with either end, like a snake), keeping
+        its shape. A stroke that would leave the interior reverses instead. A wall that
+        walks onto an agent or food CRUSHES it (the agent dies, the food is buried) —
+        nothing survives under a wall. Topology stays roughly constant; positions
         drift slowly."""
         c = self.cfg
         if c.wall_drift_every <= 0 or self.tick % c.wall_drift_every != 0:
@@ -357,19 +376,29 @@ class World:
             ny = s["y"] + (s["dir"] if s["axis"] == "v" else 0)
             nx = s["x"] + (s["dir"] if s["axis"] == "h" else 0)
             cand = dict(s, y=ny, x=nx)
-            cells = list(self._stroke_cells(cand))
             end = (ny + (cand["length"] - 1 if cand["axis"] == "v" else 0),
                    nx + (cand["length"] - 1 if cand["axis"] == "h" else 0))
             in_bounds = 1 <= ny and 1 <= nx and 0 < end[0] < self.h - 1 \
                 and 0 < end[1] < self.w - 1
-            blocked = any(self.occ[yy, xx] >= 0 for yy, xx in cells)
-            if in_bounds and not blocked:
+            if in_bounds:
                 s["y"], s["x"] = ny, nx
                 moved = True
             else:
-                s["dir"] *= -1                          # hit a wall/agent: turn back
+                s["dir"] *= -1                          # would leave the map: turn back
         if moved:
             self._rasterize_walls()
+            self._clear_under_walls()                  # crush whatever the walls buried
+
+    def _clear_under_walls(self) -> None:
+        """Nothing occupies a wall: remove any food under a wall cell and kill (crush)
+        any agent a wall has walked onto. Keeps the invariant that food never sits on a
+        wall, and makes walking walls a real hazard."""
+        self.food[self.walls] = 0
+        for a in [ag for ag in self.agents.values() if self.walls[ag.y, ag.x]]:
+            self.occ[a.y, a.x] = -1
+            self.agents.pop(a.id, None)
+            self.stats["deaths"] += 1
+            self._remember(a)                          # crushed: no corpse, just gone
 
     def _try_reproduce(self, a: Agent, bred: set) -> None:
         """Sexual reproduction by PROXIMITY: if a fed neighbour is adjacent, the
@@ -443,15 +472,46 @@ class World:
     def _remember(self, a: Agent) -> None:
         """Hall-of-fame of the most SUCCESSFUL genomes = long-lived AND fecund
         (age + a weight per child), so the saved pool selects for genomes that
-        both survive and reproduce, not just old survivors."""
+        both survive and reproduce, not just old survivors. Also logs this death's
+        lifespan for the rolling mean/median-age stat."""
         success = a.age + self.cfg.hall_offspring_weight * a.offspring
         self.hall.append((success, a.brain.genome.copy()))
         self.hall.sort(key=lambda t: t[0], reverse=True)
         del self.hall[max(self.cfg.reseed_count, 12):]
+        # rolling record of ages-at-death (tick, age); old entries pruned in snapshot
+        self.deaths_log.append((self.tick, a.age))
+
+    def lifespan_stats(self) -> tuple[float, float]:
+        """(mean, median) age-at-death over deaths in the last `lifespan_window`
+        ticks — a rolling readout of how long agents are surviving. (0, 0) if none."""
+        w = self.cfg.lifespan_window
+        cutoff = self.tick - w
+        ages = [age for t, age in self.deaths_log if t >= cutoff]
+        if not ages:
+            return 0.0, 0.0
+        return float(np.mean(ages)), float(np.median(ages))
 
     def top_genomes(self, k: int) -> list[neat.Genome]:
         """The k most successful genomes recorded (for island migration)."""
         return [g.copy() for _, g in self.hall[:k]]
+
+    def _immigrate(self) -> None:
+        """Drop a few COMPETENT newcomers into a living world, drawn from the hall
+        (so they already forage — "smart like the brothers") but re-coloured as a
+        FRESH lineage (a new род). This seeds species diversity a homogeneous world
+        won't grow on its own, and tests whether an outside lineage can invade."""
+        c = self.cfg
+        if (c.immigrate_every <= 0 or self.tick == 0 or self.tick % c.immigrate_every
+                or not self.agents):
+            return
+        donors = [g for _, g in self.hall[:6]] or \
+            [a.brain.genome for a in self.agents.values()]
+        for _ in range(c.immigrate_count):
+            g = self._mutate(donors[int(self.rng.integers(len(donors)))].copy())
+            g.hue = float(self.rng.random())           # a fresh lineage colour (new род)
+            g.diet = float(self.rng.random())          # a fresh diet — may eat the OTHER
+                                                       # food type the incumbents ignore
+            self._spawn_agent(g)
 
     def _strong_mutate(self, g):
         """A big-JUMP variant: several compounded mutation passes, so an extinction
@@ -502,7 +562,9 @@ class World:
                    if a.brain.genome.carnivore >= thr) / n
 
     def snapshot(self) -> dict:
+        life_mean, life_median = self.lifespan_stats()
         return {"tick": self.tick, "population": self.population(),
                 "food": int((self.food > 0).sum()), "corpses": int((self.corpse > 0).sum()),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
-                "species": self.species_count(), "carnivores": self.carnivore_fraction()}
+                "species": self.species_count(), "carnivores": self.carnivore_fraction(),
+                "life_mean": life_mean, "life_median": life_median}

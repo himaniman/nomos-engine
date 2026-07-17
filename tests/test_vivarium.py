@@ -364,6 +364,82 @@ def test_reseed_injects_strongly_mutated_variants():
     assert len(keys) > w.cfg.reseed_elites       # mutants added real variation
 
 
+def test_food_controller_throttles_over_target():
+    # generous flow while at/under target, throttled proportionally when over it
+    lean = World(Config(size=40, seed=0, init_population=5, food_pop_target=20,
+                        food_regrow_boot=12, food_regrow_gain=2.0))
+    assert lean._effective_regrow() == 12                 # 5 <= 20 -> full boot flow
+    full = World(Config(size=40, seed=0, init_population=26, food_pop_target=20,
+                        food_regrow_boot=12, food_regrow_gain=2.0))
+    assert full._effective_regrow() == 12 - 2 * (26 - 20)  # over by 6 -> 12-12 = 0
+    off = World(Config(size=30, seed=0, init_population=3, food_pop_target=0,
+                       food_regrow=4))
+    assert off._effective_regrow() == 4                   # controller off -> fixed
+
+
+def test_immigration_adds_competent_newcomers():
+    w = World(Config(size=30, seed=0, init_population=5, immigrate_every=100,
+                     immigrate_count=2))
+    for a in list(w.agents.values())[:3]:                 # give the hall some donors
+        a.age = 50
+        w._remember(a)
+    before = w.population()
+    w.tick = 100                                          # an immigration tick
+    w._immigrate()
+    assert w.population() == before + 2                   # two newcomers arrived
+
+
+def test_macro_mutation_jumps_hue_and_diet():
+    from vivarium.neat import mutate, random_genome as rg, N_ACTIONS as NA
+    rng = np.random.default_rng(3)
+    g = rg(input_size(5), NA, rng)
+    g.hue, g.diet = 0.5, 0.5
+    cfg = Config(macro_mut_prob=1.0, weight_mut=0.4, macro_mut_scale=3.0,
+                 hue_drift_prob=0.0, trait_drift_prob=0.0)
+    m, _ = mutate(g, rng, cfg, 100)
+    assert m.hue != 0.5 and 0.0 <= m.hue <= 1.0           # colour jumped (new lineage)
+    assert m.diet != 0.5 and 0.0 <= m.diet <= 1.0         # diet jumped (new niche)
+
+
+def test_walls_crush_food_and_agents_and_food_stays_off_walls():
+    w = World(Config(size=24, seed=1, init_population=1))
+    a = next(iter(w.agents.values()))
+    w.occ[:] = -1
+    a.y, a.x = 12, 12
+    w.occ[12, 12] = a.id
+    w.food[12, 13] = 1
+    w.walls[12, 12] = True                  # a wall drifts onto the agent...
+    w.walls[12, 13] = True                  # ...and onto the food
+    w._clear_under_walls()
+    assert a.id not in w.agents             # agent crushed (gone, no corpse)
+    assert w.food[12, 13] == 0              # food buried
+    assert (w.food[w.walls] == 0).all()     # invariant: nothing edible under a wall
+
+
+def test_food_never_spawns_on_walls_over_a_run():
+    w = World(Config(size=30, seed=2, init_population=5, wall_density=0.15))
+    for _ in range(60):
+        w.step()
+    assert (w.food[w.walls] == 0).all()     # food never lands on a wall
+
+
+def test_lifespan_stats_track_recent_deaths():
+    w = World(Config(size=30, seed=0, init_population=4, lifespan_window=100))
+    assert w.snapshot()["life_mean"] == 0.0            # no deaths yet -> 0
+    # log a couple of deaths at known ages via _remember
+    a, b = list(w.agents.values())[:2]
+    a.age, b.age = 10, 30
+    w._remember(a)
+    w._remember(b)
+    mean, med = w.lifespan_stats()
+    assert mean == pytest.approx(20.0) and med == pytest.approx(20.0)
+    # a death older than the window is dropped from the rolling stat
+    w.tick = 200                                       # push past lifespan_window=100
+    for _ in range(2):
+        w.step()                                       # step prunes stale entries
+    assert w.lifespan_stats() == (0.0, 0.0)
+
+
 def test_species_count_clusters_hues():
     w = World(Config(size=30, seed=1, init_population=6))
     for a, h in zip(w.agents.values(), [0.10, 0.10, 0.50, 0.50, 0.50, 0.90]):

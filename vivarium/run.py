@@ -35,7 +35,7 @@ def main(argv=None) -> int:
                                 description="headless vivarium ecology")
     p.add_argument("--ticks", type=int, default=2000)
     p.add_argument("--every", type=int, default=100)
-    p.add_argument("--size", type=int, default=64)
+    p.add_argument("--size", type=int, default=40)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--population", type=int, default=40)
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",
@@ -54,7 +54,9 @@ def main(argv=None) -> int:
 
     def log(s):
         print(f"t={s['tick']:>6}  pop={s['population']:>4}  food={s['food']:>4}  "
-              f"corpses={s['corpses']:>3}  births={s['births']:>5}  deaths={s['deaths']:>5}")
+              f"births={s['births']:>5}  deaths={s['deaths']:>5}  "
+              f"life(mean/med)={s['life_mean']:.0f}/{s['life_median']:.0f}  "
+              f"carn={s['carnivores'] * 100:.0f}%")
 
     run_headless(cfg, a.ticks, a.every, log=log, genome_pool=pool,
                  save_path=a.save_genomes)

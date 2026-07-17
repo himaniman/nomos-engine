@@ -147,6 +147,12 @@ def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
     if rng.random() < cfg.trait_drift_prob:
         g.carnivore = min(1.0, max(0.0,
                           g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
+    if rng.random() < cfg.macro_mut_prob:                # rare SPECIATION jolt: a big
+        g.hue = float(rng.random())                      # colour jump (new lineage) +
+        g.diet = float(rng.random())                     # a new diet + maybe a predator
+        g.carnivore = float(rng.random())                # + strong rewiring
+        for c in g.conns:
+            c["w"] += float(rng.normal(0.0, cfg.weight_mut * cfg.macro_mut_scale))
     for c in g.conns:
         if rng.random() < cfg.weight_mut_prob:
             c["w"] += float(rng.normal(0.0, cfg.weight_mut))

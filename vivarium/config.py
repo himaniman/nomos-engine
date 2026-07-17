@@ -9,8 +9,10 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Config:
     # world
-    size: int = 64                     # grid side (bounded, walls on the border);
-                                       # smaller world = fewer mouths = faster sim
+    size: int = 48                     # grid side (bounded, walls on the border). Sets
+                                       # the spatial EXTENT (how spread out, walls, halo
+                                       # scale); the population is regulated by the food
+                                       # controller below, not by size.
     seed: int = 0
     wall_density: float = 0.05         # fraction of the interior that is INNER wall
                                        # (strokes with doorways) — mostly open space
@@ -24,22 +26,44 @@ class Config:
     wall_step_prob: float = 0.5        # chance each stroke steps on a walk tick
 
     # food (the carrying-capacity knob)
-    food_target: float = 0.06          # fraction of open cells that should hold food
-    food_regrow: int = 8               # at most this many food items appear per tick
-    food_energy: float = 30.0          # energy gained per food eaten
+    food_target: float = 0.10          # STANDING food density (fraction of open cells).
+                                       # RICH on purpose: sparse food never lets random
+                                       # brains bootstrap foraging (the takeoff wall).
+                                       # This is the BUFFER that makes food findable.
+    food_regrow: int = 4               # fixed food/tick when the controller is OFF
+                                       # (food_pop_target = 0)
+    food_energy: float = 38.0          # energy gained per food eaten
+
+    # ADAPTIVE food controller (homeostasis): sow lots of food while the population
+    # is small (agents still learning to forage), then throttle the flow once the
+    # population is established so it settles around a target — food throughput, not
+    # world size, sets carrying capacity. Set food_pop_target = 0 to use fixed
+    # food_regrow instead.
+    food_pop_target: int = 20          # population the food flow steers toward
+    food_regrow_boot: int = 12         # generous flow while pop <= target (learning)
+    food_regrow_gain: float = 3.0      # how hard the flow is throttled per agent over
+                                       # target (proportional negative feedback)
 
     # food diversity + DRIFTING HALOS (our take on niches — different from a static
     # zoning): food carries a TYPE, and each type spawns from a HALO centre that
     # slowly DRIFTS around the map, so food is a moving resource PATCH to track, not
     # a uniform sprinkle. Concentrated patches also help random foragers bootstrap.
     n_food_types: int = 2              # distinct food types (a dietary niche axis)
-    food_halo_sigma: float = 0.16      # halo radius as a fraction of the grid side
+    food_halo_sigma: float = 0.30      # halo radius as a fraction of the grid side
+                                       # (wide enough that food is FINDABLE — tight
+                                       # halos concentrate food where random brains
+                                       # can't find it and takeoff stalls)
     food_halo_drift: float = 2.0       # cells a halo centre may step when it drifts
     food_halo_drift_every: int = 40    # ticks between halo drifts (0 = static halos)
 
     # diet niche: a heritable trait sets which food TYPE an agent digests best (1.0 on
     # its own type, down to diet_min_eff on the far one); vision dims food it can't eat
-    diet_min_eff: float = 0.35         # digestion efficiency on the worst-matched type
+    diet_min_eff: float = 0.15         # digestion efficiency on the worst-matched type.
+                                       # LOW on purpose: if off-diet food is nearly
+                                       # inedible, the second food type is a real
+                                       # PROTECTED niche a diet specialist can own, so
+                                       # dietary diversity persists instead of everyone
+                                       # converging to one food (competitive exclusion)
     trait_drift_prob: float = 0.10     # chance the diet / carnivore traits drift
     trait_drift: float = 0.05          # size of that drift (clamped to [0, 1])
 
@@ -50,9 +74,11 @@ class Config:
     carnivore_threshold: float = 0.5   # min carnivore gene to hunt at all
     meat_energy: float = 34.0          # energy a kill yields (scaled by carnivore)
 
-    # metabolism (energy drained per tick; standing still is cheapest)
-    base_cost: float = 0.35            # paid every tick just to exist
-    move_cost: float = 0.5             # extra to step forward
+    # metabolism (energy drained per tick; standing still is cheapest). Tuned cheap
+    # enough that random foragers can bootstrap (a too-harsh drain starves them before
+    # evolution finds foraging — the takeoff lesson).
+    base_cost: float = 0.25            # paid every tick just to exist
+    move_cost: float = 0.35            # extra to step forward
     turn_cost: float = 0.15            # extra to turn
     start_energy: float = 30.0
     max_energy: float = 60.0
@@ -80,13 +106,24 @@ class Config:
     corpse_decay: int = 40             # ticks a corpse blocks its cell before clearing
 
     # population
-    init_population: int = 40
+    init_population: int = 20           # start near the food controller's target so the
+                                        # world doesn't open with a crash-and-recover
     reseed_count: int = 8              # individuals dropped when the world goes extinct
     reseed_elites: int = 3             # of those, this many are the best genomes AS-IS;
                                        # the rest are STRONGLY-mutated variants of them,
                                        # so a collapse injects fresh variation instead of
                                        # replaying the population that just died
     reseed_mutate_passes: int = 5      # compounded mutation passes for a reseed mutant
+    lifespan_window: int = 400         # ticks over which the mean/median age-at-death
+                                       # stat is computed (a rolling survival readout)
+    # diversity: (1) a very rare MACRO-mutation jolts a child's brain hard AND jumps its
+    # lineage colour, so new species/lineages branch off visibly; (2) IMMIGRATION drops
+    # a few COMPETENT newcomers (drawn from the hall, "smart like the brothers") but
+    # re-coloured as a fresh lineage, seeding diversity a homogeneous world won't grow.
+    macro_mut_prob: float = 0.004      # chance a mutation is a big-jump speciation event
+    macro_mut_scale: float = 3.0       # weight-jitter multiplier for a macro-mutation
+    immigrate_every: int = 400         # ticks between immigration waves (0 = off)
+    immigrate_count: int = 2           # competent newcomers per wave (new lineage colour)
     hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age in
                                        # the hall-of-fame's success score (fecundity
                                        # + longevity, not longevity alone)

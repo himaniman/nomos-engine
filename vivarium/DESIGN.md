@@ -206,3 +206,26 @@ robustly LIVELY (and interesting to watch — foraging, fleeing, clustering) is
 the live tuning problem (stage 4), and forward-bias + scaffolding are the levers.
 Still ahead: NEAT-lite topology + sexual crossover (stage 3), then the LLM
 meta-designer (stage 5).
+
+---
+
+## Stage 3 done (2026-07-17): NEAT topology + sexual crossover, validated
+
+The fixed MLP is gone; brains are NEAT-lite genomes (graphs that grow by
+mutation) and reproduction is sexual-by-proximity (two adjacent fed agents ->
+crossover + mutation child; a high-energy asexual clone is the lone-pioneer
+fallback). Plus, from user feedback: walking walls (strokes keep their shape and
+slide along their own axis), sparser default walls, 6-letter genome names +
+colours with a top-3-lineages leaderboard and a live NEAT-graph inspector, an
+FPS/speed HUD with an uncapped fast-forward, VS Code F5/tasks, and genome
+save/load as JSON (evolve open -> seed a walled world; also what the LLM reads).
+
+Behavioural validation (open world, 8000 ticks): the ecology takes off (pop
+~235, food eaten 530->~75) AND the topology GROWS - brains reach 3-5 hidden
+nodes from a start of zero. So structure evolves, not just weights - the core
+NEAT claim, working in a live ecosystem. Reproduction is also confirmed
+deterministic.
+
+Still ahead: tune the ecology for interesting emergent behaviour (clustering,
+fleeing, niches), maybe speciation if one lineage dominates, and stage 5 - the
+LLM meta-designer reading these JSON genomes to propose better ones.

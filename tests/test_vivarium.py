@@ -122,6 +122,40 @@ def test_app_renders_headless():
     pygame.quit()
 
 
+def test_genome_save_load_roundtrip(tmp_path):
+    from vivarium.genome_io import load_genomes, save_genomes
+    genomes = [np.arange(10.0), np.ones(10), np.linspace(-1, 1, 10)]
+    p = str(tmp_path / "pool.npz")
+    save_genomes(p, genomes)
+    back = load_genomes(p)
+    assert len(back) == 3
+    assert all(np.allclose(a, b) for a, b in zip(genomes, back))
+
+
+def test_genome_pool_seeds_the_population():
+    # with a pool of one known genome, every initial agent is that genome + a
+    # little mutation (not fresh random)
+    rng = np.random.default_rng(0)
+    n_in = input_size(Config().n_rays)
+    base = Brain.random(n_in, Config().hidden, rng).genome
+    w = World(Config(size=40, seed=2, init_population=12, mutation=0.01),
+              genome_pool=[base])
+    for a in w.agents.values():
+        assert np.abs(a.brain.genome - base).mean() < 0.1     # near the pool genome
+
+
+def test_living_walls_drift_but_hold_density():
+    w = World(Config(size=64, seed=1, init_population=5, wall_drift_every=10,
+                     wall_drift_frac=0.05))
+    before = w.walls.copy()
+    d0 = int(before.sum())
+    for _ in range(40):
+        w.step()
+    assert not np.array_equal(before, w.walls)               # the map has shifted
+    assert abs(int(w.walls.sum()) - d0) <= d0 * 0.2 + 10      # density roughly held
+    assert w.walls[0, :].all() and w.walls[:, 0].all()        # border intact
+
+
 def test_reproduction_can_occur():
     # a brain hardwired to always REPRODUCE, dropped into a fed world, breeds
     from vivarium.brain import REPRODUCE

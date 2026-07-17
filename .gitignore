@@ -7,3 +7,4 @@ out/
 runs.db
 .env
 journal/
+vivarium/pools/

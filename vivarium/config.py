@@ -11,14 +11,18 @@ class Config:
     # world
     size: int = 96                     # grid side (bounded, walls on the border)
     seed: int = 0
-    wall_density: float = 0.14         # fraction of the interior that is INNER wall
-                                       # (strokes with doorways) — makes foraging a
-                                       # navigation problem; vision rays stop at walls
-                                       # so agents cannot see food behind them
+    wall_density: float = 0.05         # fraction of the interior that is INNER wall
+                                       # (strokes with doorways) — mostly open space
+                                       # with occasional walls; vision rays stop at
+                                       # walls so agents can't see food behind them
+    # "living" landscape: walls slowly drift (some erode, as many regrow) so the
+    # world reshapes over time instead of being fixed. drift_every=0 turns it off.
+    wall_drift_every: int = 60         # reshape the walls every N ticks
+    wall_drift_frac: float = 0.03      # fraction of walls moved per drift
 
-    # food (the carrying-capacity knob) — deliberately scarce so reaching it matters
-    food_target: float = 0.025         # fraction of open cells that should hold food
-    food_regrow: int = 4               # at most this many food items appear per tick
+    # food (the carrying-capacity knob)
+    food_target: float = 0.05          # fraction of open cells that should hold food
+    food_regrow: int = 6               # at most this many food items appear per tick
     food_energy: float = 26.0          # energy gained per food eaten
 
     # metabolism (energy drained per tick; standing still is cheapest)

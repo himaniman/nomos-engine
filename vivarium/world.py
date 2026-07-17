@@ -33,9 +33,15 @@ class Agent:
 
 
 class World:
-    def __init__(self, config: Config | None = None):
+    def __init__(self, config: Config | None = None, genome_pool=None):
         self.cfg = config or Config()
         c = self.cfg
+        # Optional seed pool of pre-evolved genomes: initial agents and extinction
+        # reseeds draw from it (+ mutation) instead of random. This lets an
+        # already-competent population be dropped into a HARD world (e.g. a maze,
+        # where random brains can't bootstrap) and start living at once.
+        self.genome_pool = [np.asarray(g, dtype=np.float64) for g in genome_pool] \
+            if genome_pool else None
         self.rng = np.random.default_rng(c.seed)
         self.h = self.w = c.size
         self.tick = 0
@@ -51,10 +57,21 @@ class World:
         self.n_in = input_size(c.n_rays)
         self.stats = {"births": 0, "deaths": 0}
 
-        self._open_cells_target = None
         for _ in range(c.init_population):
-            self._spawn_agent(Brain.random(self.n_in, c.hidden, self.rng).genome)
+            self._spawn_agent(self._seed_genome())
         self._regrow_food()
+
+    def _seed_genome(self) -> np.ndarray:
+        """A fresh starting genome: drawn (with mutation) from the seed pool if
+        one was supplied, otherwise random."""
+        if self.genome_pool:
+            g = self.genome_pool[self.rng.integers(len(self.genome_pool))]
+            return g + self.rng.normal(0.0, self.cfg.mutation, size=g.shape)
+        return Brain.random(self.n_in, self.cfg.hidden, self.rng).genome
+
+    def hall_genomes(self) -> list[np.ndarray]:
+        """The longest-lived genomes recorded so far (for saving / reseeding)."""
+        return [g.copy() for _, g in self.hall]
 
     # -- map ----------------------------------------------------------------
 
@@ -199,9 +216,31 @@ class World:
         for a in dead:
             self._kill(a)
         self.corpse[self.corpse > 0] -= 1              # corpses decay away
+        self._drift_walls()                            # the living landscape shifts
         self.tick += 1
         if not self.agents:
             self._reseed()
+
+    def _drift_walls(self) -> None:
+        """The landscape lives: every `wall_drift_every` ticks erode some inner
+        walls and grow as many new ones elsewhere, so the maze slowly reshapes
+        while keeping roughly constant density. Never walls an occupied/food cell
+        (uses `_random_free_cell`), so it can't bury an agent or a meal."""
+        c = self.cfg
+        if c.wall_drift_every <= 0 or self.tick % c.wall_drift_every != 0:
+            return
+        inner = np.argwhere(self.walls)
+        inner = [(y, x) for y, x in inner if 0 < y < self.h - 1 and 0 < x < self.w - 1]
+        if not inner:
+            return
+        k = max(1, int(len(inner) * c.wall_drift_frac))
+        for i in self.rng.choice(len(inner), size=min(k, len(inner)), replace=False):
+            y, x = inner[i]
+            self.walls[y, x] = False                    # erode
+        for _ in range(k):
+            cell = self._random_free_cell()
+            if cell is not None:
+                self.walls[cell] = True                 # regrow elsewhere
 
     def _try_reproduce(self, a: Agent) -> None:
         c = self.cfg
@@ -232,10 +271,11 @@ class World:
         del self.hall[max(self.cfg.reseed_count, 12):]
 
     def _reseed(self) -> None:
-        """Extinction: drop fresh individuals of the longest-lived genomes."""
-        genomes = [g for _, g in self.hall[:self.cfg.reseed_count]] or \
-                  [Brain.random(self.n_in, self.cfg.hidden, self.rng).genome
-                   for _ in range(self.cfg.reseed_count)]
+        """Extinction: repopulate from the longest-lived genomes, else the seed
+        pool, else random."""
+        genomes = [g for _, g in self.hall[:self.cfg.reseed_count]]
+        if not genomes:
+            genomes = [self._seed_genome() for _ in range(self.cfg.reseed_count)]
         for g in genomes:
             self._spawn_agent(g.copy())
 

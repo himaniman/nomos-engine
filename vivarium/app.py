@@ -25,20 +25,34 @@ import hashlib
 import numpy as np
 import pygame
 
-from vivarium.brain import N_ACTIONS
 from vivarium.config import Config
+from vivarium.neat import Genome
 from vivarium.world import World
 
-_ACTION_NAMES = ["fwd", "left", "right", "breed"]
+_CONSONANTS = "BCDFGHJKLMNPQRSTVWXZ"
 
 
-def genome_color(genome: np.ndarray) -> tuple[int, int, int]:
-    """A stable hue from the genome — near-identical genomes (a lineage) share a
-    colour; mutation shifts it slightly, so families are visible and drift shows."""
-    key = np.round(genome, 1).tobytes()
-    h = int(hashlib.md5(key).hexdigest(), 16) % 3600 / 3600.0
+def _genome_hash(genome: Genome) -> int:
+    return int(hashlib.md5(genome.key()).hexdigest(), 16)
+
+
+def genome_color(genome: Genome) -> tuple[int, int, int]:
+    """A stable hue from the genome — a lineage shares a colour; mutation shifts
+    it slightly, so families are visible and drift shows."""
+    h = (_genome_hash(genome) % 3600) / 3600.0
     r, g, b = colorsys.hsv_to_rgb(h, 0.85, 1.0)
     return int(r * 255), int(g * 255), int(b * 255)
+
+
+def genome_name(genome: Genome) -> str:
+    """A 6-letter pronounceable-ish name for a genome, so lineages are nameable
+    in the stats. Stable per genome, changes when the structure/weights change."""
+    n = _genome_hash(genome)
+    letters = []
+    for _ in range(6):
+        letters.append(_CONSONANTS[n % len(_CONSONANTS)])
+        n //= len(_CONSONANTS)
+    return "".join(letters)
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
@@ -85,43 +99,62 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}", f"food {s['food']}",
-             f"corpses {s['corpses']}", f"births {s['births']}", f"deaths {s['deaths']}"]
+             f"births {s['births']}", f"deaths {s['deaths']}"]
     for i, t in enumerate(lines):
-        surf.blit(font.render(t, True, (220, 220, 230)), (x0 + 12, 12 + i * 22))
+        surf.blit(font.render(t, True, (220, 220, 230)), (x0 + 12, 10 + i * 20))
+    y = 10 + len(lines) * 20 + 10
+
+    # top-3 longest-lived lineages by name, with a colour swatch
+    surf.blit(small.render("leaders (age / name / net):", True, (150, 160, 180)),
+              (x0 + 12, y)); y += 18
+    for age, g in world.hall[:3]:
+        nh, nc = g.complexity()
+        pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
+        surf.blit(small.render(f"{age:>4} {genome_name(g)}  h{nh} c{nc}", True,
+                               (210, 215, 230)), (x0 + 28, y)); y += 17
+    y += 8
 
     a = world.agents.get(selected) if selected is not None else None
     if a is None:
         return
-    y = 12 + len(lines) * 22 + 16
+    g = a.brain.genome
+    nh, nc = g.complexity()
+    pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 3, 12, 12))
+    surf.blit(font.render(genome_name(g), True, (235, 235, 245)), (x0 + 30, y))
+    y += 24
     for t in [f"agent #{a.id}", f"energy {a.energy:.1f}", f"age {a.age}",
-              f"genes {a.brain.genome.size}"]:
+              f"hidden {nh}  conns {nc}"]:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
-    _draw_net(surf, a.brain, x0 + 12, y + 8, panel_w - 24, 190)
+    _draw_net(surf, g, x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
 
 
-def _draw_net(surf, brain, x, y, w, h):
-    """Draw the fixed MLP: input column, hidden column, output column, edges
-    coloured by weight sign and thickened by magnitude."""
-    cols = [brain.n_in, brain.n_hidden, N_ACTIONS]
-    xs = [x + int(w * f) for f in (0.0, 0.5, 1.0)]
-    pos = []
-    for ci, n in enumerate(cols):
-        col = []
-        for j in range(n):
-            yy = y + int((j + 0.5) / n * h)
-            col.append((xs[ci], yy))
-        pos.append(col)
-    for (mat, a_i, b_i) in ((brain.w1, 0, 1), (brain.w2, 1, 2)):
-        m = float(np.abs(mat).max()) + 1e-6
-        for i in range(mat.shape[0]):
-            for j in range(mat.shape[1]):
-                wv = mat[i, j]
-                c = (90, 160, 255) if wv >= 0 else (255, 110, 90)
-                pygame.draw.line(surf, c, pos[a_i][i], pos[b_i][j],
-                                 1 + int(2 * abs(wv) / m))
-    for ci, col in enumerate(pos):
-        for j, (px, py) in enumerate(col):
-            pygame.draw.circle(surf, (230, 230, 240), (px, py), 4)
+def _draw_net(surf, genome, x, y, w, h):
+    """Draw the NEAT graph: inputs on the left, outputs on the right, hidden nodes
+    stacked in the middle; edges coloured by weight sign, thicker for magnitude."""
+    n_in, n_out = genome.n_in, genome.n_out
+    hidden = [i for i, k in genome.nodes.items() if k == "hidden"]
+    def col_x(kind):
+        return {"in": x, "out": x + w, "hidden": x + w // 2}[kind]
+    order = {"in": list(range(n_in)),
+             "out": [n_in + j for j in range(n_out)],
+             "hidden": hidden}
+    pos = {}
+    for kind, ids in order.items():
+        for j, nid in enumerate(ids):
+            yy = y + int((j + 0.5) / max(1, len(ids)) * h)
+            pos[nid] = (col_x(kind), yy)
+    m = max((abs(c["w"]) for c in genome.conns if c["enabled"]), default=1.0) + 1e-6
+    for c in genome.conns:
+        if not c["enabled"] or c["in"] not in pos or c["out"] not in pos:
+            continue
+        col = (90, 160, 255) if c["w"] >= 0 else (255, 110, 90)
+        pygame.draw.line(surf, col, pos[c["in"]], pos[c["out"]],
+                         1 + int(2 * abs(c["w"]) / m))
+    for nid, (px, py) in pos.items():
+        kind = genome.nodes[nid]
+        cc = {"in": (140, 220, 150), "out": (240, 200, 120),
+              "hidden": (210, 210, 230)}[kind]
+        pygame.draw.circle(surf, cc, (px, py), 4)
 
 
 def main(argv=None) -> int:
@@ -130,10 +163,16 @@ def main(argv=None) -> int:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--population", type=int, default=60)
     p.add_argument("--cell", type=int, default=7, help="pixels per cell")
+    p.add_argument("--load-genomes", default=None, dest="load_genomes",
+                   help="seed the world from an evolved genome pool (.json)")
     a = p.parse_args(argv)
 
     cfg = Config(size=a.size, seed=a.seed, init_population=a.population)
-    world = World(cfg)
+    pool = None
+    if a.load_genomes:
+        from vivarium.genome_io import load_genomes
+        pool = load_genomes(a.load_genomes)
+    world = World(cfg, genome_pool=pool)
     pygame.init()
     font = pygame.font.SysFont("consolas", 16)
     small = pygame.font.SysFont("consolas", 13)

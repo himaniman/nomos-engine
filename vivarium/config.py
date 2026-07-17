@@ -34,10 +34,18 @@ class Config:
     start_energy: float = 30.0
     max_energy: float = 60.0
 
-    # reproduction (asexual clone+mutate in v1; crossover comes with NEAT)
+    # reproduction: sexual crossover when two fed agents are adjacent, else a
+    # high-energy asexual fallback so lone pioneers can still colonize.
     repro_min_energy: float = 45.0     # must be at least this well-fed to breed
-    repro_cost: float = 25.0           # energy spent, split into the child
-    mutation: float = 0.1              # gaussian weight-mutation strength
+    repro_cost: float = 25.0           # energy spent (split across parents/child)
+    asexual_energy: float = 58.0       # lone-agent fallback breeds only when this full
+
+    # NEAT mutation rates (applied to every child genome)
+    weight_mut: float = 0.4            # gaussian std of weight jitter
+    weight_mut_prob: float = 0.85      # chance each connection is jittered
+    add_conn_prob: float = 0.06        # chance to add a new connection
+    add_node_prob: float = 0.03        # chance to split a connection into a node
+    toggle_prob: float = 0.02          # chance to flip a connection on/off
 
     # corpse: an OBSTACLE (not food) that decays away
     corpse_decay: int = 40             # ticks a corpse blocks its cell before clearing

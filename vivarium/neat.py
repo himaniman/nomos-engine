@@ -1,0 +1,178 @@
+"""NEAT-lite: brains whose TOPOLOGY evolves, not just their weights.
+
+A genome is a graph — input/output/hidden nodes and weighted connections — that
+grows by mutation (add a connection, split a connection into a new node, perturb
+weights, toggle links). Two genomes reproduce by CROSSOVER: connections are
+aligned by their (src, dst) node ids (nodes carry globally-unique ids, so the
+same historical innovation keeps its id across a lineage), matching genes are
+inherited at random, and disjoint genes come from the fitter parent.
+
+The phenotype is evaluated as a small recurrent net: node activations persist and
+relax a few synchronous steps per decision, so signals cross hidden layers within
+a tick and the net gets memory for free. Inputs = the agent's senses, outputs =
+the action logits (argmax picks the move). Reproduction is NOT an output — it's an
+innate proximity drive in the world.
+
+Kept simpler than canonical NEAT: no global innovation registry (endpoint ids do
+that job) and no speciation yet (DESIGN.md notes when to add it).
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+# actions (outputs), matching the world's movement model
+FORWARD, TURN_LEFT, TURN_RIGHT = 0, 1, 2
+N_ACTIONS = 3
+
+_ACT_RELAX = 3          # synchronous relaxation steps per decision
+
+
+class Genome:
+    """Graph brain. nodes: {id: kind in 'in'|'out'|'hidden'}; conns: list of
+    {'in','out','w','enabled'}. Input ids are 0..n_in-1 (the last input is the
+    constant bias), output ids are n_in..n_in+n_out-1; hidden ids are unique and
+    larger."""
+
+    def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict]):
+        self.n_in = n_in
+        self.n_out = n_out
+        self.nodes = nodes
+        self.conns = conns
+
+    def copy(self) -> "Genome":
+        return Genome(self.n_in, self.n_out, dict(self.nodes),
+                      [dict(c) for c in self.conns])
+
+    def max_node_id(self) -> int:
+        return max(self.nodes) if self.nodes else self.n_in + self.n_out - 1
+
+    def complexity(self) -> tuple[int, int]:
+        n_hidden = sum(1 for k in self.nodes.values() if k == "hidden")
+        n_enabled = sum(1 for c in self.conns if c["enabled"])
+        return n_hidden, n_enabled
+
+    def to_dict(self) -> dict:
+        return {"n_in": self.n_in, "n_out": self.n_out,
+                "nodes": [[i, k] for i, k in self.nodes.items()],
+                "conns": [[c["in"], c["out"], c["w"], c["enabled"]] for c in self.conns]}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Genome":
+        nodes = {int(i): k for i, k in d["nodes"]}
+        conns = [{"in": int(a), "out": int(b), "w": float(w), "enabled": bool(e)}
+                 for a, b, w, e in d["conns"]]
+        return cls(int(d["n_in"]), int(d["n_out"]), nodes, conns)
+
+    def key(self) -> bytes:
+        """A canonical fingerprint of the topology + weights, for naming/colour."""
+        parts = sorted((c["in"], c["out"], round(c["w"], 1), c["enabled"])
+                       for c in self.conns)
+        return repr(parts).encode()
+
+
+def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
+                  forward_bias: float = 0.0) -> Genome:
+    """A minimal starting brain: inputs fully connected to outputs with small
+    random weights (a reactive single layer). The bias input (last input) gets a
+    `forward_bias` weight to the FORWARD output so fresh brains tend to move."""
+    nodes = {i: "in" for i in range(n_in)}
+    nodes.update({n_in + j: "out" for j in range(n_out)})
+    conns = []
+    for i in range(n_in):
+        for j in range(n_out):
+            w = float(rng.normal(0.0, 1.0))
+            if i == n_in - 1 and j == FORWARD:
+                w += forward_bias
+            conns.append({"in": i, "out": n_in + j, "w": w, "enabled": True})
+    return Genome(n_in, n_out, nodes, conns)
+
+
+class Phenotype:
+    """Runnable net built from a genome: a dense weight matrix over the small node
+    set, plus persistent activations relaxed a few steps per decision."""
+
+    def __init__(self, genome: Genome):
+        self.genome = genome
+        ids = list(genome.nodes)
+        self.idx = {nid: k for k, nid in enumerate(ids)}
+        n = len(ids)
+        self.W = np.zeros((n, n), dtype=np.float64)
+        for c in genome.conns:
+            if c["enabled"] and c["in"] in self.idx and c["out"] in self.idx:
+                self.W[self.idx[c["out"]], self.idx[c["in"]]] += c["w"]
+        self.in_idx = np.array([self.idx[i] for i in range(genome.n_in)])
+        self.out_idx = np.array([self.idx[genome.n_in + j]
+                                 for j in range(genome.n_out)])
+        self.is_input = np.zeros(n, dtype=bool)
+        self.is_input[self.in_idx] = True
+        self.state = np.zeros(n, dtype=np.float64)
+
+    def act(self, inputs: np.ndarray) -> int:
+        st = self.state
+        st[self.in_idx] = inputs
+        for _ in range(_ACT_RELAX):
+            z = np.tanh(self.W @ st)
+            st = np.where(self.is_input, st, z)
+        self.state = st
+        return int(np.argmax(st[self.out_idx]))
+
+
+def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
+    """Return (mutated copy, next_node_id). Weight jitter always; structural
+    mutations (add connection, split a connection into a node, toggle) at low
+    rates so complexity grows gradually."""
+    g = genome.copy()
+    for c in g.conns:
+        if rng.random() < cfg.weight_mut_prob:
+            c["w"] += float(rng.normal(0.0, cfg.weight_mut))
+
+    if rng.random() < cfg.add_conn_prob:
+        srcs = [i for i, k in g.nodes.items() if k != "out"]
+        dsts = [i for i, k in g.nodes.items() if k != "in"]
+        if srcs and dsts:
+            a = int(rng.choice(srcs))
+            b = int(rng.choice(dsts))
+            if a != b and not any(c["in"] == a and c["out"] == b for c in g.conns):
+                g.conns.append({"in": a, "out": b,
+                                "w": float(rng.normal(0.0, 1.0)), "enabled": True})
+
+    enabled = [c for c in g.conns if c["enabled"]]
+    if enabled and rng.random() < cfg.add_node_prob:
+        c = enabled[int(rng.integers(len(enabled)))]
+        c["enabled"] = False
+        h = next_node_id
+        next_node_id += 1
+        g.nodes[h] = "hidden"
+        g.conns.append({"in": c["in"], "out": h, "w": 1.0, "enabled": True})
+        g.conns.append({"in": h, "out": c["out"], "w": c["w"], "enabled": True})
+
+    if g.conns and rng.random() < cfg.toggle_prob:
+        c = g.conns[int(rng.integers(len(g.conns)))]
+        c["enabled"] = not c["enabled"]
+    return g, next_node_id
+
+
+def crossover(g_fit: Genome, g_other: Genome, rng: np.random.Generator) -> Genome:
+    """Child genome: matching connections (same in,out) inherited at random from
+    either parent; connections only the FITTER parent has are inherited too;
+    those only the other parent has are dropped. Nodes are the union referenced by
+    the child's connections plus all inputs/outputs."""
+    other = {(c["in"], c["out"]): c for c in g_other.conns}
+    child_conns = []
+    for c in g_fit.conns:
+        key = (c["in"], c["out"])
+        pick = c if (key not in other or rng.random() < 0.5) else other[key]
+        nc = dict(pick)
+        # a disabled gene in either parent has a chance to re-enable in the child
+        if not nc["enabled"] and rng.random() < 0.25:
+            nc["enabled"] = True
+        child_conns.append(nc)
+
+    nodes = {i: "in" for i in range(g_fit.n_in)}
+    nodes.update({g_fit.n_in + j: "out" for j in range(g_fit.n_out)})
+    for c in child_conns:
+        for nid in (c["in"], c["out"]):
+            if nid not in nodes:
+                nodes[nid] = "hidden"
+    return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns)

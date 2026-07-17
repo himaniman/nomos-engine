@@ -10,8 +10,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from vivarium.brain import FORWARD, TURN_LEFT, TURN_RIGHT, Brain, input_size
+from vivarium import neat
 from vivarium.config import Config
+from vivarium.neat import FORWARD, TURN_LEFT, TURN_RIGHT, Phenotype
+
+
+def input_size(n_rays: int) -> int:
+    """Sensor vector width: 3 typed channels (food, obstacle, agent) per ray,
+    plus interoceptive energy and a constant bias input."""
+    return n_rays * 3 + 2
 
 # heading -> (dy, dx): 0=N(up), 1=E, 2=S(down), 3=W
 _HEAD_VEC = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
@@ -39,12 +46,19 @@ class World:
         # reseeds draw from it (+ mutation) instead of random. This lets an
         # already-competent population be dropped into a HARD world (e.g. a maze,
         # where random brains can't bootstrap) and start living at once.
-        self.genome_pool = [np.asarray(g, dtype=np.float64) for g in genome_pool] \
-            if genome_pool else None
+        self.genome_pool = list(genome_pool) if genome_pool else None
         self.rng = np.random.default_rng(c.seed)
         self.h = self.w = c.size
         self.tick = 0
         self._next_id = 0
+        self.n_in = input_size(c.n_rays)
+        self.n_out = neat.N_ACTIONS
+        # unique-id counter for hidden nodes added by structural mutation; starts
+        # above any id in the seed pool so inherited nodes never clash with new ones
+        self._next_node_id = self.n_in + self.n_out
+        if self.genome_pool:
+            self._next_node_id = max([self._next_node_id]
+                                     + [g.max_node_id() + 1 for g in self.genome_pool])
 
         self.strokes = self._generate_strokes()
         self.walls = np.zeros((self.h, self.w), dtype=bool)
@@ -54,24 +68,28 @@ class World:
         self.corpse = np.zeros((self.h, self.w), dtype=np.int64)   # ticks remaining
 
         self.agents: dict[int, Agent] = {}
-        self.hall: list[tuple[int, np.ndarray]] = []   # (age, genome), longest-lived
-        self.n_in = input_size(c.n_rays)
+        self.hall: list[tuple[int, neat.Genome]] = []   # (age, genome), longest-lived
         self.stats = {"births": 0, "deaths": 0}
 
         for _ in range(c.init_population):
             self._spawn_agent(self._seed_genome())
         self._regrow_food()
 
-    def _seed_genome(self) -> np.ndarray:
-        """A fresh starting genome: drawn (with mutation) from the seed pool if
-        one was supplied, otherwise random."""
+    def _mutate(self, g: neat.Genome) -> neat.Genome:
+        child, self._next_node_id = neat.mutate(g, self.rng, self.cfg,
+                                                self._next_node_id)
+        return child
+
+    def _seed_genome(self) -> neat.Genome:
+        """A fresh starting genome: a mutated draw from the seed pool if one was
+        supplied, otherwise a random minimal net."""
         if self.genome_pool:
             g = self.genome_pool[self.rng.integers(len(self.genome_pool))]
-            return g + self.rng.normal(0.0, self.cfg.mutation, size=g.shape)
-        return Brain.random(self.n_in, self.cfg.hidden, self.rng,
-                            forward_bias=self.cfg.init_forward_bias).genome
+            return self._mutate(g)
+        return neat.random_genome(self.n_in, self.n_out, self.rng,
+                                  forward_bias=self.cfg.init_forward_bias)
 
-    def hall_genomes(self) -> list[np.ndarray]:
+    def hall_genomes(self) -> list[neat.Genome]:
         """The longest-lived genomes recorded so far (for saving / reseeding)."""
         return [g.copy() for _, g in self.hall]
 
@@ -139,14 +157,16 @@ class World:
             return None
         return tuple(free[self.rng.integers(len(free))])
 
-    def _spawn_agent(self, genome: np.ndarray, cell=None, heading=None) -> Agent | None:
+    def _spawn_agent(self, genome: neat.Genome, cell=None, heading=None,
+                     energy=None) -> Agent | None:
         cell = cell or self._random_free_cell()
         if cell is None:
             return None
         y, x = cell
         h = self.rng.integers(4) if heading is None else heading
-        a = Agent(self._next_id, y, x, int(h), self.cfg.start_energy,
-                  Brain(self.n_in, self.cfg.hidden, genome))
+        a = Agent(self._next_id, y, x, int(h),
+                  self.cfg.start_energy if energy is None else energy,
+                  Phenotype(genome))
         self.agents[a.id] = a
         self.occ[y, x] = a.id
         self._next_id += 1
@@ -200,6 +220,7 @@ class World:
         c = self.cfg
         self._regrow_food()
         dead: list[Agent] = []
+        bred: set[int] = set()                     # at most one child per agent/tick
         for aid in sorted(self.agents):            # fixed order -> reproducible
             a = self.agents.get(aid)
             if a is None:
@@ -223,8 +244,8 @@ class World:
             elif action == TURN_RIGHT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading + 1) % 4
-            if a.energy >= c.repro_min_energy:         # innate drive: breed when able
-                self._try_reproduce(a)
+            if a.energy >= c.repro_min_energy and a.id not in bred:
+                self._try_reproduce(a, bred)           # innate drive: breed when able
             a.age += 1
             if a.energy <= 0:
                 dead.append(a)
@@ -268,20 +289,42 @@ class World:
         if moved:
             self._rasterize_walls()
 
-    def _try_reproduce(self, a: Agent) -> None:
+    def _try_reproduce(self, a: Agent, bred: set) -> None:
+        """Sexual reproduction by PROXIMITY: if a fed neighbour is adjacent, the
+        child's genome is a crossover of the two (fitter = higher energy) plus
+        mutation, and both parents pay. A lone but very-full agent falls back to
+        asexual clone+mutate so pioneers can still colonize empty ground."""
         c = self.cfg
-        if a.energy < c.repro_min_energy:
+        neigh = ((-1, 0), (0, 1), (1, 0), (0, -1))
+        mate = None
+        for dy, dx in neigh:
+            oid = self.occ[a.y + dy, a.x + dx] if 0 <= a.y + dy < self.h \
+                and 0 <= a.x + dx < self.w else -1
+            if oid >= 0 and oid != a.id and oid not in bred:
+                b = self.agents.get(oid)
+                if b is not None and b.energy >= c.repro_min_energy:
+                    mate = b
+                    break
+        cell = next(((a.y + dy, a.x + dx) for dy, dx in neigh
+                     if self._free(a.y + dy, a.x + dx)), None)
+        if cell is None:
             return
-        for dy, dx in ((-1, 0), (0, 1), (1, 0), (0, -1)):   # fixed order = reproducible
-            ny, nx = a.y + dy, a.x + dx
-            if self._free(ny, nx):
-                a.energy -= c.repro_cost
-                child = self._spawn_agent(a.brain.child_genome(self.rng, c.mutation),
-                                          cell=(ny, nx))
-                if child is not None:
-                    child.energy = c.repro_cost * 0.8
-                    self.stats["births"] += 1
-                return
+        if mate is not None:
+            fit, other = (a, mate) if a.energy >= mate.energy else (mate, a)
+            child_g = self._mutate(neat.crossover(fit.brain.genome,
+                                                  other.brain.genome, self.rng))
+            a.energy -= c.repro_cost / 2
+            mate.energy -= c.repro_cost / 2
+            bred.add(a.id)
+            bred.add(mate.id)
+        elif a.energy >= c.asexual_energy:
+            child_g = self._mutate(a.brain.genome)
+            a.energy -= c.repro_cost
+            bred.add(a.id)
+        else:
+            return
+        if self._spawn_agent(child_g, cell=cell, energy=c.repro_cost * 0.8) is not None:
+            self.stats["births"] += 1
 
     def _kill(self, a: Agent) -> None:
         self.occ[a.y, a.x] = -1

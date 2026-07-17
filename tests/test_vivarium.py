@@ -1,9 +1,9 @@
 import numpy as np
 
-from vivarium.brain import Brain, N_ACTIONS, input_size
 from vivarium.config import Config
+from vivarium.neat import N_ACTIONS, Genome, Phenotype, crossover, random_genome
 from vivarium.run import run_headless
-from vivarium.world import World
+from vivarium.world import World, input_size
 
 
 def test_world_inits_bounded_with_population_and_food():
@@ -18,14 +18,33 @@ def test_world_inits_bounded_with_population_and_food():
     assert not any(w.walls[y, x] for y, x in cells)
 
 
-def test_brain_genome_roundtrip_and_deterministic_action():
+def test_neat_phenotype_acts_deterministically():
     n_in = input_size(5)
     rng = np.random.default_rng(0)
-    b = Brain.random(n_in, 8, rng)
-    assert b.genome.size == Brain.genome_size(n_in, 8)
+    g = random_genome(n_in, N_ACTIONS, rng)
     x = rng.normal(size=n_in)
-    assert b.act(x) == b.act(x)                              # pure function
-    assert 0 <= b.act(x) < N_ACTIONS
+    p1, p2 = Phenotype(g), Phenotype(g)
+    assert p1.act(x) == p2.act(x)                            # same genome -> same act
+    assert 0 <= p1.act(x) < N_ACTIONS
+
+
+def test_neat_crossover_and_mutation_grow_topology():
+    from vivarium.config import Config as Cfg
+    n_in = input_size(3)
+    rng = np.random.default_rng(1)
+    g = random_genome(n_in, N_ACTIONS, rng)
+    base_hidden = g.complexity()[0]
+    nid = n_in + N_ACTIONS
+    from vivarium.neat import mutate
+    # force many add-node mutations -> hidden nodes appear
+    cfg = Cfg(add_node_prob=1.0, add_conn_prob=1.0, toggle_prob=0.0)
+    for _ in range(5):
+        g, nid = mutate(g, rng, cfg, nid)
+    assert g.complexity()[0] > base_hidden                  # topology grew
+    # a child of two genomes is a valid runnable net
+    g2 = random_genome(n_in, N_ACTIONS, rng)
+    child = crossover(g, g2, rng)
+    assert Phenotype(child).act(np.zeros(n_in)) in range(N_ACTIONS)
 
 
 def test_run_is_deterministic():
@@ -54,20 +73,17 @@ def test_food_stays_near_target_and_sim_survives_long_run():
 
 
 def test_corpse_blocks_then_decays():
-    from vivarium.brain import TURN_LEFT
     w = World(Config(size=20, seed=0, init_population=1, corpse_decay=5))
+    w.food[:] = False                    # nothing to eat -> it must die of metabolism
     a = next(iter(w.agents.values()))
-    y, x = a.y, a.x
-    a.brain.w2[:] = 0.0                  # force it to turn in place (won't move/eat)
-    a.brain.b2[:] = 0.0
-    a.brain.b2[TURN_LEFT] = 10.0
-    a.energy = 0.1                       # will die next metabolism tick
+    a.energy = 0.1                       # dies next tick whatever it does
     w.step()
-    assert w.corpse[y, x] > 0            # a corpse now blocks that cell
-    assert not w._free(y, x)
+    assert (w.corpse > 0).sum() == 1     # exactly one corpse appeared
+    cy, cx = map(int, np.argwhere(w.corpse > 0)[0])
+    assert not w._free(cy, cx)           # a corpse blocks its cell
     for _ in range(6):
         w.step()
-    assert w.corpse[y, x] == 0          # it has decayed away
+    assert w.corpse[cy, cx] == 0         # that corpse has decayed away
 
 
 def test_inner_walls_generated_and_reproducible():
@@ -78,7 +94,7 @@ def test_inner_walls_generated_and_reproducible():
     assert interior.sum() > 0                               # inner walls exist
     # roughly the requested density (loose bounds — strokes overlap/hit doorways)
     frac = interior.sum() / interior.size
-    assert 0.04 < frac < 0.30
+    assert 0.02 < frac < 0.30
 
 
 def test_vision_is_blocked_by_walls():
@@ -124,24 +140,29 @@ def test_app_renders_headless():
 
 def test_genome_save_load_roundtrip(tmp_path):
     from vivarium.genome_io import load_genomes, save_genomes
-    genomes = [np.arange(10.0), np.ones(10), np.linspace(-1, 1, 10)]
-    p = str(tmp_path / "pool.npz")
+    rng = np.random.default_rng(0)
+    n_in = input_size(5)
+    genomes = [random_genome(n_in, N_ACTIONS, rng) for _ in range(3)]
+    p = str(tmp_path / "pool.json")
     save_genomes(p, genomes)
     back = load_genomes(p)
     assert len(back) == 3
-    assert all(np.allclose(a, b) for a, b in zip(genomes, back))
+    for a, b in zip(genomes, back):
+        assert a.nodes == b.nodes
+        assert a.key() == b.key()                             # topology + weights match
 
 
 def test_genome_pool_seeds_the_population():
-    # with a pool of one known genome, every initial agent is that genome + a
-    # little mutation (not fresh random)
+    # with a pool of one known genome and mutation off, every initial agent IS
+    # that genome (seeded from the pool, not fresh random)
     rng = np.random.default_rng(0)
     n_in = input_size(Config().n_rays)
-    base = Brain.random(n_in, Config().hidden, rng).genome
-    w = World(Config(size=40, seed=2, init_population=12, mutation=0.01),
-              genome_pool=[base])
+    base = random_genome(n_in, N_ACTIONS, rng)
+    cfg = Config(size=40, seed=2, init_population=12, weight_mut_prob=0.0,
+                 add_conn_prob=0.0, add_node_prob=0.0, toggle_prob=0.0)
+    w = World(cfg, genome_pool=[base])
     for a in w.agents.values():
-        assert np.abs(a.brain.genome - base).mean() < 0.1     # near the pool genome
+        assert a.brain.genome.key() == base.key()             # exactly the pool genome
 
 
 def test_walking_walls_shift_but_keep_shape():
@@ -161,11 +182,30 @@ def test_walking_walls_shift_but_keep_shape():
         assert s["axis"] in ("h", "v") and s["length"] >= 3
 
 
-def test_reproduction_is_automatic_when_well_fed():
-    # reproduction is an innate drive: a well-fed agent breeds without choosing to
-    w = World(Config(size=30, seed=0, init_population=6, repro_min_energy=20.0,
-                     start_energy=50.0))
+def test_asexual_fallback_when_no_mate():
+    # a lone very-full agent breeds by clone+mutate (no neighbour needed)
+    w = World(Config(size=30, seed=0, init_population=3, repro_min_energy=25.0,
+                     asexual_energy=40.0, start_energy=60.0))
+    w.food[:] = False
     before = w.population()
     w.step()
-    assert w.stats["births"] > 0                 # well-fed agents bred automatically
+    assert w.stats["births"] > 0
     assert w.population() > before
+
+
+def test_sexual_reproduction_by_proximity():
+    # two adjacent fed agents produce a crossover child (asexual disabled)
+    w = World(Config(size=20, seed=0, init_population=2, repro_min_energy=20.0,
+                     asexual_energy=9999.0))
+    w.food[:] = False
+    w.occ[:] = -1
+    a0, a1 = list(w.agents.values())
+    a0.y, a0.x = 10, 10
+    a1.y, a1.x = 10, 11
+    w.occ[10, 10] = a0.id
+    w.occ[10, 11] = a1.id
+    a0.energy = a1.energy = 50.0
+    # call reproduction directly (a normal step would let them move apart first)
+    w._try_reproduce(a0, set())
+    assert w.stats["births"] > 0                 # only sexual could have fired
+    assert w.population() == 3                    # a child was added

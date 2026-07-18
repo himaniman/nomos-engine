@@ -125,6 +125,10 @@ def main(argv=None) -> int:
     p.add_argument("--population", type=int, default=18)
     p.add_argument("--cell", type=int, default=12, help="pixels per grid cell")
     p.add_argument("--brain", choices=("neat", "nca"), default="nca")
+    p.add_argument("--rays", type=int, default=7, help="vision rays (wider, richer fan)")
+    p.add_argument("--fov", type=float, default=1.8, help="total vision angle (radians)")
+    p.add_argument("--no-smell", action="store_true", dest="no_smell",
+                   help="disable the omnidirectional food-gradient sense")
     p.add_argument("--load-genomes", default=None, dest="load_genomes")
     p.add_argument("--save-genomes", default="aqua/pools/session.json", dest="save_genomes")
     p.add_argument("--shots-dir", default="out/aqua", dest="shots_dir")
@@ -132,12 +136,13 @@ def main(argv=None) -> int:
                    help="seconds between auto-screenshots (0 = off)")
     a = p.parse_args(argv)
 
-    cfg = Config(size=a.size, seed=a.seed, init_population=a.population, brain=a.brain)
+    cfg = Config(size=a.size, seed=a.seed, init_population=a.population, brain=a.brain,
+                 n_rays=a.rays, fov=a.fov)
     pool = None
     if a.load_genomes:
         from vivarium.genome_io import load_genomes
         pool = load_genomes(a.load_genomes)
-    world = World(cfg, genome_pool=pool)
+    world = World(cfg, genome_pool=pool, smell=not a.no_smell)
 
     pygame.init()
     font = pygame.font.SysFont("consolas", 16)

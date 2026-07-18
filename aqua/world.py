@@ -25,10 +25,23 @@ import numpy as np
 
 from vivarium import nca, neat
 from vivarium.config import Config
-from vivarium.world import input_size, _hue_dist
+from vivarium.world import _hue_dist
 
 _BRAINS = {"neat": neat, "nca": nca}
 _TWO_PI = 2.0 * math.pi
+
+# Rich sensor layout (see World._sense). The continuous world affords more, and
+# smoother, senses than the grid one — this is where that pays off. Exteroception
+# is a per-ray fan; interoception is the agent's own body state; smell is an
+# omnidirectional gradient to the nearest food (a modality vision doesn't give).
+RAY_CH = 4     # per vision ray: edible food / obstacle / KIN agent / NON-KIN agent
+INTERO = 7     # energy, own speed, own turn-rate, sin(heading), cos(heading), age, bias
+SMELL = 2      # egocentric (forward, lateral) direction to the nearest food
+
+
+def sensor_size(n_rays: int, smell: bool = True) -> int:
+    """Width of the brain's input vector for this sensor configuration."""
+    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0)
 
 
 def _logits(brain) -> np.ndarray:
@@ -46,7 +59,8 @@ def _wrap_angle(a: float) -> float:
 
 
 class Agent:
-    __slots__ = ("id", "y", "x", "heading", "energy", "age", "offspring", "brain")
+    __slots__ = ("id", "y", "x", "heading", "energy", "age", "offspring", "brain",
+                 "last_speed", "last_turn")
 
     def __init__(self, aid, y, x, heading, energy, brain):
         self.id = aid
@@ -57,6 +71,8 @@ class Agent:
         self.age = 0
         self.offspring = 0
         self.brain = brain
+        self.last_speed = 0.0              # proprioception: last commanded speed/turn,
+        self.last_turn = 0.0               # fed back as senses next tick
 
 
 class World:
@@ -66,7 +82,8 @@ class World:
     def __init__(self, config: Config | None = None, genome_pool=None,
                  max_speed: float = 1.0, max_turn: float = 0.45,
                  radius: float = 0.35, mate_radius: float = 1.8,
-                 ray_step: float = 0.6):
+                 ray_step: float = 0.6, smell: bool = True,
+                 smell_range: float | None = None):
         self.cfg = config or Config()
         c = self.cfg
         self.max_speed = max_speed          # cells per tick at full forward thrust
@@ -74,6 +91,8 @@ class World:
         self.radius = radius                # agent body radius (collision/eat)
         self.mate_radius = mate_radius      # how close two agents breed
         self.ray_step = ray_step            # vision ray-march increment (cells)
+        self.smell = smell                  # omnidirectional food-gradient sense on?
+        self.smell_range = smell_range if smell_range is not None else 2.0 * c.ray_length
 
         self.genome_pool = list(genome_pool) if genome_pool else None
         self.brain = _BRAINS[c.brain]
@@ -85,7 +104,7 @@ class World:
         self.food_rate = float(c.food_regrow)
         self.food_cap = float(c.food_target)
         self._next_id = 0
-        self.n_in = input_size(c.n_rays)
+        self.n_in = sensor_size(c.n_rays, self.smell)
         self.n_out = self.brain.N_ACTIONS
         self._next_node_id = self.n_in + self.n_out
         if self.genome_pool:
@@ -108,9 +127,11 @@ class World:
         # per-heading ray fan is now continuous; precompute the relative angles only
         self._ray_angles = np.linspace(-c.fov / 2, c.fov / 2, c.n_rays)
 
+        self._food_xy = np.empty((0, 2), dtype=np.int64)   # food coords, refreshed per tick
         for _ in range(c.init_population):
             self._spawn_agent(self._seed_genome())
         self._regrow_food()
+        self._food_xy = np.argwhere(self.food > 0)
 
     # -- brains -------------------------------------------------------------
 
@@ -301,20 +322,27 @@ class World:
     # -- vision (continuous ray-march) --------------------------------------
 
     def _sense(self, a: Agent) -> np.ndarray:
-        """Ray vision fanned around the heading + interoception. Each ray reports
-        the first thing it hits — food / obstacle / agent — and how near, by
-        marching in float steps and sampling the grid (walls, food) and nearby
-        agents. Diet dims indigestible food, exactly as in the grid world."""
+        """The rich input vector: a per-ray vision fan (edible food / obstacle /
+        KIN / NON-KIN agent, each a smooth ray-march proximity), the agent's own
+        body state (energy, speed, turn-rate, a heading compass, age), and an
+        omnidirectional SMELL gradient toward the nearest food — a modality vision
+        doesn't give (it reaches past the rays and through walls). Diet dims
+        indigestible food, as in the grid world."""
         c = self.cfg
         vec = np.zeros(self.n_in)
         rl = float(c.ray_length)
-        diet = a.brain.genome.diet
+        g = a.brain.genome
+        diet, hue = g.diet, g.hue
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
-        # candidate agents once (within ray reach), for the per-ray agent test
-        near = [(b, math.hypot(b.y - a.y, b.x - a.x),
-                 math.atan2(b.y - a.y, b.x - a.x))
-                for b in self.agents.values()
-                if b.id != a.id and math.hypot(b.y - a.y, b.x - a.x) <= rl + self.radius]
+        # nearby agents once, each tagged KIN (same colour-species) or NON-KIN
+        near = []
+        for b in self.agents.values():
+            if b.id == a.id:
+                continue
+            d = math.hypot(b.y - a.y, b.x - a.x)
+            if d <= rl + self.radius:
+                kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
+                near.append((d, math.atan2(b.y - a.y, b.x - a.x), kin))
         half_ray = 0.5 * c.fov / max(1, c.n_rays - 1) + self.radius / max(rl, 1.0)
         for i, rel in enumerate(self._ray_angles):
             ang = a.heading + rel
@@ -322,24 +350,45 @@ class World:
             hit_d, hit_ch, hit_val = rl, -1, 0.0
             k = self.ray_step
             while k <= rl:                                   # march grid for wall/food
-                py, px = a.y + dy * k, a.x + dx * k
-                cy, cx = int(round(py)), int(round(px))
+                cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
                 if not (0 <= cy < self.h and 0 <= cx < self.w) or self.walls[cy, cx] \
                         or self.corpse[cy, cx] > 0:
-                    hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle
+                    hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle channel
                     break
                 ft = self.food[cy, cx]
                 if ft:
-                    hit_d, hit_ch, hit_val = k, 0, effs[ft - 1] * (1.0 - k / rl)
+                    hit_d, hit_ch, hit_val = k, 0, effs[ft - 1] * (1.0 - k / rl)  # food
                     break
                 k += self.ray_step
-            for b, d, bearing in near:                       # an agent nearer than that?
+            for d, bearing, kin in near:                     # an agent nearer than that?
                 if d < hit_d and abs(_wrap_angle(bearing - ang)) <= half_ray:
-                    hit_d, hit_ch, hit_val = d, 2, 1.0 - d / rl
+                    hit_d, hit_ch = d, (2 if kin else 3)     # KIN / NON-KIN channel
+                    hit_val = 1.0 - d / rl
             if hit_ch >= 0:
-                vec[i * 3 + hit_ch] = hit_val
-        vec[-2] = a.energy / c.max_energy
-        vec[-1] = 1.0
+                vec[i * RAY_CH + hit_ch] = hit_val
+
+        o = c.n_rays * RAY_CH                                 # interoception block
+        vec[o + 0] = a.energy / c.max_energy
+        vec[o + 1] = a.last_speed / self.max_speed
+        vec[o + 2] = a.last_turn / self.max_turn             # signed turn-rate
+        vec[o + 3] = math.sin(a.heading)                     # heading compass (absolute)
+        vec[o + 4] = math.cos(a.heading)
+        vec[o + 5] = math.tanh(a.age / 500.0)                # maturity
+        vec[o + 6] = 1.0                                     # bias
+
+        if self.smell and len(self._food_xy):                # nearest-food gradient
+            dy = self._food_xy[:, 0] - a.y
+            dx = self._food_xy[:, 1] - a.x
+            dd = np.hypot(dy, dx)
+            j = int(np.argmin(dd))
+            dist = float(dd[j])
+            if 1e-9 < dist <= self.smell_range:
+                ft = int(self.food[int(self._food_xy[j, 0]), int(self._food_xy[j, 1])])
+                amp = self._diet_eff(diet, ft) * (1.0 - dist / self.smell_range)
+                rel = _wrap_angle(math.atan2(dy[j], dx[j]) - a.heading)
+                so = o + INTERO
+                vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
+                vec[so + 1] = amp * math.sin(rel)            # food to one side (signed)
         return vec
 
     # -- continuous motor read-out ------------------------------------------
@@ -361,6 +410,7 @@ class World:
         c = self.cfg
         plastic = c.brain == "nca" and c.nca_plastic
         self._regrow_food()
+        self._food_xy = np.argwhere(self.food > 0)         # for the smell gradient
         dead: list[Agent] = []
         bred: set[int] = set()
         for aid in sorted(self.agents):
@@ -372,6 +422,7 @@ class World:
             else:
                 a.brain.act(self._sense(a))
             speed, turn = self._command(_logits(a.brain))
+            a.last_speed, a.last_turn = speed, turn         # proprioception for next tick
             a.energy -= c.base_cost
             if c.brain == "nca":
                 a.energy -= c.nca_cell_cost * int(a.brain.genome.mask.sum())

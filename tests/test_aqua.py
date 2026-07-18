@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 
-from aqua.world import World, _logits
+from aqua.world import INTERO, RAY_CH, World, _logits, sensor_size
 from vivarium.config import Config
 
 
@@ -57,7 +57,33 @@ def test_command_is_continuous_and_monotonic():
 def test_sensor_vector_width_matches_brain():
     w = World(_cfg())
     a = next(iter(w.agents.values()))
+    assert w.n_in == sensor_size(w.cfg.n_rays, w.smell)
     assert w._sense(a).shape == (w.n_in,)
+    # dropping smell narrows the input by exactly the smell channels
+    assert World(_cfg(), smell=False).n_in == w.n_in - 2
+
+
+def test_proprioception_reports_own_motion():
+    """The agent's own last speed shows up in the interoception block."""
+    w = World(_cfg(init_population=0))
+    a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)
+    a.last_speed = w.max_speed
+    o = w.cfg.n_rays * RAY_CH
+    assert w._sense(a)[o + 1] == 1.0                # speed channel = full speed
+
+
+def test_smell_points_toward_food():
+    """With food dead ahead and none elsewhere, the smell FORWARD channel is
+    strongly positive and the lateral one near zero."""
+    w = World(_cfg(init_population=0))
+    a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)  # facing +x
+    w.food[:] = 0
+    w.food[24, 30] = 1                              # straight ahead (+x)
+    w._food_xy = np.argwhere(w.food > 0)
+    o = w.cfg.n_rays * RAY_CH
+    vec = w._sense(a)
+    fwd, lat = vec[o + INTERO], vec[o + INTERO + 1]
+    assert fwd > 0.3 and abs(lat) < 1e-6
 
 
 def test_opacity_blocks_a_move_into_another_agent():

@@ -72,6 +72,10 @@ class Config:
                                        # nothing — then there's no niche to specialize
                                        # into); tight patches make the two food types
                                        # real places to own
+    food_scatter_prob: float = 0.1     # chance a sown food ignores the halo and lands
+                                       # on a RANDOM free cell anywhere — a little
+                                       # background dispersal so the map isn't bare
+                                       # between patches (0 = strictly halo-local)
     food_halo_drift: float = 2.0       # cells a halo centre may step when it drifts
     food_halo_drift_every: int = 320   # ticks between halo drifts (0 = static halos) —
                                        # food patches wander at a visible pace (patches

@@ -242,7 +242,12 @@ class World:
             count += 1
         for _ in range(min(count, max(0, deficit))):
             k = int(self.rng.integers(c.n_food_types))     # a random food type...
-            cy, cx = self.halos[k]                          # ...spawns near its halo
+            if self.rng.random() < c.food_scatter_prob:    # rare background dispersal:
+                cell = self._random_free_cell()            # scatter anywhere on the map
+                if cell is not None:
+                    self.food[cell] = k + 1
+                continue
+            cy, cx = self.halos[k]                          # otherwise spawn near its halo
             for _try in range(6):                           # keep food NEAR its halo:
                 y = int(round(cy + self.rng.normal(0.0, sigma)))   # retry LOCALLY instead
                 x = int(round(cx + self.rng.normal(0.0, sigma)))   # of scattering food

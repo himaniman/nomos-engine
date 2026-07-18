@@ -38,18 +38,16 @@ def _ray_hit(world: World, a, ang: float) -> float:
     """Distance along a ray from agent `a` at world-angle `ang` to its first hit
     (wall / food / corpse / another agent), capped at the agent's own (heritable)
     ray reach — for drawing the cone exactly as far as this creature actually sees.
-    Walls are analytic (shared `_ray_wall_dist`); food/corpses are still grid."""
+    Walls are analytic (shared `_ray_wall_dist`); food/corpses/agents are float circles."""
     rl = float(a.brain.genome.ray_len)
     dx, dy = math.cos(ang), math.sin(ang)
     d = world._ray_wall_dist(a.y, a.x, dx, dy, rl)
-    k = world.ray_step
-    while k <= d:                                            # corpses (still grid)
-        cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-        if 0 <= cy < world.h and 0 <= cx < world.w and world.corpse[cy, cx] > 0:
-            d = k
-            break
-        k += world.ray_step
     half = 0.5 * world.cfg.fov / max(1, int(a.brain.genome.n_rays) - 1)
+    for cy, cx in world.corpse_xy:                           # corpses (float obstacles)
+        dc = math.hypot(cy - a.y, cx - a.x)
+        if dc <= d and abs(((math.atan2(cy - a.y, cx - a.x) - ang + math.pi)
+                            % (2 * math.pi)) - math.pi) <= half + world.corpse_radius / max(dc, 1e-9):
+            d = dc
     for fy, fx in world.food_xy:                             # food morsels (float)
         df = math.hypot(fy - a.y, fx - a.x)
         if df <= d and abs(((math.atan2(fy - a.y, fx - a.x) - ang + math.pi)
@@ -76,9 +74,9 @@ def draw(world: World, cell: int, panel_w: int, font, small,
     for y0, y1, x0, x1 in world.wall_rects:                 # walls (float rectangles)
         surf.fill((60, 60, 68), ((x0 + 0.5) * cell, (y0 + 0.5) * cell,
                                  (x1 - x0) * cell, (y1 - y0) * cell))
-    cyy, cxx = np.where(world.corpse > 0)                   # corpses
-    for y, x in zip(cyy, cxx):
-        surf.fill((70, 40, 30), (x * cell, y * cell, cell, cell))
+    cr = max(1, int(round(world.corpse_radius * cell)))     # corpses (float obstacle circles)
+    for y, x in world.corpse_xy:
+        pygame.draw.circle(surf, (120, 74, 58), (int((x + 0.5) * cell), int((y + 0.5) * cell)), cr)
     for k, (hy, hx) in enumerate(world.halos):             # faint food-halo discs
         pygame.draw.circle(surf, tuple(c // 5 for c in _FOOD_COLORS[k % len(_FOOD_COLORS)]),
                            (int((hx + 0.5) * cell), int((hy + 0.5) * cell)),

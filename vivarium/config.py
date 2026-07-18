@@ -143,7 +143,10 @@ class Config:
                                        # that separates species in the HUD count)
 
     # corpse: an OBSTACLE (not food) that decays away
-    corpse_decay: int = 40             # ticks a corpse blocks its cell before clearing
+    corpse_decay: int = 40             # ticks a corpse blocks (its cell in the grid world;
+                                       # its float circle in the continuous aqua world)
+    corpse_radius: float = 0.4         # corpse morsel radius in cells (continuous aqua):
+                                       # a dead body is a float obstacle circle this big
 
     # population
     init_population: int = 18           # start near the food controller's target so the

@@ -1142,3 +1142,35 @@ vision), not food (the FOV prune bounds that). A spatial bucket for AGENTS is th
 deferred cross-cutting optimisation; correctness/determinism are unaffected. Next:
 stage 3, corpses as float circles (small, reuses the food/agent machinery), then the
 sensor-input colour-coding the user asked for at the end.
+
+## 2026-07-18 (evening) — stage 3: corpses go float, and the cross-cutting speed pass
+
+**Stage 3 — corpses are float obstacle CIRCLES.** `self.corpse` (the int64 grid) is
+gone; a death drops a body into `corpse_xy`/`corpse_decay` arrays (radius 0.4), which
+block a moving body (circle-vs-circle) and register as an obstacle in vision (treated
+like a nearby agent, FOV-pruned), decrementing each tick and vanishing at 0. That
+removes the LAST grid from the physics — walls, food, corpses are all continuous now;
+`self.walls` survives only as a coarse open-area count for food density. +2 tests
+(corpses appear on death / block / decay; no body overlaps a corpse over a run).
+
+**The cross-cutting optimisation the user asked for — a spatial bucket for agents
+(`aqua/space.py`).** The last O(n^2) was agent-agent: `_agent_near` (collision every
+sub-step), the mate search, and vision's near-agent list all scanned the whole
+population. Now a deterministic uniform-BUCKET index of agent ids answers "who's near
+(y,x)?" in local work — rebuilt O(n) each tick and kept live as agents move/spawn/die.
+It holds ids only (positions read live), and every caller selects by NEAREST, so the
+result is order-independent and runs still reproduce (verified: bucket `_agent_near`
+matches a brute-force scan on every agent, 0 mismatches; determinism a==b holds). The
+mate search now takes the NEAREST eligible mate (was first-in-dict-order) — a
+deliberate, order-independent change.
+
+**A fresh look at speed (profiled, not guessed).** cProfile at pop ~100 said `_sense`
+was ~60% and its top cost was `_ray_wall_dist` looping ALL wall rects per ray. Two
+correctness-preserving prunes: (1) per agent, keep only the wall rects whose closest
+point is within ray reach (`_rects_within`) — most agents see 0-3 walls, not 26; (2)
+FOV-prune the near-AGENT list to the cone (food/corpses already were), since a ray can
+only see its arc. Net: a tick at pop ~127 went 130ms (pre-bucket) -> 75ms (bucket) ->
+64ms (prunes), ~2x, determinism intact throughout. What's left is the NCA brain's own
+relaxation (`act`) and the irreducible ray loop — the brain cost is the point, not
+overhead. Deferred if ever needed: a numba kernel for the ray test, or a food/corpse
+bucket. Full suite green. Next: the sensor-input colour-coding.

@@ -23,6 +23,7 @@ from collections import deque
 
 import numpy as np
 
+from aqua.space import Buckets
 from vivarium import nca, neat
 from vivarium.config import Config
 from vivarium.world import _hue_dist
@@ -141,9 +142,16 @@ class World:
         self.halos = np.array([[self.rng.integers(2, self.h - 2),
                                 self.rng.integers(2, self.w - 2)]
                                for _ in range(c.n_food_types)], dtype=np.float64)
-        self.corpse = np.zeros((self.h, self.w), dtype=np.int64)
+        # corpses are float obstacle CIRCLES now (stage 3): position + ticks-left arrays,
+        # no grid. A dead body blocks like a wall until it decays.
+        self.corpse_radius = c.corpse_radius
+        self.corpse_xy = np.empty((0, 2), dtype=np.float64)
+        self.corpse_decay = np.empty(0, dtype=np.int64)
 
         self.agents: dict[int, Agent] = {}
+        # spatial index of agent ids for the O(1)-ish proximity queries (collision,
+        # mate search, vision) — kept live as agents spawn/move/die (see aqua.space).
+        self.abuckets = Buckets(cell=max(2.0, 2.0 * radius, mate_radius))
         self.hall: list[tuple[int, object]] = []
         self.stats = {"births": 0, "deaths": 0}
         self.deaths_log: deque = deque()
@@ -280,34 +288,39 @@ class World:
         return False
 
     def _corpse_blocks_circle(self, y: float, x: float) -> bool:
-        """Does a body circle overlap any corpse cell? (corpses are still grid this
-        stage — a unit square per occupied cell)."""
-        r = self.radius
-        r2 = r * r
-        y0, y1 = int(math.floor(y - r)), int(math.ceil(y + r))
-        x0, x1 = int(math.floor(x - r)), int(math.ceil(x + r))
-        for cy in range(y0, y1 + 1):
-            if not (0 <= cy < self.h):
-                continue
-            for cx in range(x0, x1 + 1):
-                if not (0 <= cx < self.w) or self.corpse[cy, cx] <= 0:
-                    continue
-                ny = min(max(y, cy - 0.5), cy + 0.5)
-                nx = min(max(x, cx - 0.5), cx + 0.5)
-                if (y - ny) ** 2 + (x - nx) ** 2 < r2:
-                    return True
-        return False
+        """Does a body circle at (y, x) overlap any corpse circle? (float obstacles:
+        centres closer than radius + corpse_radius)."""
+        if len(self.corpse_decay) == 0:
+            return False
+        dy = self.corpse_xy[:, 0] - y
+        dx = self.corpse_xy[:, 1] - x
+        reach = self.radius + self.corpse_radius
+        return bool(np.any(dy * dy + dx * dx < reach * reach))
 
     def _blocked_circle(self, y: float, x: float) -> bool:
         """Would an agent's BODY (a circle of `self.radius`) at (y, x) overlap a wall
         or a corpse? Walls are analytic float rectangles; corpses are still grid cells."""
         return self._wall_blocks_circle(y, x) or self._corpse_blocks_circle(y, x)
 
+    def _rects_within(self, y: float, x: float, r: float) -> np.ndarray:
+        """The wall rectangles whose closest point is within `r` of (y, x) — the only
+        ones a ray of reach `r` from here could possibly hit (a per-agent prune so the
+        analytic ray test loops a handful of walls, not all of them)."""
+        wr = self.wall_rects
+        if len(wr) == 0:
+            return wr
+        ny = np.clip(y, wr[:, 0], wr[:, 1])
+        nx = np.clip(x, wr[:, 2], wr[:, 3])
+        return wr[(y - ny) ** 2 + (x - nx) ** 2 <= r * r]
+
     def _ray_wall_dist(self, ay: float, ax: float, dx: float, dy: float,
-                       maxd: float) -> float:
+                       maxd: float, rects=None) -> float:
         """Distance from (ay, ax) along the unit ray (dx, dy) to the nearest wall
         rectangle, capped at `maxd` (ray-vs-AABB slab test, analytic). Used by vision
-        and the app's FOV cone — one source of truth for wall geometry."""
+        and the app's FOV cone — one source of truth for wall geometry. `rects`
+        defaults to ALL walls; vision passes a per-agent within-reach subset."""
+        if rects is None:
+            rects = self.wall_rects
         eps = 1e-9
         if abs(dx) < eps:
             dx = eps if dx >= 0 else -eps
@@ -315,7 +328,7 @@ class World:
             dy = eps if dy >= 0 else -eps
         ix, iy = 1.0 / dx, 1.0 / dy
         best = maxd
-        for y0, y1, x0, x1 in self.wall_rects:
+        for y0, y1, x0, x1 in rects:
             tx0, tx1 = (x0 - ax) * ix, (x1 - ax) * ix
             lox, hix = (tx0, tx1) if tx0 < tx1 else (tx1, tx0)
             ty0, ty1 = (y0 - ay) * iy, (y1 - ay) * iy
@@ -357,9 +370,18 @@ class World:
         other food (no stacking) and agents."""
         return (1.0 <= y <= self.h - 1.0 and 1.0 <= x <= self.w - 1.0
                 and not self._point_in_walls(y, x)
-                and self.corpse[int(round(y)), int(round(x))] == 0
+                and not self._corpse_near_food(y, x)
                 and self._nearest_food_dist(y, x) > 2.0 * self.food_radius
                 and self._agent_near(y, x, self.radius + self.food_radius) is None)
+
+    def _corpse_near_food(self, y: float, x: float) -> bool:
+        """Is a corpse close enough to forbid planting food here?"""
+        if len(self.corpse_decay) == 0:
+            return False
+        dy = self.corpse_xy[:, 0] - y
+        dx = self.corpse_xy[:, 1] - x
+        reach = self.corpse_radius + self.food_radius
+        return bool(np.any(dy * dy + dx * dx < reach * reach))
 
     def _random_free_food_pos(self):
         for _ in range(20):
@@ -427,13 +449,27 @@ class World:
 
     # -- agents / geometry --------------------------------------------------
 
-    def _agent_near(self, y: float, x: float, r: float, exclude: int = -1):
-        """Any agent whose centre is within `r` of (y, x) (O(n); populations are
-        small). Returns the closest such agent or None."""
-        best, best_d = None, r
+    def _rebuild_buckets(self) -> None:
+        """Rebuild the agent index from scratch (O(n), once per tick) so it can't drift."""
+        self.abuckets.clear()
         for a in self.agents.values():
-            if a.id == exclude:
+            self.abuckets.insert(a.id, a.y, a.x)
+
+    def _agents_within(self, y: float, x: float, r: float, exclude: int = -1):
+        """Yield agents in the bucket-neighbourhood of (y, x) (a SUPERSET of those
+        within r; callers filter by exact distance)."""
+        for aid in self.abuckets.neighbors(y, x, r):
+            if aid == exclude:
                 continue
+            b = self.agents.get(aid)
+            if b is not None:
+                yield b
+
+    def _agent_near(self, y: float, x: float, r: float, exclude: int = -1):
+        """The closest agent whose centre is within `r` of (y, x), or None — via the
+        spatial bucket, so it's local work, not a scan of the whole population."""
+        best, best_d = None, r
+        for a in self._agents_within(y, x, r, exclude):
             d = math.hypot(a.y - y, a.x - x)
             if d < best_d:
                 best, best_d = a, d
@@ -469,6 +505,7 @@ class World:
                   self.cfg.start_energy if energy is None else energy,
                   self._phenotype(genome))
         self.agents[a.id] = a
+        self.abuckets.insert(a.id, y, x)
         self._next_id += 1
         return a
 
@@ -500,15 +537,16 @@ class World:
         rl = max(1.0, float(g.ray_len))
         diet, hue = g.diet, g.hue
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
-        # nearby agents once, each tagged KIN (same colour-species) or NON-KIN
+        cone = 0.5 * c.fov + 0.6                              # a ray can only see this arc
+        # nearby agents once (bucket-local, FOV-pruned), tagged KIN / NON-KIN
         near = []
-        for b in self.agents.values():
-            if b.id == a.id:
-                continue
+        for b in self._agents_within(a.y, a.x, rl + self.radius, exclude=a.id):
             d = math.hypot(b.y - a.y, b.x - a.x)
             if d <= rl + self.radius:
-                kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
-                near.append((d, math.atan2(b.y - a.y, b.x - a.x), kin))
+                bearing = math.atan2(b.y - a.y, b.x - a.x)
+                if abs(_wrap_angle(bearing - a.heading)) <= cone:
+                    kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
+                    near.append((d, bearing, kin))
         near_food = []                                        # food morsels within the CONE
         if len(self.food_type):                               # (only what a ray could see:
             fdy = self.food_xy[:, 0] - a.y                    #  vectorised, FOV-pruned)
@@ -516,26 +554,33 @@ class World:
             fdd = np.hypot(fdy, fdx)
             fb = np.arctan2(fdy, fdx)
             rel_b = np.abs((fb - a.heading + math.pi) % _TWO_PI - math.pi)
-            in_view = (fdd <= rl + self.food_radius) & (rel_b <= 0.5 * c.fov + 0.6)
+            in_view = (fdd <= rl + self.food_radius) & (rel_b <= cone)
             for idx in np.nonzero(in_view)[0]:
                 near_food.append((float(fdd[idx]), float(fb[idx]), int(self.food_type[idx])))
+        near_corpse = []                                      # corpse obstacles in the CONE
+        if len(self.corpse_decay):
+            cdy = self.corpse_xy[:, 0] - a.y
+            cdx = self.corpse_xy[:, 1] - a.x
+            cdd = np.hypot(cdy, cdx)
+            cb = np.arctan2(cdy, cdx)
+            crel = np.abs((cb - a.heading + math.pi) % _TWO_PI - math.pi)
+            cview = (cdd <= rl + self.corpse_radius) & (crel <= cone)
+            for idx in np.nonzero(cview)[0]:
+                near_corpse.append((float(cdd[idx]), float(cb[idx])))
+        vis_rects = self._rects_within(a.y, a.x, rl)         # walls a ray could reach
         half_spacing = 0.5 * c.fov / max(1, nr - 1)
         half_ray = half_spacing + self.radius / rl
         for i, rel in enumerate(self.ray_angles(nr)):
             ang = a.heading + rel
             dx, dy = math.cos(ang), math.sin(ang)
-            dw = self._ray_wall_dist(a.y, a.x, dx, dy, rl)   # analytic WALL hit (obstacle)
+            dw = self._ray_wall_dist(a.y, a.x, dx, dy, rl, vis_rects)   # analytic WALL hit
             if dw < rl:
                 hit_d, hit_ch, hit_val = dw, 1, 1.0 - dw / rl
             else:
                 hit_d, hit_ch, hit_val = rl, -1, 0.0
-            k = self.ray_step                                # march grid for CORPSE (stage 3)
-            while k <= hit_d:
-                cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-                if 0 <= cy < self.h and 0 <= cx < self.w and self.corpse[cy, cx] > 0:
-                    hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle
-                    break
-                k += self.ray_step
+            for cd, cbear in near_corpse:                    # a corpse along this ray? (obstacle)
+                if cd < hit_d and abs(_wrap_angle(cbear - ang)) <= half_spacing + self.corpse_radius / cd:
+                    hit_d, hit_ch, hit_val = cd, 1, 1.0 - cd / rl
             for fd, fbear, ft in near_food:                  # a food morsel along this ray?
                 if fd < hit_d and abs(_wrap_angle(fbear - ang)) <= half_spacing + self.food_radius / fd:
                     hit_d, hit_ch, hit_val = fd, 0, effs[ft - 1] * (1.0 - fd / rl)
@@ -591,6 +636,7 @@ class World:
         c = self.cfg
         plastic = c.brain == "nca" and c.nca_plastic
         self._regrow_food()
+        self._rebuild_buckets()                             # resync the index to tick-start
         dead: list[Agent] = []
         bred: set[int] = set()
         for aid in sorted(self.agents):
@@ -615,6 +661,7 @@ class World:
                 ny = a.y + math.sin(a.heading) * speed
                 nx = a.x + math.cos(a.heading) * speed
                 reward = self._advance(a, ny, nx)
+                self.abuckets.move(a.id, a.y, a.x)          # reindex to its new cell
             if plastic:
                 a.brain.learn(reward / c.food_energy)
             if a.energy >= c.repro_min_energy and a.id not in bred:
@@ -625,7 +672,10 @@ class World:
 
         for a in dead:
             self._kill(a)
-        self.corpse[self.corpse > 0] -= 1
+        if len(self.corpse_decay):                           # corpses decay, expired ones go
+            self.corpse_decay -= 1
+            live = self.corpse_decay > 0
+            self.corpse_xy, self.corpse_decay = self.corpse_xy[live], self.corpse_decay[live]
         self._drift_walls()
         self._drift_halos()
         self._immigrate()
@@ -701,15 +751,14 @@ class World:
         `mate_radius` mates (crossover of the two, fitter leads); a very-full lone
         agent clones asexually. The child drops at a free spot beside the parent."""
         c = self.cfg
-        mate = None
-        for b in self.agents.values():
-            if b.id == a.id or b.id in bred or b.energy < c.repro_min_energy:
+        mate, mate_d = None, self.mate_radius              # NEAREST eligible same-species mate
+        for b in self._agents_within(a.y, a.x, self.mate_radius, exclude=a.id):
+            if b.id in bred or b.energy < c.repro_min_energy:
                 continue
-            if math.hypot(b.y - a.y, b.x - a.x) > self.mate_radius:
-                continue
-            if _hue_dist(a.brain.genome.hue, b.brain.genome.hue) <= c.species_hue:
-                mate = b
-                break
+            d = math.hypot(b.y - a.y, b.x - a.x)
+            if d < mate_d and _hue_dist(a.brain.genome.hue,
+                                        b.brain.genome.hue) <= c.species_hue:
+                mate, mate_d = b, d
         cell = self._free_pos_near(a.y, a.x)
         if cell is None:
             return
@@ -754,6 +803,7 @@ class World:
     def _predate(self, pred: Agent, prey: Agent, ny: float, nx: float) -> float:
         g = pred.brain.genome
         self.agents.pop(prey.id, None)
+        self.abuckets.remove(prey.id)
         self.stats["deaths"] += 1
         self._remember(prey)
         gain = min(self.cfg.max_energy, pred.energy + self.cfg.meat_energy * g.carnivore) \
@@ -765,10 +815,15 @@ class World:
     # -- death / hall -------------------------------------------------------
 
     def _kill(self, a: Agent) -> None:
-        self.corpse[int(round(a.y)), int(round(a.x))] = self.cfg.corpse_decay
+        self._add_corpse(a.y, a.x)                            # drop a float body at death
         self.agents.pop(a.id, None)
+        self.abuckets.remove(a.id)
         self.stats["deaths"] += 1
         self._remember(a)
+
+    def _add_corpse(self, y: float, x: float) -> None:
+        self.corpse_xy = np.vstack([self.corpse_xy, [y, x]])
+        self.corpse_decay = np.append(self.corpse_decay, self.cfg.corpse_decay)
 
     def _remember(self, a: Agent) -> None:
         success = a.age + self.cfg.hall_offspring_weight * a.offspring
@@ -818,6 +873,7 @@ class World:
         for a in [ag for ag in self.agents.values()
                   if self._wall_blocks_circle(ag.y, ag.x)]:  # body caught by a moved wall
             self.agents.pop(a.id, None)
+            self.abuckets.remove(a.id)
             self.stats["deaths"] += 1
             self._remember(a)
 
@@ -920,7 +976,7 @@ class World:
                 "energy_bodies": float(sum(energies)),
                 "energy_food": float(len(self.food_type)) * self.cfg.food_energy,
                 "energy_mean": float(np.mean(energies)) if energies else 0.0,
-                "food": int(len(self.food_type)), "corpses": int((self.corpse > 0).sum()),
+                "food": int(len(self.food_type)), "corpses": int(len(self.corpse_decay)),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
                 "life_mean": life_mean, "life_median": life_median,

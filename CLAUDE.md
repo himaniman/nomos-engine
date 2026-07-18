@@ -302,10 +302,16 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   MORSELS (`food_xy`/`food_type`, no `self.food` grid), eaten by body-circle
   overlap (`food_radius` 0.25), sensed by true distance; vision treats a morsel
   like a nearby agent (FOV-pruned). `self.walls` survives only as a coarse
-  open-area count. STAGE 3 pending — corpses still a grid. Also: SMELL is
+  open-area count. STAGE 3 done — CORPSES are float obstacle CIRCLES
+  (`corpse_xy`/`corpse_decay`, radius 0.4), dropped on death, block + seen like a
+  nearby agent, decay away; the LAST grid is gone from the physics. Also: SMELL is
   inverse-square (`amp = diet_eff/(1+(d/sharpness)^2)`, faint far, steep near),
-  body radius 0.45 (~wall-width, still fits 1-cell doors). Perf: high pop (~150+)
-  is O(n^2) on the agent-agent scan (deferred: a spatial bucket for agents).
+  body radius 0.45 (~wall-width, still fits 1-cell doors). PERF (cross-cutting):
+  a deterministic spatial BUCKET of agent ids (`aqua/space.py`) replaces the
+  O(n^2) agent-agent scan for collision/mate/vision (rebuilt each tick, kept live;
+  callers pick nearest so it's order-independent). Plus per-agent vision prunes
+  (walls within reach only; near-agents FOV-pruned). ~2x faster (130->64ms/step at
+  pop 127); determinism preserved. Remaining cost is the NCA brain's own `act`.
 - Earlier grid-hybrid mechanics fixes (2026-07-18, see journal): (1)
   collisions are now an honest CIRCLE-vs-grid test (`_blocked_circle`) matching
   the drawn body — no more centre-point poking through walls; walls/corpses/

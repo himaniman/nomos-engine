@@ -173,6 +173,31 @@ def test_eating_needs_body_overlap_and_removes_the_morsel():
     assert gain > 0.0 and len(w.food_type) == 0      # eaten, morsel removed
 
 
+# -- Stage 3: continuous CORPSES (float obstacle circles that decay) -----------------
+
+def test_corpses_are_float_circles_that_block_and_decay():
+    w = World(_cfg(init_population=0))
+    assert not hasattr(w, "corpse")                 # the grid is gone
+    a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)
+    a.energy = -1.0                                 # doomed; step() will kill it
+    w.step()
+    assert len(w.corpse_decay) == 1                 # death dropped a float body
+    cy, cx = w.corpse_xy[0]
+    assert w._corpse_blocks_circle(cy, cx)          # it blocks a body on top of it
+    assert not w._corpse_blocks_circle(cy + 5, cx + 5)   # but not far away
+    start = int(w.corpse_decay[0])
+    for _ in range(start + 2):                       # let it decay away
+        w.step()
+    assert len(w.corpse_decay) == 0
+
+
+def test_no_body_overlaps_a_corpse_over_a_run():
+    w = World(_cfg(size=40, seed=3))
+    for _ in range(250):
+        w.step()
+    assert not any(w._corpse_blocks_circle(a.y, a.x) for a in w.agents.values())
+
+
 def test_reseed_on_extinction():
     w = World(_cfg())
     for _ in range(120):                            # build a hall of long-lived genomes

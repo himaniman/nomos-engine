@@ -11,8 +11,9 @@ gene stats.
 
 Controls: SPACE pause/resume · S single-step · +/- speed · click an agent to
 inspect · L follow the longest-lived agent (auto) · [ / ] food rate · , / . food
-ceiling · T animate the selected NCA brain's sub-ticks (at x1) · W save the current top
-genomes (--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
+ceiling · P screenshot now · T animate the selected NCA brain's sub-ticks (at x1) · W
+save the current top genomes (--save-genomes path) to continue later · R reseed-from-hall
+· ESC/Q quit.
 
 The drawing is split from the loop (`draw` returns a Surface) so it can be
 rendered headless (SDL dummy) for tests/screenshots without a display.
@@ -448,11 +449,28 @@ _HELP_LINES = [
     "[  /  ] food rate  down / up",
     ",  /  . food ceiling  down / up",
     "T       animate NCA 'thinking'",
+    "P       screenshot now",
     "W       save genome pool",
     "R       reseed from hall",
     "H       toggle this help",
     "ESC / Q quit",
 ]
+
+
+def _shot_name(world) -> str:
+    """Screenshot filename: the TICK first, zero-padded so files sort by tick in a
+    plain name sort, then a few world params (epoch, population, species)."""
+    s = world.snapshot()
+    return (f"t{s['tick']:08d}_ep{s['epoch']}_pop{s['population']}"
+            f"_sp{s['species']}.png")
+
+
+def _save_shot(screen, shots_dir, world) -> str:
+    """Save the current frame to shots_dir with a tick-sorted name; return the name."""
+    Path(shots_dir).mkdir(parents=True, exist_ok=True)
+    name = _shot_name(world)
+    pygame.image.save(screen, str(Path(shots_dir) / name))
+    return name
 
 
 def _draw_help(surf, font, small):
@@ -560,6 +578,9 @@ def main(argv=None) -> int:
                     leader = None
                     msg, msg_frames = ("follow oldest ON" if follow_oldest
                                        else "follow oldest OFF"), 90
+                elif e.key == pygame.K_p:            # take a screenshot now
+                    name = _save_shot(screen, a.shots_dir, world)
+                    msg, msg_frames = f"saved shot {name}", 120
                 elif e.key == pygame.K_t:            # toggle subtick "thinking" view
                     think = not think
                     sub = 0
@@ -634,11 +655,9 @@ def main(argv=None) -> int:
             _draw_help(screen, font, small)
         pygame.display.flip()
         if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
-            Path(a.shots_dir).mkdir(parents=True, exist_ok=True)
-            shot = Path(a.shots_dir) / f"vivarium_t{world.tick}_{time.strftime('%Y%m%d-%H%M%S')}.png"
-            pygame.image.save(screen, str(shot))
+            name = _save_shot(screen, a.shots_dir, world)
             last_shot = time.time()
-            msg, msg_frames = f"saved shot {shot.name}", 120
+            msg, msg_frames = f"saved shot {name}", 120
         clock.tick(60 if (speed <= 2 or anim) else 0)   # capped when slow/animating
     pygame.quit()
     return 0

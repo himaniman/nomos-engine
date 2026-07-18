@@ -66,7 +66,7 @@ class Config:
     # slowly DRIFTS around the map, so food is a moving resource PATCH to track, not
     # a uniform sprinkle. Concentrated patches also help random foragers bootstrap.
     n_food_types: int = 2              # distinct food types (a dietary niche axis)
-    food_halo_sigma: float = 0.06      # halo radius as a fraction of the grid side.
+    food_halo_sigma: float = 0.12      # halo radius as a fraction of the grid side.
                                        # TIGHT: food forms real PATCHES (a wide sigma
                                        # sprinkles food uniformly and the halo means
                                        # nothing — then there's no niche to specialize

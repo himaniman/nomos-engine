@@ -492,8 +492,8 @@ def main(argv=None) -> int:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--population", type=int, default=30)
     p.add_argument("--cell", type=int, default=8, help="pixels per cell")
-    p.add_argument("--brain", choices=("neat", "nca"), default="neat",
-                   help="brain model: neat graph or nca cellular-automaton")
+    p.add_argument("--brain", choices=("neat", "nca"), default="nca",
+                   help="brain model: nca cellular-automaton (default) or neat graph")
     p.add_argument("--load-genomes", default=None, dest="load_genomes",
                    help="seed the world from an evolved genome pool (.json)")
     p.add_argument("--save-genomes", default="vivarium/pools/session.json",
@@ -521,7 +521,7 @@ def main(argv=None) -> int:
     # window, not a scaled-up (blurry) one.
     panel_w = 560
     screen = pygame.display.set_mode((world.w * a.cell + panel_w, world.h * a.cell))
-    pygame.display.set_caption("vivarium")
+    pygame.display.set_caption(f"vivarium — {a.brain} brain")
     clock = pygame.time.Clock()
     last_shot = time.time()                          # periodic auto-screenshot timer
 

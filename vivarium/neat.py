@@ -21,9 +21,11 @@ from __future__ import annotations
 
 import numpy as np
 
-# actions (outputs), matching the world's movement model
-FORWARD, TURN_LEFT, TURN_RIGHT = 0, 1, 2
-N_ACTIONS = 3
+# actions (outputs), matching the world's movement model. STAY = stand still and
+# burn only the base metabolic cost (no move/turn) — an idle agent conserves energy,
+# so parking to digest is a real strategy evolution can find.
+FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
+N_ACTIONS = 4
 
 _ACT_RELAX = 3          # synchronous relaxation steps per decision
 

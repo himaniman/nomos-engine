@@ -14,7 +14,7 @@ import numpy as np
 
 from vivarium import nca, neat
 from vivarium.config import Config
-from vivarium.neat import FORWARD, TURN_LEFT, TURN_RIGHT
+from vivarium.neat import FORWARD, TURN_LEFT, TURN_RIGHT, STAY
 
 _BRAINS = {"neat": neat, "nca": nca}
 
@@ -340,6 +340,8 @@ class World:
             elif action == TURN_RIGHT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading + 1) % 4
+            # action == STAY: stand still, paying only base_cost (already deducted) —
+            # the cheapest tick, so a fed agent can park and conserve energy
             if a.energy >= c.repro_min_energy and a.id not in bred:
                 self._try_reproduce(a, bred)           # innate drive: breed when able
             a.age += 1

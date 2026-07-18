@@ -37,8 +37,8 @@ from __future__ import annotations
 import numpy as np
 
 # actions (outputs) — identical ids to neat.py so the World's step logic is shared
-FORWARD, TURN_LEFT, TURN_RIGHT = 0, 1, 2
-N_ACTIONS = 3
+FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
+N_ACTIONS = 4
 
 # the 3x3 neighbourhood order (self included), used to build the perception vector
 _OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]

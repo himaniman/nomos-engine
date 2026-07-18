@@ -59,23 +59,30 @@ def genome_color(genome: Genome) -> tuple[int, int, int]:
     return int(r * 255), int(g * 255), int(b * 255)
 
 
-def genome_name(genome: Genome) -> str:
-    """A 6-letter pronounceable-ish name for a genome, so lineages are nameable
-    in the stats. Stable per genome, changes when the structure/weights change."""
+def _hash_suffix(genome: Genome, k: int = 3) -> str:
+    """`k` consonants hashed from the full genome fingerprint — a weight-level
+    identity tag that changes on ANY mutation (the '-XYZ' after the body plan)."""
     n = _genome_hash(genome)
-    letters = []
-    for _ in range(6):
-        letters.append(_CONSONANTS[n % len(_CONSONANTS)])
+    out = []
+    for _ in range(k):
+        out.append(_CONSONANTS[n % len(_CONSONANTS)])
         n //= len(_CONSONANTS)
-    return "".join(letters)
+    return "".join(out)
 
 
-def _brain_tag(genome) -> str:
-    """Compact structure readout for a genome: NCA shows alive cells + type
-    diversity (its 'neuron diversity'); NEAT shows hidden nodes + connections."""
+def genome_name(genome: Genome) -> str:
+    """A structured GENOME CODE, not an opaque hash: the body plan read straight off
+    the architecture, then a short weight-hash suffix. So the name is informative and
+    the structural PREFIX is stable while only weights drift (you watch a body plan
+    persist across a lineage), and it only changes when the architecture changes.
+      NCA : '<cells>c<types>t<depth>d-XYZ'  (e.g. 9c3t4d-ZKQ)
+      NEAT: '<hidden>h<conns>c-XYZ'         (e.g. 2h11c-BFK)"""
     nh, nc = genome.complexity()
-    return f"{nh}c {nc}t" if getattr(genome, "kind", "neat") == "nca" \
-        else f"h{nh} c{nc}"
+    if getattr(genome, "kind", "neat") == "nca":
+        plan = f"{nh}c{nc}t{genome.max_depth()}d"
+    else:
+        plan = f"{nh}h{nc}c"
+    return f"{plan}-{_hash_suffix(genome)}"
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
@@ -130,6 +137,13 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
 def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
                 leader=None, hitboxes=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
+    # two columns: a narrow TEXT column (stats / leaders / populations) on the left
+    # and a wide BRAIN column on the right where the inspected agent's CA lattice and
+    # its perceptron rule-nets are drawn at native resolution (no scaling blur).
+    text_w = min(250, panel_w)
+    bx0, bw = x0 + text_w, panel_w - text_w
+    if bw > 40:
+        pygame.draw.line(surf, (40, 40, 50), (bx0, 8), (bx0, H - 8), 1)
     s = world.snapshot()
     lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
              f"food {s['food']}  carn {s['carnivores'] * 100:.0f}%",
@@ -152,10 +166,10 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         hitboxes.clear()
     for age, g in world.hall[:3]:
         pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
-        surf.blit(small.render(f"{age:>4} {genome_name(g)}  {_brain_tag(g)}", True,
+        surf.blit(small.render(f"{age:>4} {genome_name(g)}", True,
                                (210, 215, 230)), (x0 + 28, y))
         if hitboxes is not None:
-            hitboxes.append((pygame.Rect(x0, y, panel_w, 17), g))
+            hitboxes.append((pygame.Rect(x0, y, text_w, 17), g))
         y += 17
     y += 6
 
@@ -174,14 +188,22 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         y += 16
     y += 8
 
-    # inspector: a clicked leader genome takes priority, else the selected agent
+    # inspector goes in the BRAIN column (its own space, full height), else — if the
+    # panel is too narrow for a column — it falls back under the text.
+    if bw > 120:
+        ix, iy, iw = bx0, 10, bw
+    else:
+        ix, iy, iw = x0, y, panel_w
+    # a clicked leader genome takes priority, else the selected agent
     if leader is not None:
-        _draw_inspector(surf, leader, None, x0, y, panel_w, H, font, small,
-                        title="LEADER")
+        _draw_inspector(surf, leader, None, ix, iy, iw, H, font, small, title="LEADER")
         return
     a = world.agents.get(selected) if selected is not None else None
     if a is not None:
-        _draw_inspector(surf, a.brain.genome, a, x0, y, panel_w, H, font, small)
+        _draw_inspector(surf, a.brain.genome, a, ix, iy, iw, H, font, small)
+    elif bw > 120:
+        surf.blit(small.render("click an agent to inspect its brain", True,
+                               (110, 120, 140)), (bx0 + 12, 14))
 
 
 def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
@@ -229,12 +251,23 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
     inp = getattr(phenotype, "last_input", None) if phenotype is not None else None
     logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
 
-    grid_h = int(h * 0.55)                                 # top row height
+    grid_h = int(h * 0.62)                                 # top row height (bigger lattice)
     col_w, pad = 6, 6
     gx0 = x + (col_w + pad if inp is not None else 0)
     gx1 = x + w - (col_w + pad if logits is not None else 0)
     G = genome.G
-    side = max(1, min(gx1 - gx0, grid_h) // G)
+    # CROP to the alive bounding box (+1 cell margin) so the few live cells fill the
+    # view — drawing the whole mostly-dead G x G lattice made cells tiny. Cells are
+    # sized to fill the available box, so a small brain reads BIG.
+    if genome.mask.any():
+        ys_a, xs_a = np.where(genome.mask)
+        ay0, ay1 = max(0, int(ys_a.min()) - 1), min(G - 1, int(ys_a.max()) + 1)
+        ax0, ax1 = max(0, int(xs_a.min()) - 1), min(G - 1, int(xs_a.max()) + 1)
+    else:
+        ay0, ay1, ax0, ax1 = 0, G - 1, 0, G - 1
+    rows, cols = ay1 - ay0 + 1, ax1 - ax0 + 1
+    side = max(3, min(gx1 - gx0, grid_h) // max(rows, cols))
+    xoff = gx0 + max(0, (gx1 - gx0 - cols * side) // 2)    # centre the cropped lattice
 
     def strip(vals, sx, hi=None, signed=False):
         n = len(vals)
@@ -253,11 +286,12 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
 
     if inp is not None:
         strip(inp, x)                                      # input senses (left)
-    for gy in range(G):
-        for gx in range(G):
-            rect = (gx0 + gx * side, y + gy * side, side - 1, side - 1)
+    for gy in range(ay0, ay1 + 1):                         # only the cropped bbox
+        for gx in range(ax0, ax1 + 1):
+            rect = (xoff + (gx - ax0) * side, y + (gy - ay0) * side,
+                    side - 1, side - 1)
             if not genome.mask[gy, gx]:
-                surf.fill((30, 30, 38), rect)              # dead cell
+                surf.fill((30, 30, 38), rect)              # dead cell (margin)
                 continue
             if state is not None:
                 ch = state[gy, gx]
@@ -354,7 +388,7 @@ def main(argv=None) -> int:
     p.add_argument("--size", type=int, default=40)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--population", type=int, default=30)
-    p.add_argument("--cell", type=int, default=7, help="pixels per cell")
+    p.add_argument("--cell", type=int, default=8, help="pixels per cell")
     p.add_argument("--brain", choices=("neat", "nca"), default="neat",
                    help="brain model: neat graph or nca cellular-automaton")
     p.add_argument("--load-genomes", default=None, dest="load_genomes",
@@ -374,7 +408,11 @@ def main(argv=None) -> int:
     pygame.init()
     font = pygame.font.SysFont("consolas", 16)
     small = pygame.font.SysFont("consolas", 13)
-    panel_w = 260
+    # Wide panel: a text column + a dedicated BRAIN column (CA lattice on top, its
+    # perceptron rule-nets below), all drawn at native resolution — no scaling, so
+    # text and lattice stay crisp. Make the world cells bigger (--cell) for a bigger
+    # window, not a scaled-up (blurry) one.
+    panel_w = 560
     screen = pygame.display.set_mode((world.w * a.cell + panel_w, world.h * a.cell))
     pygame.display.set_caption("vivarium")
     clock = pygame.time.Clock()

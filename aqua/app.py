@@ -143,7 +143,6 @@ def draw(world: World, cell: int, panel_w: int, font, small,
 
     _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes,
                 sense_colors=_sense_colors(world))
-    _draw_sense_legend(surf, small, 6, H - (len(_SENSE_LEGEND) * 14 + 24))  # key, world corner
     return surf
 
 
@@ -326,6 +325,7 @@ def main(argv=None) -> int:
                          leader=leader, hitboxes=leader_boxes), (0, 0))
         if show_help:
             _draw_help(screen, font, small)
+            _draw_sense_legend(screen, small, 360, 24)     # the sensor-colour key, beside help
         pygame.display.flip()
         if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
             name = _save_shot(screen, a.shots_dir, world)

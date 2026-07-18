@@ -568,6 +568,36 @@ def test_nca_crossover_across_different_type_counts_is_valid():
         assert nca.Phenotype(child, subticks=8).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
 
 
+def test_nca_plasticity_learns_within_life():
+    # lifetime learning: a plastic readout reinforces the actions that earn reward,
+    # so a FIXED genome shifts its behaviour within one life; frozen brains don't.
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(0)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    # frozen: learn is a no-op, the plastic delta stays zero
+    frozen = nca.Phenotype(g, subticks=8, plastic=False)
+    frozen.act(np.ones(n_in))
+    frozen.learn(1.0)
+    assert not frozen.dW.any()
+    # plastic: repeatedly reward whatever it picks -> that action's readout grows and
+    # the delta becomes non-zero (it learned), settling on a self-reinforced action
+    p = nca.Phenotype(g, subticks=8, plastic=True, lr=0.1, forget=0.0)
+    x = np.ones(n_in)
+    for _ in range(50):
+        p.act(x)
+        p.learn(1.0)
+    assert p.dW.any()                                  # something was learned
+    a_final = p.act(x)                                 # the settled choice
+    norms = np.linalg.norm(p.dW, axis=0)               # per-action readout growth
+    assert int(np.argmax(norms)) == a_final            # reinforced action dominates
+    # a zero reward never grows the delta (only slow forgetting)
+    q = nca.Phenotype(g, subticks=8, plastic=True)
+    q.act(x)
+    q.learn(0.0)
+    assert not q.dW.any()
+
+
 def test_nca_world_runs_and_is_deterministic():
     cfg = _nca_cfg(size=32, seed=5, init_population=12)
     a = run_headless(cfg, ticks=60, every=20)

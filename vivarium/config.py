@@ -195,3 +195,21 @@ class Config:
     nca_cell_cost: float = 0.02        # energy per brain cell per tick (NCA only): makes
                                        # a bigger brain COST more, so shape/size is under
                                        # selection, not a free random drift
+
+    # LIFETIME LEARNING (meta-plasticity, NCA only) — ON by default: it's the point of
+    # the NCA brain. Normally the weights are FIXED at birth and only the cell state
+    # changes; with this on, the motor readout also learns WITHIN a life by reward-
+    # modulated (three-factor) Hebbian plasticity: an eligibility TRACE remembers the
+    # last few (pooled-state, action) decisions, and when the agent EATS (reward), those
+    # decisions' readout weights are reinforced in a plastic delta added to P_out. So a
+    # FIXED genome gets better at foraging as it ages, which should help TAKEOFF (a
+    # random brain can improve inside one life instead of only across generations). The
+    # learned delta is NOT inherited (Darwinian, not Lamarckian — evolution tunes the
+    # ABILITY to learn, not the learned weights). The flag stays only for the A/B
+    # experiment (plastic vs frozen); leave it True for normal runs.
+    nca_plastic: bool = True           # within-life learning of the motor readout
+    nca_plastic_lr: float = 0.03       # learning rate of the reward-gated update
+    nca_plastic_forget: float = 0.002  # per-tick decay of the plastic delta (slow)
+    nca_plastic_elig: float = 0.5      # per-act decay of the eligibility trace (credit
+                                       # reaches back ~1/(1-elig) decisions before a meal)
+    nca_plastic_clip: float = 1.0      # bound on |plastic delta| (keeps it from running off)

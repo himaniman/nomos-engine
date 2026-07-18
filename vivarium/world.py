@@ -100,9 +100,15 @@ class World:
         return child
 
     def _phenotype(self, genome):
-        """Build a runnable brain from a genome (NCA needs the think-time)."""
-        if self.cfg.brain == "nca":
-            return self.brain.Phenotype(genome, subticks=self.cfg.nca_subticks)
+        """Build a runnable brain from a genome (NCA needs the think-time, and carries
+        the lifetime-learning plasticity params when enabled)."""
+        c = self.cfg
+        if c.brain == "nca":
+            return self.brain.Phenotype(genome, subticks=c.nca_subticks,
+                                        plastic=c.nca_plastic, lr=c.nca_plastic_lr,
+                                        forget=c.nca_plastic_forget,
+                                        elig_decay=c.nca_plastic_elig,
+                                        clip=c.nca_plastic_clip)
         return self.brain.Phenotype(genome)
 
     def _seed_genome(self):
@@ -304,6 +310,7 @@ class World:
 
     def step(self) -> None:
         c = self.cfg
+        plastic = c.brain == "nca" and c.nca_plastic   # within-life learning enabled
         self._regrow_food()
         dead: list[Agent] = []
         bred: set[int] = set()                     # at most one child per agent/tick
@@ -317,6 +324,7 @@ class World:
                 a.energy -= c.nca_cell_cost * int(a.brain.genome.mask.sum())  # so size
                                                    # is under selection, not free drift
             action = int(action)
+            reward = 0.0                           # energy eaten this tick (the learn signal)
             if action == FORWARD:
                 a.energy -= c.move_cost
                 dy, dx = _HEAD_VEC[a.heading]
@@ -331,9 +339,10 @@ class World:
                         g = a.brain.genome
                         gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
                         a.energy = min(c.max_energy, a.energy + gain)
+                        reward = gain
                 elif (c.predation and a.brain.genome.carnivore >= c.carnivore_threshold
                       and self.occ[ny, nx] >= 0):
-                    self._predate(a, ny, nx)            # carnivore eats the agent ahead
+                    reward = self._predate(a, ny, nx)   # carnivore eats the agent ahead
             elif action == TURN_LEFT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading - 1) % 4
@@ -342,6 +351,8 @@ class World:
                 a.heading = (a.heading + 1) % 4
             # action == STAY: stand still, paying only base_cost (already deducted) —
             # the cheapest tick, so a fed agent can park and conserve energy
+            if plastic:                            # reinforce the decisions that fed it
+                a.brain.learn(reward / c.food_energy)
             if a.energy >= c.repro_min_energy and a.id not in bred:
                 self._try_reproduce(a, bred)           # innate drive: breed when able
             a.age += 1
@@ -446,23 +457,26 @@ class World:
             for p in parents:
                 p.offspring += 1
 
-    def _predate(self, pred: Agent, ny: int, nx: int) -> None:
+    def _predate(self, pred: Agent, ny: int, nx: int) -> float:
         """A carnivore steps onto the agent ahead, killing and eating it: the predator
         gains `meat_energy` (scaled by how committed a carnivore it is), the prey dies
-        WITHOUT a corpse (consumed), and the predator takes the now-empty cell."""
+        WITHOUT a corpse (consumed), and the predator takes the now-empty cell. Returns
+        the energy gained (the plasticity reward), 0.0 if there was no prey."""
         prey = self.agents.get(int(self.occ[ny, nx]))
         if prey is None:
-            return
+            return 0.0
         g = pred.brain.genome
         self.agents.pop(prey.id, None)                     # prey removed (no corpse)
         self.occ[prey.y, prey.x] = -1
         self.stats["deaths"] += 1
         self._remember(prey)
-        pred.energy = min(self.cfg.max_energy,
-                          pred.energy + self.cfg.meat_energy * g.carnivore)
+        gain = min(self.cfg.max_energy, pred.energy + self.cfg.meat_energy * g.carnivore) \
+            - pred.energy
+        pred.energy += gain
         self.occ[pred.y, pred.x] = -1
         pred.y, pred.x = ny, nx
         self.occ[ny, nx] = pred.id
+        return gain
 
     def _kill(self, a: Agent) -> None:
         self.occ[a.y, a.x] = -1

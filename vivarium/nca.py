@@ -178,7 +178,9 @@ class Phenotype:
     as a drive, relaxes the per-type rules a few sub-ticks so signals cross the grid,
     then reads the action from the pooled cell state."""
 
-    def __init__(self, genome: Genome, subticks: int = 32):
+    def __init__(self, genome: Genome, subticks: int = 32, plastic: bool = False,
+                 lr: float = 0.03, forget: float = 0.002, elig_decay: float = 0.5,
+                 clip: float = 1.0):
         self.genome = genome
         self.subticks = subticks
         G, C = genome.G, genome.C
@@ -188,6 +190,14 @@ class Phenotype:
                           for k in range(genome.n_types)]
         self.last_input = None
         self.last_logits = None
+        # LIFETIME LEARNING (meta-plasticity): a plastic delta on the motor readout
+        # learned within one life. `dW` is added to P_out; `E` is the eligibility trace
+        # (recent pooled-state x chosen-action), decayed each act and reinforced by
+        # reward in `learn`. Reset per phenotype, so it is NOT inherited.
+        self.plastic = plastic
+        self.lr, self.forget, self.elig_decay, self.clip = lr, forget, elig_decay, clip
+        self.dW = np.zeros((C, genome.n_out), dtype=np.float64)
+        self._E = np.zeros((C, genome.n_out), dtype=np.float64)
         # inspector-only (never used by the computation): a per-sub-tick TRACE for the
         # "watch it think" animation, and a state override for drawing one trace frame.
         self.record = False
@@ -226,10 +236,27 @@ class Phenotype:
                 self.trace.append(st.copy())                 # one frame per sub-tick
         self.state = st
         pooled = st[g.mask].mean(axis=0)                     # (C,) mean over alive
-        logits = pooled @ g.P_out + g.b_out                  # (n_out,)
+        eff_out = g.P_out + self.dW if self.plastic else g.P_out  # readout + learned delta
+        logits = pooled @ eff_out + g.b_out                  # (n_out,)
         self.last_input = inputs
         self.last_logits = logits
-        return int(np.argmax(logits))
+        a = int(np.argmax(logits))
+        if self.plastic:                                     # remember this decision:
+            self._E *= self.elig_decay                       # decay the trace, then credit
+            self._E[:, a] += pooled                          # outer(pooled, onehot(a))
+        return a
+
+    def learn(self, reward: float) -> None:
+        """Reward-modulated (three-factor) update of the plastic readout delta, called
+        once per game tick. The plastic delta always forgets slowly; when a REWARD lands
+        (the agent ate), the decisions still in the eligibility trace are reinforced —
+        so actions that led to food get more likely. No-op unless plastic."""
+        if not self.plastic:
+            return
+        self.dW *= (1.0 - self.forget)
+        if reward:
+            self.dW += self.lr * reward * self._E
+            np.clip(self.dW, -self.clip, self.clip, out=self.dW)
 
 
 def _jitter(arr: np.ndarray, rng, prob: float, std: float) -> None:

@@ -91,6 +91,30 @@
       "justMyCode": true
     },
     {
+      "name": "aqua: watch continuous NCA (pygame)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "aqua.app",
+      "args": ["--brain", "nca", "--size", "48", "--seed", "1", "--cell", "12",
+               "--population", "18"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "aqua: watch continuous NEAT (pygame)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "aqua.app",
+      "args": ["--brain", "neat", "--size", "48", "--seed", "1", "--cell", "12",
+               "--population", "18"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "Python: current file",
       "type": "debugpy",
       "request": "launch",

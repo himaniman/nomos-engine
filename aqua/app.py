@@ -1,0 +1,291 @@
+"""Real-time pygame view of the CONTINUOUS aqua world.
+
+    python -m aqua.app --brain nca --size 48 --seed 1
+
+The world (left) is drawn as SMOOTH vector graphics: agents are circles coloured
+by lineage (brightness = energy) with a heading spoke, food are dots coloured by
+type, walls/corpses are cells. Click an agent to inspect it — and its FIELD OF
+VIEW is drawn as the vision-ray fan out to each ray's first hit, so you see
+exactly how far and where it sees (the perception viz, now literally the brain's
+ray vision). The right panel is reused from `vivarium.app`: the ecology HUD, the
+top lineages, per-population stats, and the CA/NEAT brain inspector.
+
+Controls: SPACE pause/resume · S single-step · +/- speed · click an agent to
+inspect · L follow the longest-lived · [ / ] food rate · , / . food ceiling ·
+T animate the selected NCA brain's sub-ticks (x1) · P screenshot · W save top
+genomes · R reseed-from-hall · H toggle help · ESC/Q quit.
+
+`draw()` returns a Surface so the view renders headless (SDL dummy) for tests.
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+import pygame
+
+from aqua.world import World
+from vivarium.app import (_FOOD_COLORS, _draw_help, _draw_panel, _fmt_hms,
+                          _save_shot, genome_color)
+from vivarium.config import Config
+
+
+def _ray_hit(world: World, a, ang: float) -> float:
+    """Distance along a ray from agent `a` at world-angle `ang` to its first hit
+    (wall / food / another agent), capped at ray_length — for drawing the cone."""
+    rl = float(world.cfg.ray_length)
+    dx, dy = math.cos(ang), math.sin(ang)
+    k = world.ray_step
+    while k <= rl:
+        cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
+        if not (0 <= cy < world.h and 0 <= cx < world.w) or world.walls[cy, cx] \
+                or world.corpse[cy, cx] > 0 or world.food[cy, cx]:
+            return k
+        k += world.ray_step
+    for b in world.agents.values():
+        if b.id == a.id:
+            continue
+        d = math.hypot(b.y - a.y, b.x - a.x)
+        if d <= rl and abs(((math.atan2(b.y - a.y, b.x - a.x) - ang + math.pi)
+                            % (2 * math.pi)) - math.pi) <= world.cfg.fov / 2:
+            rl = min(rl, d)
+    return rl
+
+
+def draw(world: World, cell: int, panel_w: int, font, small,
+         selected=None, hud=None, leader=None, hitboxes=None) -> pygame.Surface:
+    """One frame: the smooth continuous world on the left, the reused vivarium
+    HUD + brain inspector on the right."""
+    W, H = world.w * cell, world.h * cell
+    surf = pygame.Surface((W + panel_w, H))
+    surf.fill((12, 12, 16))
+
+    wy, wx = np.where(world.walls)                          # walls (grid cells)
+    for y, x in zip(wy, wx):
+        surf.fill((60, 60, 68), (x * cell, y * cell, cell, cell))
+    cyy, cxx = np.where(world.corpse > 0)                   # corpses
+    for y, x in zip(cyy, cxx):
+        surf.fill((70, 40, 30), (x * cell, y * cell, cell, cell))
+    for k, (hy, hx) in enumerate(world.halos):             # faint food-halo discs
+        pygame.draw.circle(surf, tuple(c // 5 for c in _FOOD_COLORS[k % len(_FOOD_COLORS)]),
+                           (int(hx) * cell, int(hy) * cell),
+                           max(2, int(world.cfg.food_halo_sigma * world.w * cell)), 1)
+    fy, fx = np.where(world.food > 0)                       # food, coloured by type
+    fr = max(2, cell // 2)
+    for y, x in zip(fy, fx):
+        col = _FOOD_COLORS[(int(world.food[y, x]) - 1) % len(_FOOD_COLORS)]
+        pygame.draw.circle(surf, col, (x * cell + cell // 2, y * cell + cell // 2), fr)
+
+    sel = world.agents.get(selected) if selected is not None else None
+    if sel is not None:                                    # the selected agent's FOV cone
+        for rel in world._ray_angles:
+            ang = sel.heading + rel
+            d = _ray_hit(world, sel, ang)
+            pygame.draw.line(surf, (90, 120, 160),
+                             (sel.x * cell, sel.y * cell),
+                             ((sel.x + math.cos(ang) * d) * cell,
+                              (sel.y + math.sin(ang) * d) * cell), 1)
+
+    ar = max(2, int(round(world.radius * cell)))           # circle = the body's real radius
+    for a in world.agents.values():                        # agents as smooth circles
+        col = genome_color(a.brain.genome)
+        bright = 0.35 + 0.65 * min(1.0, a.energy / world.cfg.max_energy)
+        col = tuple(int(ch * bright) for ch in col)
+        px, py = a.x * cell, a.y * cell
+        pygame.draw.circle(surf, col, (int(px), int(py)), ar)
+        if a.id == selected:
+            pygame.draw.circle(surf, (255, 255, 255), (int(px), int(py)), ar + 2, 1)
+        pygame.draw.line(surf, (0, 0, 0), (px, py),
+                         (px + math.cos(a.heading) * ar * 1.8,
+                          py + math.sin(a.heading) * ar * 1.8), 1)
+
+    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes)
+    return surf
+
+
+def _agent_at_px(world: World, mx: int, my: int, cell: int):
+    """The agent whose circle is under the mouse (or None)."""
+    wy, wx = my / cell, mx / cell
+    best, best_d = None, max(1.0, world.radius * 2)
+    for a in world.agents.values():
+        d = math.hypot(a.y - wy, a.x - wx)
+        if d < best_d:
+            best, best_d = a, d
+    return best
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(prog="aqua.app", description="watch the continuous aqua world")
+    p.add_argument("--size", type=int, default=48)
+    p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--population", type=int, default=18)
+    p.add_argument("--cell", type=int, default=12, help="pixels per grid cell")
+    p.add_argument("--brain", choices=("neat", "nca"), default="nca")
+    p.add_argument("--load-genomes", default=None, dest="load_genomes")
+    p.add_argument("--save-genomes", default="aqua/pools/session.json", dest="save_genomes")
+    p.add_argument("--shots-dir", default="out/aqua", dest="shots_dir")
+    p.add_argument("--shot-every", type=float, default=1800.0, dest="shot_every",
+                   help="seconds between auto-screenshots (0 = off)")
+    a = p.parse_args(argv)
+
+    cfg = Config(size=a.size, seed=a.seed, init_population=a.population, brain=a.brain)
+    pool = None
+    if a.load_genomes:
+        from vivarium.genome_io import load_genomes
+        pool = load_genomes(a.load_genomes)
+    world = World(cfg, genome_pool=pool)
+
+    pygame.init()
+    font = pygame.font.SysFont("consolas", 16)
+    small = pygame.font.SysFont("consolas", 13)
+    panel_w = 560
+    screen = pygame.display.set_mode((world.w * a.cell + panel_w, world.h * a.cell))
+    pygame.display.set_caption(f"aqua (continuous) — {a.brain} brain")
+    clock = pygame.time.Clock()
+    last_shot = time.time()
+    t_start = time.time()
+    epoch_t0 = t_start
+    epoch_seen = world.epoch
+
+    paused, speed, selected = False, 1, None
+    show_help = False
+    follow_oldest, leader = False, None
+    leader_boxes: list = []
+    think, sub, recorded = False, 0, None
+    msg, msg_frames = "press H for keys", 400
+    is_nca = cfg.brain == "nca"
+    running = True
+    while running:
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                running = False
+            elif e.type == pygame.KEYDOWN:
+                if e.key in (pygame.K_ESCAPE, pygame.K_q):
+                    running = False
+                elif e.key == pygame.K_h:
+                    show_help = not show_help
+                elif e.key == pygame.K_SPACE:
+                    paused = not paused
+                elif e.key == pygame.K_s:
+                    world.step()
+                elif e.key in (pygame.K_PLUS, pygame.K_EQUALS):
+                    speed = min(1024, speed * 2)
+                elif e.key == pygame.K_MINUS:
+                    speed = max(1, speed // 2)
+                elif e.key == pygame.K_r:
+                    world._reseed()
+                    msg, msg_frames = "reseeded from hall", 90
+                elif e.key == pygame.K_RIGHTBRACKET:       # ] more food per tick
+                    world.food_rate = round(world.food_rate
+                                            + (1 if world.food_rate >= 1 else 0.1), 1)
+                    msg, msg_frames = f"food rate {world.food_rate:g}", 60
+                elif e.key == pygame.K_LEFTBRACKET:        # [ less food per tick
+                    step = 1 if world.food_rate > 1 else 0.1
+                    world.food_rate = max(0.1, round(world.food_rate - step, 1))
+                    msg, msg_frames = f"food rate {world.food_rate:g}", 60
+                elif e.key == pygame.K_PERIOD:             # . raise the food ceiling
+                    world.food_cap = round(min(0.6, world.food_cap + 0.01), 3)
+                    msg, msg_frames = f"food cap {world.food_cap * 100:.0f}%", 60
+                elif e.key == pygame.K_COMMA:              # , lower the food ceiling
+                    world.food_cap = round(max(0.0, world.food_cap - 0.01), 3)
+                    msg, msg_frames = f"food cap {world.food_cap * 100:.0f}%", 60
+                elif e.key == pygame.K_l:
+                    follow_oldest = not follow_oldest
+                    leader = None
+                    msg, msg_frames = ("follow oldest ON" if follow_oldest
+                                       else "follow oldest OFF"), 90
+                elif e.key == pygame.K_p:
+                    name = _save_shot(screen, a.shots_dir, world)
+                    msg, msg_frames = f"saved shot {name}", 120
+                elif e.key == pygame.K_t:                  # toggle subtick "thinking" view
+                    think = not think
+                    sub = 0
+                elif e.key == pygame.K_w:
+                    from vivarium.genome_io import save_genomes
+                    seen, genomes = set(), []
+                    for g in world.population_genomes(3) + world.hall_genomes():
+                        k = g.key()
+                        if k not in seen:
+                            seen.add(k)
+                            genomes.append(g)
+                    genomes = genomes or [ag.brain.genome.copy()
+                                          for ag in world.agents.values()]
+                    if genomes:
+                        Path(a.save_genomes).parent.mkdir(parents=True, exist_ok=True)
+                        save_genomes(a.save_genomes, genomes)
+                        msg, msg_frames = f"saved {len(genomes)} -> {a.save_genomes}", 150
+            elif e.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = e.pos
+                hit = next((g for rect, g in leader_boxes if rect.collidepoint(mx, my)),
+                           None)
+                if hit is not None:
+                    leader = hit
+                elif mx < world.w * a.cell:
+                    picked = _agent_at_px(world, mx, my, a.cell)
+                    if picked is not None:
+                        selected, leader, follow_oldest = picked.id, None, False
+
+        if follow_oldest and world.agents:
+            selected = max(world.agents.values(), key=lambda ag: ag.age).id
+            leader = None
+
+        # only the selected NCA agent records its subtick trace (for the T view)
+        if is_nca and recorded != selected:
+            if recorded in world.agents:
+                world.agents[recorded].brain.record = False
+                world.agents[recorded].brain.show_state = None
+            recorded = selected
+        anim = think and speed == 1 and is_nca and not paused and selected in world.agents
+        if is_nca and selected in world.agents:
+            world.agents[selected].brain.record = anim
+
+        if not paused:
+            if anim:                                       # 1 world tick per K frames; play it
+                if sub == 0:
+                    world.step()
+                if selected in world.agents:
+                    tr = world.agents[selected].brain.trace
+                    if tr:
+                        world.agents[selected].brain.show_state = tr[min(sub, len(tr) - 1)]
+                        sub = (sub + 1) % len(tr)
+                    else:
+                        sub = 0
+                else:
+                    sub = 0
+            else:
+                for _ in range(speed):
+                    world.step()
+                sub = 0
+        if selected is not None and selected not in world.agents:
+            selected = None
+        if world.epoch != epoch_seen:                      # a reseed started a new epoch
+            epoch_seen = world.epoch
+            epoch_t0 = time.time()
+
+        now = time.time()
+        fps = clock.get_fps()
+        hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0),
+               "think": anim, "msg": msg if msg_frames > 0 else "",
+               "real": _fmt_hms(now - t_start), "epoch_real": _fmt_hms(now - epoch_t0)}
+        if msg_frames > 0:
+            msg_frames -= 1
+        screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,
+                         leader=leader, hitboxes=leader_boxes), (0, 0))
+        if show_help:
+            _draw_help(screen, font, small)
+        pygame.display.flip()
+        if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
+            name = _save_shot(screen, a.shots_dir, world)
+            last_shot = time.time()
+            msg, msg_frames = f"saved shot {name}", 120
+        clock.tick(60 if (speed <= 2 or anim) else 0)
+    pygame.quit()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

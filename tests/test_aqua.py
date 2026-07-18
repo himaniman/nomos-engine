@@ -57,7 +57,8 @@ def test_command_is_continuous_and_monotonic():
 def test_sensor_vector_width_matches_brain():
     w = World(_cfg())
     a = next(iter(w.agents.values()))
-    assert w.n_in == sensor_size(w.cfg.n_rays, w.smell)
+    # the brain input is sized for the MAX ray count (vision is heritable per agent)
+    assert w.n_in == sensor_size(w.cfg.n_rays_max, w.smell)
     assert w._sense(a).shape == (w.n_in,)
     # dropping smell narrows the input by exactly the smell channels
     assert World(_cfg(), smell=False).n_in == w.n_in - 2
@@ -68,7 +69,7 @@ def test_proprioception_reports_own_motion():
     w = World(_cfg(init_population=0))
     a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)
     a.last_speed = w.max_speed
-    o = w.cfg.n_rays * RAY_CH
+    o = w.cfg.n_rays_max * RAY_CH
     assert w._sense(a)[o + 1] == 1.0                # speed channel = full speed
 
 
@@ -77,10 +78,11 @@ def test_smell_points_toward_food():
     strongly positive and the lateral one near zero."""
     w = World(_cfg(init_population=0))
     a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)  # facing +x
+    a.brain.genome.diet = 0.0                       # fully digests food type 1 (edible)
     w.food[:] = 0
     w.food[24, 30] = 1                              # straight ahead (+x)
     w._food_xy = np.argwhere(w.food > 0)
-    o = w.cfg.n_rays * RAY_CH
+    o = w.cfg.n_rays_max * RAY_CH
     vec = w._sense(a)
     fwd, lat = vec[o + INTERO], vec[o + INTERO + 1]
     assert fwd > 0.3 and abs(lat) < 1e-6
@@ -91,9 +93,55 @@ def test_opacity_blocks_a_move_into_another_agent():
     g = w._seed_genome()
     a = w._spawn_agent(g, pos=(24.0, 24.0), heading=0.0)
     b = w._spawn_agent(w._seed_genome(), pos=(24.0, 25.2), heading=0.0)
-    reward = w._advance(a, 24.0, 25.0)              # would land on top of b
+    reward = w._advance(a, 24.0, 25.0)              # marches toward b, must not overlap it
     assert reward == 0.0
-    assert (a.y, a.x) == (24.0, 24.0)               # move was refused
+    assert a.x < b.x                                # did not pass through b
+    assert math.hypot(a.y - b.y, a.x - b.x) >= 2 * w.radius - 1e-9   # bodies never overlap
+
+
+# -- Stage 1: continuous WALLS (float rectangles, analytic collision + vision) ------
+
+def test_wall_rects_agree_with_placement_cache():
+    """The analytic wall rectangles and the grid `self.walls` (still backing food
+    placement) both derive from the strokes, so a cell centre is inside a rect iff
+    that cell is marked wall — the two views can never drift apart."""
+    w = World(_cfg(init_population=0))
+    assert w.wall_rects.shape[1] == 4 and len(w.wall_rects) >= 4   # at least the border
+    for cy in range(w.h):
+        for cx in range(w.w):
+            inside = any(y0 < cy < y1 and x0 < cx < x1 for y0, y1, x0, x1 in w.wall_rects)
+            assert inside == bool(w.walls[cy, cx])
+
+
+def test_ray_hits_wall_at_analytic_distance():
+    """A ray fired at a border wall returns its exact geometric distance (the left
+    face of the right border column), not a ray-marched approximation."""
+    w = World(_cfg(init_population=0))
+    cy, cx = w.h / 2.0, w.w / 2.0
+    d = w._ray_wall_dist(cy, cx, 1.0, 0.0, 1e3)     # +x ray toward the right border
+    assert abs(d - ((w.w - 1 - 0.5) - cx)) < 1e-9
+
+
+def test_wall_blocks_body_and_slides_not_tunnels():
+    """A body driven straight at a wall is stopped as a CIRCLE (never overlaps the
+    rectangle) and does not tunnel through it, however fast it is pushed."""
+    w = World(_cfg(init_population=0))
+    # a vertical wall bar at column 24, spanning several rows around the centre-ish
+    w.strokes = [{"axis": "v", "y": 20, "x": 24, "length": 8, "door": 0, "dir": 1}]
+    w._rasterize_walls()
+    w._build_wall_rects()
+    a = w._spawn_agent(w._seed_genome(), pos=(24.0, 22.0), heading=0.0)  # facing +x wall
+    w._advance(a, 40.0, 22.0)                        # shove far past the wall in one call
+    assert a.x < 24 - w.radius + 1e-9               # stopped before the wall face
+    assert not w._wall_blocks_circle(a.y, a.x)      # body does not overlap the wall
+
+
+def test_no_body_overlaps_walls_over_a_run():
+    w = World(_cfg(size=40, seed=2))               # small enough to stay fast; 250 ticks
+    for _ in range(250):                           # spans two wall-drift events
+        w.step()
+    assert w.population() > 0
+    assert not any(w._wall_blocks_circle(a.y, a.x) for a in w.agents.values())
 
 
 def test_reseed_on_extinction():

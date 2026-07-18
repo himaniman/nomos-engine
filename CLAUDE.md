@@ -287,6 +287,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   split flipped the ranking — cleanest demo the forage world has produced.
   Next: evolve the champion's four constants (hybrid design+tune, harder world)
   + wider holdout to confirm 5.20.
+- Done (aqua — the CONTINUOUS world, 2026-07-17..18): `aqua/world.py` +
+  `aqua/app.py` fork the vivarium ecology into float space — agents have
+  continuous (y, x), heading and speed, a continuous motor read-out
+  (`_command`: forward THRUST from forward-vs-stay, TURN from right-vs-left), and
+  a rich per-ray vision fan (edible food / obstacle / KIN / NON-KIN) + smell +
+  proprioception. Grid-backed food/walls; agents move and see smoothly over them.
+  `python -m aqua.app`. Three mechanics fixes (2026-07-18, see journal): (1)
+  collisions are now an honest CIRCLE-vs-grid test (`_blocked_circle`) matching
+  the drawn body — no more centre-point poking through walls; walls/corpses/
+  agents/food all judged by the body radius. (2) Movement is MARCHED in
+  sub-steps (`substep` 0.5 < 2*radius) with a collision + food-eat check every
+  hop, so nothing tunnels a wall or skips food at any speed, and a wall hit
+  SLIDES along the free axis instead of wedging. (3) VISION IS HERITABLE
+  (`vivarium/vision.py`): ray count (3–12) and reach (6–24 cells) are per-genome
+  genes with drift + crossover on both brains; the brain input is sized for
+  `n_rays_max` and an agent fans its own count into the first slots. Longer rays
+  are free because signal decays with distance. Different seeds evolve different
+  eyes (far-sighted many-ray vs sharp short-range).
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

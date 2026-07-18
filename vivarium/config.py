@@ -31,6 +31,10 @@ class Config:
                                        # (strokes with doorways) — mostly open space
                                        # with occasional walls; vision rays stop at
                                        # walls so agents can't see food behind them
+    wall_thickness: float = 1.0        # wall bar thickness in cells (continuous aqua
+                                       # world): strokes become float RECTANGLES this
+                                       # thick, collided/seen analytically. 1.0 keeps
+                                       # the old one-cell look
     # "living" landscape: each wall STROKE keeps its shape but slowly WALKS along
     # its own line (like a snake that can lead with either end), sliding back and
     # forth. The maze's topology stays roughly the same; only positions drift.
@@ -167,9 +171,22 @@ class Config:
     brain: str = "neat"                # which brain module: "neat" (graph of scalar
                                        # neurons) or "nca" (a small cellular automaton
                                        # per agent — grid + evolvable alive-mask shape)
-    n_rays: int = 5                    # vision rays fanned around the heading
+    n_rays: int = 5                    # vision rays fanned around the heading (grid world;
+                                       # the SEED default for aqua, where it's heritable)
     fov: float = 1.4                   # total angular spread of the rays (radians)
-    ray_length: int = 12               # how far a ray sees (cells)
+    ray_length: int = 12               # how far a ray sees (cells) — grid world / the aqua
+                                       # SEED default (heritable there)
+    # HERITABLE VISION (continuous aqua world, vivarium.vision): each creature evolves how
+    # many rays it fans and how far they reach, within these bounds. The brain input is
+    # sized for n_rays_MAX ray slots; a genome using fewer leaves the rest zero. Ray signal
+    # falls off with distance, so a long ray only makes far things register faintly — a
+    # far-sighted / sharp-but-short trade-off evolution can settle, bounded so it stays sane
+    # (more/longer rays cost compute per agent, nothing else).
+    n_rays_min: int = 3                # fewest rays a genome may fan
+    n_rays_max: int = 12               # most rays (also the fixed brain-input width)
+    ray_length_min: int = 6            # shortest heritable vision reach (cells)
+    ray_length_max: int = 24           # longest heritable vision reach (cells)
+    vision_mut_prob: float = 0.12      # chance a child's ray count / reach drifts
     hidden: int = 8                    # hidden units in the fixed-topology v1 net
     init_forward_bias: float = 1.5     # fresh brains lean toward moving forward, so
                                        # the population forages from tick 0 and

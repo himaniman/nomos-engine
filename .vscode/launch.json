@@ -115,6 +115,20 @@
       "justMyCode": true
     },
     {
+      "name": "aqua: watch continuous NCA (continue from session)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "aqua.app",
+      "args": ["--brain", "nca", "--size", "48", "--seed", "1", "--cell", "12",
+               "--population", "18",
+               "--load-genomes", "aqua/pools/session.json",
+               "--save-genomes", "aqua/pools/session.json"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "Python: current file",
       "type": "debugpy",
       "request": "launch",

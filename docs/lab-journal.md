@@ -1008,3 +1008,104 @@ boards, tried commitment, tried random walk, tried sight-gated approach).
 `laws/forage_brain_llm.nomos` is the new forage champion to beat; obvious next
 step is evolving its four constants (the hybrid design+tune loop, now on the
 harder world) and a wider holdout to be sure 5.20 isn't its own lucky five.
+
+## 2026-07-18 — aqua: honest collisions, no tunnelling, and eyes that evolve
+
+Three mechanics fixes to the continuous `aqua` world after watching the render:
+agents were poking through walls, wedging against them, and everyone had the
+same fixed eye.
+
+**Collisions now match the drawn body.** The old wall test was a single POINT
+sample of the rounded centre cell (`_cell_blocked`), so an agent's centre could
+sit in a free cell while its drawn circle overlapped the wall — the body looked
+smaller than its collision box, and food/corpses/walls were all judged at that
+one point. Replaced with `_blocked_circle`: a proper circle-vs-grid test (each
+cell is the unit square on its integer coords, closest-point distance < radius).
+Agent–agent opacity already used the sum-of-radii circle test; now walls and
+corpses do too, so what you see is what collides. A 600-step run has ZERO agent
+bodies overlapping a wall (was common before).
+
+**Movement is marched, so nothing tunnels or gets skipped.** `_advance` used to
+jump straight to the destination and test only the endpoint — a fast/diagonal
+move could hop over a thin wall or a food cell without registering it, and a
+blocked move dead-stopped (agents wedged into walls, the "stuck" bug). Now the
+move is walked in sub-steps of ≤ `substep` (0.5 cell) with a circle collision
+AND a food-eat check at every hop, so the whole path is resolved: the world
+always recomputes what was hit and eaten no matter the speed (this is what makes
+`max_speed` safe to raise). `substep 0.5 < 2*radius 0.7` means consecutive body
+circles overlap, so nothing thin can slip between two samples. A wall hit now
+SLIDES along the free axis instead of stopping, so agents stop wedging. (The
+opacity test now asserts "marches up to touching, never overlaps" instead of the
+old all-or-nothing "did not move".)
+
+**Vision is a heritable gene now (`vivarium/vision.py`).** Ray COUNT (`n_rays`,
+3–12) and ray REACH (`ray_len`, 6–24 cells) are per-genome traits with drift +
+crossover, added to BOTH brain genomes (neat, nca) with backward-compatible
+defaults (they ride harmlessly on the grid world, steer aqua). The brain input
+is sized for `n_rays_max` slots; an agent fans its own count into the first
+slots and leaves the rest zero, so a variable eye plugs into a fixed-width brain.
+Longer rays are cheap because signal already falls off with distance
+(`1 - k/rl`), so a far ray just makes distant food register faintly — a
+far-sighted-but-blurry vs sharp-but-short trade-off evolution can settle. And it
+does: over 800 steps different seeds converge on different eyes — seed 2 grew
+far-sighted 11-ray/22-reach vision at pop 219, seed 4 settled ~7-ray/10-reach,
+seed 0 ~5-ray/9-reach. The FOV cone in the app is drawn from the selected
+agent's own genes, so you can watch an individual's actual sight.
+
+**A regression the wide input caused, and the fix.** Sizing the brain input for
+n_rays_max (12 rays -> 57 inputs, up from 29) quietly BROKE the NEAT brain: fresh
+`random_genome` fully-connected every input to the outputs with N(0,1) weights, so
+the drive into each output — a SUM over all inputs — had variance ~n_in, saturating
+tanh. Wider sensor -> more saturated -> fresh brains twitch erratically and die.
+A/B is stark: NEAT summed-pop over 4 seeds x 1500 ticks fell 354 (n_rays_max 5) ->
+64 (8) -> 19 (12), extinctions 4 -> 6 -> 10. And the churn is why the user saw NEAT
+nets "stuck at one layer" — add_node fires at 0.015/mutation, so a lineage must
+survive HUNDREDS of reproductions to grow hidden nodes; a population that keeps going
+extinct never compounds any structure (the mutation operator was fine — a genome
+hammered 2000x still grows 21 hidden nodes). Fix: scale the initial weights by
+1/sqrt(n_in) (Xavier), so the drive stays ~O(1) at any input width. NEAT pop recovered
+to 519 with 4 extinctions at n_rays_max 12 — healthier than the old narrow world. Only
+FRESH random brains change; loaded/evolved pools keep their weights.
+
+**Render alignment (integer coord = cell CENTRE).** The physics reads the grid with
+`round(y)`, so cell k owns world [k-0.5, k+0.5]; walls/food were drawn consistent with
+that, but AGENTS, the FOV cone and click-picking were drawn at `x*cell` — half a cell
+up-left of where the body actually is — so bodies looked like they crept onto the wall
+above/left of them even though collision (correct) never let the circle overlap.
+Everything visual now maps world (y,x) -> pixel ((x+0.5)*cell, (y+0.5)*cell), so the
+drawn body sits exactly on its collision circle. Also: `aqua.app --load-genomes` now
+starts fresh (with a note) if the save doesn't exist yet, and there's an F5 config
+"aqua: watch continuous NCA (continue from session)" that loads/saves
+`aqua/pools/session.json` (press W to save the pool).
+
+## 2026-07-18 (later) — making aqua actually continuous, stage 1: walls
+
+Agreed framing with the user: the aqua world was only half continuous — agents
+float, but walls/food/corpses were a grid that everything collided against and
+saw. That grid is now the thing limiting honesty (quantised food, blocky walls,
+ray-marched vision). Plan (branch `aqua-continuous`): go fully continuous by
+DEMOTING the grid from source-of-truth to an acceleration index, staged
+walls -> food -> corpses, determinism held throughout. Scope is A (continuous
+geometry), NOT B (mass/momentum/pushing) — if we ever want more, we change brains
+or world structure, not the physics.
+
+**Stage 1 — walls are float rectangles now.** The strokes were ALREADY generated
+as segments and then rasterised; we just stop rasterising for the physics. Each
+stroke becomes one or more axis-aligned float RECTANGLES (a run of cells split by
+door / interior-clip / centre-safe-zone), `wall_thickness` (=1.0) thick, plus four
+border bars — `World.wall_rects`. Collision is circle-vs-AABB (`_wall_blocks_circle`,
+distance to the rect's closest point < radius) and VISION is analytic ray-vs-AABB
+(`_ray_wall_dist`, slab method) — no more per-cell blockiness and no ray-march
+sampling; the FOV cone in the app draws exact hits. Kept the old `self.walls` grid
+as a BRIDGE cache that still backs food PLACEMENT queries (both derive from the same
+strokes, so they can't disagree — verified: 0 cell/rect mismatches over the whole
+grid); stage 2 removes it with the food grid. Only axis-aligned rects (the user
+doesn't want angled walls — "so that it's simple to compute"); capsules/segments
+would be the drop-in if that ever changes. Verified: analytic ray hits a border at
+exactly its geometric distance (22.5 from centre, not a marched multiple of
+ray_step); a body shoved 16 cells at a wall in one call stops at the face and never
+overlaps; 0 bodies overlap walls over a run; determinism preserved; +4 tests, full
+suite 189 green. Also closed a predation edge case (a carnivore jumping onto prey
+now respects the wall test, so it can't land its body inside a wall). Walls now
+render as smooth continuous bars with clean door gaps. Next: stage 2, food as
+float entities in a bucket index (this is the bulk — re-plumbing the ecology).

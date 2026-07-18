@@ -19,7 +19,12 @@ that job) and no speciation yet (DESIGN.md notes when to add it).
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
+
+from vivarium.vision import (DEFAULT_N_RAYS, DEFAULT_RAY_LEN, cross_vision,
+                             drift_vision, random_vision)
 
 # actions (outputs), matching the world's movement model. STAY = stand still and
 # burn only the base metabolic cost (no move/turn) — an idle agent conserves energy,
@@ -37,7 +42,8 @@ class Genome:
     larger."""
 
     def __init__(self, n_in: int, n_out: int, nodes: dict, conns: list[dict],
-                 hue: float = 0.0, diet: float = 0.5, carnivore: float = 0.0):
+                 hue: float = 0.0, diet: float = 0.5, carnivore: float = 0.0,
+                 n_rays: int = DEFAULT_N_RAYS, ray_len: float = DEFAULT_RAY_LEN):
         self.kind = "neat"
         self.n_in = n_in
         self.n_out = n_out
@@ -48,6 +54,10 @@ class Genome:
         #   carnivore — plant-vs-meat allocation (0..1): 0 herbivore, 1 predator
         self.diet = diet
         self.carnivore = carnivore
+        # heritable VISION (see vivarium.vision): how many rays this creature fans and
+        # how far each reaches. Rides along on the grid world; steers the aqua world.
+        self.n_rays = int(n_rays)
+        self.ray_len = float(ray_len)
         # A HERITABLE lineage hue (0..1): children inherit a parent's hue and it
         # drifts only slowly, so a family shares a colour and related lineages sit
         # near each other in hue-space — unlike the brain fingerprint (`key`),
@@ -57,7 +67,7 @@ class Genome:
     def copy(self) -> "Genome":
         return Genome(self.n_in, self.n_out, dict(self.nodes),
                       [dict(c) for c in self.conns], self.hue,
-                      self.diet, self.carnivore)
+                      self.diet, self.carnivore, self.n_rays, self.ray_len)
 
     def max_node_id(self) -> int:
         return max(self.nodes) if self.nodes else self.n_in + self.n_out - 1
@@ -70,6 +80,7 @@ class Genome:
     def to_dict(self) -> dict:
         return {"brain": "neat", "n_in": self.n_in, "n_out": self.n_out,
                 "hue": self.hue, "diet": self.diet, "carnivore": self.carnivore,
+                "n_rays": self.n_rays, "ray_len": self.ray_len,
                 "nodes": [[i, k] for i, k in self.nodes.items()],
                 "conns": [[c["in"], c["out"], c["w"], c["enabled"]] for c in self.conns]}
 
@@ -80,7 +91,9 @@ class Genome:
                  for a, b, w, e in d["conns"]]
         return cls(int(d["n_in"]), int(d["n_out"]), nodes, conns,
                    float(d.get("hue", 0.0)), float(d.get("diet", 0.5)),
-                   float(d.get("carnivore", 0.0)))
+                   float(d.get("carnivore", 0.0)),
+                   int(d.get("n_rays", DEFAULT_N_RAYS)),
+                   float(d.get("ray_len", DEFAULT_RAY_LEN)))
 
     def key(self) -> bytes:
         """A canonical fingerprint of the topology + weights, for naming/colour."""
@@ -93,18 +106,27 @@ def random_genome(n_in: int, n_out: int, rng: np.random.Generator,
                   forward_bias: float = 0.0, cfg=None) -> Genome:
     """A minimal starting brain: inputs fully connected to outputs with small
     random weights (a reactive single layer). The bias input (last input) gets a
-    `forward_bias` weight to the FORWARD output so fresh brains tend to move."""
+    `forward_bias` weight to the FORWARD output so fresh brains tend to move.
+
+    Weights are scaled by 1/sqrt(n_in) (Xavier-style): the drive into each output is
+    a SUM over all inputs, so with a wide sensor (the heritable-vision world sizes it
+    for n_rays_max rays) fixed-variance weights would saturate tanh and a fresh brain
+    would twitch itself to death. Scaling keeps the drive ~O(1) at any input width, so
+    a wider eye doesn't destabilize the population — and the forward_bias still leads."""
     nodes = {i: "in" for i in range(n_in)}
     nodes.update({n_in + j: "out" for j in range(n_out)})
+    scale = 1.0 / math.sqrt(max(1, n_in))
     conns = []
     for i in range(n_in):
         for j in range(n_out):
-            w = float(rng.normal(0.0, 1.0))
+            w = float(rng.normal(0.0, scale))
             if i == n_in - 1 and j == FORWARD:
                 w += forward_bias
             conns.append({"in": i, "out": n_in + j, "w": w, "enabled": True})
+    n_rays, ray_len = random_vision(rng, cfg)
     return Genome(n_in, n_out, nodes, conns, hue=float(rng.random()),
-                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6)
+                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6,
+                  n_rays=n_rays, ray_len=ray_len)
 
 
 class Phenotype:
@@ -152,10 +174,12 @@ def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int,
     if rng.random() < cfg.trait_drift_prob:
         g.carnivore = min(1.0, max(0.0,
                           g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
+    drift_vision(g, rng, cfg)                            # heritable ray count / reach
     if leap or rng.random() < cfg.macro_mut_prob:        # rare SPECIATION jolt: a big
         g.hue = float(rng.random())                      # colour jump (new lineage) +
         g.diet = float(rng.random())                     # a new diet + maybe a predator
         g.carnivore = float(rng.random())                # + strong rewiring
+        g.n_rays, g.ray_len = random_vision(rng, cfg)    # + re-rolled eyes
         for c in g.conns:
             c["w"] += float(rng.normal(0.0, cfg.weight_mut * cfg.macro_mut_scale))
     for c in g.conns:
@@ -214,5 +238,6 @@ def crossover(g_fit: Genome, g_other: Genome, rng: np.random.Generator) -> Genom
     hue = g_fit.hue if rng.random() < 0.5 else g_other.hue
     diet = g_fit.diet if rng.random() < 0.5 else g_other.diet
     carn = g_fit.carnivore if rng.random() < 0.5 else g_other.carnivore
+    n_rays, ray_len = cross_vision(g_fit, g_other, rng)
     return Genome(g_fit.n_in, g_fit.n_out, nodes, child_conns, hue=hue,
-                  diet=diet, carnivore=carn)
+                  diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len)

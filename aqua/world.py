@@ -83,16 +83,23 @@ class World:
                  max_speed: float = 1.0, max_turn: float = 0.45,
                  radius: float = 0.35, mate_radius: float = 1.8,
                  ray_step: float = 0.6, smell: bool = True,
-                 smell_range: float | None = None):
+                 smell_range: float | None = None, substep: float = 0.5):
         self.cfg = config or Config()
         c = self.cfg
         self.max_speed = max_speed          # cells per tick at full forward thrust
         self.max_turn = max_turn            # radians per tick at full turn
         self.radius = radius                # agent body radius (collision/eat)
+        # A move is marched in hops of <= `substep` cells and the body is collision-
+        # tested at every hop, so no matter how fast an agent goes it can never JUMP
+        # over a wall or a food cell — the world always recomputes what it hit. With
+        # substep (0.5) < 2*radius (0.7) consecutive body circles overlap, so nothing
+        # thin can slip between two samples. This is what makes max_speed safe to raise.
+        self.substep = substep
         self.mate_radius = mate_radius      # how close two agents breed
         self.ray_step = ray_step            # vision ray-march increment (cells)
         self.smell = smell                  # omnidirectional food-gradient sense on?
-        self.smell_range = smell_range if smell_range is not None else 2.0 * c.ray_length
+        self.smell_range = (smell_range if smell_range is not None
+                            else 2.0 * c.ray_length_max)
 
         self.genome_pool = list(genome_pool) if genome_pool else None
         self.brain = _BRAINS[c.brain]
@@ -104,7 +111,10 @@ class World:
         self.food_rate = float(c.food_regrow)
         self.food_cap = float(c.food_target)
         self._next_id = 0
-        self.n_in = sensor_size(c.n_rays, self.smell)
+        # The brain input is sized for the MAX ray count; each agent fans its own
+        # (heritable) n_rays into the first slots and leaves the rest zero, so a
+        # variable eye plugs into a fixed-width brain.
+        self.n_in = sensor_size(c.n_rays_max, self.smell)
         self.n_out = self.brain.N_ACTIONS
         self._next_node_id = self.n_in + self.n_out
         if self.genome_pool:
@@ -113,7 +123,8 @@ class World:
 
         self.strokes = self._generate_strokes()
         self.walls = np.zeros((self.h, self.w), dtype=bool)
-        self._rasterize_walls()
+        self._rasterize_walls()        # bridge cache: still backs food PLACEMENT queries
+        self._build_wall_rects()       # the real geometry: float rectangles (collision/vision)
         self.food = np.zeros((self.h, self.w), dtype=np.int8)
         self.halos = np.array([[self.rng.integers(2, self.h - 2),
                                 self.rng.integers(2, self.w - 2)]
@@ -124,8 +135,9 @@ class World:
         self.hall: list[tuple[int, object]] = []
         self.stats = {"births": 0, "deaths": 0}
         self.deaths_log: deque = deque()
-        # per-heading ray fan is now continuous; precompute the relative angles only
-        self._ray_angles = np.linspace(-c.fov / 2, c.fov / 2, c.n_rays)
+        # the ray fan is now PER-AGENT (heritable count), so relative angles are
+        # computed per genome on demand and cached by count.
+        self._ray_angle_cache: dict[int, np.ndarray] = {}
 
         self._food_xy = np.empty((0, 2), dtype=np.int64)   # food coords, refreshed per tick
         for _ in range(c.init_population):
@@ -204,12 +216,114 @@ class World:
         cy, cx = self.h // 2, self.w // 2
         self.walls[cy - 2:cy + 3, cx - 2:cx + 3] = False
 
-    def _cell_blocked(self, y: float, x: float) -> bool:
-        """Is the grid cell under a float point a wall or a corpse?"""
-        cy, cx = int(round(y)), int(round(x))
-        if not (0 <= cy < self.h and 0 <= cx < self.w):
-            return True
-        return bool(self.walls[cy, cx]) or self.corpse[cy, cx] > 0
+    def _build_wall_rects(self) -> None:
+        """The CONTINUOUS wall geometry: each stroke becomes one or more axis-aligned
+        float RECTANGLES `wall_thickness` cells thick (a run of cells split by the door
+        / interior clip / centre safe-zone into contiguous rectangles), plus four border
+        bars. Collision (`_wall_blocks_circle`) and vision (`_ray_wall_dist`) run on
+        these analytically — no per-cell blockiness, exact ray hits. Derived from the
+        same strokes as the `self.walls` cache, so the two never disagree."""
+        h, w, ht = self.h, self.w, 0.5 * self.cfg.wall_thickness
+        rects = [(-0.5, 0.5, -0.5, w - 0.5),                  # top border row
+                 (h - 1.5, h - 0.5, -0.5, w - 0.5),           # bottom border row
+                 (-0.5, h - 0.5, -0.5, 0.5),                  # left border col
+                 (-0.5, h - 0.5, w - 1.5, w - 0.5)]           # right border col
+        ccy, ccx = h // 2, w // 2
+
+        def clear(yy, xx):                                    # the spawn safe-zone hole
+            return ccy - 2 <= yy <= ccy + 2 and ccx - 2 <= xx <= ccx + 2
+
+        for s in self.strokes:
+            runs, run = [], []                                # contiguous along-axis cells
+            for i in range(s["length"]):
+                yy = s["y"] + (i if s["axis"] == "v" else 0)
+                xx = s["x"] + (i if s["axis"] == "h" else 0)
+                solid = (i != s["door"] and 0 < yy < h - 1 and 0 < xx < w - 1
+                         and not clear(yy, xx))
+                if solid:
+                    run.append(i)
+                elif run:
+                    runs.append(run)
+                    run = []
+            if run:
+                runs.append(run)
+            for grp in runs:
+                i0, i1 = grp[0], grp[-1]
+                if s["axis"] == "h":
+                    y = s["y"]
+                    rects.append((y - ht, y + ht, s["x"] + i0 - 0.5, s["x"] + i1 + 0.5))
+                else:
+                    x = s["x"]
+                    rects.append((s["y"] + i0 - 0.5, s["y"] + i1 + 0.5, x - ht, x + ht))
+        self.wall_rects = np.array(rects, dtype=np.float64)   # (N, 4) = y0, y1, x0, x1
+
+    def _wall_blocks_circle(self, y: float, x: float) -> bool:
+        """Does a body circle of `self.radius` at (y, x) overlap any wall rectangle?
+        (circle-vs-AABB: distance to the rect's closest point < radius)."""
+        r2 = self.radius * self.radius
+        for y0, y1, x0, x1 in self.wall_rects:
+            ny = y0 if y < y0 else (y1 if y > y1 else y)
+            nx = x0 if x < x0 else (x1 if x > x1 else x)
+            dy, dx = y - ny, x - nx
+            if dy * dy + dx * dx < r2:
+                return True
+        return False
+
+    def _corpse_blocks_circle(self, y: float, x: float) -> bool:
+        """Does a body circle overlap any corpse cell? (corpses are still grid this
+        stage — a unit square per occupied cell)."""
+        r = self.radius
+        r2 = r * r
+        y0, y1 = int(math.floor(y - r)), int(math.ceil(y + r))
+        x0, x1 = int(math.floor(x - r)), int(math.ceil(x + r))
+        for cy in range(y0, y1 + 1):
+            if not (0 <= cy < self.h):
+                continue
+            for cx in range(x0, x1 + 1):
+                if not (0 <= cx < self.w) or self.corpse[cy, cx] <= 0:
+                    continue
+                ny = min(max(y, cy - 0.5), cy + 0.5)
+                nx = min(max(x, cx - 0.5), cx + 0.5)
+                if (y - ny) ** 2 + (x - nx) ** 2 < r2:
+                    return True
+        return False
+
+    def _blocked_circle(self, y: float, x: float) -> bool:
+        """Would an agent's BODY (a circle of `self.radius`) at (y, x) overlap a wall
+        or a corpse? Walls are analytic float rectangles; corpses are still grid cells."""
+        return self._wall_blocks_circle(y, x) or self._corpse_blocks_circle(y, x)
+
+    def _ray_wall_dist(self, ay: float, ax: float, dx: float, dy: float,
+                       maxd: float) -> float:
+        """Distance from (ay, ax) along the unit ray (dx, dy) to the nearest wall
+        rectangle, capped at `maxd` (ray-vs-AABB slab test, analytic). Used by vision
+        and the app's FOV cone — one source of truth for wall geometry."""
+        eps = 1e-9
+        if abs(dx) < eps:
+            dx = eps if dx >= 0 else -eps
+        if abs(dy) < eps:
+            dy = eps if dy >= 0 else -eps
+        ix, iy = 1.0 / dx, 1.0 / dy
+        best = maxd
+        for y0, y1, x0, x1 in self.wall_rects:
+            tx0, tx1 = (x0 - ax) * ix, (x1 - ax) * ix
+            lox, hix = (tx0, tx1) if tx0 < tx1 else (tx1, tx0)
+            ty0, ty1 = (y0 - ay) * iy, (y1 - ay) * iy
+            loy, hiy = (ty0, ty1) if ty0 < ty1 else (ty1, ty0)
+            t_enter = lox if lox > loy else loy
+            t_exit = hix if hix < hiy else hiy
+            if t_enter <= t_exit and t_exit >= 0.0:
+                t = t_enter if t_enter >= 0.0 else 0.0
+                if t < best:
+                    best = t
+        return best
+
+    def _blocked(self, y: float, x: float, exclude: int) -> bool:
+        """A position is blocked if the body overlaps a wall/corpse or another
+        agent's body (opacity). Used for tangential SLIDING, where predation never
+        applies — sliding just stops at a solid neighbour."""
+        return (self._blocked_circle(y, x)
+                or self._agent_near(y, x, 2 * self.radius, exclude=exclude) is not None)
 
     # -- food (grid, copied from vivarium) ----------------------------------
 
@@ -290,7 +404,7 @@ class World:
         for _ in range(40):
             y = float(self.rng.uniform(1.5, self.h - 1.5))
             x = float(self.rng.uniform(1.5, self.w - 1.5))
-            if not self._cell_blocked(y, x) and self._agent_near(y, x, 2 * self.radius) is None:
+            if not self._blocked_circle(y, x) and self._agent_near(y, x, 2 * self.radius) is None:
                 return y, x
         return None
 
@@ -301,7 +415,7 @@ class World:
             ang = k / 8.0 * _TWO_PI
             ny, nx = y + math.sin(ang) * d, x + math.cos(ang) * d
             if (1.0 <= ny < self.h - 1.0 and 1.0 <= nx < self.w - 1.0
-                    and not self._cell_blocked(ny, nx)
+                    and not self._blocked_circle(ny, nx)
                     and self._agent_near(ny, nx, 2 * self.radius) is None):
                 return ny, nx
         return None
@@ -321,6 +435,18 @@ class World:
 
     # -- vision (continuous ray-march) --------------------------------------
 
+    def ray_angles(self, n: int) -> np.ndarray:
+        """Relative angles of an `n`-ray fan spread across the FOV (cached by count).
+        More rays = finer angular resolution within the same field of view."""
+        n = max(1, int(n))
+        a = self._ray_angle_cache.get(n)
+        if a is None:
+            fov = self.cfg.fov
+            a = (np.array([0.0]) if n == 1
+                 else np.linspace(-fov / 2, fov / 2, n))
+            self._ray_angle_cache[n] = a
+        return a
+
     def _sense(self, a: Agent) -> np.ndarray:
         """The rich input vector: a per-ray vision fan (edible food / obstacle /
         KIN / NON-KIN agent, each a smooth ray-march proximity), the agent's own
@@ -330,8 +456,9 @@ class World:
         indigestible food, as in the grid world."""
         c = self.cfg
         vec = np.zeros(self.n_in)
-        rl = float(c.ray_length)
         g = a.brain.genome
+        nr = max(1, min(int(g.n_rays), c.n_rays_max))         # this agent's heritable eye
+        rl = max(1.0, float(g.ray_len))
         diet, hue = g.diet, g.hue
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
         # nearby agents once, each tagged KIN (same colour-species) or NON-KIN
@@ -343,22 +470,26 @@ class World:
             if d <= rl + self.radius:
                 kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
                 near.append((d, math.atan2(b.y - a.y, b.x - a.x), kin))
-        half_ray = 0.5 * c.fov / max(1, c.n_rays - 1) + self.radius / max(rl, 1.0)
-        for i, rel in enumerate(self._ray_angles):
+        half_ray = 0.5 * c.fov / max(1, nr - 1) + self.radius / rl
+        for i, rel in enumerate(self.ray_angles(nr)):
             ang = a.heading + rel
             dx, dy = math.cos(ang), math.sin(ang)
-            hit_d, hit_ch, hit_val = rl, -1, 0.0
+            dw = self._ray_wall_dist(a.y, a.x, dx, dy, rl)   # analytic WALL hit (obstacle)
+            if dw < rl:
+                hit_d, hit_ch, hit_val = dw, 1, 1.0 - dw / rl
+            else:
+                hit_d, hit_ch, hit_val = rl, -1, 0.0
             k = self.ray_step
-            while k <= rl:                                   # march grid for wall/food
+            while k <= hit_d:                                # march grid for food/corpse
                 cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-                if not (0 <= cy < self.h and 0 <= cx < self.w) or self.walls[cy, cx] \
-                        or self.corpse[cy, cx] > 0:
-                    hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle channel
-                    break
-                ft = self.food[cy, cx]
-                if ft:
-                    hit_d, hit_ch, hit_val = k, 0, effs[ft - 1] * (1.0 - k / rl)  # food
-                    break
+                if 0 <= cy < self.h and 0 <= cx < self.w:    # (walls already handled)
+                    if self.corpse[cy, cx] > 0:
+                        hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle
+                        break
+                    ft = self.food[cy, cx]
+                    if ft:
+                        hit_d, hit_ch, hit_val = k, 0, effs[ft - 1] * (1.0 - k / rl)
+                        break
                 k += self.ray_step
             for d, bearing, kin in near:                     # an agent nearer than that?
                 if d < hit_d and abs(_wrap_angle(bearing - ang)) <= half_ray:
@@ -367,7 +498,9 @@ class World:
             if hit_ch >= 0:
                 vec[i * RAY_CH + hit_ch] = hit_val
 
-        o = c.n_rays * RAY_CH                                 # interoception block
+        o = c.n_rays_max * RAY_CH                              # interoception block
+                                                              # (fixed offset: rays live in
+                                                              # the first n_rays_max slots)
         vec[o + 0] = a.energy / c.max_energy
         vec[o + 1] = a.last_speed / self.max_speed
         vec[o + 2] = a.last_turn / self.max_turn             # signed turn-rate
@@ -457,31 +590,55 @@ class World:
             self._reseed()
 
     def _advance(self, a: Agent, ny: float, nx: float) -> float:
-        """Try to move agent `a` to (ny, nx). Blocked by the map border, walls,
-        corpses, or another agent (opacity) — a blocked move just doesn't happen
-        (heading already turned). Stepping onto food eats it; a carnivore stepping
-        into another agent may eat it. Returns the energy gained (the learn signal)."""
+        """March agent `a` from its current spot toward (ny, nx) in body-sized
+        sub-steps, colliding as a CIRCLE the whole way: walls/corpses and other
+        agents (opacity) block it, and it EATS every food cell it enters — the whole
+        path is resolved, not just the endpoint, so a fast agent can neither tunnel
+        through a wall nor skip food. When a hop hits a wall it SLIDES along it
+        (keeps the free axis) instead of dead-stopping, so agents don't wedge into
+        walls. A carnivore that reaches another agent eats it. Returns total energy
+        gained (the learn signal)."""
         c = self.cfg
-        if not (self.radius <= ny <= self.h - 1 - self.radius
-                and self.radius <= nx <= self.w - 1 - self.radius):
+        dy, dx = ny - a.y, nx - a.x
+        dist = math.hypot(dy, dx)
+        if dist < 1e-9:
             return 0.0
-        if self._cell_blocked(ny, nx):
-            return 0.0
-        other = self._agent_near(ny, nx, 2 * self.radius, exclude=a.id)
-        if other is not None:
-            if c.predation and self._can_predate(a, other):
-                return self._predate(a, other, ny, nx)
-            return 0.0                                        # opacity: blocked
-        a.y, a.x = ny, nx
-        cy, cx = int(round(ny)), int(round(nx))
+        n = max(1, int(math.ceil(dist / self.substep)))
+        sy, sx = dy / n, dx / n                               # per-hop delta
+        reward = 0.0
+        for _ in range(n):
+            ty, tx = a.y + sy, a.x + sx
+            other = self._agent_near(ty, tx, 2 * self.radius, exclude=a.id)
+            if other is not None:
+                if (c.predation and self._can_predate(a, other)
+                        and not self._wall_blocks_circle(ty, tx)):
+                    reward += self._predate(a, other, ty, tx)  # eat prey, move onto it
+                    reward += self._eat_food_here(a)
+                    continue
+                break                                          # opaque agent: stop
+            if not self._blocked_circle(ty, tx):
+                a.y, a.x = ty, tx
+            elif abs(sx) > 1e-9 and not self._blocked(a.y, tx, a.id):
+                a.x = tx                                       # slide along +/- x
+            elif abs(sy) > 1e-9 and not self._blocked(ty, a.x, a.id):
+                a.y = ty                                       # slide along +/- y
+            else:
+                break                                          # wedged: stop
+            reward += self._eat_food_here(a)
+        return reward
+
+    def _eat_food_here(self, a: Agent) -> float:
+        """Eat any food under the agent's centre; return the energy gained."""
+        c = self.cfg
+        cy, cx = int(round(a.y)), int(round(a.x))
         ft = self.food[cy, cx]
-        if ft:
-            self.food[cy, cx] = 0
-            g = a.brain.genome
-            gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
-            a.energy = min(c.max_energy, a.energy + gain)
-            return gain
-        return 0.0
+        if not ft:
+            return 0.0
+        self.food[cy, cx] = 0
+        g = a.brain.genome
+        gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
+        a.energy = min(c.max_energy, a.energy + gain)
+        return gain
 
     # -- reproduction -------------------------------------------------------
 
@@ -596,13 +753,14 @@ class World:
             else:
                 s["dir"] *= -1
         if moved:
-            self._rasterize_walls()
+            self._rasterize_walls()        # refresh the food-placement cache and
+            self._build_wall_rects()       # the continuous geometry together
             self._clear_under_walls()
 
     def _clear_under_walls(self) -> None:
         self.food[self.walls] = 0
         for a in [ag for ag in self.agents.values()
-                  if self.walls[int(round(ag.y)), int(round(ag.x))]]:
+                  if self._wall_blocks_circle(ag.y, ag.x)]:  # body caught by a moved wall
             self.agents.pop(a.id, None)
             self.stats["deaths"] += 1
             self._remember(a)

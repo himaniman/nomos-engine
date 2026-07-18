@@ -36,6 +36,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from vivarium.vision import (DEFAULT_N_RAYS, DEFAULT_RAY_LEN, cross_vision,
+                             drift_vision, random_vision)
+
 # numba is an OPTIONAL accelerator: when present, the whole subtick relaxation
 # (scatter -> 3x3 gather -> per-type layer stacks -> state update) runs as one
 # compiled kernel instead of ~32 Python-level numpy calls per act. The numpy
@@ -77,7 +80,8 @@ class Genome:
     depth of each rule vary."""
 
     def __init__(self, n_in, n_out, mask, type_map, rules, P_in, P_out, b_out,
-                 channels, hidden, hue=0.0, diet=0.5, carnivore=0.0):
+                 channels, hidden, hue=0.0, diet=0.5, carnivore=0.0,
+                 n_rays=DEFAULT_N_RAYS, ray_len=DEFAULT_RAY_LEN):
         self.kind = "nca"
         self.n_in = n_in
         self.n_out = n_out
@@ -92,6 +96,8 @@ class Genome:
         self.hue = hue                              # heritable lineage colour
         self.diet = diet                            # heritable niche traits (see neat.py):
         self.carnivore = carnivore                  # diet type + herbivore/carnivore mix
+        self.n_rays = int(n_rays)                   # heritable VISION (see vivarium.vision):
+        self.ray_len = float(ray_len)               # how many rays it fans + how far they reach
 
     @property
     def G(self) -> int:
@@ -105,7 +111,7 @@ class Genome:
         return Genome(self.n_in, self.n_out, self.mask.copy(), self.type_map.copy(),
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
-                      self.hue, self.diet, self.carnivore)
+                      self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len)
 
     def max_node_id(self) -> int:
         return self.n_in + self.n_out
@@ -127,6 +133,7 @@ class Genome:
         return {"brain": "nca", "n_in": self.n_in, "n_out": self.n_out,
                 "C": self.C, "H": self.H, "hue": self.hue,
                 "diet": self.diet, "carnivore": self.carnivore,
+                "n_rays": self.n_rays, "ray_len": self.ray_len,
                 "mask": self.mask.astype(int).tolist(),
                 "type_map": self.type_map.tolist(),
                 "rules": [[[L["W"].tolist(), L["b"].tolist()] for L in r]
@@ -141,7 +148,9 @@ class Genome:
         return cls(int(d["n_in"]), int(d["n_out"]), np.array(d["mask"], dtype=bool),
                    np.array(d["type_map"]), rules, d["P_in"], d["P_out"], d["b_out"],
                    int(d["C"]), int(d["H"]), float(d.get("hue", 0.0)),
-                   float(d.get("diet", 0.5)), float(d.get("carnivore", 0.0)))
+                   float(d.get("diet", 0.5)), float(d.get("carnivore", 0.0)),
+                   int(d.get("n_rays", DEFAULT_N_RAYS)),
+                   float(d.get("ray_len", DEFAULT_RAY_LEN)))
 
     def key(self) -> bytes:
         """Canonical fingerprint of shape + types + rule stacks (rounded)."""
@@ -177,9 +186,11 @@ def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
     P_out = rng.normal(0.0, 0.5, (C, n_out))
     b_out = np.zeros(n_out)
     b_out[FORWARD] += forward_bias
+    n_rays, ray_len = random_vision(rng, cfg)
     return Genome(n_in, n_out, mask, type_map, rules, P_in, P_out, b_out, C, H,
                   hue=float(rng.random()),
-                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6)
+                  diet=float(rng.random()), carnivore=float(rng.random()) * 0.6,
+                  n_rays=n_rays, ray_len=ray_len)
 
 
 def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
@@ -421,10 +432,12 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
     if rng.random() < cfg.trait_drift_prob:
         g.carnivore = min(1.0, max(0.0,
                           g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
+    drift_vision(g, rng, cfg)                            # heritable ray count / reach
     if leap or rng.random() < cfg.macro_mut_prob:        # rare SPECIATION jolt: a big
         g.hue = float(rng.random())                      # colour jump (new lineage) +
         g.diet = float(rng.random())                     # a new diet + maybe a predator
         g.carnivore = float(rng.random())                # + strong rewiring
+        g.n_rays, g.ray_len = random_vision(rng, cfg)    # + re-rolled eyes
         for r in g.rules:
             for L in r:
                 _jitter(L["W"], rng, 1.0, cfg.weight_mut * cfg.macro_mut_scale)
@@ -574,6 +587,7 @@ def crossover(g_fit: Genome, g_other: Genome, rng) -> Genome:
     hue = g_fit.hue if rng.random() < 0.5 else g_other.hue
     diet = g_fit.diet if rng.random() < 0.5 else g_other.diet
     carn = g_fit.carnivore if rng.random() < 0.5 else g_other.carnivore
+    n_rays, ray_len = cross_vision(g_fit, g_other, rng)
     return Genome(g_fit.n_in, g_fit.n_out, g_fit.mask.copy(), g_fit.type_map.copy(),
                   rules, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue,
-                  diet=diet, carnivore=carn)
+                  diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len)

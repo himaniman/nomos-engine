@@ -36,24 +36,28 @@ from vivarium.config import Config
 
 def _ray_hit(world: World, a, ang: float) -> float:
     """Distance along a ray from agent `a` at world-angle `ang` to its first hit
-    (wall / food / another agent), capped at ray_length — for drawing the cone."""
-    rl = float(world.cfg.ray_length)
+    (wall / food / corpse / another agent), capped at the agent's own (heritable)
+    ray reach — for drawing the cone exactly as far as this creature actually sees.
+    Walls are analytic (shared `_ray_wall_dist`); food/corpses are still grid."""
+    rl = float(a.brain.genome.ray_len)
     dx, dy = math.cos(ang), math.sin(ang)
+    d = world._ray_wall_dist(a.y, a.x, dx, dy, rl)
     k = world.ray_step
-    while k <= rl:
+    while k <= d:
         cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-        if not (0 <= cy < world.h and 0 <= cx < world.w) or world.walls[cy, cx] \
-                or world.corpse[cy, cx] > 0 or world.food[cy, cx]:
-            return k
+        if 0 <= cy < world.h and 0 <= cx < world.w and (
+                world.corpse[cy, cx] > 0 or world.food[cy, cx]):
+            d = k
+            break
         k += world.ray_step
     for b in world.agents.values():
         if b.id == a.id:
             continue
-        d = math.hypot(b.y - a.y, b.x - a.x)
-        if d <= rl and abs(((math.atan2(b.y - a.y, b.x - a.x) - ang + math.pi)
+        db = math.hypot(b.y - a.y, b.x - a.x)
+        if db <= d and abs(((math.atan2(b.y - a.y, b.x - a.x) - ang + math.pi)
                             % (2 * math.pi)) - math.pi) <= world.cfg.fov / 2:
-            rl = min(rl, d)
-    return rl
+            d = db
+    return d
 
 
 def draw(world: World, cell: int, panel_w: int, font, small,
@@ -64,38 +68,38 @@ def draw(world: World, cell: int, panel_w: int, font, small,
     surf = pygame.Surface((W + panel_w, H))
     surf.fill((12, 12, 16))
 
-    wy, wx = np.where(world.walls)                          # walls (grid cells)
-    for y, x in zip(wy, wx):
-        surf.fill((60, 60, 68), (x * cell, y * cell, cell, cell))
+    for y0, y1, x0, x1 in world.wall_rects:                 # walls (float rectangles)
+        surf.fill((60, 60, 68), ((x0 + 0.5) * cell, (y0 + 0.5) * cell,
+                                 (x1 - x0) * cell, (y1 - y0) * cell))
     cyy, cxx = np.where(world.corpse > 0)                   # corpses
     for y, x in zip(cyy, cxx):
         surf.fill((70, 40, 30), (x * cell, y * cell, cell, cell))
     for k, (hy, hx) in enumerate(world.halos):             # faint food-halo discs
         pygame.draw.circle(surf, tuple(c // 5 for c in _FOOD_COLORS[k % len(_FOOD_COLORS)]),
-                           (int(hx) * cell, int(hy) * cell),
+                           (int((hx + 0.5) * cell), int((hy + 0.5) * cell)),
                            max(2, int(world.cfg.food_halo_sigma * world.w * cell)), 1)
     fy, fx = np.where(world.food > 0)                       # food, coloured by type
     fr = max(2, cell // 2)
     for y, x in zip(fy, fx):
         col = _FOOD_COLORS[(int(world.food[y, x]) - 1) % len(_FOOD_COLORS)]
-        pygame.draw.circle(surf, col, (x * cell + cell // 2, y * cell + cell // 2), fr)
+        pygame.draw.circle(surf, col, (int((x + 0.5) * cell), int((y + 0.5) * cell)), fr)
 
     sel = world.agents.get(selected) if selected is not None else None
     if sel is not None:                                    # the selected agent's FOV cone
-        for rel in world._ray_angles:
+        for rel in world.ray_angles(sel.brain.genome.n_rays):
             ang = sel.heading + rel
             d = _ray_hit(world, sel, ang)
             pygame.draw.line(surf, (90, 120, 160),
-                             (sel.x * cell, sel.y * cell),
-                             ((sel.x + math.cos(ang) * d) * cell,
-                              (sel.y + math.sin(ang) * d) * cell), 1)
+                             ((sel.x + 0.5) * cell, (sel.y + 0.5) * cell),
+                             ((sel.x + math.cos(ang) * d + 0.5) * cell,
+                              (sel.y + math.sin(ang) * d + 0.5) * cell), 1)
 
     ar = max(2, int(round(world.radius * cell)))           # circle = the body's real radius
     for a in world.agents.values():                        # agents as smooth circles
         col = genome_color(a.brain.genome)
         bright = 0.35 + 0.65 * min(1.0, a.energy / world.cfg.max_energy)
         col = tuple(int(ch * bright) for ch in col)
-        px, py = a.x * cell, a.y * cell
+        px, py = (a.x + 0.5) * cell, (a.y + 0.5) * cell     # integer coord = cell CENTRE
         pygame.draw.circle(surf, col, (int(px), int(py)), ar)
         if a.id == selected:
             pygame.draw.circle(surf, (255, 255, 255), (int(px), int(py)), ar + 2, 1)
@@ -109,7 +113,7 @@ def draw(world: World, cell: int, panel_w: int, font, small,
 
 def _agent_at_px(world: World, mx: int, my: int, cell: int):
     """The agent whose circle is under the mouse (or None)."""
-    wy, wx = my / cell, mx / cell
+    wy, wx = my / cell - 0.5, mx / cell - 0.5              # invert the cell-centre mapping
     best, best_d = None, max(1.0, world.radius * 2)
     for a in world.agents.values():
         d = math.hypot(a.y - wy, a.x - wx)
@@ -140,8 +144,12 @@ def main(argv=None) -> int:
                  n_rays=a.rays, fov=a.fov)
     pool = None
     if a.load_genomes:
-        from vivarium.genome_io import load_genomes
-        pool = load_genomes(a.load_genomes)
+        if Path(a.load_genomes).exists():
+            from vivarium.genome_io import load_genomes
+            pool = load_genomes(a.load_genomes)
+            print(f"loaded {len(pool)} genomes from {a.load_genomes}")
+        else:                                              # F5-friendly: no save yet -> fresh
+            print(f"no saved pool at {a.load_genomes} — starting fresh (press W to save)")
     world = World(cfg, genome_pool=pool, smell=not a.no_smell)
 
     pygame.init()

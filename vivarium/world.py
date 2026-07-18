@@ -66,6 +66,8 @@ class World:
         self.epoch_start = 0          # tick the current epoch (population) began
         self.food_rate = float(c.food_regrow)  # live-tunable fixed food/tick, may be < 1
                                                # (fractional -> probabilistic; app [ ] keys)
+        self.food_cap = float(c.food_target)   # live-tunable STANDING food ceiling (frac
+                                               # of open cells); the app , . keys move it
         self._next_id = 0
         self.n_in = input_size(c.n_rays)
         self.n_out = self.brain.N_ACTIONS
@@ -227,7 +229,7 @@ class World:
     def _regrow_food(self) -> None:
         c = self.cfg
         open_cells = int((~self.walls).sum())
-        target = int(c.food_target * open_cells)
+        target = int(self.food_cap * open_cells)           # live-tunable standing ceiling
         deficit = target - int((self.food > 0).sum())
         sigma = c.food_halo_sigma * min(self.h, self.w)
         # a FRACTIONAL rate (< 1 food/tick) is resolved probabilistically: e.g. 0.3 sows
@@ -241,14 +243,13 @@ class World:
         for _ in range(min(count, max(0, deficit))):
             k = int(self.rng.integers(c.n_food_types))     # a random food type...
             cy, cx = self.halos[k]                          # ...spawns near its halo
-            y = int(round(cy + self.rng.normal(0.0, sigma)))
-            x = int(round(cx + self.rng.normal(0.0, sigma)))
-            if self._free_food_cell(y, x):
-                self.food[y, x] = k + 1                      # type stored as 1..K
-            else:                                            # fall back to anywhere free
-                cell = self._random_free_cell()
-                if cell is not None:
-                    self.food[cell] = k + 1
+            for _try in range(6):                           # keep food NEAR its halo:
+                y = int(round(cy + self.rng.normal(0.0, sigma)))   # retry LOCALLY instead
+                x = int(round(cx + self.rng.normal(0.0, sigma)))   # of scattering food
+                if self._free_food_cell(y, x):                     # anywhere on the map
+                    self.food[y, x] = k + 1                  # type stored as 1..K
+                    break
+            # no free cell near the halo after a few tries -> skip (patch stays tight)
 
     def _diet_eff(self, diet: float, food_type: int) -> float:
         """How well a genome's diet digests a food type: 1.0 on its preferred type,
@@ -685,4 +686,5 @@ class World:
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
                 "life_mean": life_mean, "life_median": life_median,
                 "epoch": self.epoch, "epoch_age": self.tick - self.epoch_start,
-                "food_rate": self.food_rate}
+                "food_rate": self.food_rate,
+                "food_cap": int(self.food_cap * int((~self.walls).sum()))}

@@ -143,6 +143,8 @@ def test_app_renders_headless():
     w = World(Config(size=32, seed=1, init_population=15))
     for _ in range(50):
         w.step()
+    if not w.hall:                        # guarantee a leader row to render (dynamics-agnostic)
+        w._remember(next(iter(w.agents.values())))
     sel = next(iter(w.agents), None)
     surf = draw(w, cell_px=6, panel_w=200, font=font, small=small, selected=sel)
     assert surf.get_width() == w.w * 6 + 200

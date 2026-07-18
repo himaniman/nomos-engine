@@ -10,9 +10,9 @@ you click an agent, that agent's brain (its MLP, edges coloured by weight) and
 gene stats.
 
 Controls: SPACE pause/resume · S single-step · +/- speed · click an agent to
-inspect · L follow the longest-lived agent (auto) · [ / ] lower/raise the food rate ·
-T animate the selected NCA brain's sub-ticks (at x1) · W save the current top genomes
-(--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
+inspect · L follow the longest-lived agent (auto) · [ / ] food rate · , / . food
+ceiling · T animate the selected NCA brain's sub-ticks (at x1) · W save the current top
+genomes (--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
 
 The drawing is split from the loop (`draw` returns a Surface) so it can be
 rendered headless (SDL dummy) for tests/screenshots without a display.
@@ -150,8 +150,8 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     s = world.snapshot()
     lines = [f"tick {s['tick']}",
              f"epoch {s['epoch']}  +{s['epoch_age']}",
-             f"pop  {s['population']}  species {s['species']}",
-             f"food {s['food']}  rate {s['food_rate']:g}  carn {s['carnivores'] * 100:.0f}%",
+             f"pop  {s['population']}  sp {s['species']}  carn {s['carnivores'] * 100:.0f}%",
+             f"food {s['food']}/{s['food_cap']}  rate {s['food_rate']:g}",
              f"energy {s['energy_bodies']:.0f}  food {s['energy_food']:.0f}",
              f"births {s['births']}", f"deaths {s['deaths']}",
              f"lifespan  mean {s['life_mean']:.0f}  med {s['life_median']:.0f}"]
@@ -439,6 +439,35 @@ def _draw_net(surf, genome, x, y, w, h):
         pygame.draw.circle(surf, cc, (px, py), 4)
 
 
+_HELP_LINES = [
+    "SPACE   pause / resume",
+    "S       single step",
+    "+  /  - speed up / down",
+    "click   inspect an agent",
+    "L       follow the oldest agent",
+    "[  /  ] food rate  down / up",
+    ",  /  . food ceiling  down / up",
+    "T       animate NCA 'thinking'",
+    "W       save genome pool",
+    "R       reseed from hall",
+    "H       toggle this help",
+    "ESC / Q quit",
+]
+
+
+def _draw_help(surf, font, small):
+    """A simple key-binding overlay, toggled with H, over the top-left of the world."""
+    w, h = 330, len(_HELP_LINES) * 20 + 44
+    box = pygame.Surface((w, h))
+    box.set_alpha(236)
+    box.fill((18, 18, 24))
+    surf.blit(box, (18, 18))
+    pygame.draw.rect(surf, (80, 90, 110), (18, 18, w, h), 1)
+    surf.blit(font.render("keys", True, (210, 220, 240)), (34, 30))
+    for i, line in enumerate(_HELP_LINES):
+        surf.blit(small.render(line, True, (205, 210, 225)), (34, 58 + i * 20))
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="vivarium.app", description="watch a vivarium")
     p.add_argument("--size", type=int, default=40)
@@ -483,13 +512,14 @@ def main(argv=None) -> int:
     # rate) lets the simulation outrun the display for fast-forward. The HUD shows
     # the measured FPS, the speed, and the resulting steps/sec.
     paused, speed, selected = False, 1, None
+    show_help = False                                # H: key-binding overlay
     follow_oldest = False                            # L: auto-inspect the oldest agent
     leader = None                                    # a pinned leader genome to inspect
     leader_boxes = []                                # (rect, genome) hitboxes, filled by draw
     think = False                                    # subtick-animation mode (T), x1 only
     sub = 0                                          # which subtick frame we're showing
     recorded = None                                  # which agent is tracing its subticks
-    msg, msg_frames = "", 0                          # transient HUD flash
+    msg, msg_frames = "press H for keys", 400        # transient HUD flash (startup hint)
     is_nca = cfg.brain == "nca"
     running = True
     while running:
@@ -499,6 +529,8 @@ def main(argv=None) -> int:
             elif e.type == pygame.KEYDOWN:
                 if e.key in (pygame.K_ESCAPE, pygame.K_q):
                     running = False
+                elif e.key == pygame.K_h:            # toggle the key-binding overlay
+                    show_help = not show_help
                 elif e.key == pygame.K_SPACE:
                     paused = not paused
                 elif e.key == pygame.K_s:
@@ -517,6 +549,12 @@ def main(argv=None) -> int:
                     step = 1 if world.food_rate > 1 else 0.1
                     world.food_rate = max(0.1, round(world.food_rate - step, 1))
                     msg, msg_frames = f"food rate {world.food_rate:g}", 60
+                elif e.key == pygame.K_PERIOD:         # . raise the standing-food ceiling
+                    world.food_cap = round(min(0.6, world.food_cap + 0.01), 3)
+                    msg, msg_frames = f"food cap {world.food_cap * 100:.0f}%", 60
+                elif e.key == pygame.K_COMMA:          # , lower the standing-food ceiling
+                    world.food_cap = round(max(0.0, world.food_cap - 0.01), 3)
+                    msg, msg_frames = f"food cap {world.food_cap * 100:.0f}%", 60
                 elif e.key == pygame.K_l:            # follow the longest-lived agent
                     follow_oldest = not follow_oldest
                     leader = None
@@ -592,6 +630,8 @@ def main(argv=None) -> int:
             msg_frames -= 1
         screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,
                          leader=leader, hitboxes=leader_boxes), (0, 0))
+        if show_help:
+            _draw_help(screen, font, small)
         pygame.display.flip()
         if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
             Path(a.shots_dir).mkdir(parents=True, exist_ok=True)

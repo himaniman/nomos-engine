@@ -34,6 +34,29 @@
       "command": "${workspaceFolder}/.venv/Scripts/python.exe",
       "args": ["-m", "pytest", "tests", "-q"],
       "problemMatcher": []
+    },
+    {
+      // one-time: install the exe builder into the venv
+      "label": "vivarium: install PyInstaller",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "pip", "install", "pyinstaller"],
+      "problemMatcher": []
+    },
+    {
+      // build a standalone Windows exe -> dist/vivarium.exe (run the install task first).
+      // --windowed = no console window; --onefile = a single portable exe;
+      // --collect-submodules vivarium picks up the lazily-imported genome_io too.
+      "label": "vivarium: build exe (PyInstaller)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "PyInstaller", "--noconfirm", "--onefile", "--windowed",
+               "--name", "vivarium",
+               "--paths", "${workspaceFolder}",
+               "--collect-submodules", "vivarium",
+               "${workspaceFolder}/vivarium/app.py"],
+      "group": "build",
+      "problemMatcher": []
     }
   ]
 }

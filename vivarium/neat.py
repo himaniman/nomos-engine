@@ -137,10 +137,13 @@ class Phenotype:
         return int(np.argmax(st[self.out_idx]))
 
 
-def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
+def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int,
+           leap: bool = False):
     """Return (mutated copy, next_node_id). Weight jitter always; structural
     mutations (add connection, split a connection into a node, toggle) at low
-    rates so complexity grows gradually."""
+    rates so complexity grows gradually. `leap=True` forces the macro jolt (the
+    NCA brain grows real structure on a leap; here it's a strong rewiring — the
+    parameter exists so the World can call either brain's mutate uniformly)."""
     g = genome.copy()
     if rng.random() < cfg.hue_drift_prob:                # the lineage colour drifts slowly
         g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
@@ -149,7 +152,7 @@ def mutate(genome: Genome, rng: np.random.Generator, cfg, next_node_id: int):
     if rng.random() < cfg.trait_drift_prob:
         g.carnivore = min(1.0, max(0.0,
                           g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
-    if rng.random() < cfg.macro_mut_prob:                # rare SPECIATION jolt: a big
+    if leap or rng.random() < cfg.macro_mut_prob:        # rare SPECIATION jolt: a big
         g.hue = float(rng.random())                      # colour jump (new lineage) +
         g.diet = float(rng.random())                     # a new diet + maybe a predator
         g.carnivore = float(rng.random())                # + strong rewiring

@@ -211,9 +211,25 @@ class Config:
     nca_narrow_prob: float = 0.015     # chance a mutation removes a hidden node
     nca_max_hidden: int = 32           # cap on a rule's hidden width
     nca_min_hidden: int = 3            # floor on a rule's hidden width
-    nca_cell_cost: float = 0.02        # energy per brain cell per tick (NCA only): makes
+    nca_cell_cost: float = 0.01        # energy per brain cell per tick (NCA only): makes
                                        # a bigger brain COST more, so shape/size is under
-                                       # selection, not a free random drift
+                                       # selection, not a free random drift. Kept GENTLE
+                                       # (was 0.02) so a bigger brain still has to earn its
+                                       # keep but isn't starved out before its added
+                                       # capacity can pay off — the counterweight to the
+                                       # growth-biased mutation + the structural leap below
+    # STRUCTURAL LEAP ("hopeful monster"): a macro-mutation adds a BURST of capacity in
+    # one shot — several cells, a deeper rule, wider hidden layers — not just a weight
+    # jolt. New cells/layers/units are wired in silently (near-identity / zero-outgoing)
+    # so the leap adds CAPACITY without wrecking the parent's behaviour; the cell cost +
+    # selection then judge whether it pays. Fires on ordinary children at macro_mut_prob,
+    # and is FORCED on some injected immigrants / reseed mutants (nca_leap_prob).
+    nca_macro_cells: int = 6           # cells a leap grows (capped at nca_max_cells)
+    nca_macro_layers: int = 1          # layers a leap deepens a rule by (capped)
+    nca_macro_widen: int = 4           # hidden units a leap adds (capped at nca_max_hidden)
+    nca_leap_prob: float = 0.5         # chance an INJECTED newcomer (immigrant / reseed
+                                       # mutant) is a forced structural leap — rare events
+                                       # already, so a coin-flip keeps some big-brain shots
 
     # LIFETIME LEARNING (meta-plasticity, NCA only) — ON by default: it's the point of
     # the NCA brain. Normally the weights are FIXED at birth and only the cell state

@@ -477,3 +477,32 @@ numba everywhere, still exactly reproducible run to run).
 
 Inspector: each bottom rule-net now shows `x<n>` — how many alive cells run
 that type's rule — next to its type-colour marker.
+
+---
+
+## Structural leap ("hopeful monster") + gentler cell cost (2026-07-18)
+
+User's call after the perf work: injected newcomers should SOMETIMES be much
+bigger/smarter in one shot, and a bigger brain shouldn't be starved out just for
+its size. Two changes:
+
+- **Cell cost halved** (`nca_cell_cost` 0.02 -> 0.01). Metabolism in NCA mode is
+  `base_cost + nca_cell_cost * n_alive_cells` per tick; at 0.02 a 48-cell brain
+  paid ~4x base every tick, so size was punished hard (why brains stayed ~4-6
+  cells). 0.01 keeps size under selection — capacity must still earn its keep —
+  but gives a bigger brain room to prove itself before it starves. The
+  counterweight to the growth-biased mutation + the leap.
+- **Structural leap** (`nca._macro_grow`): a macro-mutation now adds a BURST of
+  capacity — `nca_macro_cells` cells + `nca_macro_layers` deeper + `nca_macro_widen`
+  wider — not just a weight jolt. Everything respects the incremental caps and is
+  wired in silently (grown cells inherit a neighbour's type; layers near-identity;
+  widened units zero-outgoing), so the leap adds CAPACITY without wrecking the
+  parent — verified 4c/d2/w16 -> 10c/d3/w20, still runnable. It fires on ordinary
+  children at `macro_mut_prob`, and is FORCED (`mutate(..., leap=True)`) on a
+  `nca_leap_prob` fraction of immigrants and reseed mutants — so a collapse or an
+  invasion can be answered with new STRUCTURE, seeded from an already-competent
+  hall genome (competent AND bigger, not a random monster). `neat.mutate` gained
+  the same `leap` kwarg (a strong rewiring there) so the World calls either brain
+  uniformly. Open question this sets up: do leap-born big brains actually out-forage
+  the incumbents once the cost is gentle enough, or does the cell cost still prune
+  them — the A/B the HUD's per-population panel now shows live.

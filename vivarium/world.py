@@ -100,9 +100,9 @@ class World:
             self._spawn_agent(self._seed_genome())
         self._regrow_food()
 
-    def _mutate(self, g):
+    def _mutate(self, g, leap=False):
         child, self._next_node_id = self.brain.mutate(g, self.rng, self.cfg,
-                                                      self._next_node_id)
+                                                      self._next_node_id, leap=leap)
         return child
 
     def _phenotype(self, genome):
@@ -570,7 +570,8 @@ class World:
         donors = [g for _, g in self.hall[:6]] or \
             [a.brain.genome for a in self.agents.values()]
         for _ in range(c.immigrate_count):
-            g = self._mutate(donors[int(self.rng.integers(len(donors)))].copy())
+            leap = self.rng.random() < c.nca_leap_prob  # some newcomers are hopeful monsters
+            g = self._mutate(donors[int(self.rng.integers(len(donors)))].copy(), leap=leap)
             g.hue = float(self.rng.random())           # a fresh lineage colour (new род)
             g.diet = float(self.rng.random())          # a fresh diet — may eat the OTHER
                                                        # food type the incumbents ignore
@@ -579,9 +580,13 @@ class World:
     def _strong_mutate(self, g):
         """A big-JUMP variant: several compounded mutation passes, so an extinction
         reseed can escape the basin the last population died in instead of replaying
-        the same genome."""
-        for _ in range(self.cfg.reseed_mutate_passes):
-            g = self._mutate(g)
+        the same genome. Some variants also take a STRUCTURAL LEAP (a hopeful monster —
+        a bigger/deeper brain in one shot) so a collapse can be answered with new
+        capacity, not just re-rolled weights."""
+        leap_pass = int(self.rng.integers(self.cfg.reseed_mutate_passes)) \
+            if self.rng.random() < self.cfg.nca_leap_prob else -1
+        for i in range(self.cfg.reseed_mutate_passes):
+            g = self._mutate(g, leap=(i == leap_pass))
         return g
 
     def _reseed(self) -> None:

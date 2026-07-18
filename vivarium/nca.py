@@ -382,11 +382,37 @@ def _neighbour_type(mask, type_map, y, x, rng) -> int:
     return int(rng.choice(types)) if types else 0
 
 
-def mutate(genome: Genome, rng, cfg, next_node_id: int):
+def _macro_grow(g: Genome, rng, cfg) -> None:
+    """A STRUCTURAL LEAP: in one shot grow several cells, deepen a rule and widen its
+    hidden layers, so a macro-mutation jumps brain COMPLEXITY at once instead of only
+    jolting weights. Everything respects the incremental caps and is wired in silently
+    (grown cells inherit a neighbour's type; added layers are near-identity; widened
+    units have zero outgoing weight), so the leap adds CAPACITY without destroying the
+    parent's behaviour — the cell cost + selection then decide whether it earns its keep."""
+    for _ in range(cfg.nca_macro_cells):
+        if int(g.mask.sum()) >= cfg.nca_max_cells:
+            break
+        cand = _grow_candidates(g.mask)
+        if not cand:
+            break
+        y, x = cand[int(rng.integers(len(cand)))]
+        g.mask[y, x] = True
+        g.type_map[y, x] = _neighbour_type(g.mask, g.type_map, y, x, rng)
+    for _ in range(cfg.nca_macro_layers):
+        rule = g.rules[int(rng.integers(g.n_types))]
+        if len(rule) < cfg.nca_max_layers:
+            w = int(rule[-1]["W"].shape[1])              # width feeding the output layer
+            rule.insert(len(rule) - 1, _identity_layer(w, rng))
+    for _ in range(cfg.nca_macro_widen):
+        _resize_rule_width(g.rules[int(rng.integers(g.n_types))], True, rng, cfg)
+
+
+def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
     """Return (mutated copy, next_node_id). Weight jitter always; structural mutation
     grows/shrinks the SHAPE, re-types a cell, SPLITs a type, or grows/shrinks a rule's
     DEPTH (add/remove a layer) — so shape, cell-type composition AND network depth all
-    evolve. `next_node_id` is passed through untouched."""
+    evolve. `next_node_id` is passed through untouched. `leap=True` FORCES a structural
+    macro-jump (for the hopeful-monster immigrant / reseed injections)."""
     g = genome.copy()
     if rng.random() < cfg.hue_drift_prob:
         g.hue = (g.hue + float(rng.normal(0.0, cfg.hue_drift))) % 1.0
@@ -395,13 +421,14 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int):
     if rng.random() < cfg.trait_drift_prob:
         g.carnivore = min(1.0, max(0.0,
                           g.carnivore + float(rng.normal(0.0, cfg.trait_drift))))
-    if rng.random() < cfg.macro_mut_prob:                # rare SPECIATION jolt: a big
+    if leap or rng.random() < cfg.macro_mut_prob:        # rare SPECIATION jolt: a big
         g.hue = float(rng.random())                      # colour jump (new lineage) +
         g.diet = float(rng.random())                     # a new diet + maybe a predator
         g.carnivore = float(rng.random())                # + strong rewiring
         for r in g.rules:
             for L in r:
                 _jitter(L["W"], rng, 1.0, cfg.weight_mut * cfg.macro_mut_scale)
+        _macro_grow(g, rng, cfg)                          # + a burst of STRUCTURE
     for r in g.rules:                                    # ordinary weight jitter
         for L in r:
             _jitter(L["W"], rng, cfg.weight_mut_prob, cfg.weight_mut)

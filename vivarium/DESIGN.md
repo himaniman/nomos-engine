@@ -427,3 +427,53 @@ a "populations" panel so you read each population, not just the aggregate.
 
 Next (v3 candidates): sensory ORGANS on the shape's edge (spatial I/O instead of a
 uniform broadcast); evolvable hidden WIDTH; getting carnivores to actually establish.
+
+---
+
+## Perf: alive-only NCA hot loop + growth-biased mutation + real-time HUD (2026-07-18)
+
+The user hit the wall watching a 55k-tick run crawl. Profiling (300 headless ticks,
+brain=nca) showed 99% of the time inside `Phenotype.act`: per sub-tick the old code
+np.pad-ed the FULL 12x12 lattice and ran the rule over all 144 cells even when only
+4-10 were alive — a third of total wall time was np.pad alone. Fix (`nca.py`): the
+phenotype precomputes alive-cell row indices into a persistent zero-padded flat
+buffer; each sub-tick gathers the 9-neighbourhoods of the (n_alive, C) rows only and
+runs the rule on just those. Same semantics (bounded, dead cells = frozen zeros;
+trace frames rebuilt full-grid for the T view). Measured: ~7.6x per act
+(9.2ms -> 1.2ms); the 300-tick bench went 5.7 -> 148 ticks/s (trajectory also
+changed — see below — so ticks/s isn't apples-to-apples; per-act is). The next
+levers, in order: batch same-shape brains through one einsum; numba on
+`_apply_rule`; torch/GPU batching of all agents' cells (the 512^2-era lever);
+`island.py` on k8s for parallel EXPERIMENTS. Rust/Unity considered and rejected:
+the bottleneck was never the language or the renderer, and a rewrite would cost
+the fast-iteration research loop that is the point of the playground.
+
+Mutation defaults (user request: mutations more often, biased to GROW the brain):
+structural rates raised with an explicit growth bias — grow 0.03->0.10 vs shrink
+0.01->0.02, add-layer 0.015->0.05 vs del 0.01, widen 0.02->0.06 vs narrow 0.015,
+split 0.01->0.03, retype 0.025->0.04. Mutation now proposes bigger brains;
+`nca_cell_cost` (unchanged) is the counterweight that prunes growth that doesn't
+pay — volume trends up by mutation, is trimmed by selection. NOTE: this changes
+run trajectories for a given seed (the bench's warmup population differed).
+
+HUD/inspector (user requests): a `real h:mm:ss  ep +h:mm:ss` line — wall-clock
+since session start and since the current epoch began (app-side only; the sim
+stays a pure function of seed+config); readout edges now coloured by weight SIGN
+(blue +, red -) with brightness/thickness by magnitude, learned-dW overlay still
+green/red on top; the F/L/R/S action nodes show the LIVE logit values (the
+perceptron's actual output), argmax label highlighted.
+
+Numba follow-up (same day, user's go): the whole relaxation loop (scatter ->
+3x3 gather -> per-type layer stacks -> residual tanh) is now ONE @njit kernel
+(`_relax_nb`), used whenever numba imports; the numpy path stays as the
+reference/fallback. All types are handled in-kernel (weights packed back to
+back, pre-transposed, with a per-type layer count), and the T-view calls the
+SAME kernel one subtick at a time so recording a trace cannot change the
+trajectory. numba+scipy added to vivarium/requirements.txt as optional.
+Measured: ~0.36ms per act vs 1.2ms numpy-vectorized vs 9.2ms original — ~25x
+total; the 300-tick bench runs ~945 ticks/s. Caveat: numba's BLAS rounding
+differs from numpy's, so trajectories are reproducible per-environment (with
+numba everywhere, still exactly reproducible run to run).
+
+Inspector: each bottom rule-net now shows `x<n>` — how many alive cells run
+that type's rule — next to its type-colour marker.

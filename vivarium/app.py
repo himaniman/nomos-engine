@@ -150,8 +150,10 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         pygame.draw.line(surf, (40, 40, 50), (bx0, 8), (bx0, H - 8), 1)
     s = world.snapshot()
     lines = [f"tick {s['tick']}",
-             f"epoch {s['epoch']}  +{s['epoch_age']}",
-             f"pop  {s['population']}  sp {s['species']}  carn {s['carnivores'] * 100:.0f}%",
+             f"epoch {s['epoch']}  +{s['epoch_age']}"]
+    if hud is not None and "real" in hud:
+        lines.append(f"real {hud['real']}  ep +{hud['epoch_real']}")
+    lines += [f"pop  {s['population']}  sp {s['species']}  carn {s['carnivores'] * 100:.0f}%",
              f"food {s['food']}/{s['food_cap']}  rate {s['food_rate']:g}",
              f"energy {s['energy_bodies']:.0f}  food {s['energy_food']:.0f}",
              f"births {s['births']}", f"deaths {s['deaths']}",
@@ -341,16 +343,18 @@ def _draw_readout(surf, genome, phenotype, x, y, w, h):
     plastic = phenotype is not None and getattr(phenotype, "plastic", False)
     surf.blit(pygame.font.Font(None, 15).render("readout", True, (150, 160, 180)),
               (x, y - 1))
-    lx, rx = x + 16, x + w - 34
+    lx, rx = x + 16, x + w - 76
     top, span = y + 12, max(6, h - 14)
     cy = [top + int((i + 0.5) / C * span) for i in range(C)]
     ay = [top + int((j + 0.5) / n_out * span) for j in range(n_out)]
     bmax = float(np.abs(P).max()) + 1e-6
     dmax = (float(np.abs(dW).max()) + 1e-6) if dW is not None else 1.0
-    for c in range(C):                                     # faint innate readout first
-        for j in range(n_out):
-            g = 35 + int(45 * abs(P[c, j]) / bmax)
-            pygame.draw.line(surf, (g, g, g + 8), (lx, cy[c]), (rx, ay[j]), 1)
+    for c in range(C):                                     # innate readout first: sign ->
+        for j in range(n_out):                             # colour, magnitude -> brightness
+            t = abs(P[c, j]) / bmax                        # (blue +, red -, faint if small)
+            col = (int(30 + 60 * t), int(50 + 70 * t), int(60 + 165 * t)) \
+                if P[c, j] >= 0 else (int(60 + 165 * t), int(40 + 40 * t), int(35 + 40 * t))
+            pygame.draw.line(surf, col, (lx, cy[c]), (rx, ay[j]), 1 + (t > 0.75))
     if plastic and dW is not None:                         # overlay the learned changes
         for c in range(C):
             for j in range(n_out):
@@ -363,9 +367,15 @@ def _draw_readout(surf, genome, phenotype, x, y, w, h):
     for yy in cy:                                          # channel nodes (left)
         pygame.draw.circle(surf, (150, 160, 200), (lx, yy), 2)
     font = pygame.font.Font(None, 16)
-    for j, yy in enumerate(ay):                            # action nodes + labels (right)
-        pygame.draw.circle(surf, (240, 200, 120), (rx, yy), 3)
-        surf.blit(font.render("FLRS"[j] if j < 4 else "?", True, (210, 210, 225)),
+    logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
+    best = int(np.argmax(logits)) if logits is not None else -1
+    for j, yy in enumerate(ay):                            # action nodes + labels (right),
+        pygame.draw.circle(surf, (240, 200, 120), (rx, yy), 3)   # + the LIVE logit values
+        label = "FLRS"[j] if j < 4 else "?"                # (the perceptron's output)
+        if logits is not None:
+            label += f" {float(logits[j]):+.2f}"
+        surf.blit(font.render(label, True,
+                              (255, 245, 190) if j == best else (185, 190, 205)),
                   (rx + 8, yy - 7))
     if plastic and dW is not None:                         # how much has been learned
         mag = float(np.abs(dW).sum())
@@ -393,6 +403,9 @@ def _draw_rule_net(surf, genome, k, x, y, w, h):
         return [top + int((j + 0.5) / max(1, n) * (h - 8)) for j in range(n)]
     ycols = [ys(nw) for nw in widths]
     pygame.draw.rect(surf, _type_color(k), (x, top - 4, 6, 6))
+    n_cells = int((genome.mask & (genome.type_map == k)).sum())
+    surf.blit(pygame.font.Font(None, 15).render(f"x{n_cells}", True, (150, 160, 180)),
+              (x + 9, top - 6))
     for li, Wm in enumerate(mats):                        # edges between columns
         m = np.abs(Wm).max() + 1e-6
         thr = 0.6 * m
@@ -455,6 +468,12 @@ _HELP_LINES = [
     "H       toggle this help",
     "ESC / Q quit",
 ]
+
+
+def _fmt_hms(seconds: float) -> str:
+    """Wall-clock duration as h:mm:ss (the HUD's real-time counterpart to ticks)."""
+    t = int(seconds)
+    return f"{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}"
 
 
 def _shot_name(world) -> str:
@@ -524,6 +543,9 @@ def main(argv=None) -> int:
     pygame.display.set_caption(f"vivarium — {a.brain} brain")
     clock = pygame.time.Clock()
     last_shot = time.time()                          # periodic auto-screenshot timer
+    t_start = time.time()                            # wall-clock start of the session
+    epoch_t0 = t_start                               # wall-clock start of the epoch
+    epoch_seen = world.epoch
 
     # `speed` = simulation steps per RENDERED frame. Rendering is the bottleneck,
     # so running many steps per draw (and, at high speed, uncapping the frame
@@ -644,9 +666,14 @@ def main(argv=None) -> int:
                 sub = 0
         if selected is not None and selected not in world.agents:
             selected = None
+        if world.epoch != epoch_seen:                # a reseed started a new epoch
+            epoch_seen = world.epoch
+            epoch_t0 = time.time()
+        now = time.time()
         fps = clock.get_fps()
         hud = {"fps": fps, "speed": speed, "sps": fps * (speed if not paused else 0),
-               "think": anim, "msg": msg if msg_frames > 0 else ""}
+               "think": anim, "msg": msg if msg_frames > 0 else "",
+               "real": _fmt_hms(now - t_start), "epoch_real": _fmt_hms(now - epoch_t0)}
         if msg_frames > 0:
             msg_frames -= 1
         screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,

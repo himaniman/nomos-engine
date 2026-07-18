@@ -185,24 +185,29 @@ class Config:
     nca_hidden: int = 16               # hidden units in each cell-type's update rule
     nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
     nca_start: int = 2                 # side of the fresh alive block (2 -> 2x2)
+    # Structural mutation rates are GROWTH-BIASED on purpose (grow/deepen/widen/split
+    # run ~3-5x more often than their shrink counterparts): mutation proposes bigger
+    # brains, and the per-cell energy cost (nca_cell_cost) is the counterweight that
+    # prunes growth that doesn't pay — so brain volume trends UP under mutation and
+    # is trimmed by selection, not by the mutation operator itself.
     nca_max_cells: int = 48            # cap on alive cells (bounds per-agent compute)
-    nca_grow_prob: float = 0.03        # chance a mutation activates a new adjacent cell
-    nca_shrink_prob: float = 0.01      # chance a mutation deactivates a cell
+    nca_grow_prob: float = 0.10        # chance a mutation activates a new adjacent cell
+    nca_shrink_prob: float = 0.02      # chance a mutation deactivates a cell
     # v1 — cell TYPES: the genome carries several update rules; each cell has a TYPE
     # pointing at one, so cells DIFFERENTIATE (a set of rules, not one shared rule).
     nca_max_types: int = 4             # cap on distinct cell-type rules
-    nca_retype_prob: float = 0.025     # chance a mutation re-types one cell
-    nca_split_prob: float = 0.01       # chance a mutation SPLITS a type into a new one
+    nca_retype_prob: float = 0.04      # chance a mutation re-types one cell
+    nca_split_prob: float = 0.03       # chance a mutation SPLITS a type into a new one
                                        # (clone+jitter a rule, reassign ~half its cells)
     # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
     # its depth (add a near-identity layer / remove a middle one), capped.
     nca_max_layers: int = 4            # max layers in a cell-type rule (depth cap)
-    nca_add_layer_prob: float = 0.015  # chance a mutation deepens a rule by one layer
+    nca_add_layer_prob: float = 0.05   # chance a mutation deepens a rule by one layer
     nca_del_layer_prob: float = 0.01   # chance a mutation removes a middle layer
     # v3 — evolvable WIDTH: a type's hidden layers all share a width that mutation grows
     # (append a hidden node, wired in silently) / shrinks. So the perceptron's node
     # count per hidden layer evolves too, not just depth.
-    nca_widen_prob: float = 0.02       # chance a mutation adds a hidden node to a rule
+    nca_widen_prob: float = 0.06       # chance a mutation adds a hidden node to a rule
     nca_narrow_prob: float = 0.015     # chance a mutation removes a hidden node
     nca_max_hidden: int = 32           # cap on a rule's hidden width
     nca_min_hidden: int = 3            # floor on a rule's hidden width

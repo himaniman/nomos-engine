@@ -1,2 +1,6 @@
 numpy>=1.24
 pygame>=2.5
+# optional accelerator: the NCA brain's relaxation loop runs as a compiled
+# kernel when numba is importable (scipy supplies numba's BLAS bindings)
+numba>=0.60
+scipy>=1.10

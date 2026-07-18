@@ -36,6 +36,19 @@ from __future__ import annotations
 
 import numpy as np
 
+# numba is an OPTIONAL accelerator: when present, the whole subtick relaxation
+# (scatter -> 3x3 gather -> per-type layer stacks -> state update) runs as one
+# compiled kernel instead of ~32 Python-level numpy calls per act. The numpy
+# path below stays the reference implementation (and the only path when numba
+# is missing). NOTE: which path a run uses can differ in float rounding, so a
+# trajectory is reproducible per-environment, not across the two paths.
+try:
+    from numba import njit as _njit
+    from numba.typed import List as _NbList
+    _NUMBA = True
+except ImportError:                                  # pragma: no cover - env-dependent
+    _NUMBA = False
+
 # actions (outputs) — identical ids to neat.py so the World's step logic is shared
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
 N_ACTIONS = 4
@@ -178,6 +191,47 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
     return x @ last["W"].T + last["b"]
 
 
+if _NUMBA:
+    @_njit(cache=True)
+    def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
+                  subticks):                          # pragma: no cover - jitted
+        """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
+        (n, C) alive rows into the flat padded buffer, gather each cell's 9-neighbour
+        rows into a (n, 9C) perception, forward each TYPE's rows through its layer
+        stack (Wts/bs hold every type's layers back to back, pre-transposed; layer_cnt
+        says how many belong to each type), then the residual tanh update. Mutates
+        and returns `st`."""
+        n, C = st.shape
+        for _ in range(subticks):
+            for i in range(n):
+                for c in range(C):
+                    padF[centre[i], c] = st[i, c]
+            perc = np.empty((n, 9 * C))
+            for i in range(n):
+                for j in range(9):
+                    r = nbr[i, j]
+                    for c in range(C):
+                        perc[i, j * C + c] = padF[r, c]
+            delta = np.empty((n, C))
+            li = 0
+            for k in range(len(layer_cnt)):
+                rows = type_rows[k]
+                nl = layer_cnt[k]
+                if rows.size > 0:
+                    x = perc[rows]
+                    for L in range(nl - 1):
+                        x = np.tanh(x @ Wts[li + L] + bs[li + L])
+                    y = x @ Wts[li + nl - 1] + bs[li + nl - 1]
+                    for ii in range(rows.size):
+                        for c in range(C):
+                            delta[rows[ii], c] = y[ii, c]
+                li += nl
+            for i in range(n):
+                for c in range(C):
+                    st[i, c] = np.tanh(st[i, c] + delta[i, c] + drive[c])
+        return st
+
+
 class Phenotype:
     """Runnable CA brain. Holds the persistent grid state; `act` injects the senses
     as a drive, relaxes the per-type rules a few sub-ticks so signals cross the grid,
@@ -190,9 +244,30 @@ class Phenotype:
         self.subticks = subticks
         G, C = genome.G, genome.C
         self.state = np.zeros((G, G, C), dtype=np.float64)
-        self._m = genome.mask[:, :, None]           # (G, G, 1) broadcast mask
-        self._type_sel = [genome.mask & (genome.type_map == k)
-                          for k in range(genome.n_types)]
+        # ALIVE-ONLY indexing: dead cells are frozen zeros, so all per-subtick work
+        # runs on (n_alive, C) rows instead of the full G x G lattice. Neighbourhoods
+        # are gathered by precomputed row indices into a persistent zero-padded flat
+        # buffer (the pad supplies the zero boundary AND the zero dead cells) — this
+        # replaced a per-subtick np.pad + full-grid rule pass and is ~10x faster for
+        # the typical small brain.
+        ys, xs = np.nonzero(genome.mask)
+        self._ys, self._xs = ys, xs
+        self._padF = np.zeros(((G + 2) * (G + 2), C), dtype=np.float64)
+        self._centre = (ys + 1) * (G + 2) + (xs + 1)         # alive rows in the pad
+        self._nbr = np.stack([(ys + 1 + dy) * (G + 2) + (xs + 1 + dx)
+                              for dy, dx in _OFFSETS], axis=1)   # (n, 9) per-cell rows
+        cell_types = genome.type_map[ys, xs]
+        self._type_rows = [np.nonzero(cell_types == k)[0]
+                           for k in range(genome.n_types)]
+        if _NUMBA:                                   # pack the rules for the jit kernel:
+            self._nb_rows = _NbList(self._type_rows)  # per-type alive-row indices
+            Wts, bs = _NbList(), _NbList()            # every type's layers, back to back
+            for r in genome.rules:                    # (weights pre-transposed to in x out)
+                for L in r:
+                    Wts.append(np.ascontiguousarray(L["W"].T))
+                    bs.append(np.ascontiguousarray(L["b"]))
+            self._nb_W, self._nb_b = Wts, bs
+            self._nb_cnt = np.array([len(r) for r in genome.rules], dtype=np.int64)
         self.last_input = None
         self.last_logits = None
         # LIFETIME LEARNING (meta-plasticity): a plastic delta on the motor readout
@@ -209,38 +284,47 @@ class Phenotype:
         self.trace: list = []
         self.show_state = None
 
-    def _perceive(self, s: np.ndarray) -> np.ndarray:
-        """3x3 neighbourhood of every cell, BOUNDED (zero-padded, no torus wrap),
-        with dead cells contributing nothing -> (G, G, 9C)."""
-        G = self.genome.G
-        sm = s * self._m                                     # dead cells = 0
-        pad = np.pad(sm, ((1, 1), (1, 1), (0, 0)))
-        blocks = [pad[1 + dy:1 + dy + G, 1 + dx:1 + dx + G, :] for dy, dx in _OFFSETS]
-        return np.concatenate(blocks, axis=-1)
-
     def act(self, inputs: np.ndarray, rng=None, temp: float = 0.0) -> int:
         g = self.genome
         drive = inputs @ g.P_in                              # (C,) sensory current
-        st = self.state
+        n = len(self._ys)
+        st = self.state[self._ys, self._xs]                  # (n, C) alive rows only
+        padF, nbr = self._padF, self._nbr
         if self.record:
             self.trace = []
-        single = g.n_types == 1                              # common case: fast path
-        for _ in range(self.subticks):
-            perc = self._perceive(st)                        # (G, G, 9C)
-            if single:                                       # one rule over the whole grid
-                flat = perc.reshape(-1, perc.shape[-1])
-                delta = _apply_rule(flat, g.rules[0]).reshape(st.shape)
-            else:                                            # each type runs its own rule
-                delta = np.zeros_like(st)
-                for k, sel in enumerate(self._type_sel):
-                    if sel.any():
-                        delta[sel] = _apply_rule(perc[sel], g.rules[k])
-            st = np.tanh(st + delta + drive)                 # residual + clamped
-            st = st * self._m                                # dead cells stay 0
+        if _NUMBA and n:
+            # the jitted kernel runs all subticks at once; when recording (the T view)
+            # it is called one subtick at a time so the trace frames come from the SAME
+            # arithmetic — watching an agent think must not change its trajectory
             if self.record:
-                self.trace.append(st.copy())                 # one frame per sub-tick
-        self.state = st
-        pooled = st[g.mask].mean(axis=0)                     # (C,) mean over alive
+                for _ in range(self.subticks):
+                    st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
+                                   self._nb_W, self._nb_b, self._nb_cnt, 1)
+                    full = np.zeros_like(self.state)
+                    full[self._ys, self._xs] = st
+                    self.trace.append(full)
+            else:
+                st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
+                               self._nb_W, self._nb_b, self._nb_cnt, self.subticks)
+        else:                                                # numpy reference path
+            single = g.n_types == 1
+            for _ in range(self.subticks):
+                padF[self._centre] = st                      # refresh the padded buffer
+                perc = padF[nbr].reshape(n, 9 * g.C)         # 3x3 hood, bounded, dead=0
+                if single:                                   # one rule over all alive cells
+                    delta = _apply_rule(perc, g.rules[0])
+                else:                                        # each type runs its own rule
+                    delta = np.empty_like(st)
+                    for k, rows in enumerate(self._type_rows):
+                        if len(rows):
+                            delta[rows] = _apply_rule(perc[rows], g.rules[k])
+                st = np.tanh(st + delta + drive)             # residual + clamped
+                if self.record:                              # one full-grid frame per sub-tick
+                    full = np.zeros_like(self.state)
+                    full[self._ys, self._xs] = st
+                    self.trace.append(full)
+        self.state[self._ys, self._xs] = st
+        pooled = st.mean(axis=0)                             # (C,) mean over alive
         eff_out = g.P_out + self.dW if self.plastic else g.P_out  # readout + learned delta
         logits = pooled @ eff_out + g.b_out                  # (n_out,)
         self.last_input = inputs

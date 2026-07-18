@@ -526,11 +526,12 @@ def test_nca_type_split_adds_a_rule_and_differentiates_cells():
     from vivarium import nca
     n_in = input_size(3)
     rng = np.random.default_rng(4)
-    # a brain with several cells so a split has cells to hand out
-    g = nca.random_genome(n_in, nca.N_ACTIONS, rng,
-                          cfg=_nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0))
+    # a brain with several cells so a split has cells to hand out (split pinned OFF
+    # during the growth phase — the default split rate is no longer negligible)
+    grow_only = _nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0, nca_split_prob=0.0)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=grow_only)
     for _ in range(6):
-        g, _ = nca.mutate(g, rng, _nca_cfg(nca_grow_prob=1.0, nca_shrink_prob=0.0), 0)
+        g, _ = nca.mutate(g, rng, grow_only, 0)
     assert g.n_types == 1                          # starts single-type (v0 case)
     split = _nca_cfg(nca_split_prob=1.0, nca_grow_prob=0.0, nca_shrink_prob=0.0)
     g, _ = nca.mutate(g, rng, split, 0)

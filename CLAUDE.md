@@ -292,8 +292,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   continuous (y, x), heading and speed, a continuous motor read-out
   (`_command`: forward THRUST from forward-vs-stay, TURN from right-vs-left), and
   a rich per-ray vision fan (edible food / obstacle / KIN / NON-KIN) + smell +
-  proprioception. Grid-backed food/walls; agents move and see smoothly over them.
-  `python -m aqua.app`. Three mechanics fixes (2026-07-18, see journal): (1)
+  proprioception. `python -m aqua.app`.
+- Going FULLY CONTINUOUS (branch `aqua-continuous`, 2026-07-18, staged
+  walls->food->corpses; scope A = geometry, not dynamics): demote the grid from
+  source-of-truth to an acceleration/aggregate. STAGE 1 done — WALLS are float
+  axis-aligned RECTANGLES (`World.wall_rects`, from the strokes), collision is
+  circle-vs-AABB (`_wall_blocks_circle`), vision is analytic ray-vs-AABB
+  (`_ray_wall_dist`); no blockiness, exact ray hits. STAGE 2 done — FOOD is float
+  MORSELS (`food_xy`/`food_type`, no `self.food` grid), eaten by body-circle
+  overlap (`food_radius` 0.25), sensed by true distance; vision treats a morsel
+  like a nearby agent (FOV-pruned). `self.walls` survives only as a coarse
+  open-area count. STAGE 3 pending — corpses still a grid. Also: SMELL is
+  inverse-square (`amp = diet_eff/(1+(d/sharpness)^2)`, faint far, steep near),
+  body radius 0.45 (~wall-width, still fits 1-cell doors). Perf: high pop (~150+)
+  is O(n^2) on the agent-agent scan (deferred: a spatial bucket for agents).
+- Earlier grid-hybrid mechanics fixes (2026-07-18, see journal): (1)
   collisions are now an honest CIRCLE-vs-grid test (`_blocked_circle`) matching
   the drawn body — no more centre-point poking through walls; walls/corpses/
   agents/food all judged by the body radius. (2) Movement is MARCHED in

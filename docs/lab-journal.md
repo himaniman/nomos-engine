@@ -1109,3 +1109,36 @@ suite 189 green. Also closed a predation edge case (a carnivore jumping onto pre
 now respects the wall test, so it can't land its body inside a wall). Walls now
 render as smooth continuous bars with clean door gaps. Next: stage 2, food as
 float entities in a bucket index (this is the bulk — re-plumbing the ecology).
+
+## 2026-07-18 (later still) — stage 2: food is float morsels + sense/size tuning
+
+**Food is a cloud of float MORSELS now, not a grid.** `self.food` (the int8 grid)
+is gone; food is parallel arrays `food_xy` (N,2 float) + `food_type` (N,), planted
+at true float positions (halo + gaussian, no rounding), EATEN when the agent body
+CIRCLE overlaps the morsel circle (`radius + food_radius`), and removed on eat. All
+queries are vectorised over the arrays — no bucket needed at these counts (~80
+morsels): smell = nearest by true distance; VISION treats each morsel like a nearby
+agent (a bearing within the ray's angular half-spacing + food_radius/dist), FOV-pruned
+to the cone so a ray never scans food behind the creature. The `self.walls` grid
+survives ONLY as a coarse open-AREA count for the food-density target (an aggregate,
+not per-cell truth). Corpses are still grid (stage 3). Re-plumbed regrow / placement
+validity / `_clear_under_walls` / snapshot onto entities. Determinism preserved;
++2 tests (food is genuinely off-grid and never inside a wall; eating needs body
+overlap and removes the morsel); full suite 191 green. Morsels render at their true
+radius (0.25 cell) — small dots, as the user wanted.
+
+**Three tuning changes the user asked for, same pass.** (1) SMELL is now an
+INVERSE-SQUARE field — `amp = diet_eff / (1 + (dist/sharpness)^2)` (sharpness 6
+cells) instead of the old linear `1 - dist/range`. Same whole-map reach but faint
+across the field and rising STEEPLY on approach (half strength at 6 cells, ~1 on the
+morsel) — the "weak everywhere, quadratically strong up close" the user described,
+so a creature always has a weak bearing to the nearest food and homes in sharply.
+(2) BODY radius 0.35 -> 0.45, about as wide as a wall bar (wall_thickness 1.0) as the
+user wanted — but under 0.5 so it still threads a one-cell doorway (0.5 wedges: A/B
+pop 84 vs 145 at 0.45, healthiest of the three). (3) food drawn at half its old
+size. Perf note: at high population (~150+) a tick is ~130ms, dominated by the
+PRE-EXISTING O(n^2) agent-agent scan (`_agent_near` per substep + near-agents
+vision), not food (the FOV prune bounds that). A spatial bucket for AGENTS is the
+deferred cross-cutting optimisation; correctness/determinism are unaffected. Next:
+stage 3, corpses as float circles (small, reuses the food/agent machinery), then the
+sensor-input colour-coding the user asked for at the end.

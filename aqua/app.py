@@ -43,19 +43,24 @@ def _ray_hit(world: World, a, ang: float) -> float:
     dx, dy = math.cos(ang), math.sin(ang)
     d = world._ray_wall_dist(a.y, a.x, dx, dy, rl)
     k = world.ray_step
-    while k <= d:
+    while k <= d:                                            # corpses (still grid)
         cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-        if 0 <= cy < world.h and 0 <= cx < world.w and (
-                world.corpse[cy, cx] > 0 or world.food[cy, cx]):
+        if 0 <= cy < world.h and 0 <= cx < world.w and world.corpse[cy, cx] > 0:
             d = k
             break
         k += world.ray_step
+    half = 0.5 * world.cfg.fov / max(1, int(a.brain.genome.n_rays) - 1)
+    for fy, fx in world.food_xy:                             # food morsels (float)
+        df = math.hypot(fy - a.y, fx - a.x)
+        if df <= d and abs(((math.atan2(fy - a.y, fx - a.x) - ang + math.pi)
+                            % (2 * math.pi)) - math.pi) <= half + world.food_radius / max(df, 1e-9):
+            d = df
     for b in world.agents.values():
         if b.id == a.id:
             continue
         db = math.hypot(b.y - a.y, b.x - a.x)
         if db <= d and abs(((math.atan2(b.y - a.y, b.x - a.x) - ang + math.pi)
-                            % (2 * math.pi)) - math.pi) <= world.cfg.fov / 2:
+                            % (2 * math.pi)) - math.pi) <= half + world.radius / max(db, 1e-9):
             d = db
     return d
 
@@ -78,10 +83,9 @@ def draw(world: World, cell: int, panel_w: int, font, small,
         pygame.draw.circle(surf, tuple(c // 5 for c in _FOOD_COLORS[k % len(_FOOD_COLORS)]),
                            (int((hx + 0.5) * cell), int((hy + 0.5) * cell)),
                            max(2, int(world.cfg.food_halo_sigma * world.w * cell)), 1)
-    fy, fx = np.where(world.food > 0)                       # food, coloured by type
-    fr = max(2, cell // 2)
-    for y, x in zip(fy, fx):
-        col = _FOOD_COLORS[(int(world.food[y, x]) - 1) % len(_FOOD_COLORS)]
+    fr = max(1, int(round(world.food_radius * cell)))       # drawn size == morsel radius
+    for (y, x), t in zip(world.food_xy, world.food_type):   # food morsels (float), by type
+        col = _FOOD_COLORS[(int(t) - 1) % len(_FOOD_COLORS)]
         pygame.draw.circle(surf, col, (int((x + 0.5) * cell), int((y + 0.5) * cell)), fr)
 
     sel = world.agents.get(selected) if selected is not None else None

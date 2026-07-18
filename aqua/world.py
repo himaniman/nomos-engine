@@ -81,13 +81,16 @@ class World:
 
     def __init__(self, config: Config | None = None, genome_pool=None,
                  max_speed: float = 1.0, max_turn: float = 0.45,
-                 radius: float = 0.35, mate_radius: float = 1.8,
+                 radius: float = 0.45, mate_radius: float = 1.8,
                  ray_step: float = 0.6, smell: bool = True,
-                 smell_range: float | None = None, substep: float = 0.5):
+                 smell_range: float | None = None, substep: float = 0.5,
+                 smell_sharpness: float = 6.0):
         self.cfg = config or Config()
         c = self.cfg
         self.max_speed = max_speed          # cells per tick at full forward thrust
         self.max_turn = max_turn            # radians per tick at full turn
+        # body radius ~= wall thickness/2 (a creature about as wide as a wall bar) yet
+        # under half a cell so it still threads a one-cell doorway (0.5 wedges in doors).
         self.radius = radius                # agent body radius (collision/eat)
         # A move is marched in hops of <= `substep` cells and the body is collision-
         # tested at every hop, so no matter how fast an agent goes it can never JUMP
@@ -100,6 +103,11 @@ class World:
         self.smell = smell                  # omnidirectional food-gradient sense on?
         self.smell_range = (smell_range if smell_range is not None
                             else 2.0 * c.ray_length_max)
+        # smell is an INVERSE-SQUARE field: faint across the whole map (a long tail out
+        # to smell_range) but rising steeply near a source — half strength at
+        # smell_sharpness cells, ~1 on top of the food. So a creature always has a weak
+        # bearing to the nearest food from anywhere, sharpening fast as it closes in.
+        self.smell_sharpness = smell_sharpness
 
         self.genome_pool = list(genome_pool) if genome_pool else None
         self.brain = _BRAINS[c.brain]
@@ -123,9 +131,13 @@ class World:
 
         self.strokes = self._generate_strokes()
         self.walls = np.zeros((self.h, self.w), dtype=bool)
-        self._rasterize_walls()        # bridge cache: still backs food PLACEMENT queries
+        self._rasterize_walls()        # aggregate cache: open-area count for food density
         self._build_wall_rects()       # the real geometry: float rectangles (collision/vision)
-        self.food = np.zeros((self.h, self.w), dtype=np.int8)
+        self.food_radius = c.food_radius
+        # food is now a cloud of FLOAT morsels (stage 2): parallel arrays of positions
+        # and types, queried/eaten by true distance — no longer a grid.
+        self.food_xy = np.empty((0, 2), dtype=np.float64)
+        self.food_type = np.empty(0, dtype=np.int64)
         self.halos = np.array([[self.rng.integers(2, self.h - 2),
                                 self.rng.integers(2, self.w - 2)]
                                for _ in range(c.n_food_types)], dtype=np.float64)
@@ -139,11 +151,9 @@ class World:
         # computed per genome on demand and cached by count.
         self._ray_angle_cache: dict[int, np.ndarray] = {}
 
-        self._food_xy = np.empty((0, 2), dtype=np.int64)   # food coords, refreshed per tick
         for _ in range(c.init_population):
             self._spawn_agent(self._seed_genome())
         self._regrow_food()
-        self._food_xy = np.argwhere(self.food > 0)
 
     # -- brains -------------------------------------------------------------
 
@@ -325,18 +335,47 @@ class World:
         return (self._blocked_circle(y, x)
                 or self._agent_near(y, x, 2 * self.radius, exclude=exclude) is not None)
 
-    # -- food (grid, copied from vivarium) ----------------------------------
+    # -- food (float morsels; the grid is gone) -----------------------------
 
-    def _free_food_cell(self, y: int, x: int) -> bool:
-        return (0 < y < self.h - 1 and 0 < x < self.w - 1 and not self.walls[y, x]
-                and self.corpse[y, x] == 0 and self.food[y, x] == 0
-                and self._agent_near(y, x, self.radius) is None)
+    def _point_in_walls(self, y: float, x: float) -> bool:
+        """Is the point (y, x) inside any wall rectangle? (food placement test)."""
+        for y0, y1, x0, x1 in self.wall_rects:
+            if y0 <= y <= y1 and x0 <= x <= x1:
+                return True
+        return False
 
-    def _random_free_cell(self):
-        free = np.argwhere((~self.walls) & (self.corpse == 0) & (self.food == 0))
-        if len(free) == 0:
-            return None
-        return tuple(free[self.rng.integers(len(free))])
+    def _nearest_food_dist(self, y: float, x: float) -> float:
+        """Distance to the nearest existing food morsel (inf if none)."""
+        if len(self.food_type) == 0:
+            return math.inf
+        dy = self.food_xy[:, 0] - y
+        dx = self.food_xy[:, 1] - x
+        return float(np.sqrt(np.min(dy * dy + dx * dx)))
+
+    def _valid_food_pos(self, y: float, x: float) -> bool:
+        """A float spot is plantable if it's inside the map, clear of walls, corpses,
+        other food (no stacking) and agents."""
+        return (1.0 <= y <= self.h - 1.0 and 1.0 <= x <= self.w - 1.0
+                and not self._point_in_walls(y, x)
+                and self.corpse[int(round(y)), int(round(x))] == 0
+                and self._nearest_food_dist(y, x) > 2.0 * self.food_radius
+                and self._agent_near(y, x, self.radius + self.food_radius) is None)
+
+    def _random_free_food_pos(self):
+        for _ in range(20):
+            y = float(self.rng.uniform(1.0, self.h - 1.0))
+            x = float(self.rng.uniform(1.0, self.w - 1.0))
+            if self._valid_food_pos(y, x):
+                return y, x
+        return None
+
+    def _add_food(self, pos, ftype: int) -> None:
+        self.food_xy = np.vstack([self.food_xy, [pos[0], pos[1]]])
+        self.food_type = np.append(self.food_type, ftype)
+
+    def _remove_food(self, j: int) -> None:
+        self.food_xy = np.delete(self.food_xy, j, axis=0)
+        self.food_type = np.delete(self.food_type, j)
 
     def _effective_regrow(self) -> float:
         c = self.cfg
@@ -348,9 +387,9 @@ class World:
 
     def _regrow_food(self) -> None:
         c = self.cfg
-        open_cells = int((~self.walls).sum())
+        open_cells = int((~self.walls).sum())          # walls cache: coarse open-area count
         target = int(self.food_cap * open_cells)
-        deficit = target - int((self.food > 0).sum())
+        deficit = target - len(self.food_type)
         sigma = c.food_halo_sigma * min(self.h, self.w)
         rate = self._effective_regrow()
         count = int(rate)
@@ -360,16 +399,16 @@ class World:
         for _ in range(min(count, max(0, deficit))):
             k = int(self.rng.integers(c.n_food_types))
             if self.rng.random() < c.food_scatter_prob:
-                cell = self._random_free_cell()
-                if cell is not None:
-                    self.food[cell] = k + 1
+                pos = self._random_free_food_pos()
+                if pos is not None:
+                    self._add_food(pos, k + 1)
                 continue
             cy, cx = self.halos[k]
             for _try in range(6):
-                y = int(round(cy + self.rng.normal(0.0, sigma)))
-                x = int(round(cx + self.rng.normal(0.0, sigma)))
-                if self._free_food_cell(y, x):
-                    self.food[y, x] = k + 1
+                y = float(cy + self.rng.normal(0.0, sigma))
+                x = float(cx + self.rng.normal(0.0, sigma))
+                if self._valid_food_pos(y, x):
+                    self._add_food((y, x), k + 1)
                     break
 
     def _diet_eff(self, diet: float, food_type: int) -> float:
@@ -470,7 +509,18 @@ class World:
             if d <= rl + self.radius:
                 kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
                 near.append((d, math.atan2(b.y - a.y, b.x - a.x), kin))
-        half_ray = 0.5 * c.fov / max(1, nr - 1) + self.radius / rl
+        near_food = []                                        # food morsels within the CONE
+        if len(self.food_type):                               # (only what a ray could see:
+            fdy = self.food_xy[:, 0] - a.y                    #  vectorised, FOV-pruned)
+            fdx = self.food_xy[:, 1] - a.x
+            fdd = np.hypot(fdy, fdx)
+            fb = np.arctan2(fdy, fdx)
+            rel_b = np.abs((fb - a.heading + math.pi) % _TWO_PI - math.pi)
+            in_view = (fdd <= rl + self.food_radius) & (rel_b <= 0.5 * c.fov + 0.6)
+            for idx in np.nonzero(in_view)[0]:
+                near_food.append((float(fdd[idx]), float(fb[idx]), int(self.food_type[idx])))
+        half_spacing = 0.5 * c.fov / max(1, nr - 1)
+        half_ray = half_spacing + self.radius / rl
         for i, rel in enumerate(self.ray_angles(nr)):
             ang = a.heading + rel
             dx, dy = math.cos(ang), math.sin(ang)
@@ -479,18 +529,16 @@ class World:
                 hit_d, hit_ch, hit_val = dw, 1, 1.0 - dw / rl
             else:
                 hit_d, hit_ch, hit_val = rl, -1, 0.0
-            k = self.ray_step
-            while k <= hit_d:                                # march grid for food/corpse
+            k = self.ray_step                                # march grid for CORPSE (stage 3)
+            while k <= hit_d:
                 cy, cx = int(round(a.y + dy * k)), int(round(a.x + dx * k))
-                if 0 <= cy < self.h and 0 <= cx < self.w:    # (walls already handled)
-                    if self.corpse[cy, cx] > 0:
-                        hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle
-                        break
-                    ft = self.food[cy, cx]
-                    if ft:
-                        hit_d, hit_ch, hit_val = k, 0, effs[ft - 1] * (1.0 - k / rl)
-                        break
+                if 0 <= cy < self.h and 0 <= cx < self.w and self.corpse[cy, cx] > 0:
+                    hit_d, hit_ch, hit_val = k, 1, 1.0 - k / rl      # obstacle
+                    break
                 k += self.ray_step
+            for fd, fbear, ft in near_food:                  # a food morsel along this ray?
+                if fd < hit_d and abs(_wrap_angle(fbear - ang)) <= half_spacing + self.food_radius / fd:
+                    hit_d, hit_ch, hit_val = fd, 0, effs[ft - 1] * (1.0 - fd / rl)
             for d, bearing, kin in near:                     # an agent nearer than that?
                 if d < hit_d and abs(_wrap_angle(bearing - ang)) <= half_ray:
                     hit_d, hit_ch = d, (2 if kin else 3)     # KIN / NON-KIN channel
@@ -509,15 +557,15 @@ class World:
         vec[o + 5] = math.tanh(a.age / 500.0)                # maturity
         vec[o + 6] = 1.0                                     # bias
 
-        if self.smell and len(self._food_xy):                # nearest-food gradient
-            dy = self._food_xy[:, 0] - a.y
-            dx = self._food_xy[:, 1] - a.x
+        if self.smell and len(self.food_type):               # nearest-food gradient
+            dy = self.food_xy[:, 0] - a.y
+            dx = self.food_xy[:, 1] - a.x
             dd = np.hypot(dy, dx)
             j = int(np.argmin(dd))
             dist = float(dd[j])
             if 1e-9 < dist <= self.smell_range:
-                ft = int(self.food[int(self._food_xy[j, 0]), int(self._food_xy[j, 1])])
-                amp = self._diet_eff(diet, ft) * (1.0 - dist / self.smell_range)
+                ft = int(self.food_type[j])
+                amp = self._diet_eff(diet, ft) / (1.0 + (dist / self.smell_sharpness) ** 2)
                 rel = _wrap_angle(math.atan2(dy[j], dx[j]) - a.heading)
                 so = o + INTERO
                 vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
@@ -543,7 +591,6 @@ class World:
         c = self.cfg
         plastic = c.brain == "nca" and c.nca_plastic
         self._regrow_food()
-        self._food_xy = np.argwhere(self.food > 0)         # for the smell gradient
         dead: list[Agent] = []
         bred: set[int] = set()
         for aid in sorted(self.agents):
@@ -628,13 +675,20 @@ class World:
         return reward
 
     def _eat_food_here(self, a: Agent) -> float:
-        """Eat any food under the agent's centre; return the energy gained."""
+        """Eat the nearest food morsel whose CIRCLE the agent's body overlaps; return
+        the energy gained (0 if none in reach)."""
         c = self.cfg
-        cy, cx = int(round(a.y)), int(round(a.x))
-        ft = self.food[cy, cx]
-        if not ft:
+        if len(self.food_type) == 0:
             return 0.0
-        self.food[cy, cx] = 0
+        dy = self.food_xy[:, 0] - a.y
+        dx = self.food_xy[:, 1] - a.x
+        d2 = dy * dy + dx * dx
+        j = int(np.argmin(d2))
+        reach = self.radius + self.food_radius
+        if d2[j] >= reach * reach:
+            return 0.0
+        ft = int(self.food_type[j])
+        self._remove_food(j)
         g = a.brain.genome
         gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
         a.energy = min(c.max_energy, a.energy + gain)
@@ -758,7 +812,9 @@ class World:
             self._clear_under_walls()
 
     def _clear_under_walls(self) -> None:
-        self.food[self.walls] = 0
+        if len(self.food_type):                              # drop food a wall moved onto
+            keep = np.array([not self._point_in_walls(y, x) for y, x in self.food_xy])
+            self.food_xy, self.food_type = self.food_xy[keep], self.food_type[keep]
         for a in [ag for ag in self.agents.values()
                   if self._wall_blocks_circle(ag.y, ag.x)]:  # body caught by a moved wall
             self.agents.pop(a.id, None)
@@ -862,9 +918,9 @@ class World:
         energies = [a.energy for a in self.agents.values()]
         return {"tick": self.tick, "population": self.population(),
                 "energy_bodies": float(sum(energies)),
-                "energy_food": float((self.food > 0).sum()) * self.cfg.food_energy,
+                "energy_food": float(len(self.food_type)) * self.cfg.food_energy,
                 "energy_mean": float(np.mean(energies)) if energies else 0.0,
-                "food": int((self.food > 0).sum()), "corpses": int((self.corpse > 0).sum()),
+                "food": int(len(self.food_type)), "corpses": int((self.corpse > 0).sum()),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
                 "life_mean": life_mean, "life_median": life_median,

@@ -79,9 +79,8 @@ def test_smell_points_toward_food():
     w = World(_cfg(init_population=0))
     a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)  # facing +x
     a.brain.genome.diet = 0.0                       # fully digests food type 1 (edible)
-    w.food[:] = 0
-    w.food[24, 30] = 1                              # straight ahead (+x)
-    w._food_xy = np.argwhere(w.food > 0)
+    w.food_xy = np.array([[24.0, 30.0]])           # one morsel straight ahead (+x)
+    w.food_type = np.array([1])
     o = w.cfg.n_rays_max * RAY_CH
     vec = w._sense(a)
     fwd, lat = vec[o + INTERO], vec[o + INTERO + 1]
@@ -142,6 +141,36 @@ def test_no_body_overlaps_walls_over_a_run():
         w.step()
     assert w.population() > 0
     assert not any(w._wall_blocks_circle(a.y, a.x) for a in w.agents.values())
+
+
+# -- Stage 2: continuous FOOD (float morsels, eaten by circle overlap) --------------
+
+def test_food_is_float_morsels_not_a_grid():
+    """Food lives as float positions + types, never snapped to cell centres, and it
+    never grows inside a wall."""
+    w = World(_cfg(seed=1))
+    assert not hasattr(w, "food")                   # the grid is gone
+    assert w.food_xy.shape[1] == 2 and len(w.food_xy) == len(w.food_type)
+    for _ in range(60):
+        w.step()
+    assert len(w.food_type) > 0
+    assert any(abs(y - round(y)) > 1e-6 or abs(x - round(x)) > 1e-6
+               for y, x in w.food_xy)               # genuinely off the grid
+    assert not any(w._point_in_walls(y, x) for y, x in w.food_xy)
+
+
+def test_eating_needs_body_overlap_and_removes_the_morsel():
+    w = World(_cfg(init_population=0))
+    a = w._spawn_agent(w._seed_genome(), pos=(24.0, 24.0), heading=0.0)
+    a.brain.genome.diet, a.brain.genome.carnivore = 0.0, 0.0   # herbivore, digests type 1
+    far = w.radius + w.food_radius + 0.5
+    w.food_xy = np.array([[24.0, 24.0 + far]])      # out of reach
+    w.food_type = np.array([1])
+    assert w._eat_food_here(a) == 0.0 and len(w.food_type) == 1
+    w.food_xy = np.array([[24.0, 24.0 + 0.5 * (w.radius + w.food_radius)]])  # overlapping
+    w.food_type = np.array([1])
+    gain = w._eat_food_here(a)
+    assert gain > 0.0 and len(w.food_type) == 0      # eaten, morsel removed
 
 
 def test_reseed_on_extinction():

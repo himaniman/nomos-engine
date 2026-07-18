@@ -55,6 +55,9 @@ class Config:
                                        # meal funds a long stretch of life, so agents
                                        # survive long between finds and the population
                                        # stays small without starving out
+    food_radius: float = 0.25          # food morsel radius in cells (continuous aqua):
+                                       # food is a float CIRCLE eaten when an agent body
+                                       # overlaps it; also its drawn size
 
     # ADAPTIVE food controller (homeostasis) — OFF by default (food_pop_target = 0), so
     # food flows at the FIXED food_regrow rate above. When ON (food_pop_target > 0) it

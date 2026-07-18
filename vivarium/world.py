@@ -62,6 +62,8 @@ class World:
         self.rng = np.random.default_rng(c.seed)
         self.h = self.w = c.size
         self.tick = 0
+        self.epoch = 0                # how many times the world has gone fully extinct
+        self.epoch_start = 0          # tick the current epoch (population) began
         self._next_id = 0
         self.n_in = input_size(c.n_rays)
         self.n_out = self.brain.N_ACTIONS
@@ -318,7 +320,11 @@ class World:
             a = self.agents.get(aid)
             if a is None:
                 continue
-            action = a.brain.act(self._sense(a))
+            if c.brain == "nca":                   # NCA may explore (seeded) to not freeze
+                action = a.brain.act(self._sense(a), rng=self.rng,
+                                     temp=c.nca_explore_temp)
+            else:
+                action = a.brain.act(self._sense(a))
             a.energy -= c.base_cost
             if c.brain == "nca":                   # a bigger brain costs more to run,
                 a.energy -= c.nca_cell_cost * int(a.brain.genome.mask.sum())  # so size
@@ -542,6 +548,8 @@ class World:
         variants of them. Re-dropping only the elites replays the population that just
         died (no new variation -> evolution stalls); the mutants inject exploration on
         every collapse. Falls back to the seed pool / random when the hall is empty."""
+        self.epoch += 1                                     # a new epoch begins
+        self.epoch_start = self.tick
         elites = [g for _, g in self.hall[:self.cfg.reseed_elites]]
         if not elites:
             elites = [self._seed_genome()
@@ -607,8 +615,17 @@ class World:
 
     def snapshot(self) -> dict:
         life_mean, life_median = self.lifespan_stats()
+        energies = [a.energy for a in self.agents.values()]
+        # world energy budget: energy banked in living bodies + the potential energy
+        # sitting in uneaten food. Food is the ONLY inflow; metabolism + death are the
+        # outflows — so a rising total means inflow > burn (the balance is positive).
+        e_bodies = float(sum(energies))
+        e_food = float((self.food > 0).sum()) * self.cfg.food_energy
         return {"tick": self.tick, "population": self.population(),
+                "energy_bodies": e_bodies, "energy_food": e_food,
+                "energy_mean": float(np.mean(energies)) if energies else 0.0,
                 "food": int((self.food > 0).sum()), "corpses": int((self.corpse > 0).sum()),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
-                "life_mean": life_mean, "life_median": life_median}
+                "life_mean": life_mean, "life_median": life_median,
+                "epoch": self.epoch, "epoch_age": self.tick - self.epoch_start}

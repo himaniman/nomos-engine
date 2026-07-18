@@ -213,7 +213,7 @@ class Phenotype:
         blocks = [pad[1 + dy:1 + dy + G, 1 + dx:1 + dx + G, :] for dy, dx in _OFFSETS]
         return np.concatenate(blocks, axis=-1)
 
-    def act(self, inputs: np.ndarray) -> int:
+    def act(self, inputs: np.ndarray, rng=None, temp: float = 0.0) -> int:
         g = self.genome
         drive = inputs @ g.P_in                              # (C,) sensory current
         st = self.state
@@ -240,8 +240,14 @@ class Phenotype:
         logits = pooled @ eff_out + g.b_out                  # (n_out,)
         self.last_input = inputs
         self.last_logits = logits
-        a = int(np.argmax(logits))
-        if self.plastic:                                     # remember this decision:
+        if rng is not None and temp > 0:                     # explore: sample vs freeze
+            z = logits / temp
+            z -= z.max()
+            p = np.exp(z)
+            a = int(rng.choice(len(p), p=p / p.sum()))
+        else:
+            a = int(np.argmax(logits))
+        if self.plastic:                                     # credit the ACTION TAKEN:
             self._E *= self.elig_decay                       # decay the trace, then credit
             self._E[:, a] += pooled                          # outer(pooled, onehot(a))
         return a

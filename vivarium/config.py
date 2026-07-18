@@ -47,7 +47,7 @@ class Config:
                                        # by default — see food_pop_target). A constant
                                        # rate: no population-driven "waves", food just
                                        # rains at a steady pace up to the standing cap.
-    food_energy: float = 55.0          # energy gained per food eaten — RICH: a single
+    food_energy: float = 70.0          # energy gained per food eaten — RICH: a single
                                        # meal funds a long stretch of life, so agents
                                        # survive long between finds and the population
                                        # stays small without starving out
@@ -102,16 +102,19 @@ class Config:
     base_cost: float = 0.25            # paid every tick just to exist
     move_cost: float = 0.35            # extra to step forward
     turn_cost: float = 0.15            # extra to turn
-    start_energy: float = 42.0
-    max_energy: float = 95.0           # big reserve: a well-fed agent banks a long life
+    start_energy: float = 55.0
+    max_energy: float = 130.0          # big reserve: a well-fed agent banks a long life
+                                       # (raised so agents live long enough to LEARN)
 
     # reproduction: sexual crossover when two fed agents are adjacent, else a
     # high-energy asexual fallback so lone pioneers can still colonize. Thresholds
     # scaled to the larger energy reserve, so breeding takes real investment (slower
     # breeding -> a smaller, older population).
-    repro_min_energy: float = 52.0     # must be at least this well-fed to breed
-    repro_cost: float = 34.0           # energy spent (split across parents/child)
-    asexual_energy: float = 70.0       # lone-agent fallback breeds only when this full
+    repro_min_energy: float = 80.0     # must be at least this well-fed to breed — high so
+                                       # an agent LIVES (and learns) a good while before
+                                       # spending energy on a child
+    repro_cost: float = 42.0           # energy spent (split across parents/child)
+    asexual_energy: float = 110.0      # lone-agent fallback breeds only when this full
 
     # NEAT mutation rates (applied to every child genome). LOW, so a child resembles
     # its parent — heritability is what makes lineages/species persist and lifespan
@@ -213,3 +216,15 @@ class Config:
     nca_plastic_elig: float = 0.5      # per-act decay of the eligibility trace (credit
                                        # reaches back ~1/(1-elig) decisions before a meal)
     nca_plastic_clip: float = 1.0      # bound on |plastic delta| (keeps it from running off)
+
+    # EXPLORATION (NCA only): a recurrent brain fed a near-constant input settles into a
+    # fixed point and FREEZES — same action forever, so it stops moving, stops eating,
+    # and plasticity has no reward to amplify (the real takeoff wall). A little
+    # stochasticity in the action choice breaks the fixed point: the agent keeps moving,
+    # its input changes, it finds food. Actions are sampled from softmax(logits / temp)
+    # via the world's SEEDED rng, so runs stay reproducible. 0 = greedy argmax (off).
+    nca_explore_temp: float = 0.2      # softmax temperature for the action choice.
+                                       # A/B (populated preset): temp 0 gave the SHORTEST
+                                       # life and the MOST extinctions (neighbours alone
+                                       # don't unstick a frozen brain); a little here
+                                       # lengthens life and cuts extinctions.

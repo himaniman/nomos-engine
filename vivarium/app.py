@@ -145,8 +145,11 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     if bw > 40:
         pygame.draw.line(surf, (40, 40, 50), (bx0, 8), (bx0, H - 8), 1)
     s = world.snapshot()
-    lines = [f"tick {s['tick']}", f"pop  {s['population']}  species {s['species']}",
+    lines = [f"tick {s['tick']}",
+             f"epoch {s['epoch']}  +{s['epoch_age']}",
+             f"pop  {s['population']}  species {s['species']}",
              f"food {s['food']}  carn {s['carnivores'] * 100:.0f}%",
+             f"energy {s['energy_bodies']:.0f}  food {s['energy_food']:.0f}",
              f"births {s['births']}", f"deaths {s['deaths']}",
              f"lifespan  mean {s['life_mean']:.0f}  med {s['life_median']:.0f}"]
     if hud is not None:
@@ -251,7 +254,7 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
     inp = getattr(phenotype, "last_input", None) if phenotype is not None else None
     logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
 
-    grid_h = int(h * 0.62)                                 # top row height (bigger lattice)
+    grid_h = int(h * 0.50)                                 # top row: the lattice
     col_w, pad = 6, 6
     gx0 = x + (col_w + pad if inp is not None else 0)
     gx1 = x + w - (col_w + pad if logits is not None else 0)
@@ -306,14 +309,64 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
     if logits is not None:
         strip(logits, x + w - col_w, hi=int(np.argmax(logits)), signed=True)
 
-    # bottom row: one compact rule-net per cell type
-    ny = y + grid_h + 4
+    # middle band: the READOUT (pooled channels -> action logits) — the ONE place
+    # weights change WITHIN a life, so learned edges are highlighted here.
+    ry = y + grid_h + 4
+    rh = int(h * 0.18)
+    _draw_readout(surf, genome, phenotype, x, ry, w, rh)
+
+    # bottom row: one compact rule-net per cell type (these weights are FIXED — genome)
+    ny = ry + rh + 4
     nh = y + h - ny
     used = [k for k in range(genome.n_types)
             if (genome.mask & (genome.type_map == k)).any()] or [0]
     nw = w // len(used)
     for i, k in enumerate(used):
         _draw_rule_net(surf, genome, k, x + i * nw, ny, nw - 6, nh)
+
+
+def _draw_readout(surf, genome, phenotype, x, y, w, h):
+    """The motor READOUT (pooled channels -> action logits) = P_out, plus the LEARNED
+    plastic delta dW. This is the only part that changes during a life, so it's drawn
+    on its own: faint grey edges are the innate readout, and edges LIFE-LEARNING has
+    moved glow green (strengthened) / red (weakened) — so you literally watch the
+    weights change as the agent learns. Action nodes are labelled F/L/R/S."""
+    C, n_out = genome.C, genome.n_out
+    P = np.asarray(genome.P_out)
+    dW = getattr(phenotype, "dW", None) if phenotype is not None else None
+    plastic = phenotype is not None and getattr(phenotype, "plastic", False)
+    surf.blit(pygame.font.Font(None, 15).render("readout", True, (150, 160, 180)),
+              (x, y - 1))
+    lx, rx = x + 16, x + w - 34
+    top, span = y + 12, max(6, h - 14)
+    cy = [top + int((i + 0.5) / C * span) for i in range(C)]
+    ay = [top + int((j + 0.5) / n_out * span) for j in range(n_out)]
+    bmax = float(np.abs(P).max()) + 1e-6
+    dmax = (float(np.abs(dW).max()) + 1e-6) if dW is not None else 1.0
+    for c in range(C):                                     # faint innate readout first
+        for j in range(n_out):
+            g = 35 + int(45 * abs(P[c, j]) / bmax)
+            pygame.draw.line(surf, (g, g, g + 8), (lx, cy[c]), (rx, ay[j]), 1)
+    if plastic and dW is not None:                         # overlay the learned changes
+        for c in range(C):
+            for j in range(n_out):
+                d = float(dW[c, j])
+                if abs(d) < 0.12 * dmax:
+                    continue
+                col = (90, 215, 120) if d > 0 else (235, 110, 90)
+                pygame.draw.line(surf, col, (lx, cy[c]), (rx, ay[j]),
+                                 1 + int(2 * abs(d) / dmax))
+    for yy in cy:                                          # channel nodes (left)
+        pygame.draw.circle(surf, (150, 160, 200), (lx, yy), 2)
+    font = pygame.font.Font(None, 16)
+    for j, yy in enumerate(ay):                            # action nodes + labels (right)
+        pygame.draw.circle(surf, (240, 200, 120), (rx, yy), 3)
+        surf.blit(font.render("FLRS"[j] if j < 4 else "?", True, (210, 210, 225)),
+                  (rx + 8, yy - 7))
+    if plastic and dW is not None:                         # how much has been learned
+        mag = float(np.abs(dW).sum())
+        surf.blit(font.render(f"|dW| {mag:.2f}", True, (140, 200, 150)),
+                  (x + w - 62, y - 1))
 
 
 def _draw_rule_net(surf, genome, k, x, y, w, h):

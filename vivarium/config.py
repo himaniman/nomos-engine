@@ -73,9 +73,9 @@ class Config:
                                        # into); tight patches make the two food types
                                        # real places to own
     food_halo_drift: float = 2.0       # cells a halo centre may step when it drifts
-    food_halo_drift_every: int = 1280  # ticks between halo drifts (0 = static halos) —
-                                       # very slow, so food patches feel like stable
-                                       # regions that only wander over long timescales
+    food_halo_drift_every: int = 320   # ticks between halo drifts (0 = static halos) —
+                                       # food patches wander at a visible pace (patches
+                                       # are a moving resource to track, not fixed spots)
 
     # diet niche: a heritable trait sets which food TYPE an agent digests best (1.0 on
     # its own type, down to diet_min_eff on the far one); vision dims food it can't eat

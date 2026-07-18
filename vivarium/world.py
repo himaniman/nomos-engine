@@ -64,7 +64,8 @@ class World:
         self.tick = 0
         self.epoch = 0                # how many times the world has gone fully extinct
         self.epoch_start = 0          # tick the current epoch (population) began
-        self.food_rate = c.food_regrow  # live-tunable fixed food/tick (the app's [ ] keys)
+        self.food_rate = float(c.food_regrow)  # live-tunable fixed food/tick, may be < 1
+                                               # (fractional -> probabilistic; app [ ] keys)
         self._next_id = 0
         self.n_in = input_size(c.n_rays)
         self.n_out = self.brain.N_ACTIONS
@@ -211,7 +212,7 @@ class World:
         return (0 < y < self.h - 1 and 0 < x < self.w - 1 and not self.walls[y, x]
                 and self.corpse[y, x] == 0 and self.occ[y, x] < 0 and self.food[y, x] == 0)
 
-    def _effective_regrow(self) -> int:
+    def _effective_regrow(self) -> float:
         """Food throughput this tick. With the adaptive controller on, it's generous
         while the population is at/under target (so learners have plenty) and throttled
         proportionally as the population climbs past it — homeostasis around the
@@ -229,7 +230,15 @@ class World:
         target = int(c.food_target * open_cells)
         deficit = target - int((self.food > 0).sum())
         sigma = c.food_halo_sigma * min(self.h, self.w)
-        for _ in range(min(self._effective_regrow(), max(0, deficit))):
+        # a FRACTIONAL rate (< 1 food/tick) is resolved probabilistically: e.g. 0.3 sows
+        # one food on ~30% of ticks. Only draws rng when there's a fraction, so integer
+        # rates stay bit-for-bit reproducible.
+        rate = self._effective_regrow()
+        count = int(rate)
+        frac = rate - count
+        if frac and self.rng.random() < frac:
+            count += 1
+        for _ in range(min(count, max(0, deficit))):
             k = int(self.rng.integers(c.n_food_types))     # a random food type...
             cy, cx = self.halos[k]                          # ...spawns near its halo
             y = int(round(cy + self.rng.normal(0.0, sigma)))
@@ -460,10 +469,24 @@ class World:
             parents = (a,)
         else:
             return
+        self._lamarck(child_g, parents)                    # inherit some learned skill
         if self._spawn_agent(child_g, cell=cell, energy=c.repro_cost * 0.8) is not None:
             self.stats["births"] += 1
             for p in parents:
                 p.offspring += 1
+
+    def _lamarck(self, child_g, parents) -> None:
+        """Soft Lamarck: fold a fraction of the parents' LIFETIME-LEARNED readout delta
+        (Phenotype.dW) into the child's genome P_out, so the child is born partly knowing
+        what its parents learned and skill compounds across generations. No-op unless the
+        NCA brain is plastic and nca_lamarck > 0. dW and P_out are both (C, n_out), so the
+        fold is always shape-safe."""
+        lam = self.cfg.nca_lamarck
+        if self.cfg.brain != "nca" or lam <= 0.0:
+            return
+        dWs = [p.brain.dW for p in parents if getattr(p.brain, "dW", None) is not None]
+        if dWs:
+            child_g.P_out = child_g.P_out + lam * np.mean(dWs, axis=0)
 
     def _can_predate(self, pred: Agent, prey: Agent | None) -> bool:
         """A committed carnivore may eat the agent ahead only if it's a DIFFERENT
@@ -614,6 +637,27 @@ class World:
                         "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
                         "age": float(np.mean([a.age for a in grp]))})
         out.sort(key=lambda s: s["n"], reverse=True)
+        return out
+
+    def population_genomes(self, per: int = 3) -> list:
+        """Top-`per` genomes (oldest first) from EACH living colour-species — a DIVERSITY
+        snapshot of the CURRENT populations (not the all-time hall champions), so a save
+        keeps the range of coexisting lineages, not just the single most successful line."""
+        agents = sorted(self.agents.values(), key=lambda a: a.brain.genome.hue)
+        if not agents:
+            return []
+        groups, cur = [], [agents[0]]
+        for a in agents[1:]:
+            if a.brain.genome.hue - cur[-1].brain.genome.hue > self.cfg.species_hue:
+                groups.append(cur)
+                cur = [a]
+            else:
+                cur.append(a)
+        groups.append(cur)
+        out = []
+        for grp in groups:
+            for a in sorted(grp, key=lambda a: a.age, reverse=True)[:per]:
+                out.append(a.brain.genome.copy())
         return out
 
     def carnivore_fraction(self) -> float:

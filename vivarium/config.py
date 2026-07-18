@@ -224,6 +224,14 @@ class Config:
                                        # reaches back ~1/(1-elig) decisions before a meal)
     nca_plastic_clip: float = 1.0      # bound on |plastic delta| (keeps it from running off)
 
+    # SOFT LAMARCK: fraction of a parent's LIFETIME-LEARNED readout delta (dW) folded
+    # into the child's genome at birth. 0 = pure Darwinism (learning dies with the agent;
+    # evolution only selects the ABILITY to learn — the current/Baldwin regime). 1 = full
+    # write-back (the child is born knowing what its parent learned). A fraction in
+    # between compounds learning across generations — faster adaptation — while limiting
+    # how much of a parent's over-fitted lifetime quirks get baked into the gene line.
+    nca_lamarck: float = 0.5           # how much learned skill is inherited (0..1)
+
     # EXPLORATION (NCA only): a recurrent brain fed a near-constant input settles into a
     # fixed point and FREEZES — same action forever, so it stops moving, stops eating,
     # and plasticity has no reward to amplify (the real takeoff wall). A little

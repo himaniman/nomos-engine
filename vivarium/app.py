@@ -23,6 +23,8 @@ from __future__ import annotations
 import argparse
 import colorsys
 import hashlib
+import time
+from pathlib import Path
 
 import numpy as np
 import pygame
@@ -149,7 +151,7 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     lines = [f"tick {s['tick']}",
              f"epoch {s['epoch']}  +{s['epoch_age']}",
              f"pop  {s['population']}  species {s['species']}",
-             f"food {s['food']}  rate {s['food_rate']}  carn {s['carnivores'] * 100:.0f}%",
+             f"food {s['food']}  rate {s['food_rate']:g}  carn {s['carnivores'] * 100:.0f}%",
              f"energy {s['energy_bodies']:.0f}  food {s['energy_food']:.0f}",
              f"births {s['births']}", f"deaths {s['deaths']}",
              f"lifespan  mean {s['life_mean']:.0f}  med {s['life_median']:.0f}"]
@@ -450,6 +452,10 @@ def main(argv=None) -> int:
     p.add_argument("--save-genomes", default="vivarium/pools/session.json",
                    dest="save_genomes",
                    help="press W in the window to save the current top genomes here")
+    p.add_argument("--shots-dir", default="out/vivarium", dest="shots_dir",
+                   help="folder for periodic auto-screenshots")
+    p.add_argument("--shot-every", type=float, default=1800.0, dest="shot_every",
+                   help="seconds between auto-screenshots (default 1800 = 30 min; 0 = off)")
     a = p.parse_args(argv)
 
     cfg = Config(size=a.size, seed=a.seed, init_population=a.population,
@@ -470,6 +476,7 @@ def main(argv=None) -> int:
     screen = pygame.display.set_mode((world.w * a.cell + panel_w, world.h * a.cell))
     pygame.display.set_caption("vivarium")
     clock = pygame.time.Clock()
+    last_shot = time.time()                          # periodic auto-screenshot timer
 
     # `speed` = simulation steps per RENDERED frame. Rendering is the bottleneck,
     # so running many steps per draw (and, at high speed, uncapping the frame
@@ -503,11 +510,13 @@ def main(argv=None) -> int:
                 elif e.key == pygame.K_r:
                     world._reseed()
                 elif e.key == pygame.K_RIGHTBRACKET:   # ] more food per tick
-                    world.food_rate += 1
-                    msg, msg_frames = f"food rate {world.food_rate}", 60
-                elif e.key == pygame.K_LEFTBRACKET:    # [ less food per tick
-                    world.food_rate = max(0, world.food_rate - 1)
-                    msg, msg_frames = f"food rate {world.food_rate}", 60
+                    world.food_rate = round(world.food_rate
+                                            + (1 if world.food_rate >= 1 else 0.1), 1)
+                    msg, msg_frames = f"food rate {world.food_rate:g}", 60
+                elif e.key == pygame.K_LEFTBRACKET:    # [ less food per tick (down to 0.1)
+                    step = 1 if world.food_rate > 1 else 0.1
+                    world.food_rate = max(0.1, round(world.food_rate - step, 1))
+                    msg, msg_frames = f"food rate {world.food_rate:g}", 60
                 elif e.key == pygame.K_l:            # follow the longest-lived agent
                     follow_oldest = not follow_oldest
                     leader = None
@@ -516,9 +525,16 @@ def main(argv=None) -> int:
                 elif e.key == pygame.K_t:            # toggle subtick "thinking" view
                     think = not think
                     sub = 0
-                elif e.key == pygame.K_w:            # write the current top genomes
-                    genomes = world.hall_genomes() or \
-                        [ag.brain.genome.copy() for ag in world.agents.values()]
+                elif e.key == pygame.K_w:            # write a rich pool: living DIVERSITY
+                    # (top-3 per population) + the all-time hall CHAMPIONS, deduped
+                    seen, genomes = set(), []
+                    for g in world.population_genomes(3) + world.hall_genomes():
+                        k = g.key()
+                        if k not in seen:
+                            seen.add(k)
+                            genomes.append(g)
+                    genomes = genomes or [ag.brain.genome.copy()
+                                          for ag in world.agents.values()]
                     save_genomes(a.save_genomes, genomes)
                     msg, msg_frames = f"saved {len(genomes)} -> {a.save_genomes}", 150
             elif e.type == pygame.MOUSEBUTTONDOWN:
@@ -577,6 +593,12 @@ def main(argv=None) -> int:
         screen.blit(draw(world, a.cell, panel_w, font, small, selected, hud,
                          leader=leader, hitboxes=leader_boxes), (0, 0))
         pygame.display.flip()
+        if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
+            Path(a.shots_dir).mkdir(parents=True, exist_ok=True)
+            shot = Path(a.shots_dir) / f"vivarium_t{world.tick}_{time.strftime('%Y%m%d-%H%M%S')}.png"
+            pygame.image.save(screen, str(shot))
+            last_shot = time.time()
+            msg, msg_frames = f"saved shot {shot.name}", 120
         clock.tick(60 if (speed <= 2 or anim) else 0)   # capped when slow/animating
     pygame.quit()
     return 0

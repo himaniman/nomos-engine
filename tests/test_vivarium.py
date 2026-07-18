@@ -650,6 +650,25 @@ def test_nca_plasticity_learns_within_life():
     assert not q.dW.any()
 
 
+def test_lamarck_folds_learned_delta_into_child():
+    # soft Lamarck writes a fraction of a parent's LEARNED dW into the child's genome
+    w = World(_nca_cfg(size=20, init_population=2, nca_lamarck=0.5))
+    parent = next(iter(w.agents.values()))
+    parent.brain.dW[:] = 2.0                          # pretend it learned this
+    child_g = parent.brain.genome.copy()
+    base = child_g.P_out.copy()
+    w._lamarck(child_g, (parent,))
+    assert np.allclose(child_g.P_out, base + 0.5 * 2.0)   # half the learning inherited
+    # off (lamarck=0) leaves the child genome untouched (pure Darwinism)
+    w0 = World(_nca_cfg(size=20, init_population=2, nca_lamarck=0.0))
+    p0 = next(iter(w0.agents.values()))
+    p0.brain.dW[:] = 2.0
+    g0 = p0.brain.genome.copy()
+    b0 = g0.P_out.copy()
+    w0._lamarck(g0, (p0,))
+    assert np.allclose(g0.P_out, b0)
+
+
 def test_nca_world_runs_and_is_deterministic():
     cfg = _nca_cfg(size=32, seed=5, init_population=12)
     a = run_headless(cfg, ticks=60, every=20)

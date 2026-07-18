@@ -328,6 +328,7 @@ def test_carnivore_eats_the_agent_ahead():
     w.occ[10, 10] = pred.id
     w.occ[10, 11] = prey.id
     pred.brain.genome.carnivore = 1.0                    # a committed carnivore
+    pred.brain.genome.hue, prey.brain.genome.hue = 0.10, 0.60   # different species
     pred.energy = 20.0
     e0, before = pred.energy, w.population()
     w._predate(pred, 10, 11)
@@ -336,6 +337,21 @@ def test_carnivore_eats_the_agent_ahead():
     assert pred.energy > e0                               # predator fed
     assert (pred.y, pred.x) == (10, 11)                   # took the cell
     assert w.population() == before - 1
+
+
+def test_carnivore_spares_its_own_species():
+    # predation is cross-species only: a carnivore may eat a DIFFERENT-species agent
+    # but never its own kin, and a herbivore never predates at all
+    w = World(Config(size=20, seed=0, init_population=2, predation=True,
+                     carnivore_threshold=0.5, species_hue=0.08))
+    pred, other = list(w.agents.values())
+    pred.brain.genome.carnivore = 1.0
+    pred.brain.genome.hue = other.brain.genome.hue = 0.30    # same species
+    assert not w._can_predate(pred, other)                   # kin is safe
+    other.brain.genome.hue = 0.60                            # now a different species
+    assert w._can_predate(pred, other)                       # fair game
+    pred.brain.genome.carnivore = 0.0                        # a herbivore
+    assert not w._can_predate(pred, other)                   # never predates
 
 
 def test_nca_genome_carries_diet_and_carnivore():
@@ -538,6 +554,42 @@ def test_nca_rule_depth_grows_and_shrinks_and_stays_runnable():
         g, _ = nca.mutate(g, rng, shrink, 0)
     assert g.max_depth() == 2                        # shrank back to the min depth
     assert nca.Phenotype(g, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
+def test_nca_width_grows_and_shrinks_and_stays_runnable():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(9)
+    g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=_nca_cfg())
+    assert g.max_width() == 6                        # fresh hidden width = nca_hidden
+    grow = _nca_cfg(nca_widen_prob=1.0, nca_narrow_prob=0.0,
+                    nca_max_hidden=20)
+    for _ in range(8):
+        g, _ = nca.mutate(g, rng, grow, 0)
+    assert g.max_width() > 6                          # hidden layer widened
+    assert nca.Phenotype(g, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+    grown = g.max_width()
+    shrink = _nca_cfg(nca_widen_prob=0.0, nca_narrow_prob=1.0,
+                      nca_min_hidden=2)
+    for _ in range(20):
+        g, _ = nca.mutate(g, rng, shrink, 0)
+    assert 2 <= g.max_width() < grown                # narrowed, floor respected
+    assert nca.Phenotype(g, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
+
+
+def test_nca_crossover_across_different_widths_is_valid():
+    from vivarium import nca
+    n_in = input_size(3)
+    rng = np.random.default_rng(11)
+    cfg = _nca_cfg()
+    g1 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    g2 = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)
+    wide = _nca_cfg(nca_widen_prob=1.0, nca_max_hidden=20)
+    for _ in range(5):
+        g2, _ = nca.mutate(g2, rng, wide, 0)         # g2's hidden layers grow wider
+    assert g2.max_width() > g1.max_width()
+    for child in (nca.crossover(g2, g1, rng), nca.crossover(g1, g2, rng)):
+        assert nca.Phenotype(child, subticks=6).act(np.zeros(n_in)) in range(nca.N_ACTIONS)
 
 
 def test_nca_crossover_across_different_depths_is_valid():

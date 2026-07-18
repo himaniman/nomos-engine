@@ -105,6 +105,11 @@ class Genome:
     def max_depth(self) -> int:
         return max((len(r) for r in self.rules), default=_MIN_DEPTH)
 
+    def max_width(self) -> int:
+        """Widest hidden layer across the type rules (a rule's hidden width = its input
+        layer's output dim). The HUD's 'w' number."""
+        return max((int(r[0]["W"].shape[0]) for r in self.rules), default=self.H)
+
     def to_dict(self) -> dict:
         return {"brain": "nca", "n_in": self.n_in, "n_out": self.n_out,
                 "C": self.C, "H": self.H, "hue": self.hue,
@@ -342,7 +347,47 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int):
         g = _split_type(g, rng, cfg)
 
     _mutate_depth(g, rng, cfg)                           # add / remove a rule layer
+    _mutate_width(g, rng, cfg)                            # widen / narrow the hidden layer
     return g, next_node_id
+
+
+def _resize_rule_width(rule: list[dict], grow: bool, rng, cfg) -> None:
+    """Change a rule's HIDDEN WIDTH by one unit, uniformly across all its hidden layers
+    (so every middle layer stays square and depth mutations remain valid). GROW: append
+    a hidden unit whose OUTGOING weights are zero, so the new channel is disconnected
+    downstream and adding it doesn't change behaviour at first (evolution/learning can
+    wake it). NARROW: drop one hidden unit everywhere. The input width (9C) and output
+    width (C) are untouched."""
+    w = int(rule[0]["W"].shape[0])
+    n = len(rule)
+    if grow:
+        if w >= cfg.nca_max_hidden:
+            return
+        for i, L in enumerate(rule):
+            if i < n - 1:                                # this layer emits a hidden unit
+                L["W"] = np.vstack([L["W"], rng.normal(0.0, 0.1, (1, L["W"].shape[1]))])
+                L["b"] = np.append(L["b"], 0.0)
+            if i > 0:                                    # this layer reads a hidden unit
+                L["W"] = np.hstack([L["W"], np.zeros((L["W"].shape[0], 1))])
+    else:
+        if w <= cfg.nca_min_hidden:
+            return
+        j = int(rng.integers(w))
+        for i, L in enumerate(rule):
+            if i < n - 1:
+                L["W"] = np.delete(L["W"], j, axis=0)
+                L["b"] = np.delete(L["b"], j)
+            if i > 0:
+                L["W"] = np.delete(L["W"], j, axis=1)
+
+
+def _mutate_width(g: Genome, rng, cfg) -> None:
+    """Grow or shrink one type-rule's hidden width (the number of nodes in its hidden
+    layers), so the perceptron's WIDTH evolves alongside its depth and count."""
+    if rng.random() < cfg.nca_widen_prob:
+        _resize_rule_width(g.rules[int(rng.integers(g.n_types))], True, rng, cfg)
+    if rng.random() < cfg.nca_narrow_prob:
+        _resize_rule_width(g.rules[int(rng.integers(g.n_types))], False, rng, cfg)
 
 
 def _identity_layer(H: int, rng, jitter=0.05) -> dict:
@@ -359,8 +404,10 @@ def _mutate_depth(g: Genome, rng, cfg) -> None:
     and the chain stays valid."""
     if rng.random() < cfg.nca_add_layer_prob:
         k = int(rng.integers(g.n_types))
-        if len(g.rules[k]) < cfg.nca_max_layers:
-            g.rules[k].insert(len(g.rules[k]) - 1, _identity_layer(g.H, rng))
+        rule = g.rules[k]
+        if len(rule) < cfg.nca_max_layers:
+            w = int(rule[-1]["W"].shape[1])              # width feeding the output layer
+            rule.insert(len(rule) - 1, _identity_layer(w, rng))
     if rng.random() < cfg.nca_del_layer_prob:
         k = int(rng.integers(g.n_types))
         if len(g.rules[k]) > _MIN_DEPTH:

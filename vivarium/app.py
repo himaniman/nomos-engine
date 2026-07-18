@@ -10,8 +10,9 @@ you click an agent, that agent's brain (its MLP, edges coloured by weight) and
 gene stats.
 
 Controls: SPACE pause/resume · S single-step · +/- speed · click an agent to
-inspect · T animate the selected NCA brain's sub-ticks (at x1) · W save the current
-top genomes (--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
+inspect · L follow the longest-lived agent (auto) · [ / ] lower/raise the food rate ·
+T animate the selected NCA brain's sub-ticks (at x1) · W save the current top genomes
+(--save-genomes path) to continue later · R reseed-from-hall · ESC/Q quit.
 
 The drawing is split from the loop (`draw` returns a Surface) so it can be
 rendered headless (SDL dummy) for tests/screenshots without a display.
@@ -79,7 +80,7 @@ def genome_name(genome: Genome) -> str:
       NEAT: '<hidden>h<conns>c-XYZ'         (e.g. 2h11c-BFK)"""
     nh, nc = genome.complexity()
     if getattr(genome, "kind", "neat") == "nca":
-        plan = f"{nh}c{nc}t{genome.max_depth()}d"
+        plan = f"{nh}c{nc}t{genome.max_depth()}d{genome.max_width()}w"
     else:
         plan = f"{nh}h{nc}c"
     return f"{plan}-{_hash_suffix(genome)}"
@@ -148,7 +149,7 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     lines = [f"tick {s['tick']}",
              f"epoch {s['epoch']}  +{s['epoch_age']}",
              f"pop  {s['population']}  species {s['species']}",
-             f"food {s['food']}  carn {s['carnivores'] * 100:.0f}%",
+             f"food {s['food']}  rate {s['food_rate']}  carn {s['carnivores'] * 100:.0f}%",
              f"energy {s['energy_bodies']:.0f}  food {s['energy_food']:.0f}",
              f"births {s['births']}", f"deaths {s['deaths']}",
              f"lifespan  mean {s['life_mean']:.0f}  med {s['life_median']:.0f}"]
@@ -217,7 +218,7 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
     nh, nc = g.complexity()
     info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
             if agent is not None else [])
-    info.append(f"cells {nh}  types {nc}  depth {g.max_depth()}"
+    info.append(f"cells {nh} types {nc} depth {g.max_depth()} width {g.max_width()}"
                 if getattr(g, "kind", "neat") == "nca"
                 else f"hidden {nh}  conns {nc}")
     info.append(f"diet {g.diet:.2f}  "
@@ -475,6 +476,7 @@ def main(argv=None) -> int:
     # rate) lets the simulation outrun the display for fast-forward. The HUD shows
     # the measured FPS, the speed, and the resulting steps/sec.
     paused, speed, selected = False, 1, None
+    follow_oldest = False                            # L: auto-inspect the oldest agent
     leader = None                                    # a pinned leader genome to inspect
     leader_boxes = []                                # (rect, genome) hitboxes, filled by draw
     think = False                                    # subtick-animation mode (T), x1 only
@@ -500,6 +502,17 @@ def main(argv=None) -> int:
                     speed = max(1, speed // 2)
                 elif e.key == pygame.K_r:
                     world._reseed()
+                elif e.key == pygame.K_RIGHTBRACKET:   # ] more food per tick
+                    world.food_rate += 1
+                    msg, msg_frames = f"food rate {world.food_rate}", 60
+                elif e.key == pygame.K_LEFTBRACKET:    # [ less food per tick
+                    world.food_rate = max(0, world.food_rate - 1)
+                    msg, msg_frames = f"food rate {world.food_rate}", 60
+                elif e.key == pygame.K_l:            # follow the longest-lived agent
+                    follow_oldest = not follow_oldest
+                    leader = None
+                    msg, msg_frames = ("follow oldest ON" if follow_oldest
+                                       else "follow oldest OFF"), 90
                 elif e.key == pygame.K_t:            # toggle subtick "thinking" view
                     think = not think
                     sub = 0
@@ -520,6 +533,12 @@ def main(argv=None) -> int:
                             and world.occ[gy, gx] >= 0:
                         selected = int(world.occ[gy, gx])
                         leader = None                # a live agent unpins the leader
+                        follow_oldest = False        # a manual pick stops auto-follow
+
+        # auto-follow: keep the inspector on the longest-lived living agent
+        if follow_oldest and world.agents:
+            selected = max(world.agents.values(), key=lambda ag: ag.age).id
+            leader = None
 
         # only the selected NCA agent records its subtick trace (for the T view)
         if is_nca and recorded != selected:

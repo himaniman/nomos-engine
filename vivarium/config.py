@@ -195,6 +195,13 @@ class Config:
     nca_max_layers: int = 4            # max layers in a cell-type rule (depth cap)
     nca_add_layer_prob: float = 0.015  # chance a mutation deepens a rule by one layer
     nca_del_layer_prob: float = 0.01   # chance a mutation removes a middle layer
+    # v3 — evolvable WIDTH: a type's hidden layers all share a width that mutation grows
+    # (append a hidden node, wired in silently) / shrinks. So the perceptron's node
+    # count per hidden layer evolves too, not just depth.
+    nca_widen_prob: float = 0.02       # chance a mutation adds a hidden node to a rule
+    nca_narrow_prob: float = 0.015     # chance a mutation removes a hidden node
+    nca_max_hidden: int = 32           # cap on a rule's hidden width
+    nca_min_hidden: int = 3            # floor on a rule's hidden width
     nca_cell_cost: float = 0.02        # energy per brain cell per tick (NCA only): makes
                                        # a bigger brain COST more, so shape/size is under
                                        # selection, not a free random drift

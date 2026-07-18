@@ -64,6 +64,7 @@ class World:
         self.tick = 0
         self.epoch = 0                # how many times the world has gone fully extinct
         self.epoch_start = 0          # tick the current epoch (population) began
+        self.food_rate = c.food_regrow  # live-tunable fixed food/tick (the app's [ ] keys)
         self._next_id = 0
         self.n_in = input_size(c.n_rays)
         self.n_out = self.brain.N_ACTIONS
@@ -217,7 +218,7 @@ class World:
         target. Off (food_pop_target <= 0) it's the fixed food_regrow."""
         c = self.cfg
         if c.food_pop_target <= 0:
-            return c.food_regrow
+            return self.food_rate                          # live-tunable fixed rate
         over = len(self.agents) - c.food_pop_target
         return int(round(min(c.food_regrow_boot,
                              max(0.0, c.food_regrow_boot - c.food_regrow_gain * over))))
@@ -346,9 +347,10 @@ class World:
                         gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
                         a.energy = min(c.max_energy, a.energy + gain)
                         reward = gain
-                elif (c.predation and a.brain.genome.carnivore >= c.carnivore_threshold
-                      and self.occ[ny, nx] >= 0):
-                    reward = self._predate(a, ny, nx)   # carnivore eats the agent ahead
+                elif c.predation and self.occ[ny, nx] >= 0:
+                    prey = self.agents.get(int(self.occ[ny, nx]))
+                    if self._can_predate(a, prey):
+                        reward = self._predate(a, ny, nx)   # eat the agent ahead
             elif action == TURN_LEFT:
                 a.energy -= c.turn_cost
                 a.heading = (a.heading - 1) % 4
@@ -462,6 +464,16 @@ class World:
             self.stats["births"] += 1
             for p in parents:
                 p.offspring += 1
+
+    def _can_predate(self, pred: Agent, prey: Agent | None) -> bool:
+        """A committed carnivore may eat the agent ahead only if it's a DIFFERENT
+        colour-species — carnivores hunt other species, never their own kin/mates. So
+        predation is a real cross-species trophic niche (a carnivore lineage can persist)
+        instead of self-cannibalising into extinction."""
+        c = self.cfg
+        return (prey is not None
+                and pred.brain.genome.carnivore >= c.carnivore_threshold
+                and _hue_dist(pred.brain.genome.hue, prey.brain.genome.hue) > c.species_hue)
 
     def _predate(self, pred: Agent, ny: int, nx: int) -> float:
         """A carnivore steps onto the agent ahead, killing and eating it: the predator
@@ -628,4 +640,5 @@ class World:
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
                 "life_mean": life_mean, "life_median": life_median,
-                "epoch": self.epoch, "epoch_age": self.tick - self.epoch_start}
+                "epoch": self.epoch, "epoch_age": self.tick - self.epoch_start,
+                "food_rate": self.food_rate}

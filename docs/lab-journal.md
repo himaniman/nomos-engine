@@ -1173,4 +1173,21 @@ only see its arc. Net: a tick at pop ~127 went 130ms (pre-bucket) -> 75ms (bucke
 64ms (prunes), ~2x, determinism intact throughout. What's left is the NCA brain's own
 relaxation (`act`) and the irreducible ray loop — the brain cost is the point, not
 overhead. Deferred if ever needed: a numba kernel for the ray test, or a food/corpse
-bucket. Full suite green. Next: the sensor-input colour-coding.
+bucket. Full suite green.
+
+**Sensor-input colour-coding (the last request).** The brain inspector's input strip
+was a wall of green; now each slot is coloured by sensor MODALITY, matching the
+`_sense` layout: per ray food=green / obstacle=grey / kin=blue / non-kin=red, then
+the interoception block=amber, then smell=magenta. Done without hardcoding aqua's
+layout into the shared vivarium panel: `strip()` gained an optional per-index colour
+list, threaded through `_draw_panel/_draw_inspector/_draw_nca_brain` (default None =
+the old green, so the grid world is unchanged), and aqua computes the palette from
+its own `n_rays_max/RAY_CH/INTERO/SMELL`. A compact legend sits in the world's
+bottom-left corner. So the input strip now reads as coloured bands you can decode at
+a glance — you can watch which modality is driving the CA. Full suite 193 green.
+
+That closes the aqua continuous-physics arc (branch `aqua-continuous`): walls, food
+and corpses are all float geometry, collisions/vision are analytic, senses are
+heritable AND legible, and the agent-agent O(n^2) is gone. Open follow-ups if wanted:
+a numba/bucket pass if very large populations are needed; angled walls (the AABB ->
+capsule swap is isolated); merging the branch.

@@ -139,7 +139,7 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
 
 
 def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
-                leader=None, hitboxes=None):
+                leader=None, hitboxes=None, sense_colors=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     # two columns: a narrow TEXT column (stats / leaders / populations) on the left
     # and a wide BRAIN column on the right where the inspected agent's CA lattice and
@@ -205,17 +205,20 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         ix, iy, iw = x0, y, panel_w
     # a clicked leader genome takes priority, else the selected agent
     if leader is not None:
-        _draw_inspector(surf, leader, None, ix, iy, iw, H, font, small, title="LEADER")
+        _draw_inspector(surf, leader, None, ix, iy, iw, H, font, small, title="LEADER",
+                        sense_colors=sense_colors)
         return
     a = world.agents.get(selected) if selected is not None else None
     if a is not None:
-        _draw_inspector(surf, a.brain.genome, a, ix, iy, iw, H, font, small)
+        _draw_inspector(surf, a.brain.genome, a, ix, iy, iw, H, font, small,
+                        sense_colors=sense_colors)
     elif bw > 120:
         surf.blit(small.render("click an agent to inspect its brain", True,
                                (110, 120, 140)), (bx0 + 12, 14))
 
 
-def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
+def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
+                    sense_colors=None):
     pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 3, 12, 12))
     label = genome_name(g) + (f"  ({title})" if title else "")
     surf.blit(font.render(label, True, (235, 235, 245)), (x0 + 30, y))
@@ -232,7 +235,8 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None):
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
     box = (x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
     if getattr(g, "kind", "neat") == "nca":
-        _draw_nca_brain(surf, g, agent.brain if agent is not None else None, *box)
+        _draw_nca_brain(surf, g, agent.brain if agent is not None else None, *box,
+                        sense_colors=sense_colors)
     else:
         _draw_net(surf, g, *box)
 
@@ -246,7 +250,7 @@ def _type_color(k):
     return _TYPE_COLORS[k % len(_TYPE_COLORS)]
 
 
-def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
+def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None):
     """Draw the agent's CA brain in two rows. Top: the G x G lattice (dead cells
     dark; alive cells filled by their first three state CHANNELS -> RGB, bordered by
     their cell-TYPE colour), flanked by the small "neurons" wired to it — input
@@ -278,14 +282,17 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
     side = max(3, min(gx1 - gx0, grid_h) // max(rows, cols))
     xoff = gx0 + max(0, (gx1 - gx0 - cols * side) // 2)    # centre the cropped lattice
 
-    def strip(vals, sx, hi=None, signed=False):
+    def strip(vals, sx, hi=None, signed=False, colors=None):
         n = len(vals)
         ch = max(1, min(10, grid_h // n))
         for i, v in enumerate(vals):
             if signed:                                     # motor logits: red<0, green>0
                 t = float(np.tanh(v))
                 col = (int(140 * max(0, -t)) + 30, int(140 * max(0, t)) + 30, 40)
-            else:                                          # senses: green intensity
+            elif colors is not None and i < len(colors):   # senses: TYPE colour, bright=strong
+                t = min(1.0, abs(float(v)))
+                col = tuple(int(b * (0.18 + 0.82 * t)) for b in colors[i])
+            else:                                          # senses: green intensity (default)
                 gi = int(200 * min(1.0, abs(float(v))))
                 col = (20, gi + 25, 30)
             rect = (sx, y + i * ch, col_w, ch - 1)
@@ -294,7 +301,7 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h):
                 pygame.draw.rect(surf, (255, 255, 255), rect, 1)
 
     if inp is not None:
-        strip(inp, x)                                      # input senses (left)
+        strip(inp, x, colors=sense_colors)                 # input senses (left), typed colours
     for gy in range(ay0, ay1 + 1):                         # only the cropped bbox
         for gx in range(ax0, ax1 + 1):
             rect = (xoff + (gx - ax0) * side, y + (gy - ay0) * side,

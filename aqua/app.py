@@ -28,10 +28,42 @@ from pathlib import Path
 import numpy as np
 import pygame
 
-from aqua.world import World
+from aqua.world import INTERO, SMELL, World
 from vivarium.app import (_FOOD_COLORS, _draw_help, _draw_panel, _fmt_hms,
                           _save_shot, genome_color)
 from vivarium.config import Config
+
+# One colour per SENSOR TYPE, so the brain inspector's input strip reads by modality
+# instead of a wall of green. Matches the layout in aqua.world._sense.
+_SENSE_COL = {"food": (95, 220, 115), "obstacle": (175, 180, 195),
+              "kin": (110, 160, 250), "nonkin": (235, 100, 95),
+              "intero": (240, 200, 90), "smell": (215, 120, 235)}
+_SENSE_LEGEND = [("food", "food"), ("obstacle", "obstacle"), ("kin", "kin"),
+                 ("non-kin", "nonkin"), ("body", "intero"), ("smell", "smell")]
+
+
+def _sense_colors(world: World) -> list:
+    """An RGB per brain-input slot, coloured by sensor TYPE (the layout in
+    `aqua.world._sense`): each ray is food / obstacle / KIN / non-KIN, then the
+    interoception block, then (if on) the smell pair."""
+    ray = [_SENSE_COL["food"], _SENSE_COL["obstacle"],
+           _SENSE_COL["kin"], _SENSE_COL["nonkin"]]
+    cols = ray * world.cfg.n_rays_max
+    cols += [_SENSE_COL["intero"]] * INTERO
+    if world.smell:
+        cols += [_SENSE_COL["smell"]] * SMELL
+    return cols
+
+
+def _draw_sense_legend(surf, small, x: int, y: int) -> None:
+    """A compact key for the sensor-input colours (matches the brain's left strip)."""
+    w, rows = 92, len(_SENSE_LEGEND)
+    surf.fill((16, 16, 22), (x - 4, y - 3, w, rows * 14 + 20))     # dark backing
+    surf.blit(small.render("senses", True, (150, 160, 180)), (x, y)); y += 15
+    for label, key in _SENSE_LEGEND:
+        surf.fill(_SENSE_COL[key], (x, y + 2, 9, 9))
+        surf.blit(small.render(label, True, (205, 210, 225)), (x + 14, y))
+        y += 14
 
 
 def _ray_hit(world: World, a, ang: float) -> float:
@@ -109,7 +141,9 @@ def draw(world: World, cell: int, panel_w: int, font, small,
                          (px + math.cos(a.heading) * ar * 1.8,
                           py + math.sin(a.heading) * ar * 1.8), 1)
 
-    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes)
+    _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes,
+                sense_colors=_sense_colors(world))
+    _draw_sense_legend(surf, small, 6, H - (len(_SENSE_LEGEND) * 14 + 24))  # key, world corner
     return surf
 
 

@@ -233,7 +233,9 @@ class Config:
     # the 3x3 neighbourhood) relaxes `nca_subticks` steps per game tick; sensors are
     # broadcast in, the action is read from the pooled cell state. Shape + rule
     # weights both evolve.
-    nca_grid: int = 12                 # max brain lattice side (the mask lives here)
+    nca_grid: int = 32                 # max brain lattice side (the mask lives here) — room
+                                       # for a big grown retina; compute scales with ALIVE
+                                       # cells, not G^2, so an empty grid is nearly free
     nca_channels: int = 8              # state channels per cell
     nca_hidden: int = 16               # hidden units in each cell-type's update rule
     nca_subticks: int = 32             # SEED think-time (rule relaxation steps per game tick).
@@ -255,7 +257,9 @@ class Config:
     # brains, and the per-cell energy cost (nca_cell_cost) is the counterweight that
     # prunes growth that doesn't pay — so brain volume trends UP under mutation and
     # is trimmed by selection, not by the mutation operator itself.
-    nca_max_cells: int = 48            # cap on alive cells (bounds per-agent compute)
+    nca_max_cells: int = 1024          # effectively UNCAPPED (= the 32x32 lattice): the
+                                       # per-cell energy cost (nca_cell_cost) + selection are
+                                       # now the only limit on brain size, not a hard cap
     nca_grow_prob: float = 0.10        # chance a mutation activates a new adjacent cell
     nca_shrink_prob: float = 0.02      # chance a mutation deactivates a cell
     # v1 — cell TYPES: the genome carries several update rules; each cell has a TYPE

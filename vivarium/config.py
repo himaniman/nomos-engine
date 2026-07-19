@@ -275,7 +275,7 @@ class Config:
     # organ's POSITION on the lattice picks the ray DIRECTION, so the shape lays out a
     # sensory MAP (a food organ on the left hears left rays) and neighbouring directions are
     # neighbouring cells — the CA geometry represents visual space. Born ALL (== broadcast).
-    nca_organ_mods: int = 8            # count of specialised modalities (ids 1..8; 0 = ALL)
+    nca_organ_mods: int = 9            # count of specialised modalities (ids 1..9; 0 = ALL)
     nca_organ_mod_prob: float = 0.05   # chance a mutation re-rolls one organ's modality
     # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
     # its depth (add a near-identity layer / remove a middle one), capped.

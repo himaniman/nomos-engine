@@ -51,11 +51,12 @@ INTERO = 7     # energy, own speed, own turn-rate, sin(heading), cos(heading), a
 SMELL = 2      # egocentric (forward, lateral) direction to the nearest food
 MATE = 2       # egocentric direction to the nearest FED same-species agent (for breeding)
 SIGNAL = 2     # egocentric gradient of the shared pheromone field (toward stronger signal)
+THREAT = 2     # egocentric direction to the nearest non-kin PREDATOR (danger from any side)
 
 
 def sensor_size(n_rays: int, smell: bool = True) -> int:
     """Width of the brain's input vector for this sensor configuration."""
-    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0) + MATE + SIGNAL
+    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0) + MATE + SIGNAL + THREAT
 
 
 def _logits(brain) -> np.ndarray:
@@ -269,6 +270,8 @@ class World:
         static[7] = np.arange(mo, mo + MATE, dtype=np.int64)         # mate-direction block
         mo += MATE
         static[8] = np.arange(mo, mo + SIGNAL, dtype=np.int64)       # signal-gradient block
+        mo += SIGNAL
+        static[9] = np.arange(mo, mo + THREAT, dtype=np.int64)       # threat-direction block
         return {"ray_ch": RAY_CH, "n_rays": self.cfg.n_rays_max,
                 "ray_mod_channel": {1: 0, 2: 1, 3: 2, 4: 3}, "static_mod_idx": static}
 
@@ -719,22 +722,23 @@ class World:
                 vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
                 vec[so + 1] = amp * math.sin(rel)            # food to one side (signed)
 
-        # MATE sensor: egocentric direction to the NEAREST fed same-species agent, so the
-        # brain can steer toward a partner and time the REPRODUCE command (omnidirectional,
-        # like smell; energy-gated so it points only at breedable mates).
+        # MATE + THREAT: ONE bucket pass finds the nearest fed same-species MATE (to breed
+        # with) and the nearest non-kin CARNIVORE that could eat this agent (danger). Both
+        # are omnidirectional (like smell) so they reach past the narrow vision cone.
         mo = o + INTERO + (SMELL if self.smell else 0)
-        best, best_d = None, None
+        mate, mate_d, threat, threat_d = None, None, None, None
         for b in self._agents_within(a.y, a.x, self.mate_sense_range, exclude=a.id):
-            if b.energy < c.repro_min_energy:
-                continue
-            if _hue_dist(hue, b.brain.genome.hue) > c.species_hue:
-                continue
+            far = _hue_dist(hue, b.brain.genome.hue) > c.species_hue
             d = math.hypot(b.y - a.y, b.x - a.x)
-            if best_d is None or d < best_d:
-                best, best_d = b, d
-        if best is not None and best_d > 1e-9:
-            amp = 1.0 / (1.0 + (best_d / self.smell_sharpness) ** 2)
-            rel = _wrap_angle(math.atan2(best.y - a.y, best.x - a.x) - a.heading)
+            if not far and b.energy >= c.repro_min_energy:   # a breedable same-species mate
+                if mate_d is None or d < mate_d:
+                    mate, mate_d = b, d
+            elif far and b.brain.genome.carnivore >= c.carnivore_threshold:  # a predator
+                if threat_d is None or d < threat_d:
+                    threat, threat_d = b, d
+        if mate is not None and mate_d > 1e-9:
+            amp = 1.0 / (1.0 + (mate_d / self.smell_sharpness) ** 2)
+            rel = _wrap_angle(math.atan2(mate.y - a.y, mate.x - a.x) - a.heading)
             vec[mo + 0] = amp * math.cos(rel)                # mate ahead (+) / behind (-)
             vec[mo + 1] = amp * math.sin(rel)                # mate to one side (signed)
 
@@ -749,6 +753,15 @@ class World:
         ch, sh = math.cos(a.heading), math.sin(a.heading)
         vec[si + 0] = math.tanh(gx * ch + gy * sh)           # signal rising ahead (+) / behind
         vec[si + 1] = math.tanh(-gx * sh + gy * ch)          # signal rising to one side (signed)
+
+        # THREAT sensor: egocentric direction to the nearest predator (from the pass above),
+        # so prey feel danger creeping up from any side, not just inside the vision cone.
+        ti = si + SIGNAL
+        if threat is not None and threat_d > 1e-9:
+            amp = 1.0 / (1.0 + (threat_d / self.smell_sharpness) ** 2)
+            rel = _wrap_angle(math.atan2(threat.y - a.y, threat.x - a.x) - a.heading)
+            vec[ti + 0] = amp * math.cos(rel)                # predator ahead (+) / behind (-)
+            vec[ti + 1] = amp * math.sin(rel)                # predator to one side (signed)
         return vec
 
     # -- continuous motor read-out ------------------------------------------

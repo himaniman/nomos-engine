@@ -1287,6 +1287,14 @@ class World:
         return sum(1 for a in self.agents.values()
                    if a.brain.genome.carnivore >= thr) / n
 
+    def scavenger_fraction(self) -> float:
+        n = len(self.agents)
+        if not n:
+            return 0.0
+        thr = self.cfg.scavenger_threshold
+        return sum(1 for a in self.agents.values()
+                   if getattr(a.brain.genome, "scavenger", 0.0) >= thr) / n
+
     def snapshot(self) -> dict:
         life_mean, life_median = self.lifespan_stats()
         energies = [a.energy for a in self.agents.values()]
@@ -1297,6 +1305,7 @@ class World:
                 "food": int(len(self.food_type)), "corpses": int(len(self.corpse_decay)),
                 "births": self.stats["births"], "deaths": self.stats["deaths"],
                 "species": self.species_count(), "carnivores": self.carnivore_fraction(),
+                "scavengers": self.scavenger_fraction(),
                 "life_mean": life_mean, "life_median": life_median,
                 "epoch": self.epoch, "epoch_age": self.tick - self.epoch_start,
                 "food_rate": self.food_rate,

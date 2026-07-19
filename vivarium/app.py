@@ -260,8 +260,9 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
         info.append(f"hidden {nh}  conns {nc}")
     if hasattr(g, "param_count"):
         info.append(f"brain size ~{_fmt_count(g.param_count())} params")
-    if hasattr(g, "n_rays"):                                # heritable eye (aqua vision genes)
-        info.append(f"eye {int(g.n_rays)} rays  reach {float(g.ray_len):.0f}")
+    if hasattr(g, "n_rays"):                                # heritable eye + nose (aqua senses)
+        nose = f"  nose x{float(g.smell_gain):.1f}" if hasattr(g, "smell_gain") else ""
+        info.append(f"eye {int(g.n_rays)} rays  reach {float(g.ray_len):.0f}{nose}")
     info.append(f"diet {g.diet:.2f}  "
                 + ("CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"))
     for t in info:

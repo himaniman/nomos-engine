@@ -643,6 +643,7 @@ class World:
         nr = max(1, min(int(g.n_rays), c.n_rays_max))         # this agent's heritable eye
         rl = max(1.0, float(g.ray_len))
         diet, hue = g.diet, g.hue
+        gain = getattr(g, "smell_gain", 1.0)                 # heritable olfactory sensitivity
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
         cone = 0.5 * c.fov + 0.6                              # a ray can only see this arc
         # gather what each ray could hit into flat arrays (the cheap part stays Python),
@@ -716,7 +717,7 @@ class World:
             dist = float(dd[j])
             if 1e-9 < dist <= self.smell_range:
                 ft = int(self.food_type[j])
-                amp = self._diet_eff(diet, ft) / (1.0 + (dist / self.smell_sharpness) ** 2)
+                amp = gain * self._diet_eff(diet, ft) / (1.0 + (dist / self.smell_sharpness) ** 2)
                 rel = _wrap_angle(math.atan2(dy[j], dx[j]) - a.heading)
                 so = o + INTERO
                 vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
@@ -737,7 +738,7 @@ class World:
                 if threat_d is None or d < threat_d:
                     threat, threat_d = b, d
         if mate is not None and mate_d > 1e-9:
-            amp = 1.0 / (1.0 + (mate_d / self.smell_sharpness) ** 2)
+            amp = gain / (1.0 + (mate_d / self.smell_sharpness) ** 2)
             rel = _wrap_angle(math.atan2(mate.y - a.y, mate.x - a.x) - a.heading)
             vec[mo + 0] = amp * math.cos(rel)                # mate ahead (+) / behind (-)
             vec[mo + 1] = amp * math.sin(rel)                # mate to one side (signed)
@@ -751,14 +752,14 @@ class World:
         gx = 0.5 * (sig[iy, min(self.w - 1, ix + 1)] - sig[iy, max(0, ix - 1)])
         gy = 0.5 * (sig[min(self.h - 1, iy + 1), ix] - sig[max(0, iy - 1), ix])
         ch, sh = math.cos(a.heading), math.sin(a.heading)
-        vec[si + 0] = math.tanh(gx * ch + gy * sh)           # signal rising ahead (+) / behind
-        vec[si + 1] = math.tanh(-gx * sh + gy * ch)          # signal rising to one side (signed)
+        vec[si + 0] = math.tanh(gain * (gx * ch + gy * sh))  # signal rising ahead (+) / behind
+        vec[si + 1] = math.tanh(gain * (-gx * sh + gy * ch)) # signal rising to one side (signed)
 
         # THREAT sensor: egocentric direction to the nearest predator (from the pass above),
         # so prey feel danger creeping up from any side, not just inside the vision cone.
         ti = si + SIGNAL
         if threat is not None and threat_d > 1e-9:
-            amp = 1.0 / (1.0 + (threat_d / self.smell_sharpness) ** 2)
+            amp = gain / (1.0 + (threat_d / self.smell_sharpness) ** 2)
             rel = _wrap_angle(math.atan2(threat.y - a.y, threat.x - a.x) - a.heading)
             vec[ti + 0] = amp * math.cos(rel)                # predator ahead (+) / behind (-)
             vec[ti + 1] = amp * math.sin(rel)                # predator to one side (signed)

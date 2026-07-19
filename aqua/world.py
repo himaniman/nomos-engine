@@ -61,7 +61,7 @@ def _wrap_angle(a: float) -> float:
 
 class Agent:
     __slots__ = ("id", "y", "x", "heading", "energy", "age", "offspring", "brain",
-                 "last_speed", "last_turn")
+                 "last_speed", "last_turn", "food_eaten", "kills")
 
     def __init__(self, aid, y, x, heading, energy, brain):
         self.id = aid
@@ -70,7 +70,9 @@ class Agent:
         self.heading = float(heading)      # radians; 0 = +x, pi/2 = +y (down)
         self.energy = energy
         self.age = 0
-        self.offspring = 0
+        self.offspring = 0                  # children bred (HUD + hall success score)
+        self.food_eaten = 0                 # food morsels eaten in this life (HUD)
+        self.kills = 0                      # prey caught by predation in this life (HUD)
         self.brain = brain
         self.last_speed = 0.0              # proprioception: last commanded speed/turn,
         self.last_turn = 0.0               # fed back as senses next tick
@@ -152,7 +154,8 @@ class World:
         # spatial index of agent ids for the O(1)-ish proximity queries (collision,
         # mate search, vision) — kept live as agents spawn/move/die (see aqua.space).
         self.abuckets = Buckets(cell=max(2.0, 2.0 * radius, mate_radius))
-        self.hall: list[tuple[int, object]] = []
+        self.hall: list[tuple[int, object]] = []           # all-time best (success score)
+        self.hall_epoch: list[tuple[int, object]] = []      # best of the CURRENT epoch only
         self.stats = {"births": 0, "deaths": 0}
         self.deaths_log: deque = deque()
         # the ray fan is now PER-AGENT (heritable count), so relative angles are
@@ -742,6 +745,7 @@ class World:
         g = a.brain.genome
         gain = c.food_energy * self._diet_eff(g.diet, ft) * (1 - g.carnivore)
         a.energy = min(c.max_energy, a.energy + gain)
+        a.food_eaten += 1
         return gain
 
     # -- reproduction -------------------------------------------------------
@@ -809,6 +813,7 @@ class World:
         gain = min(self.cfg.max_energy, pred.energy + self.cfg.meat_energy * g.carnivore) \
             - pred.energy
         pred.energy += gain
+        pred.kills += 1
         pred.y, pred.x = ny, nx
         return gain
 
@@ -827,9 +832,11 @@ class World:
 
     def _remember(self, a: Agent) -> None:
         success = a.age + self.cfg.hall_offspring_weight * a.offspring
-        self.hall.append((success, a.brain.genome.copy()))
-        self.hall.sort(key=lambda t: t[0], reverse=True)
-        del self.hall[max(self.cfg.reseed_count, 12):]
+        g = a.brain.genome.copy()
+        for hall in (self.hall, self.hall_epoch):           # all-time + current-epoch boards
+            hall.append((success, g))
+            hall.sort(key=lambda t: t[0], reverse=True)
+            del hall[max(self.cfg.reseed_count, 12):]
         self.deaths_log.append((self.tick, a.age))
 
     def lifespan_stats(self) -> tuple[float, float]:
@@ -903,6 +910,7 @@ class World:
     def _reseed(self) -> None:
         self.epoch += 1
         self.epoch_start = self.tick
+        self.hall_epoch = []                                # fresh leaderboard per epoch
         elites = [g for _, g in self.hall[:self.cfg.reseed_elites]]
         if not elites:
             elites = [self._seed_genome()
@@ -950,7 +958,9 @@ class World:
                         "hue": float(np.mean([g.hue for g in gs])),
                         "diet": float(np.mean([g.diet for g in gs])),
                         "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
-                        "age": float(np.mean([a.age for a in grp]))})
+                        "age": float(np.mean([a.age for a in grp])),
+                        "cells": float(np.mean([g.complexity()[0] for g in gs])),
+                        "params": float(np.mean([g.param_count() for g in gs]))})
         out.sort(key=lambda s: s["n"], reverse=True)
         return out
 

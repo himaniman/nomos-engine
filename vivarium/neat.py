@@ -77,6 +77,11 @@ class Genome:
         n_enabled = sum(1 for c in self.conns if c["enabled"])
         return n_hidden, n_enabled
 
+    def param_count(self) -> int:
+        """Learnable scalars = enabled connection weights. The 'brain size' figure the
+        HUD shows as ~Nk (mirrors nca.Genome.param_count for the shared panel)."""
+        return sum(1 for c in self.conns if c["enabled"])
+
     def to_dict(self) -> dict:
         return {"brain": "neat", "n_in": self.n_in, "n_out": self.n_out,
                 "hue": self.hue, "diet": self.diet, "carnivore": self.carnivore,

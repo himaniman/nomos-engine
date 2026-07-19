@@ -129,6 +129,16 @@ class Genome:
         layer's output dim). The HUD's 'w' number."""
         return max((int(r[0]["W"].shape[0]) for r in self.rules), default=self.H)
 
+    def param_count(self) -> int:
+        """Total learnable scalars in the brain: every type-rule layer's W and b summed
+        across all types, plus the sensor/motor projections. The honest 'brain size'
+        number (rolls cells * types * depth * width into one figure) shown as ~Nk."""
+        n = self.P_in.size + self.P_out.size + self.b_out.size
+        for r in self.rules:
+            for L in r:
+                n += L["W"].size + L["b"].size
+        return int(n)
+
     def to_dict(self) -> dict:
         return {"brain": "nca", "n_in": self.n_in, "n_out": self.n_out,
                 "C": self.C, "H": self.H, "hue": self.hue,

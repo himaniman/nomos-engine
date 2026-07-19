@@ -74,19 +74,26 @@ def _hash_suffix(genome: Genome, k: int = 3) -> str:
     return "".join(out)
 
 
+def _fmt_count(n: int) -> str:
+    """Compact scalar for the HUD: 2400 -> '2.4k', 850 -> '850'."""
+    return f"{n / 1000:.1f}k" if n >= 1000 else str(int(n))
+
+
 def genome_name(genome: Genome) -> str:
     """A structured GENOME CODE, not an opaque hash: the body plan read straight off
-    the architecture, then a short weight-hash suffix. So the name is informative and
-    the structural PREFIX is stable while only weights drift (you watch a body plan
-    persist across a lineage), and it only changes when the architecture changes.
-      NCA : '<cells>c<types>t<depth>d-XYZ'  (e.g. 9c3t4d-ZKQ)
-      NEAT: '<hidden>h<conns>c-XYZ'         (e.g. 2h11c-BFK)"""
+    the architecture, an honest brain-SIZE roll-up (~total params), then a short
+    weight-hash suffix. So the name is informative and the structural PREFIX is stable
+    while only weights drift (you watch a body plan persist across a lineage), and it
+    only changes when the architecture changes.
+      NCA : '<cells>c<types>t<depth>d<width>w~<params>-XYZ'  (e.g. 9c3t4d16w~1.2k-ZKQ)
+      NEAT: '<hidden>h<conns>c~<params>-XYZ'                 (e.g. 2h11c~11-BFK)"""
     nh, nc = genome.complexity()
     if getattr(genome, "kind", "neat") == "nca":
         plan = f"{nh}c{nc}t{genome.max_depth()}d{genome.max_width()}w"
     else:
         plan = f"{nh}h{nc}c"
-    return f"{plan}-{_hash_suffix(genome)}"
+    size = f"~{_fmt_count(genome.param_count())}" if hasattr(genome, "param_count") else ""
+    return f"{plan}{size}-{_hash_suffix(genome)}"
 
 
 def draw(world: World, cell_px: int, panel_w: int, font, small,
@@ -168,19 +175,28 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         surf.blit(small.render(hud["msg"], True, (150, 230, 160)), (x0 + 12, y))
         y += 18
 
-    # top-3 longest-lived lineages — clickable to inspect their genome
-    surf.blit(small.render("leaders (click to inspect):", True, (150, 160, 180)),
-              (x0 + 12, y)); y += 18
+    # leaderboards — clickable to inspect their genome. ALL-TIME champions and the best
+    # of the CURRENT EPOCH (the era since the last extinction/reseed) side by side, so
+    # you see both the lineage that ever dominated and who's winning right now.
     if hitboxes is not None:
         hitboxes.clear()
-    for age, g in world.hall[:3]:
-        pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
-        surf.blit(small.render(f"{age:>4} {genome_name(g)}", True,
-                               (210, 215, 230)), (x0 + 28, y))
-        if hitboxes is not None:
-            hitboxes.append((pygame.Rect(x0, y, text_w, 17), g))
-        y += 17
-    y += 6
+
+    def _leaderboard(label, board):
+        nonlocal y
+        surf.blit(small.render(label, True, (150, 160, 180)), (x0 + 12, y)); y += 18
+        for score, g in board[:3]:
+            pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 2, 10, 10))
+            surf.blit(small.render(f"{int(score):>4} {genome_name(g)}", True,
+                                   (210, 215, 230)), (x0 + 28, y))
+            if hitboxes is not None:
+                hitboxes.append((pygame.Rect(x0, y, text_w, 17), g))
+            y += 17
+        y += 6
+
+    _leaderboard("leaders — all time (click):", world.hall)
+    epoch_board = getattr(world, "hall_epoch", None)
+    if epoch_board is not None:
+        _leaderboard("leaders — this epoch:", epoch_board)
 
     # per-POPULATION stats: one row per living colour-species (count, mean diet,
     # carnivore %, mean age) so you read EACH population, not just the aggregate
@@ -191,9 +207,10 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         r, g_, b = colorsys.hsv_to_rgb(gr["hue"], 0.85, 1.0)
         pygame.draw.rect(surf, (int(r * 255), int(g_ * 255), int(b * 255)),
                          (x0 + 12, y + 2, 10, 10))
+        brain = (f" ~{_fmt_count(gr['params'])}" if "params" in gr else "")
         surf.blit(small.render(
             f"n{gr['n']:<3} diet{gr['diet']:.1f} carn{gr['carn'] * 100:.0f}% "
-            f"age{gr['age']:.0f}", True, (205, 210, 225)), (x0 + 28, y))
+            f"age{gr['age']:.0f}{brain}", True, (205, 210, 225)), (x0 + 28, y))
         y += 16
     y += 8
 
@@ -224,11 +241,20 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
     surf.blit(font.render(label, True, (235, 235, 245)), (x0 + 30, y))
     y += 24
     nh, nc = g.complexity()
-    info = ([f"agent #{agent.id}", f"energy {agent.energy:.1f}", f"age {agent.age}"]
-            if agent is not None else [])
-    info.append(f"cells {nh} types {nc} depth {g.max_depth()} width {g.max_width()}"
-                if getattr(g, "kind", "neat") == "nca"
-                else f"hidden {nh}  conns {nc}")
+    info = []
+    if agent is not None:
+        info += [f"agent #{agent.id}", f"energy {agent.energy:.1f}  age {agent.age}"]
+        # what this individual actually DID this life (fecundity + foraging + hunting)
+        info.append(f"children {agent.offspring}  ate {getattr(agent, 'food_eaten', 0)}"
+                    f"  kills {getattr(agent, 'kills', 0)}")
+    if getattr(g, "kind", "neat") == "nca":
+        info.append(f"cells {nh} types {nc} depth {g.max_depth()} width {g.max_width()}")
+    else:
+        info.append(f"hidden {nh}  conns {nc}")
+    if hasattr(g, "param_count"):
+        info.append(f"brain size ~{_fmt_count(g.param_count())} params")
+    if hasattr(g, "n_rays"):                                # heritable eye (aqua vision genes)
+        info.append(f"eye {int(g.n_rays)} rays  reach {float(g.ray_len):.0f}")
     info.append(f"diet {g.diet:.2f}  "
                 + ("CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"))
     for t in info:

@@ -204,22 +204,25 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     groups = world.species_groups()
     surf.blit(small.render(f"populations ({len(groups)}):", True, (150, 160, 180)),
               (x0 + 12, y)); y += 18
-    for gr in groups[:5]:
+    for gr in groups[:4]:
         r, g_, b = colorsys.hsv_to_rgb(gr["hue"], 0.85, 1.0)
         pygame.draw.rect(surf, (int(r * 255), int(g_ * 255), int(b * 255)),
                          (x0 + 12, y + 2, 10, 10))
         en = f" en{gr['energy']:.0f}" if "energy" in gr else ""
-        surf.blit(small.render(
+        surf.blit(small.render(                            # line 1: vitals
             f"n{gr['n']:<3} diet{gr['diet']:.1f} carn{gr['carn'] * 100:.0f}% "
             f"age{gr['age']:.0f}{en}", True, (210, 215, 230)), (x0 + 28, y))
         y += 15
-        if "kids" in gr:                                    # second line: what they DID + brain
-            brain = f" ~{_fmt_count(gr['params'])}" if "params" in gr else ""
+        if "kids" in gr:                                    # line 2: deeds
             surf.blit(small.render(
-                f"kids{gr['kids']:.1f} ate{gr['ate']:.0f} kills{gr['kills']:.1f} "
+                f"kids{gr['kids']:.1f} ate{gr['ate']:.0f} kills{gr['kills']:.1f}",
+                True, (155, 165, 185)), (x0 + 28, y))
+            y += 15
+            brain = f"  brain~{_fmt_count(gr['params'])}" if "params" in gr else ""
+            surf.blit(small.render(                        # line 3: traits
                 f"nose{gr['gain']:.1f}{brain}", True, (155, 165, 185)), (x0 + 28, y))
             y += 15
-        y += 3
+        y += 4
     y += 8
 
     # inspector goes in the BRAIN column (its own space, full height), else — if the
@@ -257,8 +260,7 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
                     f"  kills {getattr(agent, 'kills', 0)}")
     if getattr(g, "kind", "neat") == "nca":
         think = f"  think {g.subticks}" if hasattr(g, "subticks") else ""
-        info.append(f"cells {nh} types {nc} depth {g.max_depth()} "
-                    f"width {g.max_width()}{think}")
+        info.append(f"cells {nh}  type {nc}  d{g.max_depth()} w{g.max_width()}{think}")
         if getattr(g, "in_mask", None) is not None:        # local I/O organ census
             io = int((g.in_mask & g.mask).sum())
             oo = int((g.out_mask & g.mask).sum())

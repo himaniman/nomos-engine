@@ -57,7 +57,8 @@ except ImportError:                                  # pragma: no cover - env-de
 # actions (outputs) — identical ids to neat.py so the World's step logic is shared
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
 REPRODUCE = 4                    # a COMMAND gate: >0 asks to breed (world still needs a mate)
-N_ACTIONS = 5
+EMIT = 5                         # a continuous intensity: deposit a pheromone into the world
+N_ACTIONS = 6
 
 # a sensory organ's `organ_mod` gene: 0 = ALL (hears the whole sensor vector, == the old
 # broadcast), 1..K = a world-defined MODALITY. The World supplies an `input_layout` mapping

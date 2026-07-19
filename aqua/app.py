@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import pygame
 
-from aqua.world import INTERO, MATE, SMELL, World
+from aqua.world import INTERO, MATE, SIGNAL, SMELL, World
 from vivarium.app import (_FOOD_COLORS, _draw_help, _draw_panel, _fmt_hms,
                           _save_shot, genome_color)
 from vivarium.config import Config
@@ -38,17 +38,17 @@ from vivarium.config import Config
 _SENSE_COL = {"food": (95, 220, 115), "obstacle": (175, 180, 195),
               "kin": (110, 160, 250), "nonkin": (235, 100, 95),
               "intero": (240, 200, 90), "smell": (215, 120, 235),
-              "mate": (245, 150, 190)}
+              "mate": (245, 150, 190), "signal": (240, 235, 120)}
 _SENSE_LEGEND = [("food", "food"), ("obstacle", "obstacle"), ("kin", "kin"),
                  ("non-kin", "nonkin"), ("body", "intero"), ("smell", "smell"),
-                 ("mate", "mate")]
+                 ("mate", "mate"), ("signal", "signal")]
 
 # organ MODALITY id (vivarium.nca / World._build_input_layout) -> colour, matching the
 # input-strip legend, so a specialised sensory organ on the brain is coloured by WHAT it
 # hears (a food organ green, a smell organ magenta...). 0 = ALL is left cyan by the drawer.
 _MOD_COL = {1: _SENSE_COL["food"], 2: _SENSE_COL["obstacle"], 3: _SENSE_COL["kin"],
             4: _SENSE_COL["nonkin"], 5: _SENSE_COL["intero"], 6: _SENSE_COL["smell"],
-            7: _SENSE_COL["mate"]}
+            7: _SENSE_COL["mate"], 8: _SENSE_COL["signal"]}
 
 
 def _sense_colors(world: World) -> list:
@@ -62,6 +62,7 @@ def _sense_colors(world: World) -> list:
     if world.smell:
         cols += [_SENSE_COL["smell"]] * SMELL
     cols += [_SENSE_COL["mate"]] * MATE
+    cols += [_SENSE_COL["signal"]] * SIGNAL
     return cols
 
 
@@ -116,6 +117,11 @@ def draw(world: World, cell: int, panel_w: int, font, small,
     for y0, y1, x0, x1 in world.wall_rects:                 # walls (float rectangles)
         surf.fill((60, 60, 68), ((x0 + 0.5) * cell, (y0 + 0.5) * cell,
                                  (x1 - x0) * cell, (y1 - y0) * cell))
+    if world.signal.any():                                  # pheromone field (faint yellow glow)
+        for sy, sx in np.argwhere(world.signal > 1e-3):
+            t = min(1.0, float(world.signal[sy, sx]) / 2.0)
+            surf.fill((int(70 * t) + 12, int(66 * t) + 12, 16),
+                      (sx * cell, sy * cell, cell, cell))
     cr = max(1, int(round(world.corpse_radius * cell)))     # corpses (float obstacle circles)
     for y, x in world.corpse_xy:
         pygame.draw.circle(surf, (120, 74, 58), (int((x + 0.5) * cell), int((y + 0.5) * cell)), cr)

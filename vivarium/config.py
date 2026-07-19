@@ -168,6 +168,16 @@ class Config:
     corpse_radius: float = 0.4         # corpse morsel radius in cells (continuous aqua):
                                        # a dead body is a float obstacle circle this big
 
+    # SIGNAL FIELD (communication): agents deposit a PHEROMONE into a shared scalar field
+    # via the EMIT output; it diffuses and decays, and every agent senses its local gradient
+    # (the SIGNAL sense). Meaning is NOT hardwired — evolution decides when to emit and how
+    # to react, so alarm calls / trails / aggregation can EMERGE. Emitting costs a little
+    # energy so signalling stays honest (a signal must earn its keep).
+    signal_decay: float = 0.88         # fraction of field value kept each tick (fades away)
+    signal_diffuse: float = 0.25       # blend toward the 4-neighbour average (spreads it)
+    emit_scale: float = 1.0            # deposit amount at full EMIT intensity (sigmoid gated)
+    emit_cost: float = 0.05            # energy per unit emitted (keeps signalling honest)
+
     # population
     init_population: int = 18           # start near the food controller's target so the
                                         # world doesn't open with a crash-and-recover
@@ -227,8 +237,11 @@ class Config:
     nca_channels: int = 8              # state channels per cell
     nca_hidden: int = 16               # hidden units in each cell-type's update rule
     nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
-    nca_start: int = 5                 # side of the fresh alive block (5 -> 5x5, sensory
-                                       # organs on the PERIMETER, an effector at the centre)
+    nca_start: int = 3                 # side of the fresh alive block (3 -> 3x3, sensory
+                                       # organs on the PERIMETER, an effector at the centre).
+                                       # Small on purpose: cells share simple per-TYPE rules,
+                                       # so intelligence must CO-EVOLVE from spatial growth,
+                                       # not start with a big pre-made sheet.
     # Structural mutation rates are GROWTH-BIASED on purpose (grow/deepen/widen/split
     # run ~3-5x more often than their shrink counterparts): mutation proposes bigger
     # brains, and the per-cell energy cost (nca_cell_cost) is the counterweight that
@@ -262,7 +275,7 @@ class Config:
     # organ's POSITION on the lattice picks the ray DIRECTION, so the shape lays out a
     # sensory MAP (a food organ on the left hears left rays) and neighbouring directions are
     # neighbouring cells — the CA geometry represents visual space. Born ALL (== broadcast).
-    nca_organ_mods: int = 7            # count of specialised modalities (ids 1..7; 0 = ALL)
+    nca_organ_mods: int = 8            # count of specialised modalities (ids 1..8; 0 = ALL)
     nca_organ_mod_prob: float = 0.05   # chance a mutation re-rolls one organ's modality
     # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
     # its depth (add a near-identity layer / remove a middle one), capped.

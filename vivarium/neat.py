@@ -31,7 +31,8 @@ from vivarium.vision import (DEFAULT_N_RAYS, DEFAULT_RAY_LEN, cross_vision,
 # so parking to digest is a real strategy evolution can find.
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
 REPRODUCE = 4                    # a COMMAND gate: >0 asks to breed (world still needs a mate)
-N_ACTIONS = 5
+EMIT = 5                         # a continuous intensity: deposit a pheromone into the world
+N_ACTIONS = 6
 
 _ACT_RELAX = 3          # synchronous relaxation steps per decision
 

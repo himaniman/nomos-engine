@@ -50,11 +50,12 @@ RAY_CH = 4     # per vision ray: edible food / obstacle / KIN agent / NON-KIN ag
 INTERO = 7     # energy, own speed, own turn-rate, sin(heading), cos(heading), age, bias
 SMELL = 2      # egocentric (forward, lateral) direction to the nearest food
 MATE = 2       # egocentric direction to the nearest FED same-species agent (for breeding)
+SIGNAL = 2     # egocentric gradient of the shared pheromone field (toward stronger signal)
 
 
 def sensor_size(n_rays: int, smell: bool = True) -> int:
     """Width of the brain's input vector for this sensor configuration."""
-    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0) + MATE
+    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0) + MATE + SIGNAL
 
 
 def _logits(brain) -> np.ndarray:
@@ -188,6 +189,9 @@ class World:
         self.brain = _BRAINS[c.brain]
         self.rng = np.random.default_rng(c.seed)
         self.h = self.w = c.size
+        # shared PHEROMONE field (communication): agents EMIT into it and sense its gradient;
+        # it diffuses and decays each tick. Grid-backed like walls / food-density.
+        self.signal = np.zeros((self.h, self.w), dtype=np.float64)
         self.tick = 0
         self.epoch = 0
         self.epoch_start = 0
@@ -263,6 +267,8 @@ class World:
             static[6] = np.arange(mo, mo + SMELL, dtype=np.int64)
             mo += SMELL
         static[7] = np.arange(mo, mo + MATE, dtype=np.int64)         # mate-direction block
+        mo += MATE
+        static[8] = np.arange(mo, mo + SIGNAL, dtype=np.int64)       # signal-gradient block
         return {"ray_ch": RAY_CH, "n_rays": self.cfg.n_rays_max,
                 "ray_mod_channel": {1: 0, 2: 1, 3: 2, 4: 3}, "static_mod_idx": static}
 
@@ -731,6 +737,18 @@ class World:
             rel = _wrap_angle(math.atan2(best.y - a.y, best.x - a.x) - a.heading)
             vec[mo + 0] = amp * math.cos(rel)                # mate ahead (+) / behind (-)
             vec[mo + 1] = amp * math.sin(rel)                # mate to one side (signed)
+
+        # SIGNAL sensor: local gradient of the shared pheromone field in egocentric coords,
+        # so the brain can follow (or flee) trails others emitted. Meaning is not hardwired.
+        si = mo + MATE
+        iy = min(self.h - 1, max(0, int(a.y)))
+        ix = min(self.w - 1, max(0, int(a.x)))
+        sig = self.signal
+        gx = 0.5 * (sig[iy, min(self.w - 1, ix + 1)] - sig[iy, max(0, ix - 1)])
+        gy = 0.5 * (sig[min(self.h - 1, iy + 1), ix] - sig[max(0, iy - 1), ix])
+        ch, sh = math.cos(a.heading), math.sin(a.heading)
+        vec[si + 0] = math.tanh(gx * ch + gy * sh)           # signal rising ahead (+) / behind
+        vec[si + 1] = math.tanh(-gx * sh + gy * ch)          # signal rising to one side (signed)
         return vec
 
     # -- continuous motor read-out ------------------------------------------
@@ -782,6 +800,14 @@ class World:
                 self.abuckets.move(a.id, a.y, a.x)          # reindex to its new cell
             if plastic:
                 a.brain.learn(reward / c.food_energy)
+            # EMIT: deposit a pheromone at the current cell (a small energy cost keeps
+            # signalling honest). Others sense the field's gradient (the SIGNAL sense).
+            if len(logits) > nca.EMIT:
+                emit = 1.0 / (1.0 + math.exp(-float(logits[nca.EMIT])))   # sigmoid intensity
+                if emit > 1e-3:
+                    self.signal[min(self.h - 1, max(0, int(a.y))),
+                                min(self.w - 1, max(0, int(a.x)))] += emit * c.emit_scale
+                    a.energy -= c.emit_cost * emit
             # reproduction is now a brain COMMAND: only breed when the REPRODUCE gate is on
             # (older genomes without the output always want to, preserving prior behaviour).
             want_repro = (float(logits[nca.REPRODUCE]) > 0.0
@@ -798,6 +824,7 @@ class World:
             self.corpse_decay -= 1
             live = self.corpse_decay > 0
             self.corpse_xy, self.corpse_decay = self.corpse_xy[live], self.corpse_decay[live]
+        self._update_signal()                                # diffuse + decay the pheromone field
         self._drift_walls()
         self._drift_halos()
         self._immigrate()
@@ -807,6 +834,21 @@ class World:
         self.tick += 1
         if not self.agents:
             self._reseed()
+
+    def _update_signal(self) -> None:
+        """Diffuse then decay the pheromone field, and zero it under walls (signal doesn't
+        pass through them). Cheap: a 4-neighbour blur via rolls + a scalar decay."""
+        s = self.signal
+        if not s.any():
+            return
+        c = self.cfg
+        nb = (np.roll(s, 1, 0) + np.roll(s, -1, 0)
+              + np.roll(s, 1, 1) + np.roll(s, -1, 1)) * 0.25
+        s = (1.0 - c.signal_diffuse) * s + c.signal_diffuse * nb
+        s *= c.signal_decay
+        s[self.walls] = 0.0                                  # walls block the pheromone
+        s[s < 1e-4] = 0.0                                    # drop dust so `.any()` stays cheap
+        self.signal = s
 
     def _gluttony_factor(self, energy: float) -> float:
         """Speed multiplier from the GLUTTONY BRAKE: 1.0 up to glut_start, then an

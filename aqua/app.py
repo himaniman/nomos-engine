@@ -349,7 +349,8 @@ def main(argv=None) -> int:
             name = _save_shot(screen, a.shots_dir, world)
             last_shot = time.time()
             msg, msg_frames = f"saved shot {name}", 120
-        clock.tick(60 if (speed <= 2 or anim) else 0)
+        clock.tick(30 if (speed <= 2 or anim) else 0)      # cap low-speed view at 30 fps
+                                                            # (x1 = watchable real-time)
     pygame.quit()
     return 0
 

@@ -196,6 +196,7 @@ class World:
         # (heritable) n_rays into the first slots and leaves the rest zero, so a
         # variable eye plugs into a fixed-width brain.
         self.n_in = sensor_size(c.n_rays_max, self.smell)
+        self.input_layout = self._build_input_layout()      # sensor-index map for retinotopy
         self.n_out = self.brain.N_ACTIONS
         self._next_node_id = self.n_in + self.n_out
         if self.genome_pool:
@@ -243,6 +244,19 @@ class World:
                                                       self._next_node_id, leap=leap)
         return child
 
+    def _build_input_layout(self) -> dict:
+        """Map each sensory MODALITY to sensor-vector indices, so a brain's organs can
+        specialise (see vivarium.nca._build_listen). Ray modalities (1 food / 2 obstacle /
+        3 kin / 4 non-kin) give a channel offset within a ray — the organ's POSITION then
+        picks the ray direction; static modalities (5 intero / 6 smell) give a fixed index
+        block. Ids match the sensor-colour legend order in aqua.app."""
+        o = self.cfg.n_rays_max * RAY_CH
+        static = {5: np.arange(o, o + INTERO, dtype=np.int64)}
+        if self.smell:
+            static[6] = np.arange(o + INTERO, o + INTERO + SMELL, dtype=np.int64)
+        return {"ray_ch": RAY_CH, "n_rays": self.cfg.n_rays_max,
+                "ray_mod_channel": {1: 0, 2: 1, 3: 2, 4: 3}, "static_mod_idx": static}
+
     def _phenotype(self, genome):
         c = self.cfg
         if c.brain == "nca":
@@ -251,7 +265,8 @@ class World:
                                         forget=c.nca_plastic_forget,
                                         elig_decay=c.nca_plastic_elig,
                                         clip=c.nca_plastic_clip,
-                                        neuromod=c.nca_neuromod)
+                                        neuromod=c.nca_neuromod,
+                                        input_layout=self.input_layout)
         return self.brain.Phenotype(genome)
 
     def _seed_genome(self):

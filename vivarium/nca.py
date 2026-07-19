@@ -58,6 +58,12 @@ except ImportError:                                  # pragma: no cover - env-de
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
 N_ACTIONS = 4
 
+# a sensory organ's `organ_mod` gene: 0 = ALL (hears the whole sensor vector, == the old
+# broadcast), 1..K = a world-defined MODALITY. The World supplies an `input_layout` mapping
+# a (modality, direction) to sensor-vector indices; for a directional (ray) modality the
+# organ's lattice POSITION picks the direction (retinotopy). See Phenotype._build_listen.
+MOD_ALL = 0
+
 # the 3x3 neighbourhood order (self included), used to build the perception vector
 _OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
 
@@ -84,7 +90,7 @@ class Genome:
     def __init__(self, n_in, n_out, mask, type_map, rules, P_in, P_out, b_out,
                  channels, hidden, hue=0.0, diet=0.5, carnivore=0.0,
                  n_rays=DEFAULT_N_RAYS, ray_len=DEFAULT_RAY_LEN,
-                 in_mask=None, out_mask=None):
+                 in_mask=None, out_mask=None, organ_mod=None):
         self.kind = "nca"
         self.n_in = n_in
         self.n_out = n_out
@@ -99,6 +105,10 @@ class Genome:
         # DIFFERENTIATES organs. An empty set falls back to all-cells at runtime (never mute).
         self.in_mask = (mask.astype(bool) if in_mask is None else in_mask.astype(bool))
         self.out_mask = (mask.astype(bool) if out_mask is None else out_mask.astype(bool))
+        # each cell's sensory MODALITY (0 = ALL). Only meaningful where in_mask; a fresh
+        # brain is all-zero (ALL) so it starts as the plain broadcast and specialises later.
+        self.organ_mod = (np.zeros_like(self.mask, dtype=np.int64) if organ_mod is None
+                          else organ_mod.astype(np.int64))
         self.C = channels
         self.H = hidden
         self.rules = rules                          # list (per type) of layer lists
@@ -124,7 +134,7 @@ class Genome:
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len,
-                      self.in_mask.copy(), self.out_mask.copy())
+                      self.in_mask.copy(), self.out_mask.copy(), self.organ_mod.copy())
 
     def max_node_id(self) -> int:
         return self.n_in + self.n_out
@@ -164,7 +174,8 @@ class Genome:
                 "P_in": self.P_in.tolist(), "P_out": self.P_out.tolist(),
                 "b_out": self.b_out.tolist(),
                 "in_mask": self.in_mask.astype(int).tolist(),
-                "out_mask": self.out_mask.astype(int).tolist()}
+                "out_mask": self.out_mask.astype(int).tolist(),
+                "organ_mod": self.organ_mod.tolist()}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Genome":
@@ -172,19 +183,21 @@ class Genome:
                   for W, b in r] for r in d["rules"]]
         im = np.array(d["in_mask"], dtype=bool) if "in_mask" in d else None
         om = np.array(d["out_mask"], dtype=bool) if "out_mask" in d else None
+        omd = np.array(d["organ_mod"], dtype=np.int64) if "organ_mod" in d else None
         return cls(int(d["n_in"]), int(d["n_out"]), np.array(d["mask"], dtype=bool),
                    np.array(d["type_map"]), rules, d["P_in"], d["P_out"], d["b_out"],
                    int(d["C"]), int(d["H"]), float(d.get("hue", 0.0)),
                    float(d.get("diet", 0.5)), float(d.get("carnivore", 0.0)),
                    int(d.get("n_rays", DEFAULT_N_RAYS)),
-                   float(d.get("ray_len", DEFAULT_RAY_LEN)), im, om)
+                   float(d.get("ray_len", DEFAULT_RAY_LEN)), im, om, omd)
 
     def key(self) -> bytes:
         """Canonical fingerprint of shape + types + rule stacks (rounded)."""
         parts = [self.mask.astype(np.int8).tobytes(),
                  (self.type_map * self.mask).astype(np.int16).tobytes(),
                  (self.in_mask & self.mask).astype(np.int8).tobytes(),
-                 (self.out_mask & self.mask).astype(np.int8).tobytes()]
+                 (self.out_mask & self.mask).astype(np.int8).tobytes(),
+                 (self.organ_mod * self.in_mask).astype(np.int16).tobytes()]
         for r in self.rules:
             for L in r:
                 parts.append(np.round(L["W"], 1).tobytes())
@@ -233,8 +246,8 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
 
 if _NUMBA:
     @_njit(cache=True)
-    def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
-                  in_flag, mod_ch, subticks):          # pragma: no cover - jitted
+    def _relax_nb(st, drive_mat, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
+                  mod_ch, subticks):                   # pragma: no cover - jitted
         """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
         (n, C) alive rows into the flat padded buffer, gather each cell's 9-neighbour
         rows into a (n, 9C) perception, forward each TYPE's rows through its layer
@@ -267,11 +280,48 @@ if _NUMBA:
                             delta[rows[ii], c] = y[ii, c]
                 li += nl
             for i in range(n):
-                dr = 1.0 if in_flag[i] else 0.0          # sensor drive enters ORGAN cells only
                 gate = (1.0 + math.tanh(st[i, mod_ch])) if mod_ch >= 0 else 1.0  # neuromod
                 for c in range(C):
-                    st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + dr * drive[c])
+                    st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + drive_mat[i, c])
         return st
+
+
+def _build_listen(genome, ys, xs, layout) -> np.ndarray:
+    """The (n_alive, n_in) LISTEN matrix: row i = which sensor-vector indices alive-cell i
+    hears. An organ of modality ALL (or when no layout is given) hears everything (a row of
+    1s); a directional (ray) modality hears the ONE ray slot chosen by the cell's horizontal
+    POSITION (retinotopy); a static modality (e.g. intero / smell) hears its fixed index
+    block. Non-organ cells hear nothing (zero row). No organs at all -> every cell hears all
+    (never deaf). `drive_mat = (M * inputs) @ P_in` then projects each cell's slice."""
+    n = len(ys)
+    M = np.zeros((n, genome.n_in), dtype=np.float64)
+    organs = genome.in_mask[ys, xs]
+    if not organs.any():
+        M[:] = 1.0
+        return M
+    if layout is None:                                    # organs but no modality map:
+        M[organs] = 1.0                                   # every organ hears everything
+        return M
+    ray_ch, n_rays = layout["ray_ch"], layout["n_rays"]
+    ray_mod, static_mod = layout["ray_mod_channel"], layout["static_mod_idx"]
+    axmin, span = int(xs.min()), max(1, int(xs.max()) - int(xs.min()))
+    nr = max(1, min(int(genome.n_rays), n_rays))
+    for i in range(n):
+        if not organs[i]:
+            continue
+        m = int(genome.organ_mod[ys[i], xs[i]])
+        if m in ray_mod:                                  # directional: POSITION -> ray
+            r = int(round((int(xs[i]) - axmin) / span * (nr - 1)))
+            idx = r * ray_ch + ray_mod[m]
+            if 0 <= idx < genome.n_in:
+                M[i, idx] = 1.0
+            else:
+                M[i, :] = 1.0
+        elif m in static_mod:                             # non-directional index block
+            M[i, static_mod[m]] = 1.0
+        else:                                             # MOD_ALL / unknown -> hear all
+            M[i, :] = 1.0
+    return M
 
 
 class Phenotype:
@@ -281,7 +331,7 @@ class Phenotype:
 
     def __init__(self, genome: Genome, subticks: int = 32, plastic: bool = False,
                  lr: float = 0.03, forget: float = 0.002, elig_decay: float = 0.5,
-                 clip: float = 1.0, neuromod: bool = False):
+                 clip: float = 1.0, neuromod: bool = False, input_layout=None):
         self.genome = genome
         self.subticks = subticks
         G, C = genome.G, genome.C
@@ -304,18 +354,15 @@ class Phenotype:
         cell_types = genome.type_map[ys, xs]
         self._type_rows = [np.nonzero(cell_types == k)[0]
                            for k in range(genome.n_types)]
-        # LOCAL I/O row sets: which alive rows receive the sensor drive (organs) and which
-        # are read for the action (effectors). Empty -> ALL rows (broadcast / mean-pool),
-        # so a brain is never deaf or mute even if mutation strips its organs.
-        n_alive = len(ys)
-        self._in_rows = np.nonzero(genome.in_mask[ys, xs])[0]
+        # LOCAL I/O: the sensor drive enters ORGAN cells only, the action is read from
+        # EFFECTOR cells. Each organ's LISTEN row (which sensor indices it hears) is baked
+        # into `_M` (n_alive, n_in): a full row of 1s = hears everything (ALL / broadcast),
+        # a sparse row = a specialised organ (retinotopy — see _build_listen). Non-organ
+        # rows are zero. `drive_mat = (_M * inputs) @ P_in` then injects per cell.
+        self._M = _build_listen(genome, ys, xs, input_layout)
         self._out_rows = np.nonzero(genome.out_mask[ys, xs])[0]
-        if len(self._in_rows) == 0:
-            self._in_rows = np.arange(n_alive)
-        if len(self._out_rows) == 0:
-            self._out_rows = np.arange(n_alive)
-        self._in_flag = np.zeros(n_alive, dtype=np.int64)     # per-row 1 = organ (for numba)
-        self._in_flag[self._in_rows] = 1
+        if len(self._out_rows) == 0:                          # no effector -> read ALL (never mute)
+            self._out_rows = np.arange(len(ys))
         if _NUMBA:                                   # pack the rules for the jit kernel:
             self._nb_rows = _NbList(self._type_rows)  # per-type alive-row indices
             Wts, bs = _NbList(), _NbList()            # every type's layers, back to back
@@ -343,7 +390,9 @@ class Phenotype:
 
     def act(self, inputs: np.ndarray, rng=None, temp: float = 0.0) -> int:
         g = self.genome
-        drive = inputs @ g.P_in                              # (C,) sensory current
+        # each cell's own sensory current: its LISTEN slice of the inputs, projected. Organ
+        # rows get their modality/direction slice, non-organ rows get zero (see _build_listen).
+        drive_mat = np.ascontiguousarray((self._M * inputs) @ g.P_in)   # (n, C)
         n = len(self._ys)
         st = self.state[self._ys, self._xs]                  # (n, C) alive rows only
         padF, nbr = self._padF, self._nbr
@@ -355,16 +404,15 @@ class Phenotype:
             # arithmetic — watching an agent think must not change its trajectory
             if self.record:
                 for _ in range(self.subticks):
-                    st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
-                                   self._nb_W, self._nb_b, self._nb_cnt, self._in_flag,
-                                   self._mod_ch, 1)
+                    st = _relax_nb(st, drive_mat, padF, self._centre, nbr, self._nb_rows,
+                                   self._nb_W, self._nb_b, self._nb_cnt, self._mod_ch, 1)
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
             else:
-                st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
-                               self._nb_W, self._nb_b, self._nb_cnt, self._in_flag,
-                               self._mod_ch, self.subticks)
+                st = _relax_nb(st, drive_mat, padF, self._centre, nbr, self._nb_rows,
+                               self._nb_W, self._nb_b, self._nb_cnt, self._mod_ch,
+                               self.subticks)
         else:                                                # numpy reference path
             single = g.n_types == 1
             for _ in range(self.subticks):
@@ -379,8 +427,7 @@ class Phenotype:
                             delta[rows] = _apply_rule(perc[rows], g.rules[k])
                 if self._mod_ch >= 0:                        # neuromod: hormone gates the rule
                     delta = delta * (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
-                st = st + delta                              # residual update, then...
-                st[self._in_rows] += drive                   # ...drive enters ORGAN cells only
+                st = st + delta + drive_mat                  # residual + per-cell sensor drive
                 np.tanh(st, out=st)                          # ...and clamp
                 if self.record:                              # one full-grid frame per sub-tick
                     full = np.zeros_like(self.state)
@@ -515,6 +562,7 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
         y, x = alive[int(rng.integers(len(alive)))]
         g.mask[y, x] = False
         g.in_mask[y, x] = g.out_mask[y, x] = False       # drop any organ role with the cell
+        g.organ_mod[y, x] = 0
 
     # DIFFERENTIATE ORGANS: flip a random alive cell's sensory (in) / effector (out) role,
     # so which cells are senses / motors evolves and the shape gains functional structure.
@@ -526,6 +574,13 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
         alive = np.argwhere(g.mask)
         y, x = alive[int(rng.integers(len(alive)))]
         g.out_mask[y, x] = not g.out_mask[y, x]
+    # RETINOTOPY: re-roll one sensory organ's modality (which sense group it hears), so
+    # organs specialise into an eye / nose / etc. (0 = ALL, 1..nca_organ_mods = a modality).
+    if rng.random() < cfg.nca_organ_mod_prob:
+        organs = np.argwhere(g.mask & g.in_mask)
+        if len(organs):
+            y, x = organs[int(rng.integers(len(organs)))]
+            g.organ_mod[y, x] = int(rng.integers(cfg.nca_organ_mods + 1))
 
     if g.n_types > 1 and rng.random() < cfg.nca_retype_prob:
         alive = np.argwhere(g.mask)
@@ -656,4 +711,5 @@ def crossover(g_fit: Genome, g_other: Genome, rng) -> Genome:
     return Genome(g_fit.n_in, g_fit.n_out, g_fit.mask.copy(), g_fit.type_map.copy(),
                   rules, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue,
                   diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len,
-                  in_mask=g_fit.in_mask.copy(), out_mask=g_fit.out_mask.copy())
+                  in_mask=g_fit.in_mask.copy(), out_mask=g_fit.out_mask.copy(),
+                  organ_mod=g_fit.organ_mod.copy())

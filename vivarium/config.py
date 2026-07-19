@@ -249,6 +249,14 @@ class Config:
     # born with every cell BOTH (== old broadcast/mean-pool) and differentiates from there.
     nca_flip_in_prob: float = 0.04     # chance a mutation toggles a cell's sensory (in) role
     nca_flip_out_prob: float = 0.04    # chance a mutation toggles a cell's effector (out) role
+    # RETINOTOPIC organ specialisation: a sensory organ's MODALITY gene says WHICH sense
+    # group it hears (0 = ALL, 1..nca_organ_mods = a world-defined modality e.g. food /
+    # obstacle / kin / non-kin / intero / smell). For a directional (ray) modality the
+    # organ's POSITION on the lattice picks the ray DIRECTION, so the shape lays out a
+    # sensory MAP (a food organ on the left hears left rays) and neighbouring directions are
+    # neighbouring cells — the CA geometry represents visual space. Born ALL (== broadcast).
+    nca_organ_mods: int = 6            # count of specialised modalities (ids 1..6; 0 = ALL)
+    nca_organ_mod_prob: float = 0.05   # chance a mutation re-rolls one organ's modality
     # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
     # its depth (add a near-identity layer / remove a middle one), capped.
     nca_max_layers: int = 4            # max layers in a cell-type rule (depth cap)

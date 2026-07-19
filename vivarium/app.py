@@ -146,7 +146,7 @@ def draw(world: World, cell_px: int, panel_w: int, font, small,
 
 
 def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
-                leader=None, hitboxes=None, sense_colors=None):
+                leader=None, hitboxes=None, sense_colors=None, organ_colors=None):
     surf.fill((20, 20, 26), (x0, 0, panel_w, H))
     # two columns: a narrow TEXT column (stats / leaders / populations) on the left
     # and a wide BRAIN column on the right where the inspected agent's CA lattice and
@@ -223,19 +223,19 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
     # a clicked leader genome takes priority, else the selected agent
     if leader is not None:
         _draw_inspector(surf, leader, None, ix, iy, iw, H, font, small, title="LEADER",
-                        sense_colors=sense_colors)
+                        sense_colors=sense_colors, organ_colors=organ_colors)
         return
     a = world.agents.get(selected) if selected is not None else None
     if a is not None:
         _draw_inspector(surf, a.brain.genome, a, ix, iy, iw, H, font, small,
-                        sense_colors=sense_colors)
+                        sense_colors=sense_colors, organ_colors=organ_colors)
     elif bw > 120:
         surf.blit(small.render("click an agent to inspect its brain", True,
                                (110, 120, 140)), (bx0 + 12, 14))
 
 
 def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
-                    sense_colors=None):
+                    sense_colors=None, organ_colors=None):
     pygame.draw.rect(surf, genome_color(g), (x0 + 12, y + 3, 12, 12))
     label = genome_name(g) + (f"  ({title})" if title else "")
     surf.blit(font.render(label, True, (235, 235, 245)), (x0 + 30, y))
@@ -266,7 +266,7 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
     box = (x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)
     if getattr(g, "kind", "neat") == "nca":
         _draw_nca_brain(surf, g, agent.brain if agent is not None else None, *box,
-                        sense_colors=sense_colors)
+                        sense_colors=sense_colors, organ_colors=organ_colors)
     else:
         _draw_net(surf, g, *box)
 
@@ -280,7 +280,8 @@ def _type_color(k):
     return _TYPE_COLORS[k % len(_TYPE_COLORS)]
 
 
-def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None):
+def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None,
+                    organ_colors=None):
     """Draw the agent's CA brain in two rows. Top: the G x G lattice (dead cells
     dark; alive cells filled by their first three state CHANNELS -> RGB, bordered by
     their cell-TYPE colour), flanked by the small "neurons" wired to it — input
@@ -352,7 +353,10 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None):
             if side >= 6:                                  # LOCAL I/O organ markers:
                 m = max(2, side // 4)
                 if getattr(genome, "in_mask", None) is not None and genome.in_mask[gy, gx]:
-                    surf.fill((90, 200, 255), (rect[0] + 1, rect[1] + 1, m, m))     # sensory (cyan, TL)
+                    mod = (int(genome.organ_mod[gy, gx])
+                           if getattr(genome, "organ_mod", None) is not None else 0)
+                    col = (organ_colors or {}).get(mod, (90, 200, 255))  # modality colour, else cyan
+                    surf.fill(col, (rect[0] + 1, rect[1] + 1, m, m))     # sensory organ (TL)
                 if getattr(genome, "out_mask", None) is not None and genome.out_mask[gy, gx]:
                     surf.fill((255, 205, 80),
                               (rect[0] + side - 1 - m, rect[1] + side - 1 - m, m, m))  # effector (amber, BR)

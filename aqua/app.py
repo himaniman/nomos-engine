@@ -41,6 +41,12 @@ _SENSE_COL = {"food": (95, 220, 115), "obstacle": (175, 180, 195),
 _SENSE_LEGEND = [("food", "food"), ("obstacle", "obstacle"), ("kin", "kin"),
                  ("non-kin", "nonkin"), ("body", "intero"), ("smell", "smell")]
 
+# organ MODALITY id (vivarium.nca / World._build_input_layout) -> colour, matching the
+# input-strip legend, so a specialised sensory organ on the brain is coloured by WHAT it
+# hears (a food organ green, a smell organ magenta...). 0 = ALL is left cyan by the drawer.
+_MOD_COL = {1: _SENSE_COL["food"], 2: _SENSE_COL["obstacle"], 3: _SENSE_COL["kin"],
+            4: _SENSE_COL["nonkin"], 5: _SENSE_COL["intero"], 6: _SENSE_COL["smell"]}
+
 
 def _sense_colors(world: World) -> list:
     """An RGB per brain-input slot, coloured by sensor TYPE (the layout in
@@ -142,7 +148,7 @@ def draw(world: World, cell: int, panel_w: int, font, small,
                           py + math.sin(a.heading) * ar * 1.8), 1)
 
     _draw_panel(surf, world, W, panel_w, H, font, small, selected, hud, leader, hitboxes,
-                sense_colors=_sense_colors(world))
+                sense_colors=_sense_colors(world), organ_colors=_MOD_COL)
     return surf
 
 

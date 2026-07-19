@@ -114,18 +114,38 @@ class Config:
     move_cost: float = 0.35            # extra to step forward
     turn_cost: float = 0.15            # extra to turn
     start_energy: float = 55.0
-    max_energy: float = 130.0          # big reserve: a well-fed agent banks a long life
-                                       # (raised so agents live long enough to LEARN)
+    max_energy: float = 800.0          # HARD ceiling only. The real regulator is now the
+                                       # GLUTTONY BRAKE below — a soft behavioural cap, not
+                                       # a numeric clamp (was 130)
 
-    # reproduction: sexual crossover when two fed agents are adjacent, else a
-    # high-energy asexual fallback so lone pioneers can still colonize. Thresholds
-    # scaled to the larger energy reserve, so breeding takes real investment (slower
-    # breeding -> a smaller, older population).
+    # GLUTTONY BRAKE (soft energy cap): a well-fed agent moves SLOWER — its commanded speed
+    # is scaled by a factor that is 1 below glut_start, eases in gently (flat onset), and
+    # reaches 0 (full stop) at glut_full, on an exponential curve. So hoarding energy is
+    # self-limiting: a glutton can neither forage nor reach a mate and bleeds back down.
+    # This replaces the old hard energy clamp and makes lean-mobile-and-breed the winning
+    # strategy (hoard-and-clone becomes a rare dead-end).
+    glut_start: float = 150.0          # speed unaffected up to here
+    glut_full: float = 800.0           # fully stopped at/above here
+    glut_k: float = 4.0                # curve sharpness (bigger = stays fast longer, then plunges)
+    energy_sense_scale: float = 150.0  # normaliser for the energy proprioception input, so the
+                                       # sense stays meaningful in the working range instead of
+                                       # being squashed against the high max_energy ceiling
+
+    # reproduction: sexual CROSSOVER is the main path (two fed same-species agents
+    # adjacent, fitter leads); asexual budding is now a RARE fallback for the very
+    # overfed only (see clone_* below), so crossover dominates and hoard-and-clone is a
+    # dead-end. Thresholds scaled to the energy reserve, so breeding takes real investment.
     repro_min_energy: float = 80.0     # must be at least this well-fed to breed — high so
                                        # an agent LIVES (and learns) a good while before
                                        # spending energy on a child
     repro_cost: float = 42.0           # energy spent (split across parents/child)
-    asexual_energy: float = 110.0      # lone-agent fallback breeds only when this full
+    asexual_energy: float = 110.0      # lone-agent asexual fallback threshold (grid world +
+                                       # the aqua BRIDGE until the REPRODUCE command lands)
+    # PLANNED (wired in with the REPRODUCE brain command): once agents can actively seek and
+    # commit to mating, the asexual path above becomes a RARE bud for the very-overfed only,
+    # so crossover dominates and hoard-and-clone is a dead-end. Unused until then.
+    clone_min_energy: float = 400.0    # only bud when this overfed (deep in the gluttony zone)
+    clone_prob: float = 0.02           # and only this fraction of eligible ticks
 
     # NEAT mutation rates (applied to every child genome). LOW, so a child resembles
     # its parent — heritability is what makes lineages/species persist and lifespan

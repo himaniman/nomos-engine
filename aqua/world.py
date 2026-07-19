@@ -597,7 +597,8 @@ class World:
         o = c.n_rays_max * RAY_CH                              # interoception block
                                                               # (fixed offset: rays live in
                                                               # the first n_rays_max slots)
-        vec[o + 0] = a.energy / c.max_energy
+        vec[o + 0] = math.tanh(a.energy / c.energy_sense_scale)   # saturating: meaningful in
+                                                                  # the working range, not squashed
         vec[o + 1] = a.last_speed / self.max_speed
         vec[o + 2] = a.last_turn / self.max_turn             # signed turn-rate
         vec[o + 3] = math.sin(a.heading)                     # heading compass (absolute)
@@ -651,6 +652,7 @@ class World:
             else:
                 a.brain.act(self._sense(a))
             speed, turn = self._command(_logits(a.brain))
+            speed *= self._gluttony_factor(a.energy)        # overfed -> slower (soft cap)
             a.last_speed, a.last_turn = speed, turn         # proprioception for next tick
             a.energy -= c.base_cost
             if c.brain == "nca":
@@ -688,6 +690,18 @@ class World:
         self.tick += 1
         if not self.agents:
             self._reseed()
+
+    def _gluttony_factor(self, energy: float) -> float:
+        """Speed multiplier from the GLUTTONY BRAKE: 1.0 up to glut_start, then an
+        exponential ease-in to 0.0 (full stop) at glut_full. Flat onset (x^2) so the
+        penalty starts gently, steepening toward the ceiling — the soft energy cap that
+        replaces a hard clamp (see Config.glut_*)."""
+        c = self.cfg
+        if energy <= c.glut_start:
+            return 1.0
+        x = min(1.0, (energy - c.glut_start) / max(1e-9, c.glut_full - c.glut_start))
+        ek = math.exp(-c.glut_k)
+        return max(0.0, (math.exp(-c.glut_k * x * x) - ek) / (1.0 - ek))
 
     def _advance(self, a: Agent, ny: float, nx: float) -> float:
         """March agent `a` from its current spot toward (ny, nx) in body-sized
@@ -775,10 +789,10 @@ class World:
             bred.add(a.id)
             bred.add(mate.id)
             parents = (a, mate)
-        elif a.energy >= c.asexual_energy:
-            child_g = self._mutate(a.brain.genome)
-            a.energy -= c.repro_cost
-            bred.add(a.id)
+        elif a.energy >= c.asexual_energy:                  # asexual BRIDGE (kept until the
+            child_g = self._mutate(a.brain.genome)          # REPRODUCE command lands, then this
+            a.energy -= c.repro_cost                         # becomes the rare clone_* bud so
+            bred.add(a.id)                                   # crossover can dominate)
             parents = (a,)
         else:
             return

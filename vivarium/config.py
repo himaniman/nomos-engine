@@ -236,7 +236,15 @@ class Config:
     nca_grid: int = 12                 # max brain lattice side (the mask lives here)
     nca_channels: int = 8              # state channels per cell
     nca_hidden: int = 16               # hidden units in each cell-type's update rule
-    nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
+    nca_subticks: int = 32             # SEED think-time (rule relaxation steps per game tick).
+                                       # Now HERITABLE per genome (a big brain needs more steps
+                                       # for signal to cross its tissue), bounded below; drifts
+                                       # like the vision genes. This is the fresh-brain default.
+    nca_subticks_min: int = 20         # fewest think-steps a genome may evolve to
+    nca_subticks_max: int = 60         # most think-steps a genome may evolve to
+    think_cost: float = 0.001          # energy per think-step per tick — thinking is CHEAP but
+                                       # not free, so more subticks must earn their keep (tiny:
+                                       # 20 vs 60 steps differ by ~0.04 energy/tick vs 0.25 base)
     nca_start: int = 3                 # side of the fresh alive block (3 -> 3x3, sensory
                                        # organs on the PERIMETER, an effector at the centre).
                                        # Small on purpose: cells share simple per-TYPE rules,

@@ -278,7 +278,8 @@ class World:
     def _phenotype(self, genome):
         c = self.cfg
         if c.brain == "nca":
-            return self.brain.Phenotype(genome, subticks=c.nca_subticks,
+            return self.brain.Phenotype(genome,
+                                        subticks=getattr(genome, "subticks", c.nca_subticks),
                                         plastic=c.nca_plastic, lr=c.nca_plastic_lr,
                                         forget=c.nca_plastic_forget,
                                         elig_decay=c.nca_plastic_elig,
@@ -802,6 +803,7 @@ class World:
             a.energy -= c.base_cost
             if c.brain == "nca":
                 a.energy -= c.nca_cell_cost * int(a.brain.genome.mask.sum())
+                a.energy -= c.think_cost * a.brain.subticks    # thinking costs a little energy
             reward = 0.0
             if abs(turn) > 1e-6:
                 a.energy -= c.turn_cost * (abs(turn) / self.max_turn)

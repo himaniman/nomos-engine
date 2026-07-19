@@ -110,7 +110,8 @@ class World:
         the lifetime-learning plasticity params when enabled)."""
         c = self.cfg
         if c.brain == "nca":
-            return self.brain.Phenotype(genome, subticks=c.nca_subticks,
+            return self.brain.Phenotype(genome,
+                                        subticks=getattr(genome, "subticks", c.nca_subticks),
                                         plastic=c.nca_plastic, lr=c.nca_plastic_lr,
                                         forget=c.nca_plastic_forget,
                                         elig_decay=c.nca_plastic_elig,

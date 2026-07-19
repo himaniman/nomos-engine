@@ -92,7 +92,7 @@ class Genome:
     def __init__(self, n_in, n_out, mask, type_map, rules, P_in, P_out, b_out,
                  channels, hidden, hue=0.0, diet=0.5, carnivore=0.0,
                  n_rays=DEFAULT_N_RAYS, ray_len=DEFAULT_RAY_LEN, smell_gain=1.0,
-                 in_mask=None, out_mask=None, organ_mod=None):
+                 subticks=32, in_mask=None, out_mask=None, organ_mod=None):
         self.kind = "nca"
         self.n_in = n_in
         self.n_out = n_out
@@ -124,6 +124,7 @@ class Genome:
         self.ray_len = float(ray_len)               # how many rays it fans + how far they reach
         self.smell_gain = float(smell_gain)         # heritable OLFACTORY sensitivity (scales the
                                                     # omnidirectional smell / mate / threat / signal)
+        self.subticks = int(subticks)               # heritable THINK-TIME (relaxation steps/tick)
 
     @property
     def G(self) -> int:
@@ -138,8 +139,8 @@ class Genome:
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len,
-                      self.smell_gain, self.in_mask.copy(), self.out_mask.copy(),
-                      self.organ_mod.copy())
+                      self.smell_gain, self.subticks, self.in_mask.copy(),
+                      self.out_mask.copy(), self.organ_mod.copy())
 
     def resized(self, n_in: int, n_out: int) -> "Genome":
         """A copy adapted to a new sensor / action width: extra P_in rows and P_out cols
@@ -187,7 +188,7 @@ class Genome:
                 "C": self.C, "H": self.H, "hue": self.hue,
                 "diet": self.diet, "carnivore": self.carnivore,
                 "n_rays": self.n_rays, "ray_len": self.ray_len,
-                "smell_gain": self.smell_gain,
+                "smell_gain": self.smell_gain, "subticks": self.subticks,
                 "mask": self.mask.astype(int).tolist(),
                 "type_map": self.type_map.tolist(),
                 "rules": [[[L["W"].tolist(), L["b"].tolist()] for L in r]
@@ -211,7 +212,8 @@ class Genome:
                    float(d.get("diet", 0.5)), float(d.get("carnivore", 0.0)),
                    int(d.get("n_rays", DEFAULT_N_RAYS)),
                    float(d.get("ray_len", DEFAULT_RAY_LEN)),
-                   float(d.get("smell_gain", 1.0)), im, om, omd)
+                   float(d.get("smell_gain", 1.0)), int(d.get("subticks", 32)),
+                   im, om, omd)
 
     def key(self) -> bytes:
         """Canonical fingerprint of shape + types + rule stacks (rounded)."""
@@ -246,6 +248,7 @@ def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
     H = getattr(cfg, "nca_hidden", 16)
     start = getattr(cfg, "nca_start", 5)
     n_mods = getattr(cfg, "nca_organ_mods", 6)
+    smin, smax = getattr(cfg, "nca_subticks_min", 20), getattr(cfg, "nca_subticks_max", 60)
     mask = _start_mask(G, start)
     type_map = np.zeros((G, G), dtype=np.int64)
     in_mask = np.zeros((G, G), dtype=bool)
@@ -268,6 +271,7 @@ def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
                   hue=float(rng.random()),
                   diet=float(rng.random()), carnivore=float(rng.random()) * 0.6,
                   n_rays=n_rays, ray_len=ray_len, smell_gain=float(0.5 + rng.random()),
+                  subticks=int(rng.integers(smin, smax + 1)),
                   in_mask=in_mask, out_mask=out_mask, organ_mod=organ_mod)
 
 
@@ -570,12 +574,16 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
     if rng.random() < cfg.trait_drift_prob:             # heritable olfactory sensitivity
         g.smell_gain = min(3.0, max(0.2,
                            g.smell_gain + float(rng.normal(0.0, cfg.trait_drift))))
+    if rng.random() < cfg.vision_mut_prob:              # heritable THINK-TIME (drifts by a few)
+        g.subticks = int(min(cfg.nca_subticks_max, max(cfg.nca_subticks_min,
+                             g.subticks + int(rng.integers(-4, 5)))))
     drift_vision(g, rng, cfg)                            # heritable ray count / reach
     if leap or rng.random() < cfg.macro_mut_prob:        # rare SPECIATION jolt: a big
         g.hue = float(rng.random())                      # colour jump (new lineage) +
         g.diet = float(rng.random())                     # a new diet + maybe a predator
         g.carnivore = float(rng.random())                # + strong rewiring
         g.smell_gain = float(0.5 + rng.random())         # + a re-rolled nose
+        g.subticks = int(rng.integers(cfg.nca_subticks_min, cfg.nca_subticks_max + 1))
         g.n_rays, g.ray_len = random_vision(rng, cfg)    # + re-rolled eyes
         for r in g.rules:
             for L in r:
@@ -764,10 +772,11 @@ def crossover(g_fit: Genome, g_other: Genome, rng) -> Genome:
     diet = g_fit.diet if rng.random() < 0.5 else g_other.diet
     carn = g_fit.carnivore if rng.random() < 0.5 else g_other.carnivore
     smell_gain = g_fit.smell_gain if rng.random() < 0.5 else g_other.smell_gain
+    subticks = g_fit.subticks if rng.random() < 0.5 else g_other.subticks
     n_rays, ray_len = cross_vision(g_fit, g_other, rng)
     return Genome(g_fit.n_in, g_fit.n_out, g_fit.mask.copy(), g_fit.type_map.copy(),
                   rules, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue,
                   diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len,
-                  smell_gain=smell_gain,
+                  smell_gain=smell_gain, subticks=subticks,
                   in_mask=g_fit.in_mask.copy(), out_mask=g_fit.out_mask.copy(),
                   organ_mod=g_fit.organ_mod.copy())

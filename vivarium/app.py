@@ -256,7 +256,9 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
         info.append(f"children {agent.offspring}  ate {getattr(agent, 'food_eaten', 0)}"
                     f"  kills {getattr(agent, 'kills', 0)}")
     if getattr(g, "kind", "neat") == "nca":
-        info.append(f"cells {nh} types {nc} depth {g.max_depth()} width {g.max_width()}")
+        think = f"  think {g.subticks}" if hasattr(g, "subticks") else ""
+        info.append(f"cells {nh} types {nc} depth {g.max_depth()} "
+                    f"width {g.max_width()}{think}")
         if getattr(g, "in_mask", None) is not None:        # local I/O organ census
             io = int((g.in_mask & g.mask).sum())
             oo = int((g.out_mask & g.mask).sum())

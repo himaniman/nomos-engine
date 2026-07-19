@@ -105,6 +105,14 @@ class Config:
     predation: bool = True
     carnivore_threshold: float = 0.5   # min carnivore gene to hunt at all
     meat_energy: float = 34.0          # energy a kill yields (scaled by carnivore)
+    # SCAVENGING (a trophic niche OPPOSED to hunting): a corpse is a CARCASS carrying a
+    # fixed "meat" value (agents die at energy ~0, so there's no life-energy left to inherit
+    # — this parallels how predation already grants a fixed meat_energy, not the prey's
+    # remainder). A scavenger eats corpses it bumps into; the `scavenger` gene trades off
+    # against hunting (predation scales with 1 - scavenger and vice versa), so lineages split
+    # into hunters vs carrion-eaters. A lean niche that recycles dead biomass into the pop.
+    scavenger_threshold: float = 0.5   # min scavenger gene to eat corpses / see them as food
+    corpse_energy_frac: float = 0.5    # carcass value as a fraction of meat_energy (~17)
 
     # metabolism (energy drained per tick; standing still is cheapest). Tuned cheap
     # enough that random foragers can bootstrap (a too-harsh drain starves them before

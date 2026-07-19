@@ -218,9 +218,10 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
                 f"kids{gr['kids']:.1f} ate{gr['ate']:.0f} kills{gr['kills']:.1f}",
                 True, (155, 165, 185)), (x0 + 28, y))
             y += 15
-            brain = f"  brain~{_fmt_count(gr['params'])}" if "params" in gr else ""
+            brain = f" brain~{_fmt_count(gr['params'])}" if "params" in gr else ""
+            scav = f" scav{gr['scav'] * 100:.0f}%" if "scav" in gr else ""
             surf.blit(small.render(                        # line 3: traits
-                f"nose{gr['gain']:.1f}{brain}", True, (155, 165, 185)), (x0 + 28, y))
+                f"nose{gr['gain']:.1f}{scav}{brain}", True, (155, 165, 185)), (x0 + 28, y))
             y += 15
         y += 4
     y += 8
@@ -274,8 +275,10 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
     if hasattr(g, "n_rays"):                                # heritable eye + nose (aqua senses)
         nose = f"  nose x{float(g.smell_gain):.1f}" if hasattr(g, "smell_gain") else ""
         info.append(f"eye {int(g.n_rays)} rays  reach {float(g.ray_len):.0f}{nose}")
-    info.append(f"diet {g.diet:.2f}  "
-                + ("CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"))
+    trophic = "CARNIVORE" if g.carnivore >= 0.5 else f"herb {g.carnivore:.2f}"
+    if getattr(g, "scavenger", 0.0) >= 0.5:
+        trophic += "  SCAVENGER"
+    info.append(f"diet {g.diet:.2f}  {trophic}")
     for t in info:
         surf.blit(small.render(t, True, (200, 210, 230)), (x0 + 12, y)); y += 18
     box = (x0 + 12, y + 8, panel_w - 24, H - (y + 8) - 12)

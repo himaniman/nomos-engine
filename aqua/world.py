@@ -231,6 +231,7 @@ class World:
         self.corpse_radius = c.corpse_radius
         self.corpse_xy = np.empty((0, 2), dtype=np.float64)
         self.corpse_decay = np.empty(0, dtype=np.int64)
+        self.corpse_energy = np.empty(0, dtype=np.float64)   # carcass "meat" a scavenger eats
 
         self.agents: dict[int, Agent] = {}
         # spatial index of agent ids for the O(1)-ish proximity queries (collision,
@@ -645,6 +646,8 @@ class World:
         rl = max(1.0, float(g.ray_len))
         diet, hue = g.diet, g.hue
         gain = getattr(g, "smell_gain", 1.0)                 # heritable olfactory sensitivity
+        scav = getattr(g, "scavenger", 0.0)
+        is_scav = scav >= c.scavenger_threshold              # sees corpses as FOOD, not obstacle
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
         cone = 0.5 * c.fov + 0.6                              # a ray can only see this arc
         # gather what each ray could hit into flat arrays (the cheap part stays Python),
@@ -693,8 +696,13 @@ class World:
             crel = np.abs((cb - a.heading + math.pi) % _TWO_PI - math.pi)
             cview = (cdd <= rl + self.corpse_radius) & (crel <= cone)
             for idx in np.nonzero(cview)[0]:
-                cd_l.append(float(cdd[idx]))
-                cbear_l.append(float(cb[idx]))
+                if is_scav:                                  # scavenger: carrion reads as FOOD
+                    fd_l.append(float(cdd[idx]))
+                    fbear_l.append(float(cb[idx]))
+                    fval_l.append(scav)
+                else:                                        # others: carrion is an OBSTACLE
+                    cd_l.append(float(cdd[idx]))
+                    cbear_l.append(float(cb[idx]))
         vis_rects = self._rects_within(a.y, a.x, rl)          # walls a ray could reach
         if vis_rects.ndim != 2 or vis_rects.shape[1] != 4:    # numba wants a stable (m,4)
             vis_rects = np.zeros((0, 4))
@@ -841,6 +849,7 @@ class World:
             self.corpse_decay -= 1
             live = self.corpse_decay > 0
             self.corpse_xy, self.corpse_decay = self.corpse_xy[live], self.corpse_decay[live]
+            self.corpse_energy = self.corpse_energy[live]
         self._update_signal()                                # diffuse + decay the pheromone field
         self._drift_walls()
         self._drift_halos()
@@ -906,6 +915,7 @@ class World:
                     reward += self._eat_food_here(a)
                     continue
                 break                                          # opaque agent: stop
+            reward += self._eat_corpse_at(a, ty, tx)           # scavenger clears a corpse it hits
             if not self._blocked_circle(ty, tx):
                 a.y, a.x = ty, tx
             elif abs(sx) > 1e-9 and not self._blocked(a.y, tx, a.id):
@@ -916,6 +926,32 @@ class World:
                 break                                          # wedged: stop
             reward += self._eat_food_here(a)
         return reward
+
+    def _eat_corpse_at(self, a: Agent, y: float, x: float) -> float:
+        """A SCAVENGER (scavenger gene >= threshold) eats a corpse its body overlaps at
+        (y, x): gains the carcass value scaled by its scavenger gene and removes the corpse
+        (so the spot clears and it moves on). Returns the energy gained (0 if not a scavenger
+        or none in reach). Non-scavengers leave corpses as obstacles."""
+        c = self.cfg
+        g = a.brain.genome
+        scav = getattr(g, "scavenger", 0.0)
+        if scav < c.scavenger_threshold or len(self.corpse_decay) == 0:
+            return 0.0
+        dy = self.corpse_xy[:, 0] - y
+        dx = self.corpse_xy[:, 1] - x
+        d2 = dy * dy + dx * dx
+        j = int(np.argmin(d2))
+        reach = self.radius + self.corpse_radius
+        if d2[j] >= reach * reach:
+            return 0.0
+        gain = min(c.max_energy, a.energy + self.corpse_energy[j] * scav) - a.energy
+        a.energy += gain
+        a.food_eaten += 1
+        keep = np.ones(len(self.corpse_decay), dtype=bool)
+        keep[j] = False
+        self.corpse_xy, self.corpse_decay = self.corpse_xy[keep], self.corpse_decay[keep]
+        self.corpse_energy = self.corpse_energy[keep]
+        return gain
 
     def _eat_food_here(self, a: Agent) -> float:
         """Eat the nearest food morsel whose CIRCLE the agent's body overlaps; return
@@ -1000,8 +1036,9 @@ class World:
         self.abuckets.remove(prey.id)
         self.stats["deaths"] += 1
         self._remember(prey)
-        gain = min(self.cfg.max_energy, pred.energy + self.cfg.meat_energy * g.carnivore) \
-            - pred.energy
+        # a scavenger-specialist hunts poorly: meat scales with carnivore AND (1 - scavenger)
+        meat = self.cfg.meat_energy * g.carnivore * (1.0 - getattr(g, "scavenger", 0.0))
+        gain = min(self.cfg.max_energy, pred.energy + meat) - pred.energy
         pred.energy += gain
         pred.kills += 1
         pred.y, pred.x = ny, nx
@@ -1019,6 +1056,8 @@ class World:
     def _add_corpse(self, y: float, x: float) -> None:
         self.corpse_xy = np.vstack([self.corpse_xy, [y, x]])
         self.corpse_decay = np.append(self.corpse_decay, self.cfg.corpse_decay)
+        carcass = self.cfg.corpse_energy_frac * self.cfg.meat_energy   # fixed carcass value
+        self.corpse_energy = np.append(self.corpse_energy, carcass)
 
     def _remember(self, a: Agent) -> None:
         success = a.age + self.cfg.hall_offspring_weight * a.offspring
@@ -1148,6 +1187,9 @@ class World:
                         "hue": float(np.mean([g.hue for g in gs])),
                         "diet": float(np.mean([g.diet for g in gs])),
                         "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
+                        "scav": sum(1 for g in gs
+                                    if getattr(g, "scavenger", 0.0)
+                                    >= self.cfg.scavenger_threshold) / len(gs),
                         "age": float(np.mean([a.age for a in grp])),
                         "energy": float(np.mean([a.energy for a in grp])),
                         "kids": float(np.mean([a.offspring for a in grp])),

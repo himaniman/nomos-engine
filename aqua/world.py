@@ -31,6 +31,17 @@ from vivarium.world import _hue_dist
 _BRAINS = {"neat": neat, "nca": nca}
 _TWO_PI = 2.0 * math.pi
 
+# numba compiles the per-agent VISION FAN (the hot ray x target inner loops) into one
+# kernel; without numba the same function runs as plain Python (correct, just slow — it's
+# the profiled bottleneck). Reference semantics live in `_vision_fan` below.
+try:
+    from numba import njit as _njit
+except ImportError:                                  # pragma: no cover - env-dependent
+    def _njit(*args, **kwargs):                       # no-op decorator, both @_njit forms
+        if len(args) == 1 and callable(args[0]) and not kwargs:
+            return args[0]
+        return lambda f: f
+
 # Rich sensor layout (see World._sense). The continuous world affords more, and
 # smoother, senses than the grid one — this is where that pays off. Exteroception
 # is a per-ray fan; interoception is the agent's own body state; smell is an
@@ -57,6 +68,65 @@ def _logits(brain) -> np.ndarray:
 def _wrap_angle(a: float) -> float:
     """Fold an angle into [-pi, pi)."""
     return (a + math.pi) % _TWO_PI - math.pi
+
+
+@_njit(cache=True)
+def _vision_fan(ay, ax, heading, ray_rel, rl, radius, corpse_r, food_r, fov,
+                rects, cd, cbear, fd, fbear, fval, ad, abear, akin, out):
+    """Fill `out` (n_rays * 4) with each ray's nearest hit, one of 4 channels:
+    0 food / 1 obstacle (wall or corpse) / 2 KIN / 3 NON-KIN agent — value = proximity
+    (1 - d/reach), food scaled by digestibility. Pure scalar loops so numba compiles it;
+    this is the exact per-ray logic that used to live in `_sense` (walls via an analytic
+    ray-vs-AABB slab test, then nearer corpse / food / agent hits override within each
+    ray's angular half-width). Nearest-hit selection keeps it order-independent."""
+    nr = ray_rel.shape[0]
+    half_spacing = 0.5 * fov / (nr - 1 if nr > 1 else 1)
+    half_ray = half_spacing + radius / rl
+    eps = 1e-9
+    for i in range(nr):
+        ang = heading + ray_rel[i]
+        dx, dy = math.cos(ang), math.sin(ang)
+        ddx = dx if abs(dx) >= eps else (eps if dx >= 0 else -eps)
+        ddy = dy if abs(dy) >= eps else (eps if dy >= 0 else -eps)
+        ix, iy = 1.0 / ddx, 1.0 / ddy
+        best = rl                                        # nearest WALL along this ray
+        for r in range(rects.shape[0]):
+            tx0, tx1 = (rects[r, 2] - ax) * ix, (rects[r, 3] - ax) * ix
+            lox, hix = (tx0, tx1) if tx0 < tx1 else (tx1, tx0)
+            ty0, ty1 = (rects[r, 0] - ay) * iy, (rects[r, 1] - ay) * iy
+            loy, hiy = (ty0, ty1) if ty0 < ty1 else (ty1, ty0)
+            t_enter = lox if lox > loy else loy
+            t_exit = hix if hix < hiy else hiy
+            if t_enter <= t_exit and t_exit >= 0.0:
+                t = t_enter if t_enter >= 0.0 else 0.0
+                if t < best:
+                    best = t
+        if best < rl:
+            hit_d, hit_ch, hit_val = best, 1, 1.0 - best / rl
+        else:
+            hit_d, hit_ch, hit_val = rl, -1, 0.0
+        for j in range(cd.shape[0]):                     # corpses (obstacle)
+            d = cd[j]
+            if d < hit_d:
+                w = (cbear[j] - ang + math.pi) % _TWO_PI - math.pi
+                if abs(w) <= half_spacing + corpse_r / d:
+                    hit_d, hit_ch, hit_val = d, 1, 1.0 - d / rl
+        for j in range(fd.shape[0]):                     # food morsels
+            d = fd[j]
+            if d < hit_d:
+                w = (fbear[j] - ang + math.pi) % _TWO_PI - math.pi
+                if abs(w) <= half_spacing + food_r / d:
+                    hit_d, hit_ch, hit_val = d, 0, fval[j] * (1.0 - d / rl)
+        for j in range(ad.shape[0]):                     # other agents (KIN / NON-KIN)
+            d = ad[j]
+            if d < hit_d:
+                w = (abear[j] - ang + math.pi) % _TWO_PI - math.pi
+                if abs(w) <= half_ray:
+                    hit_d = d
+                    hit_ch = 2 if akin[j] else 3
+                    hit_val = 1.0 - d / rl
+        if hit_ch >= 0:
+            out[i * 4 + hit_ch] = hit_val
 
 
 class Agent:
@@ -541,26 +611,31 @@ class World:
         diet, hue = g.diet, g.hue
         effs = [self._diet_eff(diet, t) for t in range(1, c.n_food_types + 1)]
         cone = 0.5 * c.fov + 0.6                              # a ray can only see this arc
-        # nearby agents once (bucket-local, FOV-pruned), tagged KIN / NON-KIN
-        near = []
+        # gather what each ray could hit into flat arrays (the cheap part stays Python),
+        # then the hot ray x target inner loops run in the compiled `_vision_fan` kernel.
+        ad_l, abear_l, akin_l = [], [], []                   # nearby agents, tagged KIN/NON-KIN
         for b in self._agents_within(a.y, a.x, rl + self.radius, exclude=a.id):
             d = math.hypot(b.y - a.y, b.x - a.x)
             if d <= rl + self.radius:
                 bearing = math.atan2(b.y - a.y, b.x - a.x)
                 if abs(_wrap_angle(bearing - a.heading)) <= cone:
-                    kin = _hue_dist(hue, b.brain.genome.hue) <= c.species_hue
-                    near.append((d, bearing, kin))
-        near_food = []                                        # food morsels within the CONE
-        if len(self.food_type):                               # (only what a ray could see:
-            fdy = self.food_xy[:, 0] - a.y                    #  vectorised, FOV-pruned)
+                    ad_l.append(d)
+                    abear_l.append(bearing)
+                    akin_l.append(1 if _hue_dist(hue, b.brain.genome.hue)
+                                  <= c.species_hue else 0)
+        fd_l, fbear_l, fval_l = [], [], []                   # food morsels within the CONE
+        if len(self.food_type):                               # (vectorised prune, then kept)
+            fdy = self.food_xy[:, 0] - a.y
             fdx = self.food_xy[:, 1] - a.x
             fdd = np.hypot(fdy, fdx)
             fb = np.arctan2(fdy, fdx)
             rel_b = np.abs((fb - a.heading + math.pi) % _TWO_PI - math.pi)
             in_view = (fdd <= rl + self.food_radius) & (rel_b <= cone)
             for idx in np.nonzero(in_view)[0]:
-                near_food.append((float(fdd[idx]), float(fb[idx]), int(self.food_type[idx])))
-        near_corpse = []                                      # corpse obstacles in the CONE
+                fd_l.append(float(fdd[idx]))
+                fbear_l.append(float(fb[idx]))
+                fval_l.append(effs[int(self.food_type[idx]) - 1])
+        cd_l, cbear_l = [], []                                # corpse obstacles in the CONE
         if len(self.corpse_decay):
             cdy = self.corpse_xy[:, 0] - a.y
             cdx = self.corpse_xy[:, 1] - a.x
@@ -569,30 +644,23 @@ class World:
             crel = np.abs((cb - a.heading + math.pi) % _TWO_PI - math.pi)
             cview = (cdd <= rl + self.corpse_radius) & (crel <= cone)
             for idx in np.nonzero(cview)[0]:
-                near_corpse.append((float(cdd[idx]), float(cb[idx])))
-        vis_rects = self._rects_within(a.y, a.x, rl)         # walls a ray could reach
-        half_spacing = 0.5 * c.fov / max(1, nr - 1)
-        half_ray = half_spacing + self.radius / rl
-        for i, rel in enumerate(self.ray_angles(nr)):
-            ang = a.heading + rel
-            dx, dy = math.cos(ang), math.sin(ang)
-            dw = self._ray_wall_dist(a.y, a.x, dx, dy, rl, vis_rects)   # analytic WALL hit
-            if dw < rl:
-                hit_d, hit_ch, hit_val = dw, 1, 1.0 - dw / rl
-            else:
-                hit_d, hit_ch, hit_val = rl, -1, 0.0
-            for cd, cbear in near_corpse:                    # a corpse along this ray? (obstacle)
-                if cd < hit_d and abs(_wrap_angle(cbear - ang)) <= half_spacing + self.corpse_radius / cd:
-                    hit_d, hit_ch, hit_val = cd, 1, 1.0 - cd / rl
-            for fd, fbear, ft in near_food:                  # a food morsel along this ray?
-                if fd < hit_d and abs(_wrap_angle(fbear - ang)) <= half_spacing + self.food_radius / fd:
-                    hit_d, hit_ch, hit_val = fd, 0, effs[ft - 1] * (1.0 - fd / rl)
-            for d, bearing, kin in near:                     # an agent nearer than that?
-                if d < hit_d and abs(_wrap_angle(bearing - ang)) <= half_ray:
-                    hit_d, hit_ch = d, (2 if kin else 3)     # KIN / NON-KIN channel
-                    hit_val = 1.0 - d / rl
-            if hit_ch >= 0:
-                vec[i * RAY_CH + hit_ch] = hit_val
+                cd_l.append(float(cdd[idx]))
+                cbear_l.append(float(cb[idx]))
+        vis_rects = self._rects_within(a.y, a.x, rl)          # walls a ray could reach
+        if vis_rects.ndim != 2 or vis_rects.shape[1] != 4:    # numba wants a stable (m,4)
+            vis_rects = np.zeros((0, 4))
+        nrc = c.n_rays_max * RAY_CH                            # rays live in the first nrc slots
+        rays = np.zeros(nrc)
+        _vision_fan(a.y, a.x, a.heading,
+                    np.ascontiguousarray(self.ray_angles(nr), dtype=np.float64),
+                    rl, self.radius, self.corpse_radius, self.food_radius, c.fov,
+                    np.ascontiguousarray(vis_rects, dtype=np.float64),
+                    np.array(cd_l, dtype=np.float64), np.array(cbear_l, dtype=np.float64),
+                    np.array(fd_l, dtype=np.float64), np.array(fbear_l, dtype=np.float64),
+                    np.array(fval_l, dtype=np.float64),
+                    np.array(ad_l, dtype=np.float64), np.array(abear_l, dtype=np.float64),
+                    np.array(akin_l, dtype=np.int64), rays)
+        vec[:nrc] = rays
 
         o = c.n_rays_max * RAY_CH                              # interoception block
                                                               # (fixed offset: rays live in

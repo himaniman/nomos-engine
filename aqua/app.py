@@ -191,6 +191,8 @@ def main(argv=None) -> int:
     p.add_argument("--shots-dir", default="out/aqua", dest="shots_dir")
     p.add_argument("--shot-every", type=float, default=1800.0, dest="shot_every",
                    help="seconds between auto-screenshots (0 = off)")
+    p.add_argument("--no-stats", action="store_true", dest="no_stats",
+                   help="don't open the live statistics window beside the game")
     a = p.parse_args(argv)
 
     cfg = Config(size=a.size, seed=a.seed, init_population=a.population, brain=a.brain,
@@ -205,6 +207,18 @@ def main(argv=None) -> int:
             print(f"no saved pool at {a.load_genomes} — starting fresh (press W to save)")
     world = World(cfg, genome_pool=pool, smell=not a.no_smell)
 
+    # optional live-statistics window beside the game, sharing THIS world (real-time sync).
+    # pygame stays the main loop; the Qt window is pumped via processEvents each frame.
+    stats_panel, qapp = None, None
+    if not a.no_stats:
+        try:
+            import pyqtgraph as pg
+            from aqua.stats import StatsPanel
+            qapp = pg.mkQApp("aqua")
+            stats_panel = StatsPanel(title=f"aqua — live statistics (seed {a.seed})")
+        except Exception as exc:                            # pyqtgraph/PySide6 not installed etc.
+            print(f"stats window off ({exc}); run with the deps or pass --no-stats")
+
     pygame.init()
     font = pygame.font.SysFont("consolas", 16)
     small = pygame.font.SysFont("consolas", 13)
@@ -216,6 +230,7 @@ def main(argv=None) -> int:
     t_start = time.time()
     epoch_t0 = t_start
     epoch_seen = world.epoch
+    last_stat_tick = world.tick                             # for the stats window's per-tick rates
 
     paused, speed, selected = False, 1, None
     show_help = False
@@ -345,6 +360,14 @@ def main(argv=None) -> int:
             _draw_help(screen, font, small)
             _draw_sense_legend(screen, small, 360, 24)     # the sensor-colour key, beside help
         pygame.display.flip()
+        if stats_panel is not None:                         # feed + pump the live-stats window
+            if not stats_panel.alive():                     # user closed it -> stop feeding
+                stats_panel = None
+            else:
+                if world.tick != last_stat_tick:
+                    stats_panel.push(world.snapshot(), dt=max(1, world.tick - last_stat_tick))
+                    last_stat_tick = world.tick
+                qapp.processEvents()
         if a.shot_every > 0 and time.time() - last_shot >= a.shot_every:
             name = _save_shot(screen, a.shots_dir, world)
             last_shot = time.time()

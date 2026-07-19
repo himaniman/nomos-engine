@@ -795,16 +795,24 @@ class World:
         plastic = c.brain == "nca" and c.nca_plastic
         self._regrow_food()
         self._rebuild_buckets()                             # resync the index to tick-start
-        dead: list[Agent] = []
-        bred: set[int] = set()
-        for aid in sorted(self.agents):
-            a = self.agents.get(aid)
-            if a is None:
-                continue
+        order = sorted(self.agents)
+        # PHASE A — THINK: every agent senses the tick-START snapshot and relaxes its brain.
+        # This only READS the world and writes each agent's own brain, so it is
+        # order-independent (snapshot semantics, matching the CA engine) and parallelisable.
+        for aid in order:
+            a = self.agents[aid]
             if c.brain == "nca":
                 a.brain.act(self._sense(a), rng=self.rng, temp=c.nca_explore_temp)
             else:
                 a.brain.act(self._sense(a))
+        # PHASE B — ACT: apply each decision to the world in id-ORDER (movement / eating /
+        # predation / reproduction / emit mutate shared state, so this stays sequential).
+        dead: list[Agent] = []
+        bred: set[int] = set()
+        for aid in order:
+            a = self.agents.get(aid)
+            if a is None:                                   # predated during this phase
+                continue
             logits = _logits(a.brain)
             speed, turn = self._command(logits)
             speed *= self._gluttony_factor(a.energy)        # overfed -> slower (soft cap)

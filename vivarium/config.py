@@ -227,7 +227,8 @@ class Config:
     nca_channels: int = 8              # state channels per cell
     nca_hidden: int = 16               # hidden units in each cell-type's update rule
     nca_subticks: int = 32             # rule relaxation steps per game tick (think time)
-    nca_start: int = 2                 # side of the fresh alive block (2 -> 2x2)
+    nca_start: int = 5                 # side of the fresh alive block (5 -> 5x5, sensory
+                                       # organs on the PERIMETER, an effector at the centre)
     # Structural mutation rates are GROWTH-BIASED on purpose (grow/deepen/widen/split
     # run ~3-5x more often than their shrink counterparts): mutation proposes bigger
     # brains, and the per-cell energy cost (nca_cell_cost) is the counterweight that
@@ -247,8 +248,14 @@ class Config:
     # travel organ -> tissue -> effector and the brain SHAPE does real computational work.
     # These flip a random alive cell's in/out role, so organ placement evolves. A brain is
     # born with every cell BOTH (== old broadcast/mean-pool) and differentiates from there.
-    nca_flip_in_prob: float = 0.04     # chance a mutation toggles a cell's sensory (in) role
-    nca_flip_out_prob: float = 0.04    # chance a mutation toggles a cell's effector (out) role
+    # organ APPEARANCE is biased over disappearance (like cell growth vs shrink): a mutation
+    # adds a sensory/effector organ ~3x more often than it removes one, so brains trend
+    # toward RICHER sensing/actuation and selection (via the per-cell cost) prunes what
+    # doesn't pay — not the mutation operator.
+    nca_add_in_prob: float = 0.06      # chance a mutation turns an alive cell INTO a sensory organ
+    nca_del_in_prob: float = 0.02      # chance a mutation removes a sensory organ (rarer)
+    nca_add_out_prob: float = 0.06     # chance a mutation turns an alive cell INTO an effector
+    nca_del_out_prob: float = 0.02     # chance a mutation removes an effector (rarer)
     # RETINOTOPIC organ specialisation: a sensory organ's MODALITY gene says WHICH sense
     # group it hears (0 = ALL, 1..nca_organ_mods = a world-defined modality e.g. food /
     # obstacle / kin / non-kin / intero / smell). For a directional (ray) modality the

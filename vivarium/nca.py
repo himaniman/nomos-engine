@@ -231,14 +231,27 @@ def _start_mask(G: int, start: int) -> np.ndarray:
 
 
 def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
-    """A minimal starting CA brain: a `nca_start`-square alive block, a SINGLE cell
-    type with a depth-2 rule, and a FORWARD motor bias so fresh brains tend to move."""
+    """A starting CA brain: a `nca_start`-square alive block wired as a small ORGANISM —
+    sensory organs on the PERIMETER (each a random modality, so retinotopy engages at once),
+    an effector at the CENTRE (sense at the edge, act from the core), interior cells as
+    interneurons — a single cell type with a depth-2 rule and a FORWARD motor bias."""
     G = getattr(cfg, "nca_grid", 12)
     C = getattr(cfg, "nca_channels", 8)
     H = getattr(cfg, "nca_hidden", 16)
-    start = getattr(cfg, "nca_start", 2)
+    start = getattr(cfg, "nca_start", 5)
+    n_mods = getattr(cfg, "nca_organ_mods", 6)
     mask = _start_mask(G, start)
     type_map = np.zeros((G, G), dtype=np.int64)
+    in_mask = np.zeros((G, G), dtype=bool)
+    out_mask = np.zeros((G, G), dtype=bool)
+    organ_mod = np.zeros((G, G), dtype=np.int64)
+    ys, xs = np.nonzero(mask)
+    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
+    for y, x in zip(ys, xs):
+        if y in (y0, y1) or x in (x0, x1):              # PERIMETER -> sensory organ
+            in_mask[y, x] = True
+            organ_mod[y, x] = int(rng.integers(n_mods + 1))
+    out_mask[(y0 + y1) // 2, (x0 + x1) // 2] = True      # CENTRE -> effector
     rules = [_fresh_rule(9 * C, H, C, _MIN_DEPTH, rng)]
     P_in = rng.normal(0.0, 0.5, (n_in, C))
     P_out = rng.normal(0.0, 0.5, (C, n_out))
@@ -248,7 +261,8 @@ def random_genome(n_in, n_out, rng, forward_bias=0.0, cfg=None) -> Genome:
     return Genome(n_in, n_out, mask, type_map, rules, P_in, P_out, b_out, C, H,
                   hue=float(rng.random()),
                   diet=float(rng.random()), carnivore=float(rng.random()) * 0.6,
-                  n_rays=n_rays, ray_len=ray_len)
+                  n_rays=n_rays, ray_len=ray_len,
+                  in_mask=in_mask, out_mask=out_mask, organ_mod=organ_mod)
 
 
 def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
@@ -580,16 +594,32 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
         g.in_mask[y, x] = g.out_mask[y, x] = False       # drop any organ role with the cell
         g.organ_mod[y, x] = 0
 
-    # DIFFERENTIATE ORGANS: flip a random alive cell's sensory (in) / effector (out) role,
-    # so which cells are senses / motors evolves and the shape gains functional structure.
-    if rng.random() < cfg.nca_flip_in_prob:
-        alive = np.argwhere(g.mask)
-        y, x = alive[int(rng.integers(len(alive)))]
-        g.in_mask[y, x] = not g.in_mask[y, x]
-    if rng.random() < cfg.nca_flip_out_prob:
-        alive = np.argwhere(g.mask)
-        y, x = alive[int(rng.integers(len(alive)))]
-        g.out_mask[y, x] = not g.out_mask[y, x]
+    # DIFFERENTIATE ORGANS (appearance biased over disappearance, like cell growth): ADD a
+    # sensory / effector organ on a plain cell more often than remove one, so the brain
+    # trends toward richer sensing/actuation. A new sensory organ is born specialised (a
+    # random modality) so retinotopy engages at once.
+    if rng.random() < cfg.nca_add_in_prob:               # a plain alive cell -> sensory organ
+        cand = np.argwhere(g.mask & ~g.in_mask)
+        if len(cand):
+            y, x = cand[int(rng.integers(len(cand)))]
+            g.in_mask[y, x] = True
+            g.organ_mod[y, x] = int(rng.integers(cfg.nca_organ_mods + 1))
+    elif rng.random() < cfg.nca_del_in_prob:             # remove a sensory organ (rarer)
+        organs = np.argwhere(g.mask & g.in_mask)
+        if len(organs):
+            y, x = organs[int(rng.integers(len(organs)))]
+            g.in_mask[y, x] = False
+            g.organ_mod[y, x] = 0
+    if rng.random() < cfg.nca_add_out_prob:              # a plain alive cell -> effector
+        cand = np.argwhere(g.mask & ~g.out_mask)
+        if len(cand):
+            y, x = cand[int(rng.integers(len(cand)))]
+            g.out_mask[y, x] = True
+    elif rng.random() < cfg.nca_del_out_prob:            # remove an effector (rarer)
+        effs = np.argwhere(g.mask & g.out_mask)
+        if len(effs):
+            y, x = effs[int(rng.integers(len(effs)))]
+            g.out_mask[y, x] = False
     # RETINOTOPY: re-roll one sensory organ's modality (which sense group it hears), so
     # organs specialise into an eye / nose / etc. (0 = ALL, 1..nca_organ_mods = a modality).
     if rng.random() < cfg.nca_organ_mod_prob:

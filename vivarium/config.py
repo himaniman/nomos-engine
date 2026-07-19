@@ -242,6 +242,13 @@ class Config:
     nca_retype_prob: float = 0.04      # chance a mutation re-types one cell
     nca_split_prob: float = 0.03       # chance a mutation SPLITS a type into a new one
                                        # (clone+jitter a rule, reassign ~half its cells)
+    # LOCAL I/O — sensory ORGANS + effector readout: the sensor drive enters only cells
+    # flagged as input organs, the action is read only from effector cells, so signal must
+    # travel organ -> tissue -> effector and the brain SHAPE does real computational work.
+    # These flip a random alive cell's in/out role, so organ placement evolves. A brain is
+    # born with every cell BOTH (== old broadcast/mean-pool) and differentiates from there.
+    nca_flip_in_prob: float = 0.04     # chance a mutation toggles a cell's sensory (in) role
+    nca_flip_out_prob: float = 0.04    # chance a mutation toggles a cell's effector (out) role
     # v2 — evolvable DEPTH: a type's rule is a stack of layers; mutation grows/shrinks
     # its depth (add a near-identity layer / remove a middle one), capped.
     nca_max_layers: int = 4            # max layers in a cell-type rule (depth cap)

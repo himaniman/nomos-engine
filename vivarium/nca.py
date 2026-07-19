@@ -81,12 +81,22 @@ class Genome:
 
     def __init__(self, n_in, n_out, mask, type_map, rules, P_in, P_out, b_out,
                  channels, hidden, hue=0.0, diet=0.5, carnivore=0.0,
-                 n_rays=DEFAULT_N_RAYS, ray_len=DEFAULT_RAY_LEN):
+                 n_rays=DEFAULT_N_RAYS, ray_len=DEFAULT_RAY_LEN,
+                 in_mask=None, out_mask=None):
         self.kind = "nca"
         self.n_in = n_in
         self.n_out = n_out
         self.mask = mask.astype(bool)               # (G, G) which cells are alive
         self.type_map = type_map.astype(np.int64)   # (G, G) each cell's rule index
+        # LOCAL I/O (sensory organs + effector readout): the sensor DRIVE enters only at
+        # cells flagged in `in_mask`, and the motor action is read from the mean of cells
+        # flagged in `out_mask` — so signal must travel input-organ -> tissue -> effector
+        # and the SHAPE does real work (vs the old broadcast-in / mean-pool-out, which
+        # washed geometry out). Default (None) = every alive cell is both, which is exactly
+        # the old behaviour — so a fresh/legacy brain starts identical and mutation then
+        # DIFFERENTIATES organs. An empty set falls back to all-cells at runtime (never mute).
+        self.in_mask = (mask.astype(bool) if in_mask is None else in_mask.astype(bool))
+        self.out_mask = (mask.astype(bool) if out_mask is None else out_mask.astype(bool))
         self.C = channels
         self.H = hidden
         self.rules = rules                          # list (per type) of layer lists
@@ -111,7 +121,8 @@ class Genome:
         return Genome(self.n_in, self.n_out, self.mask.copy(), self.type_map.copy(),
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
-                      self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len)
+                      self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len,
+                      self.in_mask.copy(), self.out_mask.copy())
 
     def max_node_id(self) -> int:
         return self.n_in + self.n_out
@@ -149,23 +160,29 @@ class Genome:
                 "rules": [[[L["W"].tolist(), L["b"].tolist()] for L in r]
                           for r in self.rules],
                 "P_in": self.P_in.tolist(), "P_out": self.P_out.tolist(),
-                "b_out": self.b_out.tolist()}
+                "b_out": self.b_out.tolist(),
+                "in_mask": self.in_mask.astype(int).tolist(),
+                "out_mask": self.out_mask.astype(int).tolist()}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Genome":
         rules = [[{"W": np.array(W, dtype=np.float64), "b": np.array(b, dtype=np.float64)}
                   for W, b in r] for r in d["rules"]]
+        im = np.array(d["in_mask"], dtype=bool) if "in_mask" in d else None
+        om = np.array(d["out_mask"], dtype=bool) if "out_mask" in d else None
         return cls(int(d["n_in"]), int(d["n_out"]), np.array(d["mask"], dtype=bool),
                    np.array(d["type_map"]), rules, d["P_in"], d["P_out"], d["b_out"],
                    int(d["C"]), int(d["H"]), float(d.get("hue", 0.0)),
                    float(d.get("diet", 0.5)), float(d.get("carnivore", 0.0)),
                    int(d.get("n_rays", DEFAULT_N_RAYS)),
-                   float(d.get("ray_len", DEFAULT_RAY_LEN)))
+                   float(d.get("ray_len", DEFAULT_RAY_LEN)), im, om)
 
     def key(self) -> bytes:
         """Canonical fingerprint of shape + types + rule stacks (rounded)."""
         parts = [self.mask.astype(np.int8).tobytes(),
-                 (self.type_map * self.mask).astype(np.int16).tobytes()]
+                 (self.type_map * self.mask).astype(np.int16).tobytes(),
+                 (self.in_mask & self.mask).astype(np.int8).tobytes(),
+                 (self.out_mask & self.mask).astype(np.int8).tobytes()]
         for r in self.rules:
             for L in r:
                 parts.append(np.round(L["W"], 1).tobytes())
@@ -215,7 +232,7 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
 if _NUMBA:
     @_njit(cache=True)
     def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
-                  subticks):                          # pragma: no cover - jitted
+                  in_flag, subticks):                  # pragma: no cover - jitted
         """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
         (n, C) alive rows into the flat padded buffer, gather each cell's 9-neighbour
         rows into a (n, 9C) perception, forward each TYPE's rows through its layer
@@ -248,8 +265,9 @@ if _NUMBA:
                             delta[rows[ii], c] = y[ii, c]
                 li += nl
             for i in range(n):
+                dr = 1.0 if in_flag[i] else 0.0          # sensor drive enters ORGAN cells only
                 for c in range(C):
-                    st[i, c] = np.tanh(st[i, c] + delta[i, c] + drive[c])
+                    st[i, c] = np.tanh(st[i, c] + delta[i, c] + dr * drive[c])
         return st
 
 
@@ -280,6 +298,18 @@ class Phenotype:
         cell_types = genome.type_map[ys, xs]
         self._type_rows = [np.nonzero(cell_types == k)[0]
                            for k in range(genome.n_types)]
+        # LOCAL I/O row sets: which alive rows receive the sensor drive (organs) and which
+        # are read for the action (effectors). Empty -> ALL rows (broadcast / mean-pool),
+        # so a brain is never deaf or mute even if mutation strips its organs.
+        n_alive = len(ys)
+        self._in_rows = np.nonzero(genome.in_mask[ys, xs])[0]
+        self._out_rows = np.nonzero(genome.out_mask[ys, xs])[0]
+        if len(self._in_rows) == 0:
+            self._in_rows = np.arange(n_alive)
+        if len(self._out_rows) == 0:
+            self._out_rows = np.arange(n_alive)
+        self._in_flag = np.zeros(n_alive, dtype=np.int64)     # per-row 1 = organ (for numba)
+        self._in_flag[self._in_rows] = 1
         if _NUMBA:                                   # pack the rules for the jit kernel:
             self._nb_rows = _NbList(self._type_rows)  # per-type alive-row indices
             Wts, bs = _NbList(), _NbList()            # every type's layers, back to back
@@ -320,13 +350,14 @@ class Phenotype:
             if self.record:
                 for _ in range(self.subticks):
                     st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
-                                   self._nb_W, self._nb_b, self._nb_cnt, 1)
+                                   self._nb_W, self._nb_b, self._nb_cnt, self._in_flag, 1)
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
             else:
                 st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
-                               self._nb_W, self._nb_b, self._nb_cnt, self.subticks)
+                               self._nb_W, self._nb_b, self._nb_cnt, self._in_flag,
+                               self.subticks)
         else:                                                # numpy reference path
             single = g.n_types == 1
             for _ in range(self.subticks):
@@ -339,13 +370,15 @@ class Phenotype:
                     for k, rows in enumerate(self._type_rows):
                         if len(rows):
                             delta[rows] = _apply_rule(perc[rows], g.rules[k])
-                st = np.tanh(st + delta + drive)             # residual + clamped
+                st = st + delta                              # residual update, then...
+                st[self._in_rows] += drive                   # ...drive enters ORGAN cells only
+                np.tanh(st, out=st)                          # ...and clamp
                 if self.record:                              # one full-grid frame per sub-tick
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
         self.state[self._ys, self._xs] = st
-        pooled = st.mean(axis=0)                             # (C,) mean over alive
+        pooled = st[self._out_rows].mean(axis=0)             # (C,) mean over EFFECTOR cells
         eff_out = g.P_out + self.dW if self.plastic else g.P_out  # readout + learned delta
         logits = pooled @ eff_out + g.b_out                  # (n_out,)
         self.last_input = inputs
@@ -465,12 +498,25 @@ def mutate(genome: Genome, rng, cfg, next_node_id: int, leap: bool = False):
         cand = _grow_candidates(g.mask)
         if cand:
             y, x = cand[int(rng.integers(len(cand)))]
-            g.mask[y, x] = True
+            g.mask[y, x] = True                          # a grown cell starts as an
             g.type_map[y, x] = _neighbour_type(g.mask, g.type_map, y, x, rng)
+            g.in_mask[y, x] = g.out_mask[y, x] = False   # INTERNEURON (no organ role yet)
     elif n_alive > 1 and rng.random() < cfg.nca_shrink_prob:
         alive = np.argwhere(g.mask)
         y, x = alive[int(rng.integers(len(alive)))]
         g.mask[y, x] = False
+        g.in_mask[y, x] = g.out_mask[y, x] = False       # drop any organ role with the cell
+
+    # DIFFERENTIATE ORGANS: flip a random alive cell's sensory (in) / effector (out) role,
+    # so which cells are senses / motors evolves and the shape gains functional structure.
+    if rng.random() < cfg.nca_flip_in_prob:
+        alive = np.argwhere(g.mask)
+        y, x = alive[int(rng.integers(len(alive)))]
+        g.in_mask[y, x] = not g.in_mask[y, x]
+    if rng.random() < cfg.nca_flip_out_prob:
+        alive = np.argwhere(g.mask)
+        y, x = alive[int(rng.integers(len(alive)))]
+        g.out_mask[y, x] = not g.out_mask[y, x]
 
     if g.n_types > 1 and rng.random() < cfg.nca_retype_prob:
         alive = np.argwhere(g.mask)
@@ -600,4 +646,5 @@ def crossover(g_fit: Genome, g_other: Genome, rng) -> Genome:
     n_rays, ray_len = cross_vision(g_fit, g_other, rng)
     return Genome(g_fit.n_in, g_fit.n_out, g_fit.mask.copy(), g_fit.type_map.copy(),
                   rules, P_in, P_out, b_out, g_fit.C, g_fit.H, hue=hue,
-                  diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len)
+                  diet=diet, carnivore=carn, n_rays=n_rays, ray_len=ray_len,
+                  in_mask=g_fit.in_mask.copy(), out_mask=g_fit.out_mask.copy())

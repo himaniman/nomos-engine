@@ -249,6 +249,10 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
                     f"  kills {getattr(agent, 'kills', 0)}")
     if getattr(g, "kind", "neat") == "nca":
         info.append(f"cells {nh} types {nc} depth {g.max_depth()} width {g.max_width()}")
+        if getattr(g, "in_mask", None) is not None:        # local I/O organ census
+            io = int((g.in_mask & g.mask).sum())
+            oo = int((g.out_mask & g.mask).sum())
+            info.append(f"organs: {io} sensory / {oo} effector")
     else:
         info.append(f"hidden {nh}  conns {nc}")
     if hasattr(g, "param_count"):
@@ -345,6 +349,13 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None):
             if side >= 4:                                  # border = cell type
                 pygame.draw.rect(surf, _type_color(int(genome.type_map[gy, gx])),
                                  rect, 1)
+            if side >= 6:                                  # LOCAL I/O organ markers:
+                m = max(2, side // 4)
+                if getattr(genome, "in_mask", None) is not None and genome.in_mask[gy, gx]:
+                    surf.fill((90, 200, 255), (rect[0] + 1, rect[1] + 1, m, m))     # sensory (cyan, TL)
+                if getattr(genome, "out_mask", None) is not None and genome.out_mask[gy, gx]:
+                    surf.fill((255, 205, 80),
+                              (rect[0] + side - 1 - m, rect[1] + side - 1 - m, m, m))  # effector (amber, BR)
     if logits is not None:
         strip(logits, x + w - col_w, hi=int(np.argmax(logits)), signed=True)
 

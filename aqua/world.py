@@ -49,11 +49,12 @@ except ImportError:                                  # pragma: no cover - env-de
 RAY_CH = 4     # per vision ray: edible food / obstacle / KIN agent / NON-KIN agent
 INTERO = 7     # energy, own speed, own turn-rate, sin(heading), cos(heading), age, bias
 SMELL = 2      # egocentric (forward, lateral) direction to the nearest food
+MATE = 2       # egocentric direction to the nearest FED same-species agent (for breeding)
 
 
 def sensor_size(n_rays: int, smell: bool = True) -> int:
     """Width of the brain's input vector for this sensor configuration."""
-    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0)
+    return n_rays * RAY_CH + INTERO + (SMELL if smell else 0) + MATE
 
 
 def _logits(brain) -> np.ndarray:
@@ -181,6 +182,7 @@ class World:
         # smell_sharpness cells, ~1 on top of the food. So a creature always has a weak
         # bearing to the nearest food from anywhere, sharpening fast as it closes in.
         self.smell_sharpness = smell_sharpness
+        self.mate_sense_range = min(self.smell_range, 24.0)   # how far the MATE sense reaches
 
         self.genome_pool = list(genome_pool) if genome_pool else None
         self.brain = _BRAINS[c.brain]
@@ -198,6 +200,10 @@ class World:
         self.n_in = sensor_size(c.n_rays_max, self.smell)
         self.input_layout = self._build_input_layout()      # sensor-index map for retinotopy
         self.n_out = self.brain.N_ACTIONS
+        if self.genome_pool:                                # migrate a saved pool whose brain
+            self.genome_pool = [g.resized(self.n_in, self.n_out)   # I/O width differs (new
+                                if hasattr(g, "resized") else g    # senses / the REPRODUCE
+                                for g in self.genome_pool]          # output) — pad with zeros
         self._next_node_id = self.n_in + self.n_out
         if self.genome_pool:
             self._next_node_id = max([self._next_node_id]
@@ -252,8 +258,11 @@ class World:
         block. Ids match the sensor-colour legend order in aqua.app."""
         o = self.cfg.n_rays_max * RAY_CH
         static = {5: np.arange(o, o + INTERO, dtype=np.int64)}
+        mo = o + INTERO
         if self.smell:
-            static[6] = np.arange(o + INTERO, o + INTERO + SMELL, dtype=np.int64)
+            static[6] = np.arange(mo, mo + SMELL, dtype=np.int64)
+            mo += SMELL
+        static[7] = np.arange(mo, mo + MATE, dtype=np.int64)         # mate-direction block
         return {"ray_ch": RAY_CH, "n_rays": self.cfg.n_rays_max,
                 "ray_mod_channel": {1: 0, 2: 1, 3: 2, 4: 3}, "static_mod_idx": static}
 
@@ -703,6 +712,25 @@ class World:
                 so = o + INTERO
                 vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
                 vec[so + 1] = amp * math.sin(rel)            # food to one side (signed)
+
+        # MATE sensor: egocentric direction to the NEAREST fed same-species agent, so the
+        # brain can steer toward a partner and time the REPRODUCE command (omnidirectional,
+        # like smell; energy-gated so it points only at breedable mates).
+        mo = o + INTERO + (SMELL if self.smell else 0)
+        best, best_d = None, None
+        for b in self._agents_within(a.y, a.x, self.mate_sense_range, exclude=a.id):
+            if b.energy < c.repro_min_energy:
+                continue
+            if _hue_dist(hue, b.brain.genome.hue) > c.species_hue:
+                continue
+            d = math.hypot(b.y - a.y, b.x - a.x)
+            if best_d is None or d < best_d:
+                best, best_d = b, d
+        if best is not None and best_d > 1e-9:
+            amp = 1.0 / (1.0 + (best_d / self.smell_sharpness) ** 2)
+            rel = _wrap_angle(math.atan2(best.y - a.y, best.x - a.x) - a.heading)
+            vec[mo + 0] = amp * math.cos(rel)                # mate ahead (+) / behind (-)
+            vec[mo + 1] = amp * math.sin(rel)                # mate to one side (signed)
         return vec
 
     # -- continuous motor read-out ------------------------------------------
@@ -735,7 +763,8 @@ class World:
                 a.brain.act(self._sense(a), rng=self.rng, temp=c.nca_explore_temp)
             else:
                 a.brain.act(self._sense(a))
-            speed, turn = self._command(_logits(a.brain))
+            logits = _logits(a.brain)
+            speed, turn = self._command(logits)
             speed *= self._gluttony_factor(a.energy)        # overfed -> slower (soft cap)
             a.last_speed, a.last_turn = speed, turn         # proprioception for next tick
             a.energy -= c.base_cost
@@ -753,7 +782,11 @@ class World:
                 self.abuckets.move(a.id, a.y, a.x)          # reindex to its new cell
             if plastic:
                 a.brain.learn(reward / c.food_energy)
-            if a.energy >= c.repro_min_energy and a.id not in bred:
+            # reproduction is now a brain COMMAND: only breed when the REPRODUCE gate is on
+            # (older genomes without the output always want to, preserving prior behaviour).
+            want_repro = (float(logits[nca.REPRODUCE]) > 0.0
+                          if len(logits) > nca.REPRODUCE else True)
+            if want_repro and a.energy >= c.repro_min_energy and a.id not in bred:
                 self._try_reproduce(a, bred)
             a.age += 1
             if a.energy <= 0:
@@ -873,10 +906,10 @@ class World:
             bred.add(a.id)
             bred.add(mate.id)
             parents = (a, mate)
-        elif a.energy >= c.asexual_energy:                  # asexual BRIDGE (kept until the
-            child_g = self._mutate(a.brain.genome)          # REPRODUCE command lands, then this
-            a.energy -= c.repro_cost                         # becomes the rare clone_* bud so
-            bred.add(a.id)                                   # crossover can dominate)
+        elif a.energy >= c.clone_min_energy and self.rng.random() < c.clone_prob:
+            child_g = self._mutate(a.brain.genome)          # RARE bud: only the very overfed,
+            a.energy -= c.repro_cost                         # so crossover (now brain-commanded
+            bred.add(a.id)                                   # + mate-sensed) is the main path
             parents = (a,)
         else:
             return

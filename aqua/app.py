@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import pygame
 
-from aqua.world import INTERO, SMELL, World
+from aqua.world import INTERO, MATE, SMELL, World
 from vivarium.app import (_FOOD_COLORS, _draw_help, _draw_panel, _fmt_hms,
                           _save_shot, genome_color)
 from vivarium.config import Config
@@ -37,15 +37,18 @@ from vivarium.config import Config
 # instead of a wall of green. Matches the layout in aqua.world._sense.
 _SENSE_COL = {"food": (95, 220, 115), "obstacle": (175, 180, 195),
               "kin": (110, 160, 250), "nonkin": (235, 100, 95),
-              "intero": (240, 200, 90), "smell": (215, 120, 235)}
+              "intero": (240, 200, 90), "smell": (215, 120, 235),
+              "mate": (245, 150, 190)}
 _SENSE_LEGEND = [("food", "food"), ("obstacle", "obstacle"), ("kin", "kin"),
-                 ("non-kin", "nonkin"), ("body", "intero"), ("smell", "smell")]
+                 ("non-kin", "nonkin"), ("body", "intero"), ("smell", "smell"),
+                 ("mate", "mate")]
 
 # organ MODALITY id (vivarium.nca / World._build_input_layout) -> colour, matching the
 # input-strip legend, so a specialised sensory organ on the brain is coloured by WHAT it
 # hears (a food organ green, a smell organ magenta...). 0 = ALL is left cyan by the drawer.
 _MOD_COL = {1: _SENSE_COL["food"], 2: _SENSE_COL["obstacle"], 3: _SENSE_COL["kin"],
-            4: _SENSE_COL["nonkin"], 5: _SENSE_COL["intero"], 6: _SENSE_COL["smell"]}
+            4: _SENSE_COL["nonkin"], 5: _SENSE_COL["intero"], 6: _SENSE_COL["smell"],
+            7: _SENSE_COL["mate"]}
 
 
 def _sense_colors(world: World) -> list:
@@ -58,6 +61,7 @@ def _sense_colors(world: World) -> list:
     cols += [_SENSE_COL["intero"]] * INTERO
     if world.smell:
         cols += [_SENSE_COL["smell"]] * SMELL
+    cols += [_SENSE_COL["mate"]] * MATE
     return cols
 
 

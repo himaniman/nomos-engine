@@ -30,7 +30,8 @@ from vivarium.vision import (DEFAULT_N_RAYS, DEFAULT_RAY_LEN, cross_vision,
 # burn only the base metabolic cost (no move/turn) — an idle agent conserves energy,
 # so parking to digest is a real strategy evolution can find.
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
-N_ACTIONS = 4
+REPRODUCE = 4                    # a COMMAND gate: >0 asks to breed (world still needs a mate)
+N_ACTIONS = 5
 
 _ACT_RELAX = 3          # synchronous relaxation steps per decision
 

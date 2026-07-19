@@ -586,7 +586,8 @@ def test_nca_leap_grows_structure_in_one_shot_and_stays_runnable():
     rng = np.random.default_rng(3)
     # macro rates OFF so only the forced leap can add structure — isolates the leap
     cfg = _nca_cfg(macro_mut_prob=0.0, nca_grow_prob=0.0, nca_add_layer_prob=0.0,
-                   nca_widen_prob=0.0, nca_macro_cells=6, nca_macro_layers=1,
+                   nca_widen_prob=0.0, nca_shrink_prob=0.0, nca_del_layer_prob=0.0,
+                   nca_macro_cells=6, nca_macro_layers=1,
                    nca_macro_widen=4, nca_max_cells=48, nca_max_layers=4,
                    nca_max_hidden=32)
     g = nca.random_genome(n_in, nca.N_ACTIONS, rng, cfg=cfg)

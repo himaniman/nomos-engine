@@ -56,7 +56,8 @@ except ImportError:                                  # pragma: no cover - env-de
 
 # actions (outputs) — identical ids to neat.py so the World's step logic is shared
 FORWARD, TURN_LEFT, TURN_RIGHT, STAY = 0, 1, 2, 3
-N_ACTIONS = 4
+REPRODUCE = 4                    # a COMMAND gate: >0 asks to breed (world still needs a mate)
+N_ACTIONS = 5
 
 # a sensory organ's `organ_mod` gene: 0 = ALL (hears the whole sensor vector, == the old
 # broadcast), 1..K = a world-defined MODALITY. The World supplies an `input_layout` mapping
@@ -135,6 +136,21 @@ class Genome:
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.hue, self.diet, self.carnivore, self.n_rays, self.ray_len,
                       self.in_mask.copy(), self.out_mask.copy(), self.organ_mod.copy())
+
+    def resized(self, n_in: int, n_out: int) -> "Genome":
+        """A copy adapted to a new sensor / action width: extra P_in rows and P_out cols
+        (and b_out) are ZERO, so an older genome loaded into a world with more senses /
+        outputs still runs — deaf to the new senses and silent on the new outputs until
+        mutation wakes them. Lets a saved pool seed a world whose brain I/O changed."""
+        g = self.copy()
+        if n_in != g.n_in:
+            P = np.zeros((n_in, g.C)); k = min(n_in, g.n_in)
+            P[:k] = g.P_in[:k]; g.P_in = P; g.n_in = n_in
+        if n_out != g.n_out:
+            P = np.zeros((g.C, n_out)); b = np.zeros(n_out); k = min(n_out, g.n_out)
+            P[:, :k] = g.P_out[:, :k]; b[:k] = g.b_out[:k]
+            g.P_out = P; g.b_out = b; g.n_out = n_out
+        return g
 
     def max_node_id(self) -> int:
         return self.n_in + self.n_out

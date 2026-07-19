@@ -20,8 +20,10 @@ def _cfg(**kw):
 
 
 def test_world_lives_and_is_deterministic():
-    a = World(_cfg())
-    b = World(_cfg())
+    # reproduction is now a brain COMMAND + rare overfed clone, so a short fresh run may
+    # not breed by default; make budding easy so the loop (and its determinism) is exercised
+    a = World(_cfg(clone_min_energy=90.0, clone_prob=1.0))
+    b = World(_cfg(clone_min_energy=90.0, clone_prob=1.0))
     for _ in range(200):
         a.step()
         b.step()

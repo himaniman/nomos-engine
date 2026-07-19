@@ -207,9 +207,14 @@ class Config:
     macro_mut_scale: float = 3.0       # weight-jitter multiplier for a macro-mutation
     immigrate_every: int = 0           # ticks between immigration waves (0 = OFF)
     immigrate_count: int = 2           # competent newcomers per wave (new lineage colour)
-    hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age in
-                                       # the hall-of-fame's success score (fecundity
-                                       # + longevity, not longevity alone)
+    # hall SUCCESS score = the selection criterion (reseed pulls from it). It weighs an
+    # individual's own achievement AND its LINEAGE's success, so the "leader" is effectively
+    # a population leader, not a lone long-liver: success = age + off_w*offspring
+    # + pop_w*lineage_size + energy_w*lineage_mean_energy. Brain size is deliberately NOT
+    # rewarded (it's a consequence of the per-cell cost + selection, not a fitness input).
+    hall_offspring_weight: float = 25.0  # a child is worth this many ticks of age (fecundity)
+    hall_pop_weight: float = 3.0       # weight on the size of the individual's LINEAGE
+    hall_energy_weight: float = 0.3    # weight on its lineage's mean energy (a well-fed lineage)
 
     # brain / senses
     brain: str = "neat"                # which brain module: "neat" (graph of scalar

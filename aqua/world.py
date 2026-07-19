@@ -243,6 +243,8 @@ class World:
         self._pool = None                                   # lazy thread pool for parallel THINK
         self.hall: list[tuple[int, object]] = []           # all-time best (success score)
         self.hall_epoch: list[tuple[int, object]] = []      # best of the CURRENT epoch only
+        self.past_halls: deque = deque(maxlen=2)            # last epochs' halls (reseed diversity)
+        self._lineage_cache: dict = {}                      # id -> (lineage_size, mean_energy)
         self.stats = {"births": 0, "deaths": 0}
         self.deaths_log: deque = deque()
         # the ray fan is now PER-AGENT (heritable count), so relative angles are
@@ -799,6 +801,7 @@ class World:
         plastic = c.brain == "nca" and c.nca_plastic
         self._regrow_food()
         self._rebuild_buckets()                             # resync the index to tick-start
+        self._lineage_cache = self._lineage_stats()         # tick-start lineage context for the hall
         order = sorted(self.agents)
         # PHASE A — THINK: every agent senses the tick-START snapshot and relaxes its brain.
         # This only READS the world and writes each agent's own brain, so it is
@@ -1097,8 +1100,26 @@ class World:
         carcass = self.cfg.corpse_energy_frac * self.cfg.meat_energy   # fixed carcass value
         self.corpse_energy = np.append(self.corpse_energy, carcass)
 
+    def _lineage_stats(self) -> dict:
+        """id -> (lineage_size, lineage_mean_energy) for every living agent, where a lineage
+        is a hue species-group. Snapshotted once per tick so `_remember` can weight a dying
+        agent's hall score by how well its LINEAGE was doing (the population-leader metric)."""
+        cache = {}
+        for grp in self._species_groups_raw():
+            n = len(grp)
+            me = sum(a.energy for a in grp) / n
+            for a in grp:
+                cache[a.id] = (n, me)
+        return cache
+
     def _remember(self, a: Agent) -> None:
-        success = a.age + self.cfg.hall_offspring_weight * a.offspring
+        # POPULATION-LEADER success: the individual's own age + fecundity, PLUS how large and
+        # well-fed its lineage was — so the hall (and thus reseed) favours members of thriving
+        # populations, not lone long-livers. Brain size is intentionally not rewarded.
+        c = self.cfg
+        n, me = self._lineage_cache.get(a.id, (1, a.energy))
+        success = (a.age + c.hall_offspring_weight * a.offspring
+                   + c.hall_pop_weight * n + c.hall_energy_weight * me)
         g = a.brain.genome.copy()
         for hall in (self.hall, self.hall_epoch):           # all-time + current-epoch boards
             hall.append((success, g))
@@ -1177,8 +1198,20 @@ class World:
     def _reseed(self) -> None:
         self.epoch += 1
         self.epoch_start = self.tick
+        if self.hall_epoch:                                 # archive the just-died epoch's best
+            self.past_halls.append(list(self.hall_epoch))
         self.hall_epoch = []                                # fresh leaderboard per epoch
-        elites = [g for _, g in self.hall[:self.cfg.reseed_elites]]
+        # seed from the all-time hall AND the best of the last couple of epochs (RECENT
+        # lineages, not only the eternal champion) — deduped by genome fingerprint.
+        cand = [g for _, g in self.hall[:self.cfg.reseed_elites]]
+        for past in self.past_halls:
+            cand += [g for _, g in past[:2]]
+        seen, elites = set(), []
+        for g in cand:
+            k = g.key()
+            if k not in seen:
+                seen.add(k)
+                elites.append(g)
         if not elites:
             elites = [self._seed_genome()
                       for _ in range(min(self.cfg.reseed_elites, self.cfg.reseed_count))]

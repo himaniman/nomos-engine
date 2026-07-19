@@ -384,7 +384,8 @@ def _draw_readout(surf, genome, phenotype, x, y, w, h):
     plastic delta dW. This is the only part that changes during a life, so it's drawn
     on its own: faint grey edges are the innate readout, and edges LIFE-LEARNING has
     moved glow green (strengthened) / red (weakened) — so you literally watch the
-    weights change as the agent learns. Action nodes are labelled F/L/R/S."""
+    weights change as the agent learns. Action nodes: F/L/R/S locomotion, then the
+    command gates Brd (reproduce) and Emt (emit pheromone)."""
     C, n_out = genome.C, genome.n_out
     P = np.asarray(genome.P_out)
     dW = getattr(phenotype, "dW", None) if phenotype is not None else None
@@ -419,7 +420,8 @@ def _draw_readout(surf, genome, phenotype, x, y, w, h):
     best = int(np.argmax(logits)) if logits is not None else -1
     for j, yy in enumerate(ay):                            # action nodes + labels (right),
         pygame.draw.circle(surf, (240, 200, 120), (rx, yy), 3)   # + the LIVE logit values
-        label = "FLRS"[j] if j < 4 else "?"                # (the perceptron's output)
+        # F/L/R/S locomotion, then the COMMAND gates: Breed (reproduce) and Emit (pheromone)
+        label = ("F", "L", "R", "S", "Brd", "Emt")[j] if j < 6 else "?"
         if logits is not None:
             label += f" {float(logits[j]):+.2f}"
         surf.blit(font.render(label, True,

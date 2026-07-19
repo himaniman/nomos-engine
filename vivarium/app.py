@@ -208,9 +208,10 @@ def _draw_panel(surf, world, x0, panel_w, H, font, small, selected, hud=None,
         r, g_, b = colorsys.hsv_to_rgb(gr["hue"], 0.85, 1.0)
         pygame.draw.rect(surf, (int(r * 255), int(g_ * 255), int(b * 255)),
                          (x0 + 12, y + 2, 10, 10))
+        en = f" en{gr['energy']:.0f}" if "energy" in gr else ""
         surf.blit(small.render(
             f"n{gr['n']:<3} diet{gr['diet']:.1f} carn{gr['carn'] * 100:.0f}% "
-            f"age{gr['age']:.0f}", True, (210, 215, 230)), (x0 + 28, y))
+            f"age{gr['age']:.0f}{en}", True, (210, 215, 230)), (x0 + 28, y))
         y += 15
         if "kids" in gr:                                    # second line: what they DID + brain
             brain = f" ~{_fmt_count(gr['params'])}" if "params" in gr else ""

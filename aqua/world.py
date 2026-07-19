@@ -1146,6 +1146,7 @@ class World:
                         "diet": float(np.mean([g.diet for g in gs])),
                         "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
                         "age": float(np.mean([a.age for a in grp])),
+                        "energy": float(np.mean([a.energy for a in grp])),
                         "kids": float(np.mean([a.offspring for a in grp])),
                         "ate": float(np.mean([a.food_eaten for a in grp])),
                         "kills": float(np.mean([a.kills for a in grp])),

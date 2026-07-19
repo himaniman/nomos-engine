@@ -649,16 +649,29 @@ class World:
         cone = 0.5 * c.fov + 0.6                              # a ray can only see this arc
         # gather what each ray could hit into flat arrays (the cheap part stays Python),
         # then the hot ray x target inner loops run in the compiled `_vision_fan` kernel.
-        ad_l, abear_l, akin_l = [], [], []                   # nearby agents, tagged KIN/NON-KIN
-        for b in self._agents_within(a.y, a.x, rl + self.radius, exclude=a.id):
-            d = math.hypot(b.y - a.y, b.x - a.x)
-            if d <= rl + self.radius:
-                bearing = math.atan2(b.y - a.y, b.x - a.x)
+        # ONE bucket pass over nearby agents serves BOTH vision (FOV-cone, tagged KIN/NON-KIN)
+        # AND the omnidirectional MATE / THREAT senses — the mate/threat candidates are found
+        # here and written into their blocks below (halves the per-agent proximity queries).
+        reach = max(rl + self.radius, self.mate_sense_range)
+        mate, mate_d, threat, threat_d = None, None, None, None
+        ad_l, abear_l, akin_l = [], [], []
+        for b in self._agents_within(a.y, a.x, reach, exclude=a.id):
+            dy, dx = b.y - a.y, b.x - a.x
+            d = math.hypot(dy, dx)
+            far = _hue_dist(hue, b.brain.genome.hue) > c.species_hue
+            if d <= rl + self.radius:                        # VISION: in reach + FOV cone
+                bearing = math.atan2(dy, dx)
                 if abs(_wrap_angle(bearing - a.heading)) <= cone:
                     ad_l.append(d)
                     abear_l.append(bearing)
-                    akin_l.append(1 if _hue_dist(hue, b.brain.genome.hue)
-                                  <= c.species_hue else 0)
+                    akin_l.append(0 if far else 1)
+            if d <= self.mate_sense_range:                   # MATE / THREAT (omnidirectional)
+                if not far and b.energy >= c.repro_min_energy:
+                    if mate_d is None or d < mate_d:
+                        mate, mate_d = b, d
+                elif far and b.brain.genome.carnivore >= c.carnivore_threshold:
+                    if threat_d is None or d < threat_d:
+                        threat, threat_d = b, d
         fd_l, fbear_l, fval_l = [], [], []                   # food morsels within the CONE
         if len(self.food_type):                               # (vectorised prune, then kept)
             fdy = self.food_xy[:, 0] - a.y
@@ -724,20 +737,8 @@ class World:
                 vec[so + 0] = amp * math.cos(rel)            # food ahead (+) / behind (-)
                 vec[so + 1] = amp * math.sin(rel)            # food to one side (signed)
 
-        # MATE + THREAT: ONE bucket pass finds the nearest fed same-species MATE (to breed
-        # with) and the nearest non-kin CARNIVORE that could eat this agent (danger). Both
-        # are omnidirectional (like smell) so they reach past the narrow vision cone.
+        # MATE block: write the nearest breedable same-species agent found in the pass above.
         mo = o + INTERO + (SMELL if self.smell else 0)
-        mate, mate_d, threat, threat_d = None, None, None, None
-        for b in self._agents_within(a.y, a.x, self.mate_sense_range, exclude=a.id):
-            far = _hue_dist(hue, b.brain.genome.hue) > c.species_hue
-            d = math.hypot(b.y - a.y, b.x - a.x)
-            if not far and b.energy >= c.repro_min_energy:   # a breedable same-species mate
-                if mate_d is None or d < mate_d:
-                    mate, mate_d = b, d
-            elif far and b.brain.genome.carnivore >= c.carnivore_threshold:  # a predator
-                if threat_d is None or d < threat_d:
-                    threat, threat_d = b, d
         if mate is not None and mate_d > 1e-9:
             amp = gain / (1.0 + (mate_d / self.smell_sharpness) ** 2)
             rel = _wrap_angle(math.atan2(mate.y - a.y, mate.x - a.x) - a.heading)

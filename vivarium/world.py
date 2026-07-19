@@ -114,7 +114,8 @@ class World:
                                         plastic=c.nca_plastic, lr=c.nca_plastic_lr,
                                         forget=c.nca_plastic_forget,
                                         elig_decay=c.nca_plastic_elig,
-                                        clip=c.nca_plastic_clip)
+                                        clip=c.nca_plastic_clip,
+                                        neuromod=c.nca_neuromod)
         return self.brain.Phenotype(genome)
 
     def _seed_genome(self):

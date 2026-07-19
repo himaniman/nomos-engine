@@ -280,6 +280,13 @@ class Config:
     nca_leap_prob: float = 0.5         # chance an INJECTED newcomer (immigrant / reseed
                                        # mutant) is a forced structural leap — rare events
                                        # already, so a coin-flip keeps some big-brain shots
+    # NEUROMODULATION (NCA only) — makes a cell's rule NON-CONSTANT within a life: the last
+    # state channel acts as a HORMONE that GATES the rule output, delta *= 1 + tanh(mod).
+    # Neutral (mod=0) leaves gate=1 (identity, so a fresh brain is unchanged), mod<0 DAMPS
+    # and mod>0 BOOSTS the update — so the same weights respond differently by context, and
+    # the modulator is itself part of the state the rules drive. Toggle for the A/B (does a
+    # dynamic rule beat a constant one). Costs one channel + a tanh; the batched matmul stays.
+    nca_neuromod: bool = True          # gate each cell's rule by its hormone channel
 
     # LIFETIME LEARNING (meta-plasticity, NCA only) — ON by default: it's the point of
     # the NCA brain. Normally the weights are FIXED at birth and only the cell state

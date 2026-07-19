@@ -34,6 +34,8 @@ produces the channel delta). Depth = number of layers (>= 2: an input and an out
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from vivarium.vision import (DEFAULT_N_RAYS, DEFAULT_RAY_LEN, cross_vision,
@@ -232,7 +234,7 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
 if _NUMBA:
     @_njit(cache=True)
     def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
-                  in_flag, subticks):                  # pragma: no cover - jitted
+                  in_flag, mod_ch, subticks):          # pragma: no cover - jitted
         """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
         (n, C) alive rows into the flat padded buffer, gather each cell's 9-neighbour
         rows into a (n, 9C) perception, forward each TYPE's rows through its layer
@@ -266,8 +268,9 @@ if _NUMBA:
                 li += nl
             for i in range(n):
                 dr = 1.0 if in_flag[i] else 0.0          # sensor drive enters ORGAN cells only
+                gate = (1.0 + math.tanh(st[i, mod_ch])) if mod_ch >= 0 else 1.0  # neuromod
                 for c in range(C):
-                    st[i, c] = np.tanh(st[i, c] + delta[i, c] + dr * drive[c])
+                    st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + dr * drive[c])
         return st
 
 
@@ -278,10 +281,13 @@ class Phenotype:
 
     def __init__(self, genome: Genome, subticks: int = 32, plastic: bool = False,
                  lr: float = 0.03, forget: float = 0.002, elig_decay: float = 0.5,
-                 clip: float = 1.0):
+                 clip: float = 1.0, neuromod: bool = False):
         self.genome = genome
         self.subticks = subticks
         G, C = genome.G, genome.C
+        # NEUROMODULATION: the last channel gates each cell's rule (see Config.nca_neuromod).
+        # -1 disables it (the gate stays 1 -> a plain constant rule, for the A/B).
+        self._mod_ch = (C - 1) if neuromod else -1
         self.state = np.zeros((G, G, C), dtype=np.float64)
         # ALIVE-ONLY indexing: dead cells are frozen zeros, so all per-subtick work
         # runs on (n_alive, C) rows instead of the full G x G lattice. Neighbourhoods
@@ -350,14 +356,15 @@ class Phenotype:
             if self.record:
                 for _ in range(self.subticks):
                     st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
-                                   self._nb_W, self._nb_b, self._nb_cnt, self._in_flag, 1)
+                                   self._nb_W, self._nb_b, self._nb_cnt, self._in_flag,
+                                   self._mod_ch, 1)
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
             else:
                 st = _relax_nb(st, drive, padF, self._centre, nbr, self._nb_rows,
                                self._nb_W, self._nb_b, self._nb_cnt, self._in_flag,
-                               self.subticks)
+                               self._mod_ch, self.subticks)
         else:                                                # numpy reference path
             single = g.n_types == 1
             for _ in range(self.subticks):
@@ -370,6 +377,8 @@ class Phenotype:
                     for k, rows in enumerate(self._type_rows):
                         if len(rows):
                             delta[rows] = _apply_rule(perc[rows], g.rules[k])
+                if self._mod_ch >= 0:                        # neuromod: hormone gates the rule
+                    delta = delta * (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
                 st = st + delta                              # residual update, then...
                 st[self._in_rows] += drive                   # ...drive enters ORGAN cells only
                 np.tanh(st, out=st)                          # ...and clamp

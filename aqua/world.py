@@ -1146,6 +1146,10 @@ class World:
                         "diet": float(np.mean([g.diet for g in gs])),
                         "carn": sum(1 for g in gs if g.carnivore >= thr) / len(gs),
                         "age": float(np.mean([a.age for a in grp])),
+                        "kids": float(np.mean([a.offspring for a in grp])),
+                        "ate": float(np.mean([a.food_eaten for a in grp])),
+                        "kills": float(np.mean([a.kills for a in grp])),
+                        "gain": float(np.mean([getattr(g, "smell_gain", 1.0) for g in gs])),
                         "cells": float(np.mean([g.complexity()[0] for g in gs])),
                         "params": float(np.mean([g.param_count() for g in gs]))})
         out.sort(key=lambda s: s["n"], reverse=True)

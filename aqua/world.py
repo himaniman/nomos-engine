@@ -292,7 +292,9 @@ class World:
                                         elig_decay=c.nca_plastic_elig,
                                         clip=c.nca_plastic_clip,
                                         neuromod=c.nca_neuromod,
-                                        input_layout=self.input_layout)
+                                        input_layout=self.input_layout,
+                                        rule_plastic=c.nca_rule_plastic,
+                                        rule_lr=c.nca_rule_lr, rule_clip=c.nca_rule_clip)
         return self.brain.Phenotype(genome)
 
     def _seed_genome(self):

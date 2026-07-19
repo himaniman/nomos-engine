@@ -288,16 +288,29 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
     return x @ last["W"].T + last["b"]
 
 
+def _apply_rule_plastic(x, rule, dW_last, elig_acc):
+    """Like `_apply_rule` but the OUTPUT layer uses W.T + dW_last (the learned plastic delta)
+    and `elig_acc` accumulates the Hebbian outer(last-hidden, output-delta). numpy reference
+    path for RULE PLASTICITY (the numba kernel does the same inline)."""
+    for L in rule[:-1]:
+        x = np.tanh(x @ L["W"].T + L["b"])
+    y = x @ (rule[-1]["W"].T + dW_last) + rule[-1]["b"]
+    elig_acc += x.T @ y
+    return y
+
+
 if _NUMBA:
     @_njit(cache=True, nogil=True)                    # nogil so agents relax in parallel threads
     def _relax_nb(st, drive_mat, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
-                  mod_ch, subticks):                   # pragma: no cover - jitted
+                  mod_ch, dW_last, elig_out, plastic, subticks):   # pragma: no cover - jitted
         """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
         (n, C) alive rows into the flat padded buffer, gather each cell's 9-neighbour
         rows into a (n, 9C) perception, forward each TYPE's rows through its layer
         stack (Wts/bs hold every type's layers back to back, pre-transposed; layer_cnt
         says how many belong to each type), then the residual tanh update. Mutates
-        and returns `st`."""
+        and returns `st`. RULE PLASTICITY (plastic==1): each type's OUTPUT layer uses
+        Wts[last] + dW_last[type], and elig_out[type] accumulates outer(last-hidden,
+        output-delta) over cells + subticks (the Hebbian eligibility)."""
         n, C = st.shape
         for _ in range(subticks):
             for i in range(n):
@@ -318,7 +331,12 @@ if _NUMBA:
                     x = perc[rows]
                     for L in range(nl - 1):
                         x = np.tanh(x @ Wts[li + L] + bs[li + L])
-                    y = x @ Wts[li + nl - 1] + bs[li + nl - 1]
+                    last = li + nl - 1
+                    if plastic == 1:                     # output weights + learned delta
+                        y = x @ (Wts[last] + dW_last[k]) + bs[last]
+                        elig_out[k] += np.dot(x.T, y)    # Hebbian: outer(pre, post), summed
+                    else:
+                        y = x @ Wts[last] + bs[last]
                     for ii in range(rows.size):
                         for c in range(C):
                             delta[rows[ii], c] = y[ii, c]
@@ -375,7 +393,8 @@ class Phenotype:
 
     def __init__(self, genome: Genome, subticks: int = 32, plastic: bool = False,
                  lr: float = 0.03, forget: float = 0.002, elig_decay: float = 0.5,
-                 clip: float = 1.0, neuromod: bool = False, input_layout=None):
+                 clip: float = 1.0, neuromod: bool = False, input_layout=None,
+                 rule_plastic: bool = False, rule_lr: float = 0.008, rule_clip: float = 0.3):
         self.genome = genome
         self.subticks = subticks
         G, C = genome.G, genome.C
@@ -426,6 +445,18 @@ class Phenotype:
         self.lr, self.forget, self.elig_decay, self.clip = lr, forget, elig_decay, clip
         self.dW = np.zeros((C, genome.n_out), dtype=np.float64)
         self._E = np.zeros((C, genome.n_out), dtype=np.float64)
+        # RULE PLASTICITY: a plastic delta + eligibility on each type-rule's OUTPUT layer
+        # (H->C). Shapes (in_last_k, C) match the pre-transposed Wts[last]. All updated
+        # IN-PLACE so the numba typed-list views (_nb_dW / _nb_elig) stay in sync.
+        self.rule_plastic = rule_plastic
+        self.rule_lr, self.rule_clip = rule_lr, rule_clip
+        outs = [int(r[-1]["W"].shape[1]) for r in genome.rules]   # last layer's input dim / type
+        self._dW_rule = [np.zeros((o, C), dtype=np.float64) for o in outs]  # learned delta
+        self._E_rule = [np.zeros((o, C), dtype=np.float64) for o in outs]   # persistent trace
+        self._elig_acc = [np.zeros((o, C), dtype=np.float64) for o in outs]  # per-act accumulator
+        if _NUMBA:
+            self._nb_dW = _NbList(self._dW_rule)      # same arrays -> in-place edits visible
+            self._nb_elig = _NbList(self._elig_acc)
         # inspector-only (never used by the computation): a per-sub-tick TRACE for the
         # "watch it think" animation, and a state override for drawing one trace frame.
         self.record = False
@@ -443,6 +474,10 @@ class Phenotype:
         padF, nbr = self._padF, self._nbr
         if self.record:
             self.trace = []
+        rp = 1 if self.rule_plastic else 0
+        if rp:                                               # fresh per-act Hebbian eligibility
+            for e in self._elig_acc:
+                e[:] = 0.0
         if _NUMBA and n:
             # the jitted kernel runs all subticks at once; when recording (the T view)
             # it is called one subtick at a time so the trace frames come from the SAME
@@ -450,16 +485,17 @@ class Phenotype:
             if self.record:
                 for _ in range(self.subticks):
                     st = _relax_nb(st, drive_mat, padF, self._centre, nbr, self._nb_rows,
-                                   self._nb_W, self._nb_b, self._nb_cnt, self._mod_ch, 1)
+                                   self._nb_W, self._nb_b, self._nb_cnt, self._mod_ch,
+                                   self._nb_dW, self._nb_elig, rp, 1)
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
             else:
                 st = _relax_nb(st, drive_mat, padF, self._centre, nbr, self._nb_rows,
                                self._nb_W, self._nb_b, self._nb_cnt, self._mod_ch,
-                               self.subticks)
+                               self._nb_dW, self._nb_elig, rp, self.subticks)
         else:                                                # numpy reference path
-            single = g.n_types == 1
+            single = g.n_types == 1 and not rp
             for _ in range(self.subticks):
                 padF[self._centre] = st                      # refresh the padded buffer
                 perc = padF[nbr].reshape(n, 9 * g.C)         # 3x3 hood, bounded, dead=0
@@ -469,7 +505,11 @@ class Phenotype:
                     delta = np.empty_like(st)
                     for k, rows in enumerate(self._type_rows):
                         if len(rows):
-                            delta[rows] = _apply_rule(perc[rows], g.rules[k])
+                            if rp:
+                                delta[rows] = _apply_rule_plastic(
+                                    perc[rows], g.rules[k], self._dW_rule[k], self._elig_acc[k])
+                            else:
+                                delta[rows] = _apply_rule(perc[rows], g.rules[k])
                 if self._mod_ch >= 0:                        # neuromod: hormone gates the rule
                     delta = delta * (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
                 st = st + delta + drive_mat                  # residual + per-cell sensor drive
@@ -478,6 +518,11 @@ class Phenotype:
                     full = np.zeros_like(self.state)
                     full[self._ys, self._xs] = st
                     self.trace.append(full)
+        if rp:                                               # fold this act's eligibility into
+            for k in range(len(self._E_rule)):               # the persistent decaying trace,
+                nrm = self.subticks * max(1, len(self._type_rows[k]))   # MEAN outer product
+                self._E_rule[k] *= self.elig_decay           # (per cell per subtick) so the
+                self._E_rule[k] += self._elig_acc[k] / nrm   # learned step stays graded, not bang-bang
         self.state[self._ys, self._xs] = st
         pooled = st[self._out_rows].mean(axis=0)             # (C,) mean over EFFECTOR cells
         eff_out = g.P_out + self.dW if self.plastic else g.P_out  # readout + learned delta
@@ -503,16 +548,24 @@ class Phenotype:
         return a
 
     def learn(self, reward: float) -> None:
-        """Reward-modulated (three-factor) update of the plastic readout delta, called
-        once per game tick. The plastic delta always forgets slowly; when a REWARD lands
-        (the agent ate), the decisions still in the eligibility trace are reinforced —
-        so actions that led to food get more likely. No-op unless plastic."""
-        if not self.plastic:
-            return
-        self.dW *= (1.0 - self.forget)
-        if reward:
-            self.dW += self.lr * reward * self._E
-            np.clip(self.dW, -self.clip, self.clip, out=self.dW)
+        """Reward-modulated (three-factor) update of the plastic deltas, called once per game
+        tick. Deltas always forget slowly; when a REWARD lands (the agent ate), whatever is
+        still in the eligibility trace is reinforced. This nudges (1) the motor READOUT so
+        actions that led to food get more likely, and (2) each cell-type RULE's output layer
+        so the tissue's computation adapts in-life — the latter CLIPPED HARD (it drives a
+        recurrent system). No-op unless the respective plasticity is on."""
+        if self.plastic:
+            self.dW *= (1.0 - self.forget)
+            if reward:
+                self.dW += self.lr * reward * self._E
+                np.clip(self.dW, -self.clip, self.clip, out=self.dW)
+        if self.rule_plastic:
+            for k in range(len(self._dW_rule)):
+                self._dW_rule[k] *= (1.0 - self.forget)      # in-place (numba view stays in sync)
+                if reward:
+                    self._dW_rule[k] += self.rule_lr * reward * self._E_rule[k]
+                    np.clip(self._dW_rule[k], -self.rule_clip, self.rule_clip,
+                            out=self._dW_rule[k])
 
 
 def _jitter(arr: np.ndarray, rng, prob: float, std: float) -> None:

@@ -367,6 +367,18 @@ class Config:
     # how much of a parent's over-fitted lifetime quirks get baked into the gene line.
     nca_lamarck: float = 0.5           # how much learned skill is inherited (0..1)
 
+    # RULE PLASTICITY (NCA) — the deep version of "living rules": the TISSUE itself learns
+    # within a life, not just the motor readout. Reward-modulated (three-factor) Hebbian on
+    # each cell-type rule's OUTPUT layer (H->C): an eligibility trace accumulates
+    # outer(last-hidden, output-delta) over the relaxation, and when the agent eats the
+    # rule's output weights are nudged (a plastic delta added to the last layer). So a cell
+    # type's computation adapts in-life. CLIPPED HARD — rules drive a recurrent system, so an
+    # unbounded delta could blow the relaxation up. Toggle for the A/B (plastic rule vs frozen).
+    nca_rule_plastic: bool = True      # within-life learning of the cell-type rules' output
+    nca_rule_lr: float = 0.008         # learning rate (smaller than the readout's — load-bearing)
+    nca_rule_clip: float = 0.3         # hard bound on |rule plastic delta| (stability)
+    nca_rule_lamarck: float = 0.0      # inherit learned rule-deltas (0 = pure Darwin, cleaner)
+
     # EXPLORATION (NCA only): a recurrent brain fed a near-constant input settles into a
     # fixed point and FREEZES — same action forever, so it stops moving, stops eating,
     # and plasticity has no reward to amplify (the real takeoff wall). A little

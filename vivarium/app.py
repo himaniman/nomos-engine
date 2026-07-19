@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import colorsys
 import hashlib
+import math
 import time
 from pathlib import Path
 
@@ -252,7 +253,9 @@ def _draw_inspector(surf, g, agent, x0, y, panel_w, H, font, small, title=None,
         if getattr(g, "in_mask", None) is not None:        # local I/O organ census
             io = int((g.in_mask & g.mask).sum())
             oo = int((g.out_mask & g.mask).sum())
-            info.append(f"organs: {io} sensory / {oo} effector")
+            # 0 organs falls back to the whole tissue (never deaf / mute) — spell it out
+            sfx = ("  (in:all)" if io == 0 else "") + ("  (out:all)" if oo == 0 else "")
+            info.append(f"organs: {io} sensory / {oo} effector{sfx}")
     else:
         info.append(f"hidden {nh}  conns {nc}")
     if hasattr(g, "param_count"):
@@ -369,14 +372,56 @@ def _draw_nca_brain(surf, genome, phenotype, x, y, w, h, sense_colors=None,
     rh = int(h * 0.18)
     _draw_readout(surf, genome, phenotype, x, ry, w, rh)
 
+    # the DERIVED behaviour the world actually runs (thrust/turn/breed/emit) — clearer
+    # than the six raw logits, which are two antagonistic pairs plus two gates.
+    cy = ry + rh + 2
+    _draw_commands(surf, phenotype, x, cy, w, 16)
+
     # bottom row: one compact rule-net per cell type (these weights are FIXED — genome)
-    ny = ry + rh + 4
+    ny = cy + 16 + 4
     nh = y + h - ny
     used = [k for k in range(genome.n_types)
             if (genome.mask & (genome.type_map == k)).any()] or [0]
     nw = w // len(used)
     for i, k in enumerate(used):
         _draw_rule_net(surf, genome, k, x + i * nw, ny, nw - 6, nh)
+
+
+def _draw_commands(surf, phenotype, x, y, w, h):
+    """The behaviour the WORLD actually runs, read off the live logits: THRUST (F-S via a
+    sigmoid, 0..1), TURN (R-L via tanh, signed), BREED (the reproduce gate, lit when >0),
+    EMIT (pheromone intensity, 0..1). Makes the six raw outputs legible as what the agent
+    is doing right now."""
+    logits = getattr(phenotype, "last_logits", None) if phenotype is not None else None
+    if logits is None or len(logits) < 4:
+        return
+    lg = [float(v) for v in logits]
+    thrust = 1.0 / (1.0 + math.exp(-(lg[0] - lg[3])))         # F - S
+    turn = math.tanh(lg[2] - lg[1])                           # R - L
+    breed = len(lg) > 4 and lg[4] > 0.0
+    emit = 1.0 / (1.0 + math.exp(-lg[5])) if len(lg) > 5 else 0.0
+    font = pygame.font.Font(None, 14)
+    cw = w // 4
+    bw = cw - 32
+    by, bh = y + 3, h - 5
+
+    def bar(cx, frac, col, signed=False):
+        surf.fill((38, 38, 48), (cx, by, bw, bh))            # track
+        if signed:
+            mid, ext = cx + bw // 2, int(abs(frac) * bw / 2)
+            surf.fill(col, (mid if frac >= 0 else mid - ext, by, max(1, ext), bh))
+            pygame.draw.line(surf, (110, 110, 128), (mid, by), (mid, by + bh - 1), 1)
+        else:
+            surf.fill(col, (cx, by, max(1, int(frac * bw)), bh))
+
+    items = [("thr", thrust, (90, 210, 130), False),
+             ("trn", turn, (120, 170, 240), True),
+             ("brd", 1.0 if breed else 0.0, (90, 220, 120) if breed else (70, 60, 60), False),
+             ("emt", emit, (240, 230, 120), False)]
+    for i, (lab, frac, col, signed) in enumerate(items):
+        cx = x + i * cw
+        surf.blit(font.render(lab, True, (170, 175, 190)), (cx, y + 2))
+        bar(cx + 28, frac, col, signed)
 
 
 def _draw_readout(surf, genome, phenotype, x, y, w, h):

@@ -36,7 +36,10 @@ _TWO_PI = 2.0 * math.pi
 # the profiled bottleneck). Reference semantics live in `_vision_fan` below.
 try:
     from numba import njit as _njit
+    _NUMBA = True
 except ImportError:                                  # pragma: no cover - env-dependent
+    _NUMBA = False
+
     def _njit(*args, **kwargs):                       # no-op decorator, both @_njit forms
         if len(args) == 1 and callable(args[0]) and not kwargs:
             return args[0]
@@ -237,6 +240,7 @@ class World:
         # spatial index of agent ids for the O(1)-ish proximity queries (collision,
         # mate search, vision) — kept live as agents spawn/move/die (see aqua.space).
         self.abuckets = Buckets(cell=max(2.0, 2.0 * radius, mate_radius))
+        self._pool = None                                   # lazy thread pool for parallel THINK
         self.hall: list[tuple[int, object]] = []           # all-time best (success score)
         self.hall_epoch: list[tuple[int, object]] = []      # best of the CURRENT epoch only
         self.stats = {"births": 0, "deaths": 0}
@@ -798,13 +802,8 @@ class World:
         order = sorted(self.agents)
         # PHASE A — THINK: every agent senses the tick-START snapshot and relaxes its brain.
         # This only READS the world and writes each agent's own brain, so it is
-        # order-independent (snapshot semantics, matching the CA engine) and parallelisable.
-        for aid in order:
-            a = self.agents[aid]
-            if c.brain == "nca":
-                a.brain.act(self._sense(a), rng=self.rng, temp=c.nca_explore_temp)
-            else:
-                a.brain.act(self._sense(a))
+        # order-independent (snapshot semantics, matching the CA engine) and PARALLEL.
+        self._think_phase(order)
         # PHASE B — ACT: apply each decision to the world in id-ORDER (movement / eating /
         # predation / reproduction / emit mutate shared state, so this stays sequential).
         dead: list[Agent] = []
@@ -883,6 +882,37 @@ class World:
         s[self.walls] = 0.0                                  # walls block the pheromone
         s[s < 1e-4] = 0.0                                    # drop dust so `.any()` stays cheap
         self.signal = s
+
+    def _think_phase(self, order: list) -> None:
+        """PHASE A: sense + relax every agent's brain. The relaxations are independent (each
+        reads the shared snapshot, writes only its own brain), so they run in PARALLEL threads
+        when the population is large — the NCA kernel is nogil, so threads truly overlap. The
+        explore randomness is PRE-DRAWN here in id-order, so a parallel run is bit-identical to
+        a sequential one (no shared rng inside the threads). Small pops run sequentially."""
+        c = self.cfg
+        if c.brain != "nca":
+            for aid in order:
+                a = self.agents[aid]
+                a.brain.act(self._sense(a))
+            return
+        temp = c.nca_explore_temp
+        eu = {aid: (float(self.rng.random()) if temp > 0 else -1.0) for aid in order}
+
+        def think(aid):
+            a = self.agents[aid]
+            a.brain.act(self._sense(a), temp=temp, explore_u=eu[aid])
+
+        if _NUMBA and len(order) >= 32:                      # parallelise a big population
+            if self._pool is None:
+                import os
+                from concurrent.futures import ThreadPoolExecutor
+                self._pool = ThreadPoolExecutor(max_workers=min(8, (os.cpu_count() or 1)))
+            nw = self._pool._max_workers
+            chunks = [order[i::nw] for i in range(nw)]       # round-robin -> balanced load
+            list(self._pool.map(lambda ch: [think(aid) for aid in ch], chunks))
+        else:
+            for aid in order:
+                think(aid)
 
     def _gluttony_factor(self, energy: float) -> float:
         """Speed multiplier from the GLUTTONY BRAKE: 1.0 up to glut_start, then an

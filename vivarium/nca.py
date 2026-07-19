@@ -289,7 +289,7 @@ def _apply_rule(x: np.ndarray, rule: list[dict]) -> np.ndarray:
 
 
 if _NUMBA:
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)                    # nogil so agents relax in parallel threads
     def _relax_nb(st, drive_mat, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
                   mod_ch, subticks):                   # pragma: no cover - jitted
         """The whole relaxation loop as one kernel: `subticks` rounds of scatter the
@@ -432,7 +432,8 @@ class Phenotype:
         self.trace: list = []
         self.show_state = None
 
-    def act(self, inputs: np.ndarray, rng=None, temp: float = 0.0) -> int:
+    def act(self, inputs: np.ndarray, rng=None, temp: float = 0.0,
+            explore_u: float = -1.0) -> int:
         g = self.genome
         # each cell's own sensory current: its LISTEN slice of the inputs, projected. Organ
         # rows get their modality/direction slice, non-organ rows get zero (see _build_listen).
@@ -483,7 +484,13 @@ class Phenotype:
         logits = pooled @ eff_out + g.b_out                  # (n_out,)
         self.last_input = inputs
         self.last_logits = logits
-        if rng is not None and temp > 0:                     # explore: sample vs freeze
+        if temp > 0 and explore_u >= 0.0:                    # PRE-DRAWN uniform (parallel-safe,
+            z = logits / temp                                # deterministic without a shared rng)
+            z -= z.max()
+            p = np.exp(z)
+            p /= p.sum()
+            a = min(len(p) - 1, int(np.searchsorted(np.cumsum(p), explore_u)))
+        elif rng is not None and temp > 0:                   # explore: sample vs freeze
             z = logits / temp
             z -= z.max()
             p = np.exp(z)

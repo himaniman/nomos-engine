@@ -9,7 +9,8 @@ import pytest
 
 from cortex import tiles as T
 from cortex.tiles import TileMap
-from cortex.world import BERRY, FRUIT, MUSHROOM, Config, World
+from cortex.world import (BERRY, FRUIT, MUSHROOM, NIGHTCAP, Config, FoodSpot,
+                          World)
 
 
 # --- generation ------------------------------------------------------------------
@@ -202,7 +203,7 @@ def test_walking_over_food_does_not_eat_it():
 
 def test_interact_eats_food_in_reach():
     w = World(seed=3)
-    s = w.nearby_food(w.agent.y, w.agent.x, 80)[0]
+    s = next(s for s in w.nearby_food(w.agent.y, w.agent.x, 80) if s.kind != NIGHTCAP)
     w.agent.y, w.agent.x = s.y, s.x
     e0 = w.agent.energy
     w.step(interact=1.0)
@@ -325,8 +326,7 @@ def test_food_beats_the_tile_in_front():
     _clear(w)
     w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
     w.tiles.set(20, 21, T.DOOR)
-    w.food[(0, 0)] = [__import__("cortex.world", fromlist=["FoodSpot"])
-                      .FoodSpot(y=20.2, x=20.2, kind=0)]
+    w.food[(0, 0)] = [FoodSpot(y=20.2, x=20.2, kind=BERRY)]
     assert w.afforded() == "eat berry"
     w.step(interact=1.0)
     assert w.tiles.material(20, 21) == T.DOOR                     # door untouched
@@ -514,6 +514,56 @@ def test_keyboard_maps_to_the_action_tuple():
     keys[pygame.K_d] = True
     assert app.action(keys) == (1.0, 1.0, 0.0)
     pygame.quit()
+
+
+# --- poison -----------------------------------------------------------------------
+
+def test_nightcaps_are_planted_and_only_ever_replace_berries():
+    """Same habitat, identical odour, different hue — the only way to tell is to look,
+    and the only way to know what to look for is to have eaten one."""
+    w = World(seed=2)
+    spots = w.nearby_food(256, 256, 150)
+    kinds = [s.kind for s in spots]
+    assert NIGHTCAP in kinds, "no poison in a world that has it switched on"
+    share = kinds.count(NIGHTCAP) / (kinds.count(NIGHTCAP) + kinds.count(BERRY))
+    assert 0.03 < share < 0.30, f"poison is {share:.0%} of berry-like food"
+
+    clean = World(seed=2, cfg=Config(poison_weight=0.0))
+    assert NIGHTCAP not in [s.kind for s in clean.nearby_food(256, 256, 150)]
+    # and the counts of the kinds that are NOT mimicked should be untouched
+    for kind in (FRUIT, MUSHROOM):
+        assert ([s.kind for s in clean.nearby_food(256, 256, 150)].count(kind)
+                == kinds.count(kind)), "poison displaced something other than a berry"
+
+
+def test_poison_drains_slowly_and_is_survivable():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x = 20.0, 20.0
+    w.food[(0, 0)] = [FoodSpot(y=20.1, x=20.1, kind=NIGHTCAP)]
+    e0 = w.agent.energy
+    w.step(interact=1.0)
+    assert w.agent.ate[NIGHTCAP] == 1 and "burns" in w.last_event
+    assert w.agent.energy > e0 - 2.0, "poison should not hit all at once"
+    assert w.agent.poison > 20.0
+    for _ in range(400):
+        w.step()
+    assert w.agent.alive, "a morsel that kills outright teaches nothing"
+    assert w.agent.poison == 0.0
+    drained = e0 - w.agent.energy - 400 * w.cfg.stand_cost - w.cfg.interact_cost
+    assert abs(drained - 30.0) < 1.0, f"drained {drained:.1f}, expected the full 30"
+
+
+def test_poisoning_is_felt_from_the_inside():
+    from cortex.senses import layout, sense
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x = 20.0, 20.0
+    lo, _ = layout(w.cfg.n_rays)["slices"]["intero"]
+    assert sense(w)[lo + 6] == 0.0
+    w.food[(0, 0)] = [FoodSpot(y=20.1, x=20.1, kind=NIGHTCAP)]
+    w.step(interact=1.0)
+    assert sense(w)[lo + 6] > 0.9, "the agent must be able to tell something is wrong"
 
 
 def _app(**kw):

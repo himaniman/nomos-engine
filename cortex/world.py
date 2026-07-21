@@ -125,7 +125,13 @@ class Config:
                                     # so mushrooms are actually worth going caving for
     renewable_frac: float = 0.7     # the rest are one-shot: exploration vs memory
     regrow_ticks: int = 1200
-    poison_weight: float = 0.0      # nightcaps are not planted until their own stage
+    # POISON. A nightcap only ever replaces a BERRY — same habitat, identical odour,
+    # different hue — so the only way to tell them apart is to LOOK, and the only way
+    # to know which hue to avoid is to have eaten one. That is the experiment.
+    poison_weight: float = 0.12     # of berries (0 = a world with no poison in it)
+    poison_rate: float = 0.15       # energy drained per tick while poisoned: survivable
+                                    # on purpose. A morsel that kills outright teaches
+                                    # nothing, because the dead do not learn.
 
 
 @dataclass
@@ -244,8 +250,10 @@ class World:
             fx = float(x) + float(rng.uniform(-0.35, 0.35))
             if self.tiles.blocked_circle(fy, fx, c.radius):
                 return
-            spots.append(FoodSpot(y=fy, x=fx,
-                                  kind=self._kind_for(y, x, rng) if kind is None else kind,
+            k = self._kind_for(y, x, rng) if kind is None else kind
+            if k == BERRY and rng.random() < c.poison_weight:
+                k = NIGHTCAP                                 # a berry that is not one
+            spots.append(FoodSpot(y=fy, x=fx, kind=k,
                                   renewable=bool(rng.random() < c.renewable_frac)))
 
         for _ in range(c.food_per_chunk):                    # scattered over the chunk
@@ -298,8 +306,6 @@ class World:
         """What grows here — read off the surroundings, so food sits where it looks
         like it should and the world's colours correlate with its rewards. Fruit grows
         ONLY by a trunk (it is tree fruit); mushrooms want walls around them."""
-        if self.cfg.poison_weight > 0 and rng.random() < self.cfg.poison_weight:
-            return NIGHTCAP
         near = self.tiles.region(y - 2, x - 2, 5, 5)
         if (near == TRUNK).any():
             return FRUIT if rng.random() < 0.85 else BERRY
@@ -358,6 +364,10 @@ class World:
             self._interact()
         frac = a.speed / c.max_speed
         a.energy -= c.stand_cost + (c.move_cost - c.stand_cost) * frac
+        if a.poison > 0.0:                                   # the nightcap taking its
+            drain = min(a.poison, c.poison_rate)             # time, tick by tick
+            a.poison -= drain
+            a.energy -= drain
         a.energy = min(a.energy, c.max_energy)
         a.age += 1
         self.tick += 1
@@ -449,8 +459,11 @@ class World:
             s.regrow_at = self.tick + self.cfg.regrow_ticks
             self._pending.append(s)
         gain = float(FOOD_ENERGY[s.kind])
-        a.energy = min(a.energy + gain, self.cfg.max_energy)
         a.ate[s.kind] += 1
+        if gain < 0:                                         # POISON does not hit at
+            a.poison += -gain                                # once: it drains, so the
+            return self._event(f"ate {FOOD_NAMES[s.kind]} — it burns")   # agent lives
+        a.energy = min(a.energy + gain, self.cfg.max_energy) # to connect cause to effect
         return self._event(f"ate {FOOD_NAMES[s.kind]} {gain:+.0f}")
 
     def _break(self, y: int, x: int, mat: int) -> str:

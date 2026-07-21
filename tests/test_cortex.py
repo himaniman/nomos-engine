@@ -158,6 +158,191 @@ def test_dead_agent_stops_moving():
     assert (w.agent.y, w.agent.x) == (y, x)
 
 
+# --- food and the one verb -------------------------------------------------------
+
+def _clear(w, side=64):
+    for y in range(side):
+        for x in range(side):
+            w.tiles.set(y, x, T.GROUND)
+
+
+def _press(w):
+    """Wait out the interact cooldown, then press E once."""
+    while w.tick < w._next_interact:
+        w.step()
+    w.step(interact=1.0)
+
+
+def test_food_is_planted_deterministically_and_off_grid():
+    a, b = World(seed=8), World(seed=8)
+    fa = a.nearby_food(a.agent.y, a.agent.x, 60)
+    fb = b.nearby_food(b.agent.y, b.agent.x, 60)
+    assert fa and len(fa) == len(fb)
+    assert [(s.y, s.x, s.kind) for s in fa] == [(s.y, s.x, s.kind) for s in fb]
+    assert any(abs(s.y - round(s.y)) > 1e-6 for s in fa), "food should be off-grid"
+
+
+def test_food_never_sits_inside_a_wall():
+    w = World(seed=12)
+    for s in w.nearby_food(w.agent.y, w.agent.x, 90):
+        assert not w.tiles.blocked_circle(s.y, s.x, w.cfg.radius)
+
+
+def test_walking_over_food_does_not_eat_it():
+    """Eating is a DECISION: only INTERACT consumes food."""
+    w = World(seed=3)
+    s = w.nearby_food(w.agent.y, w.agent.x, 80)[0]
+    w.agent.y, w.agent.x = s.y, s.x
+    e0 = w.agent.energy
+    for _ in range(10):
+        w.step(thrust=1.0)
+    assert s.ready, "food was eaten by walking over it"
+    assert w.agent.energy < e0, "moving should only have cost energy"
+
+
+def test_interact_eats_food_in_reach():
+    w = World(seed=3)
+    s = w.nearby_food(w.agent.y, w.agent.x, 80)[0]
+    w.agent.y, w.agent.x = s.y, s.x
+    e0 = w.agent.energy
+    w.step(interact=1.0)
+    assert not s.ready
+    assert w.agent.energy > e0
+    assert w.agent.ate[s.kind] == 1
+    assert "ate" in w.last_event
+
+
+def test_renewable_food_regrows_and_one_shot_does_not():
+    w = World(seed=3)
+    spot = w.nearby_food(w.agent.y, w.agent.x, 80)[0]
+    spot.renewable = True
+    w.agent.y, w.agent.x = spot.y, spot.x
+    w.step(interact=1.0)
+    assert not spot.ready
+    for _ in range(w.cfg.regrow_ticks + 2):
+        w.step()
+    assert spot.ready, "a renewable spot must come back — this is what makes memory pay"
+
+    w2 = World(seed=3)
+    s2 = w2.nearby_food(w2.agent.y, w2.agent.x, 80)[0]
+    s2.renewable = False
+    w2.agent.y, w2.agent.x = s2.y, s2.x
+    w2.step(interact=1.0)
+    for _ in range(w2.cfg.regrow_ticks + 2):
+        w2.step()
+    assert not s2.ready
+
+
+def test_interact_is_rate_limited():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.RUBBLE)
+    for _ in range(3):                                # three ticks, one hit allowed
+        w.step(interact=1.0)
+    assert w.damage.get((20, 21), 0) == 1
+
+
+def test_breaking_takes_several_hits_then_clears_the_tile():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.RUBBLE)
+    need = int(T.HP[T.RUBBLE])
+    for hit in range(1, need + 1):
+        _press(w)
+        if hit < need:
+            assert w.tiles.material(20, 21) == T.RUBBLE, "cleared too early"
+            assert f"{hit}/{need}" in w.last_event
+    assert w.tiles.material(20, 21) == T.GROUND
+    assert "broke" in w.last_event
+
+
+def test_stone_is_not_breakable():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.STONE)
+    for _ in range(200):
+        w.step(interact=1.0)
+    assert w.tiles.material(20, 21) == T.STONE
+
+
+def test_door_opens_and_closes_and_never_traps_the_body():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.DOOR)
+    assert w.tiles.blocked_circle(20.0, 21.0, w.cfg.radius)
+    _press(w)
+    assert w.tiles.material(20, 21) == T.DOOR_OPEN
+    _press(w)
+    assert w.tiles.material(20, 21) == T.DOOR                     # closes again
+    _press(w)
+    assert w.tiles.material(20, 21) == T.DOOR_OPEN                # and reopens
+    # ...but it must never close onto our own body
+    # close enough that the body overlaps cell 21, near enough that it still FACES it
+    w.agent.y, w.agent.x = 20.0, 20.3
+    _press(w)
+    assert w.tiles.material(20, 21) == T.DOOR_OPEN
+    assert "doorway" in w.last_event
+
+
+def test_pushable_block_moves_one_cell_and_is_stopped_by_a_wall():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.PUSHABLE)
+    w.step(interact=1.0)
+    assert w.tiles.material(20, 21) == T.GROUND
+    assert w.tiles.material(20, 22) == T.PUSHABLE
+    w.tiles.set(20, 23, T.STONE)
+    w.agent.x = 21.0
+    for _ in range(w.cfg.interact_every + 1):
+        w.step()
+    w.step(interact=1.0)
+    assert w.tiles.material(20, 22) == T.PUSHABLE, "should not push into stone"
+    assert "budge" in w.last_event
+
+
+def test_afforded_matches_what_interact_does():
+    """The HUD prompt and the actual effect must never disagree."""
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    assert w.afforded() == ""
+    w.tiles.set(20, 21, T.DOOR)
+    assert w.afforded() == "open door"
+    w.tiles.set(20, 21, T.PUSHABLE)
+    assert w.afforded() == "push block"
+    w.tiles.set(20, 21, T.RUBBLE)
+    assert w.afforded().startswith("break")
+
+
+def test_food_beats_the_tile_in_front():
+    """Priority order: eat what is in reach BEFORE acting on the tile."""
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.DOOR)
+    w.food[(0, 0)] = [__import__("cortex.world", fromlist=["FoodSpot"])
+                      .FoodSpot(y=20.2, x=20.2, kind=0)]
+    assert w.afforded() == "eat berry"
+    w.step(interact=1.0)
+    assert w.tiles.material(20, 21) == T.DOOR                     # door untouched
+    assert "ate" in w.last_event
+
+
+def test_interaction_costs_energy_even_when_it_achieves_nothing():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x = 20.0, 20.0
+    e0 = w.agent.energy
+    w.step(interact=1.0)
+    assert w.agent.energy < e0 - w.cfg.stand_cost
+    assert w.last_event == "nothing to do here"
+
+
 # --- render ----------------------------------------------------------------------
 
 def test_headless_render():

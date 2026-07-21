@@ -1250,3 +1250,41 @@ standing and standing is not free, death is by energy and not by age.
 Next chunk: senses (DDA vision with hue/sat/brightness over 64 rays, odour channels,
 touch) and the radar sensor panel — which doubles as a completeness test, because if a
 human cannot play the world from the sensor panel alone, the brain has no chance.
+
+**Same day, second chunk — food and the one verb.** The user played stage 1, said the
+generator and the map are fine, and asked for the thing that was obviously missing:
+food you can actually eat, plus doors and breaking, all on `E`. Built, and one design
+point came out of it that is better than what was planned:
+
+**Eating is a DECISION, not a collision.** Food is consumed by INTERACT, never by
+walking over it (aqua ate on contact). The consequence matters for the whole poison
+arc: an agent can walk straight across a nightcap and simply decline to eat it, so
+"do not eat the purple one" is a perception problem instead of "never step there" —
+a much cleaner thing to learn, and it keeps the motor and the appetite separate.
+
+The rest as designed: ONE contextual verb, resolved in priority order — eat what is
+in reach, else open/close the door in front, else chip the breakable, else shove the
+pushable. So the brain will only ever decide WHETHER to act, never which of five
+verbs. Breaking takes several hits (rubble 3, trunk 5) on a 6-tick cooldown, so a
+shortcut costs real energy and time; a door refuses to close onto the agent's own
+body; interacting costs energy even when it achieves nothing.
+
+Food is float entities planted per chunk from a chunk-seeded rng (deterministic,
+lazy, infinite-capable), with the KIND read off the surroundings: berries near
+foliage, fruit by trunks, mushrooms in enclosed cave cells (rare — 16 of 625 spots
+in a 200-cell radius, and worth ~3 berries). 70% of spots are RENEWABLE on a
+1200-tick timer, the rest one-shot: the first is the only reason remembering a place
+can ever pay, the second rewards exploration. A food kind is a colour + an odour
+mixture + an energy value — never an "edible" flag, so the senses can report it
+honestly next chunk.
+
+One real bug the tests caught: food was validated at its CELL but planted at a
+jittered off-grid offset, so morsels could end up inside a wall — unreachable food is
+worse than no food. Now the jittered position is what gets validated.
+
+HUD grew the parts a player needs: an energy BAR (energy is life, so it gets the most
+legible widget), a live "E: eat berry / open door / break rubble (1/3)" prompt that is
+computed by the same context rule the verb uses (a test asserts prompt and effect can
+never disagree), a last-event line, the diet so far, the eat radius drawn around the
+body and an outline on the cell E would act on. 13 more tests, 31 for cortex, suite
+224 green.

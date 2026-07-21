@@ -10,8 +10,9 @@ The keyboard drives `World.step(thrust, turn, interact)` — the very call the b
 will use. Layout is already the agreed one: the world on the left, a panel on the
 right that will grow the sensor radar and then the brain inspector.
 
-Controls: W/Up thrust · A/D or Left/Right turn · E interact (inert this stage) ·
-SPACE pause · P screenshot · H help · ESC/Q quit.
+Controls: W/Up thrust · A/D or Left/Right turn · E interact (ONE verb — eats the
+food in reach, else opens/closes the door, chips the breakable or shoves the block
+in front) · SPACE pause · P screenshot · H help · ESC/Q quit.
 
 `draw()` returns a Surface so the view renders headless (SDL dummy) in tests.
 """
@@ -26,17 +27,19 @@ import time
 import numpy as np
 import pygame
 
-from cortex.tiles import RGB
-from cortex.world import Config, World
+from cortex.tiles import HP, NAMES, RGB
+from cortex.world import FOOD_NAMES, FOOD_RGB, Config, World
 
-PANEL_W = 300
+PANEL_W = 320
 BG = (12, 12, 16)
 FG = (210, 210, 220)
 DIM = (120, 120, 132)
+ACCENT = (150, 200, 255)
 
-HELP = ["W / Up      thrust", "A D / Left Right   turn", "E           interact (inert)",
-        "SPACE       pause", "P           screenshot", "H           this help",
-        "ESC / Q     quit"]
+HELP = ["W / Up          thrust", "A D / Left Right    turn",
+        "E               interact:", "                eat / open / break / push",
+        "SPACE           pause", "P               screenshot", "H               this help",
+        "ESC / Q         quit"]
 
 
 class App:
@@ -95,8 +98,30 @@ class App:
         # world Y maps to screen (Y + 0.5 - y0)*cs + blit_y; solving for the agent
         # landing on the view centre gives blit = -(1 + frac)*cs on each axis
         surf.blit(tile_surf, (-cs - offx, -cs - offy))
-        # the agent is always at the exact centre of the world view
+        # FOOD: float entities, so they are drawn on top at their true positions.
+        # World Y maps linearly to screen with the agent pinned at the view centre,
+        # which is exactly the mapping the tile blit above produces.
         cy = cx = v * cs // 2
+        reach = half + 2
+        for s in self.world.nearby_food(a.y, a.x, reach * 1.5):
+            sy = cy + (s.y - a.y) * cs
+            sx = cx + (s.x - a.x) * cs
+            if not world_rect.collidepoint(sx, sy):
+                continue
+            col = tuple(int(q) for q in FOOD_RGB[s.kind])
+            pygame.draw.circle(surf, (14, 14, 18), (int(sx), int(sy)), max(3, cs // 3) + 1)
+            pygame.draw.circle(surf, col, (int(sx), int(sy)), max(2, cs // 3))
+        # the eat radius, so it is obvious when E would take something
+        if self.world.nearby_food(a.y, a.x, self.world.cfg.eat_reach):
+            pygame.draw.circle(surf, (90, 230, 130), (cx, cy),
+                               int(self.world.cfg.eat_reach * cs), 1)
+        # the cell E would act on, when it is not food
+        fy, fx = self.world.facing_cell()
+        ty = cy + (fy - a.y) * cs
+        tx = cx + (fx - a.x) * cs
+        pygame.draw.rect(surf, (90, 90, 110),
+                         pygame.Rect(int(tx - cs / 2), int(ty - cs / 2), cs, cs), 1)
+        # the agent is always at the exact centre of the world view
         rad = max(4, int(self.world.cfg.radius * cs))
         hx = cx + math.cos(a.heading) * cs * 2.0
         hy = cy + math.sin(a.heading) * cs * 2.0
@@ -111,27 +136,50 @@ class App:
         a, w = self.world.agent, self.world
         x = self.view * self.cell + 14
         y = 12
+        pw = PANEL_W - 28
 
-        def line(text, colour=FG, font=None):
+        def line(text, colour=FG, font=None, dy=20):
             nonlocal y
             surf.blit((font or self.font).render(text, True, colour), (x, y))
-            y += 20
+            y += dy
 
-        line("cortex — stage 1", (150, 200, 255), self.font_big)
+        line("cortex — stage 2", ACCENT, self.font_big)
+        y += 4
+
+        # --- energy, as a bar: it is LIFE, so it gets the most legible widget
+        frac = max(0.0, min(1.0, a.energy / w.cfg.max_energy))
+        col = (120, 230, 140) if a.energy > 40 else \
+              (240, 200, 90) if a.energy > 15 else (240, 100, 96)
+        pygame.draw.rect(surf, (34, 34, 42), pygame.Rect(x, y, pw, 14))
+        pygame.draw.rect(surf, col, pygame.Rect(x, y, int(pw * frac), 14))
+        pygame.draw.rect(surf, (70, 70, 84), pygame.Rect(x, y, pw, 14), 1)
+        y += 20
+        line(f"energy {a.energy:6.1f} / {w.cfg.max_energy:.0f}", col)
         y += 6
-        line(f"tick   {w.tick}")
+
+        # --- what E would do right now
+        aff = w.afforded()
+        line("E: " + (aff if aff else "—"),
+             (150, 240, 170) if aff else DIM, self.font_big)
+        line(f"last: {w.last_event}" if w.last_event else "", DIM)
+        y += 6
+
+        # --- the diet so far
+        eaten = "  ".join(f"{FOOD_NAMES[k][:5]} {n}" for k, n in enumerate(a.ate) if n)
+        line(f"ate    {eaten if eaten else '—'}")
+        line(f"tick   {w.tick}      age {a.age}")
         line(f"pos    {a.y:7.2f} {a.x:7.2f}")
-        line(f"head   {math.degrees(a.heading):6.1f} deg")
-        line(f"speed  {a.speed:.3f}")
-        line(f"energy {a.energy:7.2f}", (120, 230, 140) if a.energy > 25 else (240, 120, 110))
-        line(f"age    {a.age}")
-        line(f"seed   {w.seed}   size {w.cfg.size}")
-        line(f"fps    {self.fps:.0f}")
+        line(f"head   {math.degrees(a.heading):6.1f} deg   spd {a.speed:.2f}")
         fy, fx = w.facing_cell()
-        line(f"facing {fy} {fx}", DIM)
+        mat = w.tiles.material(fy, fx)
+        hits = w.damage.get((fy, fx), 0)
+        dmg = f"  {hits}/{int(HP[mat])}" if hits else ""
+        line(f"faces  {NAMES[mat]}{dmg}", DIM)
+        line(f"seed   {w.seed}   size {w.cfg.size}", DIM)
+        line(f"fps    {self.fps:.0f}", DIM)
         if not a.alive:
             y += 6
-            line("DEAD (energy)", (250, 90, 90), self.font_big)
+            line("DEAD — starved", (250, 90, 90), self.font_big)
         if self.paused:
             y += 6
             line("PAUSED", (250, 210, 90))
@@ -140,7 +188,7 @@ class App:
         if self.show_help:
             y += 4
             for h in HELP:
-                line(h, DIM)
+                line(h, DIM, dy=18)
 
 
 def main(argv=None) -> None:

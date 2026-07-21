@@ -271,16 +271,26 @@ the property-based sensorium, the radar sensor panel, keyboard play.
 
 ## Staged plan for the world
 
-1. **Tile world + seed generation + top-down render.** Nothing moves yet.
-2. **Float agent + collision + keyboard play.** Walk around, bump into things.
+1. ~~**Tile world + seed generation + top-down render.**~~ DONE 2026-07-21.
+2. ~~**Float agent + collision + keyboard play.**~~ DONE 2026-07-21. Caves arrived
+   early, with the generator.
 3. **Senses**: DDA vision with colour/material, odour channels, touch. **The
-   sensor panel**, playable on its own.
-4. **Economy v1**: energy, movement/standing costs, two food types, renewable and
-   not. Play it; check a human can survive and that it is not trivial.
-5. **Interaction**: breakable tiles, doors, pushing.
-6. **Caves + geodesic scent + cache invalidation.**
-7. **Poison.**
+   sensor panel**, playable on its own. ← NEXT
+4. **Economy v1**: energy, movement/standing costs, food types renewable and not.
+   PARTLY DONE 2026-07-22 (food entities, kinds, regrowth, costs); the numbers are
+   still untuned and need a human baseline.
+5. ~~**Interaction**: breakable tiles, doors, pushing.~~ DONE 2026-07-22, brought
+   forward because a world you cannot eat in is not playable.
+6. **Geodesic scent + cache invalidation** (caves already exist).
+7. **Poison.** The kind (`nightcap`) and its mechanics are already defined —
+   negative energy, berry-coloured odour, distinguishable only by hue — but
+   `poison_weight` is 0, so none are planted yet.
 8. Only then: plug in the brain (`cortex-design.md` stage 0 onward).
+
+**Eating is a DECISION, not a collision** (settled while building step 5): food is
+taken by INTERACT and never by walking over it. That is what turns poison into a
+perception problem — the agent may cross a nightcap and decline to eat it — instead
+of the much cruder "never step there".
 
 Deferred by agreement: animals, predators, seasons, weather.
 

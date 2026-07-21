@@ -1,18 +1,23 @@
 """Play the cortex world yourself — top-down, agent-centred, keyboard.
 
-    .\\.venv\\Scripts\\python.exe -m cortex.app --seed 1
+    .\\.venv\\Scripts\\python.exe -m cortex.app --seed 2
 
 This exists BEFORE the brain on purpose (docs/cortex-world.md): a human at the
 keyboard is the baseline that gives a brain's score a meaning, and the fastest
 detector of a world that is boring or trivially solvable.
 
 The keyboard drives `World.step(thrust, turn, interact)` — the very call the brain
-will use. Layout is already the agreed one: the world on the left, a panel on the
-right that will grow the sensor radar and then the brain inspector.
+will use. Layout is the agreed one: the world on the left, the SENSES on the right
+(and later the brain).
+
+The sense panel is drawn from the SENSOR VECTOR ALONE — never from the world. That is
+deliberate: press TAB and the map goes dark, leaving only what the agent itself
+receives. If a human cannot play like that, the brain has no chance, and we would
+rather learn it now than after wiring four thousand cells to a blind eye.
 
 Controls: W/Up thrust · A/D or Left/Right turn · E interact (ONE verb — eats the
 food in reach, else opens/closes the door, chips the breakable or shoves the block
-in front) · SPACE pause · P screenshot · H help · ESC/Q quit.
+in front) · TAB blind mode · SPACE pause · P screenshot · H help · ESC/Q quit.
 
 `draw()` returns a Surface so the view renders headless (SDL dummy) in tests.
 """
@@ -20,6 +25,7 @@ in front) · SPACE pause · P screenshot · H help · ESC/Q quit.
 from __future__ import annotations
 
 import argparse
+import colorsys
 import math
 import os
 import time
@@ -27,33 +33,54 @@ import time
 import numpy as np
 import pygame
 
+from cortex.senses import (INTERO, N_TOUCH, ODOUR_CH, RAY_CH, TOUCH_CH, ScentField,
+                           layout, sense)
 from cortex.tiles import HP, NAMES, RGB
-from cortex.world import FOOD_NAMES, FOOD_RGB, Config, World
+from cortex.world import FOOD_NAMES, FOOD_RGB, N_ODOUR, Config, World
 
-PANEL_W = 320
+PANEL_W = 360
 BG = (12, 12, 16)
 FG = (210, 210, 220)
 DIM = (120, 120, 132)
 ACCENT = (150, 200, 255)
+GRID = (44, 46, 56)
+# four neutral, distinguishable colours for the odorants. NOT the food colours: the
+# agent is not told which smell belongs to which morsel, and neither is the player.
+ODOUR_COL = ((235, 110, 110), (235, 200, 110), (120, 220, 190), (170, 150, 240))
+INTERO_NAMES = ("energy", "speed", "turn", "sin h", "cos h", "age", "poison", "bias")
+TOUCH_NAMES = ("front", "right", "back", "left")
 
 HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "E               interact:", "                eat / open / break / push",
+        "TAB             blind mode (senses only)",
         "SPACE           pause", "P               screenshot", "H               this help",
         "ESC / Q         quit"]
 
 
+def _hsv_rgb(hue_cos: float, hue_sin: float, sat: float, val: float):
+    """Rebuild a colour from the two circular hue channels the eye actually reports."""
+    hue = (math.atan2(hue_sin, hue_cos) / (2 * math.pi)) % 1.0
+    r, g, b = colorsys.hsv_to_rgb(hue, max(0.0, min(1.0, sat)), max(0.0, min(1.0, val)))
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
 class App:
-    def __init__(self, seed: int = 1, view: int = 65, cell: int = 12,
+    def __init__(self, seed: int = 2, view: int = 65, cell: int = 12,
                  size: int | None = 512):
         self.world = World(seed=seed, cfg=Config(size=size))
+        self.field = ScentField(self.world.cfg.smell_radius)
+        self.layout = layout(self.world.cfg.n_rays)
+        self.vec = sense(self.world, self.field)
         self.view = int(view) | 1                 # odd, so the agent sits dead centre
         self.cell = int(cell)
         self.paused = False
+        self.blind = False
         self.show_help = False
         self.fps = 0.0
         self.w = self.view * self.cell + PANEL_W
         self.h = self.view * self.cell
         self.font = pygame.font.SysFont("consolas", 14)
+        self.small = pygame.font.SysFont("consolas", 11)
         self.font_big = pygame.font.SysFont("consolas", 17, bold=True)
 
     # --- input --------------------------------------------------------------------
@@ -68,13 +95,29 @@ class App:
         interact = 1.0 if keys[pygame.K_e] else 0.0
         return thrust, turn, interact
 
+    def step(self, keys) -> None:
+        self.world.step(*self.action(keys))
+        self.vec = sense(self.world, self.field)
+
     # --- render -------------------------------------------------------------------
     def draw(self) -> pygame.Surface:
         surf = pygame.Surface((self.w, self.h))
         surf.fill(BG)
-        self._draw_world(surf)
+        if self.blind:
+            self._draw_blind(surf)
+        else:
+            self._draw_world(surf)
         self._draw_panel(surf)
         return surf
+
+    def _draw_blind(self, surf: pygame.Surface) -> None:
+        rect = pygame.Rect(0, 0, self.view * self.cell, self.view * self.cell)
+        pygame.draw.rect(surf, (7, 7, 10), rect)
+        pygame.draw.rect(surf, (40, 40, 48), rect, 1)
+        txt = self.font_big.render("BLIND — playing by the senses alone", True, (70, 70, 86))
+        surf.blit(txt, (rect.centerx - txt.get_width() // 2, rect.centery - 10))
+        sub = self.font.render("TAB to look again", True, (52, 52, 64))
+        surf.blit(sub, (rect.centerx - sub.get_width() // 2, rect.centery + 16))
 
     def _draw_world(self, surf: pygame.Surface) -> None:
         """The camera window, drawn as a small pixel image scaled up — one pixel per
@@ -82,14 +125,12 @@ class App:
         agent smoothly instead of snapping cell by cell."""
         a, v, cs = self.world.agent, self.view, self.cell
         half = v // 2
-        # top-left cell of a window one cell larger than the view, so the fractional
-        # scroll offset always has a spare row/column to reveal
         y0, x0 = int(math.floor(a.y)) - half - 1, int(math.floor(a.x)) - half - 1
         mats = self.world.tiles.region(y0, x0, v + 2, v + 2)
         img = RGB[mats].astype(np.float64)                     # (h, w, 3)
         # DAMAGE is visible: a chipped tile darkens toward its break point. The agent's
-        # eye will read the same `damage_frac`, so player and brain see one world.
-        for (dy, dx), _ in self.world.damage.items():
+        # eye reads the same `damage_frac`, so player and brain see one world.
+        for (dy, dx) in self.world.damage:
             i, j = dy - y0, dx - x0
             if 0 <= i < img.shape[0] and 0 <= j < img.shape[1]:
                 img[i, j] *= 1.0 - 0.55 * self.world.damage_frac(dy, dx)
@@ -97,7 +138,6 @@ class App:
         # pygame surfaces are (x, y); numpy gives (y, x) — swap before make_surface
         tile_surf = pygame.surfarray.make_surface(np.transpose(img, (1, 0, 2)))
         tile_surf = pygame.transform.scale(tile_surf, ((v + 2) * cs, (v + 2) * cs))
-        # the agent's fractional position inside its cell decides the sub-cell scroll
         offy = (a.y - math.floor(a.y)) * cs
         offx = (a.x - math.floor(a.x)) * cs
         world_rect = pygame.Rect(0, 0, v * cs, v * cs)
@@ -105,30 +145,21 @@ class App:
         # world Y maps to screen (Y + 0.5 - y0)*cs + blit_y; solving for the agent
         # landing on the view centre gives blit = -(1 + frac)*cs on each axis
         surf.blit(tile_surf, (-cs - offx, -cs - offy))
-        # FOOD: float entities, so they are drawn on top at their true positions.
-        # World Y maps linearly to screen with the agent pinned at the view centre,
-        # which is exactly the mapping the tile blit above produces.
         cy = cx = v * cs // 2
-        reach = half + 2
-        for s in self.world.nearby_food(a.y, a.x, reach * 1.5):
-            sy = cy + (s.y - a.y) * cs
-            sx = cx + (s.x - a.x) * cs
+        for s in self.world.nearby_food(a.y, a.x, half * 1.5):
+            sy, sx = cy + (s.y - a.y) * cs, cx + (s.x - a.x) * cs
             if not world_rect.collidepoint(sx, sy):
                 continue
             col = tuple(int(q) for q in FOOD_RGB[s.kind])
             pygame.draw.circle(surf, (14, 14, 18), (int(sx), int(sy)), max(3, cs // 3) + 1)
             pygame.draw.circle(surf, col, (int(sx), int(sy)), max(2, cs // 3))
-        # the eat radius, so it is obvious when E would take something
         if self.world.nearby_food(a.y, a.x, self.world.cfg.eat_reach):
             pygame.draw.circle(surf, (90, 230, 130), (cx, cy),
                                int(self.world.cfg.eat_reach * cs), 1)
-        # the cell E would act on, when it is not food
         fy, fx = self.world.facing_cell()
-        ty = cy + (fy - a.y) * cs
-        tx = cx + (fx - a.x) * cs
+        ty, tx = cy + (fy - a.y) * cs, cx + (fx - a.x) * cs
         pygame.draw.rect(surf, (90, 90, 110),
                          pygame.Rect(int(tx - cs / 2), int(ty - cs / 2), cs, cs), 1)
-        # the agent is always at the exact centre of the world view
         rad = max(4, int(self.world.cfg.radius * cs))
         hx = cx + math.cos(a.heading) * cs * 2.0
         hy = cy + math.sin(a.heading) * cs * 2.0
@@ -139,77 +170,174 @@ class App:
         surf.set_clip(None)
         pygame.draw.rect(surf, (40, 40, 48), world_rect, 1)
 
+    # --- the sense panel ------------------------------------------------------------
     def _draw_panel(self, surf: pygame.Surface) -> None:
         a, w = self.world.agent, self.world
         x = self.view * self.cell + 14
-        y = 12
         pw = PANEL_W - 28
+        y = 10
 
-        def line(text, colour=FG, font=None, dy=20):
+        def line(text, colour=FG, font=None, dy=19):
             nonlocal y
             surf.blit((font or self.font).render(text, True, colour), (x, y))
             y += dy
 
-        line("cortex — stage 2", ACCENT, self.font_big)
-        y += 4
-
-        # --- energy, as a bar: it is LIFE, so it gets the most legible widget
+        # --- energy: it is LIFE, so it gets the most legible widget
         frac = max(0.0, min(1.0, a.energy / w.cfg.max_energy))
         col = (120, 230, 140) if a.energy > 40 else \
               (240, 200, 90) if a.energy > 15 else (240, 100, 96)
-        pygame.draw.rect(surf, (34, 34, 42), pygame.Rect(x, y, pw, 14))
-        pygame.draw.rect(surf, col, pygame.Rect(x, y, int(pw * frac), 14))
-        pygame.draw.rect(surf, (70, 70, 84), pygame.Rect(x, y, pw, 14), 1)
-        y += 20
-        line(f"energy {a.energy:6.1f} / {w.cfg.max_energy:.0f}", col)
-        y += 6
+        pygame.draw.rect(surf, (34, 34, 42), pygame.Rect(x, y, pw, 13))
+        pygame.draw.rect(surf, col, pygame.Rect(x, y, int(pw * frac), 13))
+        pygame.draw.rect(surf, (70, 70, 84), pygame.Rect(x, y, pw, 13), 1)
+        if a.poison > 0:
+            pygame.draw.rect(surf, (190, 90, 210), pygame.Rect(x, y + 13, int(
+                pw * min(1.0, a.poison / 30.0)), 3))
+        y += 18
+        eaten = " ".join(f"{FOOD_NAMES[k][:3]}{n}" for k, n in enumerate(a.ate) if n)
+        line(f"E:{a.energy:6.1f}  t{w.tick}  {eaten}", col)
 
-        # --- what E would do right now
         aff = w.afforded()
         line("E: " + (aff if aff else "—"),
              (150, 240, 170) if aff else DIM, self.font_big)
-        line(f"last: {w.last_event}" if w.last_event else "", DIM)
-        y += 6
-
-        # --- the diet so far
-        eaten = "  ".join(f"{FOOD_NAMES[k][:5]} {n}" for k, n in enumerate(a.ate) if n)
-        line(f"ate    {eaten if eaten else '—'}")
-        line(f"tick   {w.tick}      age {a.age}")
-        line(f"pos    {a.y:7.2f} {a.x:7.2f}")
-        line(f"head   {math.degrees(a.heading):6.1f} deg   spd {a.speed:.2f}")
-        fy, fx = w.facing_cell()
-        mat = w.tiles.material(fy, fx)
-        hits = w.damage.get((fy, fx), 0)
-        dmg = f"  {hits}/{int(HP[mat])}" if hits else ""
-        line(f"faces  {NAMES[mat]}{dmg}", DIM)
-        line(f"seed   {w.seed}   size {w.cfg.size}", DIM)
-        line(f"fps    {self.fps:.0f}", DIM)
+        line(w.last_event or "", DIM)
         if not a.alive:
-            y += 6
             line("DEAD — starved", (250, 90, 90), self.font_big)
-        if self.paused:
-            y += 6
+        elif self.paused:
             line("PAUSED", (250, 210, 90))
-        y += 10
-        line("H — help", DIM)
-        if self.show_help:
+        else:
             y += 4
+
+        y = self._draw_radar(surf, x, y, pw)
+        y = self._draw_odour(surf, x, y, pw)
+        y = self._draw_touch_intero(surf, x, y, pw)
+
+        line(f"fps {self.fps:.0f}   seed {w.seed}   {NAMES[w.tiles.material(*w.facing_cell())]}",
+             DIM, self.small, dy=15)
+        line("TAB blind   H help", DIM, self.small, dy=15)
+        if self.show_help:
             for h in HELP:
-                line(h, DIM, dy=18)
+                line(h, DIM, self.small, dy=14)
+
+    def _draw_radar(self, surf, x, y, pw) -> int:
+        """VISION, drawn from the sensor vector alone: a fan of contacts, angle = ray,
+        radius = how far it hit, colour = what it looked like. An old radar scope with
+        coloured returns — which is exactly what a ray sensor is."""
+        n = self.world.cfg.n_rays
+        half = self.world.cfg.fov / 2
+        rays = self.vec[:n * RAY_CH].reshape(n, RAY_CH)
+        # the fan only covers the FIELD OF VIEW, so it is a wedge, not a disc: its
+        # lateral reach is R*sin(half) and its vertical reach is R
+        R = int(min((pw / 2) / max(0.2, math.sin(half)), (self.h - y) * 0.40))
+        if R < 20:
+            return y
+        ccx, ccy = x + pw // 2, y + R
+        arc0, arc1 = math.pi / 2 - half, math.pi / 2 + half   # pygame arcs: 0 = east, ccw
+        reach = self.world.cfg.ray_reach
+        # RADIAL SCALE IS sqrt(d/reach), not d/reach. A true-scale scope crushes the
+        # first few cells into the apex, and the first few cells are where everything
+        # that matters happens — food is taken at 1.1, walls are hit at 0.5.
+        for cells in (1, 4, 10, 20):                          # rings labelled in CELLS
+            rr = int(R * math.sqrt(min(1.0, cells / reach)))
+            pygame.draw.arc(surf, GRID, pygame.Rect(ccx - rr, ccy - rr, 2 * rr, 2 * rr),
+                            arc0, arc1, 1)
+            surf.blit(self.small.render(str(cells), True, (60, 62, 74)),
+                      (ccx + 2, ccy - rr - 1))
+        for edge in (-half, half):
+            pygame.draw.line(surf, GRID, (ccx, ccy),
+                             (ccx + math.sin(edge) * R, ccy - math.cos(edge) * R))
+        step = 2 * half / n
+        for i in range(n):
+            rel = -half + (i + 0.5) * step
+            near = float(rays[i, 4])
+            sx, sy = math.sin(rel), -math.cos(rel)
+            if near <= 0.001:                                 # nothing out there
+                pygame.draw.line(surf, (28, 30, 38),
+                                 (ccx + sx * (R - 4), ccy + sy * (R - 4)),
+                                 (ccx + sx * R, ccy + sy * R))
+                continue
+            dist_r = math.sqrt(max(0.0, 1.0 - near)) * R      # nearness -> radius
+            px, py = ccx + sx * dist_r, ccy + sy * dist_r
+            colour = _hsv_rgb(rays[i, 0], rays[i, 1], rays[i, 2], rays[i, 3])
+            pygame.draw.line(surf, tuple(int(q * 0.30) for q in colour),
+                             (ccx, ccy), (px, py))
+            size = 2 if rays[i, 5] > 0.5 else 3               # solid = a hard pip,
+            pygame.draw.circle(surf, colour, (int(px), int(py)), size)    # soft = a blob
+        pygame.draw.circle(surf, (240, 240, 250), (ccx, ccy), 3)
+        surf.blit(self.small.render("sight   (rings = cells, sqrt scale)", True, DIM),
+                  (x, ccy - 10))
+        return ccy + 6
+
+    def _draw_odour(self, surf, x, y, pw) -> int:
+        """SMELL: one row per odorant — how strong, and which way the walkable path
+        goes (the needle, not the sightline)."""
+        lo, _ = self.layout["slices"]["odour"]
+        surf.blit(self.small.render("smell   (bar = how strong, dial = which way to walk)",
+                                    True, DIM), (x, y))
+        y += 14
+        dial = 11
+        bw = pw - 2 * dial - 10
+        for j in range(N_ODOUR):
+            amp, fwd, lat = self.vec[lo + j * ODOUR_CH: lo + j * ODOUR_CH + 3]
+            pygame.draw.rect(surf, (30, 30, 38), pygame.Rect(x, y + 2, bw, 10))
+            pygame.draw.rect(surf, ODOUR_COL[j],
+                             pygame.Rect(x, y + 2, int(bw * min(1.0, float(amp))), 10))
+            cxx, cyy = x + bw + 8 + dial, y + 7
+            pygame.draw.circle(surf, GRID, (cxx, cyy), dial, 1)
+            if amp > 0.001:                                  # forward is UP on the dial
+                pygame.draw.line(surf, ODOUR_COL[j], (cxx, cyy),
+                                 (cxx + float(lat) * dial, cyy - float(fwd) * dial), 2)
+            y += 2 * dial + 2
+        return y + 4
+
+    def _draw_touch_intero(self, surf, x, y, pw) -> int:
+        tlo, _ = self.layout["slices"]["touch"]
+        ilo, _ = self.layout["slices"]["intero"]
+        surf.blit(self.small.render("touch", True, DIM), (x, y))
+        surf.blit(self.small.render("interoception", True, DIM), (x + 84, y))
+        y += 13
+        # touch: a little compass of what is pressed against the body, front up
+        cxx, cyy, s = x + 30, y + 30, 20
+        for k in range(N_TOUCH):
+            press = float(self.vec[tlo + k * TOUCH_CH])
+            hue = float(self.vec[tlo + k * TOUCH_CH + 1])
+            ang = -math.pi / 2 + k * math.pi / 2
+            col = _hsv_rgb(math.cos(hue * 2 * math.pi), math.sin(hue * 2 * math.pi),
+                           0.45, 0.35 + 0.65 * press) if press > 0 else (32, 32, 40)
+            px, py = cxx + math.cos(ang) * s, cyy + math.sin(ang) * s
+            pygame.draw.circle(surf, col, (int(px), int(py)), 9)
+            surf.blit(self.small.render(TOUCH_NAMES[k][0].upper(), True,
+                                        (16, 16, 20) if press > 0 else (70, 70, 84)),
+                      (int(px) - 3, int(py) - 7))
+        pygame.draw.circle(surf, (200, 200, 210), (cxx, cyy), 4)
+        # interoception: eight small labelled bars, zero in the middle
+        bx, lw, row = x + 84, 40, 13
+        bw = pw - 84 - lw
+        for k in range(INTERO):
+            v = float(self.vec[ilo + k])
+            by = y + k * row
+            surf.blit(self.small.render(INTERO_NAMES[k], True, DIM), (bx, by))
+            pygame.draw.rect(surf, (30, 30, 38), pygame.Rect(bx + lw, by + 1, bw, 9))
+            mid = bx + lw + bw // 2
+            width = int(abs(v) * bw / 2)
+            pygame.draw.rect(surf, (110, 170, 230),
+                             pygame.Rect(mid if v >= 0 else mid - width, by + 1, width, 9))
+            pygame.draw.line(surf, GRID, (mid, by + 1), (mid, by + 10))
+        return y + max(INTERO * row, 62) + 6
 
 
 def main(argv=None) -> None:
-    p = argparse.ArgumentParser(description="Play the cortex world (stage 1).")
-    p.add_argument("--seed", type=int, default=1)
+    p = argparse.ArgumentParser(description="Play the cortex world.")
+    p.add_argument("--seed", type=int, default=2)
     p.add_argument("--view", type=int, default=65, help="camera window in cells")
     p.add_argument("--cell", type=int, default=12, help="pixels per cell")
     p.add_argument("--size", type=int, default=512, help="world side; 0 = unbounded")
+    p.add_argument("--blind", action="store_true", help="start in senses-only mode")
     p.add_argument("--fps", type=int, default=60)
     args = p.parse_args(argv)
 
     pygame.init()
-    app = App(seed=args.seed, view=args.view, cell=args.cell,
-              size=(args.size or None))
+    app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None))
+    app.blind = args.blind
     screen = pygame.display.set_mode((app.w, app.h))
     pygame.display.set_caption(f"cortex — seed {args.seed}")
     clock = pygame.time.Clock()
@@ -224,6 +352,8 @@ def main(argv=None) -> None:
                     running = False
                 elif ev.key == pygame.K_SPACE:
                     app.paused = not app.paused
+                elif ev.key == pygame.K_TAB:
+                    app.blind = not app.blind
                 elif ev.key == pygame.K_h:
                     app.show_help = not app.show_help
                 elif ev.key == pygame.K_p:
@@ -232,7 +362,7 @@ def main(argv=None) -> None:
                     pygame.image.save(app.draw(), name)
                     print("saved", name)
         if not app.paused:
-            app.world.step(*app.action(pygame.key.get_pressed()))
+            app.step(pygame.key.get_pressed())
         screen.blit(app.draw(), (0, 0))
         pygame.display.flip()
         clock.tick(args.fps)

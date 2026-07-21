@@ -516,6 +516,55 @@ def test_keyboard_maps_to_the_action_tuple():
     pygame.quit()
 
 
+def _app(**kw):
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    pytest.importorskip("pygame")
+    import pygame
+    pygame.init()
+    from cortex.app import App
+    return pygame, App(seed=2, view=31, cell=10, **kw)
+
+
+def test_blind_mode_hides_the_world():
+    pygame, app = _app()
+    lit = pygame.surfarray.array3d(app.draw())[:app.view * app.cell]
+    app.blind = True
+    dark = pygame.surfarray.array3d(app.draw())[:app.view * app.cell]
+    assert dark.std() < lit.std() / 3, "blind mode still shows the map"
+    pygame.quit()
+
+
+def test_the_panel_cannot_cheat_it_draws_only_the_sensor_vector():
+    """The whole point of the blind mode: the panel is a view of what the AGENT gets.
+    Move the world without re-sensing and the panel must not notice; change the sensor
+    vector without touching the world and it must."""
+    pygame, app = _app()
+    app.blind = True
+    px = app.view * app.cell
+    before = pygame.surfarray.array3d(app.draw())[px:]
+
+    app.world.agent.y += 7.0                       # the world moved...
+    app.world.agent.x += 5.0
+    moved = pygame.surfarray.array3d(app.draw())[px:]
+    assert np.array_equal(before, moved), "the panel read the world behind the senses"
+
+    app.vec = app.vec * 0.0                        # ...now blind the senses instead
+    blanked = pygame.surfarray.array3d(app.draw())[px:]
+    assert not np.array_equal(before, blanked), "the panel ignored the sensor vector"
+    pygame.quit()
+
+
+def test_the_panel_stays_in_its_column():
+    pygame, app = _app()
+    app.blind = True
+    px = app.view * app.cell
+    a = pygame.surfarray.array3d(app.draw())[:px].copy()
+    app.vec = np.abs(app.vec) * 0 + 0.9            # a very loud sensor vector
+    b = pygame.surfarray.array3d(app.draw())[:px]
+    assert np.array_equal(a, b), "the sense panel painted outside its column"
+    pygame.quit()
+
+
 def test_facing_cell_follows_heading():
     w = World(seed=1)
     w.agent.y, w.agent.x, w.agent.heading = 50.0, 50.0, 0.0

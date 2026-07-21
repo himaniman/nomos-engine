@@ -180,6 +180,32 @@
       "justMyCode": true
     },
     {
+      // EVOLVE a lineage: one agent, one long life at a time, genome carried forward
+      "name": "cortex: LINEAGE (evolve a brain)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.lineage",
+      "args": ["--generations", "12", "--seeds", "0-1", "--ticks", "12000",
+               "--think-every", "3"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // watch the best evolved brain play
+      "name": "cortex: WATCH the best brain",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "57", "--cell", "12",
+               "--load-brain", "out/cortex/best_genome.json"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // the BASELINE the brain has to beat: a twenty-line reflex, senses only
       "name": "cortex: baseline reflex (8 seeds)",
       "type": "debugpy",

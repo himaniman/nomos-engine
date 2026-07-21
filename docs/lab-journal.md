@@ -1432,3 +1432,57 @@ brain is supposed to close, and it is now on the record before the brain exists.
 Sessions (human, baseline or brain) append one JSON line to `out/cortex/sessions.jsonl`
 with the same schema, so they are directly comparable; the app logs a life on death and
 on quit. Suite 266 green.
+
+## 2026-07-22 (later) — cortex: the brain is in, and it does not beat the reflex yet
+
+Stage 0 of `docs/cortex-design.md`, in three commits: the brain, the HUD column that
+lets you look at it, and the lineage that carries a genome forward.
+
+**The brain (`cortex/brain.py`).** Forked from `vivarium/nca.py` — the ideas were
+earned there — but one BIG brain for one agent. A bounded lattice with a heritable
+alive mask, cells carrying a TYPE that points at one of a few layer-stack RULES of
+evolvable depth and width, ORGANS whose modality says what they hear and whose COLUMN
+says which RAY they hear (retinotopy), effectors where the command is read, a hormone
+channel gating every rule, and reward-modulated Hebbian plasticity on the readout and
+on each rule's output layer. Signal must travel organ -> tissue -> effector, so the
+shape has a job. State persists between ticks: the medium is the memory.
+
+Two decisions worth recording. The lattice is 64 wide because retinotopy hands out ray
+slots by column and 64 rays cannot be resolved in a narrower sheet. And `P_in` is
+Xavier-scaled, because 412 inputs summed into 12 channels at N(0, 0.5) saturates tanh
+on the first tick — the same regression that broke NEAT in the vivarium when its
+sensor vector widened, and it would have been invisible here as "the brain twitches".
+
+Two clocks, deliberately separate: `subticks` is how far a signal travels inside one
+thought, `think_every` is how many world ticks pass per thought with the command held
+in between. Seed brain 81 cells / 32 organs / 7.9k params / 0.98 ms per act; after 80
+mutations 107 cells, 5 types, depth 5, 29k params.
+
+**The HUD column.** The sheet in four views (type, activity, hormone, organs), the
+command bars straight off the effectors, the reward, |dW|, and the rule output layers
+as red/blue heat maps with their learned deltas folded in. T animates the sub-ticks so
+you watch a thought cross the tissue — with a test that a watched brain and an
+unwatched one end in identical states, because observing must not perturb. B hands the
+wheel between the player and the brain mid-life, same world, same action tuple.
+
+**The lineage (`cortex/lineage.py`).** (1+lambda) with lambda=1, which is what "one
+long life plus a dead-end trigger" already is. Only the GENOME crosses the boundary;
+lives rotate over world seeds so a lineage cannot learn one map (the `lamarck.py`
+lesson). Each generation returns a PROFILE rather than a number — ticks, meals,
+gained, distance, poison eaten, command entropy, |dW| — because at lambda=1 there is
+one sample per turn and an LLM will eventually have to reason about it. Dead ends are
+NAMED, not merely detected: `frozen-behaviour` (entropy collapsed — the reactive limit
+cycle), `not-eating`, `not-learning`, `stalled`; a stalled lineage gets a structural
+shove rather than another nudge, which is `scientist.py`'s basin escape pointed at
+brains.
+
+**The honest result.** 8 generations, 2 world seeds, 8000-tick cap: fitness 0 -> 56.1,
+meals 0 -> 1.5 per life. The reflex baseline is 15038 ticks and 18.5 meals. So the
+brain is nowhere near it, which is exactly why the baseline was measured first — this
+is a 30k-parameter sheet steered by eight random mutations, and without the reflex
+number on the record it would have been very easy to call "fitness went up 56x" a
+result. The machinery is in place, reproducible and watchable; making it actually
+forage is the next arc (and per the design note, the levers are development, the slow
+signal layers, and the LLM writing the growth rule rather than rng nudging it).
+
+Suite 296 green.

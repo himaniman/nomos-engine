@@ -1326,3 +1326,34 @@ wider crown caught it, and the flood fill is the version that survives a generat
 change.
 
 0.0047 ms/step, 38 cortex tests, suite 231 green.
+
+**The coffin, take two.** The user was still shut in on seed 1 — and his diagnosis was
+the one that mattered: the room *had* a door, but there was solid rock behind it (two
+generated masses overlapping). The spawn guard accepted "bounded, but has a door" as an
+exit, which is a claim about the wall, not about the world beyond it.
+
+Fixed by making the enclosure fill walk what the agent can OPEN or BREAK, not only what
+is walkable this instant: `enclosure(..., openable=True)` treats doors and breakables as
+passable, so "is there a way out" is answered by actually going through them. The two
+modes are both wanted — `openable=False` is still the ROOM test that decides where to
+stock a larder, `openable=True` is the CAN I EVER GET OUT test the spawn uses. Spawns
+now also require a region of at least 600 reachable cells, tested over 16 seeds.
+
+**A second problem found while looking at the first, and an A/B that changed the fix.**
+A one-cell doorway is 1.0 wide and the body is 0.9 across, leaving ±0.05 of clearance.
+Measured: threading works from an offset of 0.00 and fails from 0.10 onward — passable,
+as the user said he managed, but only with sub-cell precision, and hopeless for a brain
+steering by heading. First instinct was to shrink the body to 0.30. The A/B said
+otherwise: **corridor centring alone fixes it at the original 0.45**, from anywhere in
+the right row, and at 0.03 assist as well as 0.06. So the body keeps its designed size
+(about a wall's width) and gains `_centre_up` — when a hop is fully blocked, drift
+`assist` toward the centre line of the cell across the direction of travel and retry.
+Every candidate is still collision-tested, so nothing walks through a wall (there is a
+test that drives at a gapless wall for 300 ticks and stays outside), and it only fires
+when the move failed outright, so ordinary walking is untouched.
+
+Worth recording as method: the instinct (shrink the body) and the measurement disagreed,
+and the measurement kept a design decision the note had reasoned out properly. Aiming at
+the right ROW is now enough — which is exactly the granularity a brain will have.
+
+41 cortex tests, suite 234 green, 0.0038 ms/step.

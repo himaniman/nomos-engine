@@ -80,6 +80,16 @@ class Config:
     chunk: int = 32
     radius: float = 0.45            # body radius: about a wall's width, still under
                                     # 0.5 so it can thread a one-cell doorway
+    assist: float = 0.06            # CORRIDOR CENTRING: when a hop is fully blocked,
+                                    # drift this far toward the centre line of the cell
+                                    # we occupy, then retry. At radius 0.45 a one-cell
+                                    # gap leaves +-0.05 of clearance — passable, as the
+                                    # player found, but only with sub-cell precision.
+                                    # Measured: without this, threading works from an
+                                    # offset of 0.00 and fails from 0.10 onward; with
+                                    # it, anywhere in the right ROW works. That is the
+                                    # difference between a body that fits on paper and
+                                    # one a player (or a brain) can actually drive.
     substep: float = 0.4            # < 2*radius, so consecutive body circles overlap
     max_speed: float = 0.35         # cells per tick at full thrust
     max_turn: float = 0.12          # radians per tick at full turn
@@ -89,6 +99,8 @@ class Config:
     stand_cost: float = 0.01        # ...and standing still: cheaper, never free, so
                                     # thinking beats wandering but waiting still costs
     max_age: int = 200_000          # a cap, NOT the cause of death — energy is life
+    spawn_room: int = 600           # a spawn must reach at least this many cells (via
+                                    # doors and breakables) or it counts as a coffin
     # --- interaction
     interact_cost: float = 0.05     # energy per attempt, whether or not it achieves
     interact_every: int = 6         # ticks between attempts (holding E chips, not melts)
@@ -135,13 +147,19 @@ class World:
         self.agent = Agent(y=y, x=x, energy=self.cfg.start_energy)
 
     # --- enclosure ------------------------------------------------------------------
-    def enclosure(self, y: int, x: int, limit: int = 400) -> tuple[list, bool, bool]:
-        """Flood-fill the walkable region containing cell (y, x), capped at `limit`.
-        Returns (cells, has_door, bounded). Deterministic (fixed neighbour order).
+    def enclosure(self, y: int, x: int, limit: int = 400,
+                  openable: bool = False) -> tuple[list, bool, bool]:
+        """Flood-fill the region containing cell (y, x), capped at `limit`. Returns
+        (cells, has_door, bounded). Deterministic (fixed neighbour order).
 
-        This one primitive answers three different questions: is this a ROOM (bounded,
-        with a door), is it a SEALED pocket (bounded, no door — never spawn there, and
-        food in one is unreachable), or is it the open world (unbounded)."""
+        `openable=False` walks only what is walkable RIGHT NOW — that is a ROOM test
+        (bounded + has_door = a room worth stocking with a larder).
+
+        `openable=True` also walks what the agent can OPEN or BREAK — doors and
+        breakables. That is the CAN I EVER GET OUT test, and it is the one the spawn
+        uses. The difference is not academic: the player was shut in a room that had a
+        perfectly good door with solid rock behind it (two rock masses overlapped), and
+        a has_door check called that an exit. Only walking THROUGH the door finds out."""
         start = (int(y), int(x))
         if SOLID[self.tiles.material(*start)]:
             return [], False, True
@@ -161,17 +179,22 @@ class World:
                 seen.add(n)
                 m = self.tiles.material(*n)
                 if m in (DOOR, DOOR_OPEN):
-                    has_door = True                          # a way in or out exists
-                if not SOLID[m]:
+                    has_door = True                          # a door — not yet an exit
+                if not SOLID[m] or (openable and (m == DOOR or BREAKABLE[m])):
                     queue.append(n)
         return cells, has_door, True
 
     # --- spawn -------------------------------------------------------------------
     def _spawn_spot(self) -> tuple[float, float]:
-        """The first free cell spiralling out from the world's centre that is NOT in a
-        sealed pocket — a pure function of the map, so a seed always spawns in the same
-        place. The pocket test matters: seed 1 used to start the player inside a hollow
-        rock with no door, which is not a world, it is a coffin."""
+        """The first free cell spiralling out from the world's centre from which the
+        agent can ACTUALLY REACH the wider world — opening doors and breaking rubble
+        counts, a door with rock behind it does not. A pure function of the map, so a
+        seed always spawns in the same place.
+
+        This test earned two revisions. First it did not exist and seed 1 started the
+        player inside a hollow rock. Then it accepted "the pocket has a door", and seed
+        1 started him in a room whose door opened onto solid stone. It is not a world,
+        it is a coffin, twice over."""
         c = self.cfg
         cy = cx = (c.size // 2) if c.size is not None else 0
         for r in range(0, 400):
@@ -182,9 +205,9 @@ class World:
                     y, x = cy + dy, cx + dx
                     if self.tiles.blocked_circle(float(y), float(x), c.radius):
                         continue
-                    _, has_door, bounded = self.enclosure(y, x, limit=300)
-                    if bounded and not has_door:
-                        continue                            # sealed: keep looking
+                    _, _, bounded = self.enclosure(y, x, limit=c.spawn_room, openable=True)
+                    if bounded:
+                        continue                            # sealed even to a pickaxe
                     return float(y), float(x)
         raise RuntimeError("no free spawn cell found near the world centre")
 
@@ -349,8 +372,35 @@ class World:
                 a.x = tx                                     # slide along x
             elif abs(sy) > 1e-12 and not blocked(ty, a.x, c.radius):
                 a.y = ty                                     # slide along y
-            else:
+            elif not self._centre_up(sy, sx):
                 break                                        # wedged in a corner
+
+    def _centre_up(self, sy: float, sx: float) -> bool:
+        """A hop is fully blocked: drift toward the CENTRE LINE of the cell we are in,
+        across the direction of travel, and retry. This is what makes a one-cell
+        doorway or cave tunnel passable in practice — a body of diameter 0.6 fits a
+        1.0 gap with 0.2 to spare, but only if it is roughly centred, and asking a
+        player (or a brain) to hold a heading to the hundredth of a cell is not a
+        game. Aim at the right ROW and the geometry does the last bit.
+
+        It never moves onto a wall (every candidate is collision-tested), and it only
+        fires when the move failed outright, so ordinary walking is untouched.
+        Returns True if it managed to make progress."""
+        a, c = self.agent, self.cfg
+        blocked = self.tiles.blocked_circle
+        across_y = abs(sx) >= abs(sy)                    # travelling in x -> centre y
+        here = a.y if across_y else a.x
+        want = round(here)
+        if abs(want - here) < 1e-9:
+            return False                                 # already centred: truly wedged
+        step = math.copysign(min(c.assist, abs(want - here)), want - here)
+        ny, nx = (a.y + step, a.x) if across_y else (a.y, a.x + step)
+        if blocked(ny, nx, c.radius):
+            return False
+        a.y, a.x = ny, nx
+        if not blocked(a.y + sy, a.x + sx, c.radius):    # the gap opened up: go through
+            a.y, a.x = a.y + sy, a.x + sx
+        return True
 
     # --- the one verb --------------------------------------------------------------
     def _interact(self) -> str:

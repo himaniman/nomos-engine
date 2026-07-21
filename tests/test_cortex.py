@@ -345,29 +345,83 @@ def test_interaction_costs_energy_even_when_it_achieves_nothing():
 
 # --- habitats, damage and the sealed-pocket guard ----------------------------------
 
-def test_spawn_is_never_in_a_sealed_pocket():
-    """seed 1 used to start the player inside a hollow rock with no door."""
-    for seed in range(12):
+def test_spawn_can_actually_reach_the_world():
+    """Two coffins in a row: first seed 1 spawned inside a hollow rock with no door,
+    then inside a room whose door opened onto solid stone. Only walking THROUGH the
+    door (and through what can be broken) proves an exit exists."""
+    for seed in range(16):
         w = World(seed=seed)
-        cells, has_door, bounded = w.enclosure(int(w.agent.y), int(w.agent.x), limit=300)
-        assert (not bounded) or has_door, f"seed {seed} spawned in a coffin"
+        _, _, bounded = w.enclosure(int(w.agent.y), int(w.agent.x),
+                                    limit=w.cfg.spawn_room, openable=True)
+        assert not bounded, f"seed {seed} spawned in a coffin"
 
 
-def test_enclosure_tells_room_pocket_and_open_apart():
+def test_a_door_into_solid_rock_is_not_an_exit():
     w = World(seed=0, cfg=Config(size=64))
     _clear(w)
-    for k in range(10, 21):                                   # a sealed 9x9 box
+    for k in range(10, 21):                                   # a sealed 9x9 box...
         w.tiles.set(10, k, T.STONE)
         w.tiles.set(20, k, T.STONE)
         w.tiles.set(k, 10, T.STONE)
         w.tiles.set(k, 20, T.STONE)
+    for y in range(64):                                       # ...buried in rock
+        for x in range(21, 40):
+            w.tiles.set(y, x, T.STONE)
     cells, has_door, bounded = w.enclosure(15, 15)
     assert bounded and not has_door and len(cells) == 81
-    w.tiles.set(10, 15, T.DOOR)                               # ...now give it a door
+    w.tiles.set(15, 20, T.DOOR)                               # a door onto solid stone
     _, has_door, bounded = w.enclosure(15, 15)
-    assert bounded and has_door
-    _, _, bounded_open = w.enclosure(5, 5)                    # outside is the big region
-    assert not bounded_open
+    assert has_door and bounded, "the room test should still call this a room"
+    _, _, bounded = w.enclosure(15, 15, openable=True)
+    assert bounded, "a door with rock behind it is not a way out"
+    for x in range(21, 40):                                   # now bore a way out
+        w.tiles.set(15, x, T.GROUND)
+    _, _, bounded = w.enclosure(15, 15, openable=True)
+    assert not bounded, "now it really is a way out"
+
+
+def test_breakables_count_as_a_way_out():
+    """The agent owns a pickaxe, so rubble is a door that takes longer."""
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    for k in range(10, 21):
+        for cell in ((10, k), (20, k), (k, 10), (k, 20)):
+            w.tiles.set(*cell, T.STONE)
+    _, _, bounded = w.enclosure(15, 15, openable=True)
+    assert bounded
+    w.tiles.set(15, 20, T.RUBBLE)
+    _, _, bounded = w.enclosure(15, 15, openable=True)
+    assert not bounded
+
+
+def test_a_one_cell_doorway_is_passable_from_anywhere_in_its_row():
+    """A 0.45 body fits a 1.0 gap with +-0.05 to spare — passable with sub-cell
+    precision, which is not a game. Aiming at the right ROW must be enough."""
+    def run(off):
+        w = World(seed=0, cfg=Config(size=64))
+        _clear(w)
+        for y in range(64):
+            w.tiles.set(y, 30, T.STONE)
+        w.tiles.set(20, 30, T.GROUND)                         # a one-cell gap
+        w.agent.y, w.agent.x, w.agent.heading = 20.0 + off, 25.0, 0.0
+        for _ in range(300):
+            w.step(thrust=1.0)
+            assert not w.tiles.blocked_circle(w.agent.y, w.agent.x, w.cfg.radius)
+        return w.agent.x
+    for off in (0.0, 0.15, 0.3, 0.45, -0.45):
+        assert run(off) > 31.0, f"could not thread the doorway from offset {off:+.2f}"
+
+
+def test_centring_never_opens_a_solid_wall():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    for y in range(64):
+        w.tiles.set(y, 30, T.STONE)                           # no gap at all
+    w.agent.y, w.agent.x, w.agent.heading = 20.3, 25.0, 0.0
+    for _ in range(300):
+        w.step(thrust=1.0)
+        assert not w.tiles.blocked_circle(w.agent.y, w.agent.x, w.cfg.radius)
+    assert w.agent.x < 30.0, "walked through a solid wall"
 
 
 def test_fruit_only_grows_by_a_trunk():

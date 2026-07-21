@@ -159,6 +159,8 @@ class World:
         self.food: dict[tuple[int, int], list[FoodSpot]] = {}
         self.damage: dict[tuple[int, int], int] = {}     # cell -> hits taken so far
         self.last_event = ""                             # HUD / debug feedback
+        self.distance = 0.0                              # cells actually walked
+        self.deeds = {"eat": 0, "door": 0, "break": 0, "push": 0, "idle": 0}
         self._pending: list[FoodSpot] = []               # eaten spots awaiting regrowth
         self._next_interact = 0
         y, x = self._spawn_spot()
@@ -387,6 +389,7 @@ class World:
         n = max(1, int(math.ceil(dist / c.substep)))
         sy, sx = dy / n, dx / n
         blocked = self.tiles.blocked_circle
+        from_y, from_x = a.y, a.x
         for _ in range(n):
             ty, tx = a.y + sy, a.x + sx
             if not blocked(ty, tx, c.radius):
@@ -397,6 +400,7 @@ class World:
                 a.y = ty                                     # slide along y
             elif not self._centre_up(sy, sx):
                 break                                        # wedged in a corner
+        self.distance += math.hypot(a.y - from_y, a.x - from_x)
 
     def _centre_up(self, sy: float, sx: float) -> bool:
         """A hop is fully blocked: drift toward the CENTRE LINE of the cell we are in,
@@ -434,22 +438,28 @@ class World:
         food = self.nearby_food(a.y, a.x, self.cfg.eat_reach)
         if food:
             s = min(food, key=lambda f: math.hypot(f.y - a.y, f.x - a.x))
+            self.deeds["eat"] += 1
             return self._eat(s)
         fy, fx = self.facing_cell()
         mat = self.tiles.material(fy, fx)
         if mat == DOOR:
             self.tiles.set(fy, fx, DOOR_OPEN)
+            self.deeds["door"] += 1
             return self._event("opened the door")
         if mat == DOOR_OPEN:
             self.tiles.set(fy, fx, DOOR)                     # ...but never onto our own
             if self.tiles.blocked_circle(a.y, a.x, self.cfg.radius):   # body: a door in
                 self.tiles.set(fy, fx, DOOR_OPEN)            # the doorway we are standing
                 return self._event("standing in the doorway")   # in would trap us inside
+            self.deeds["door"] += 1
             return self._event("closed the door")
         if BREAKABLE[mat]:
+            self.deeds["break"] += 1
             return self._break(fy, fx, mat)
         if mat == PUSHABLE:
+            self.deeds["push"] += 1
             return self._push(fy, fx)
+        self.deeds["idle"] += 1
         return self._event("nothing to do here")
 
     def _eat(self, s: FoodSpot) -> str:

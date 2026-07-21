@@ -35,6 +35,7 @@ import pygame
 
 from cortex.senses import (INTERO, N_TOUCH, ODOUR_CH, RAY_CH, TOUCH_CH, ScentField,
                            layout, sense)
+from cortex.session import record, summarise
 from cortex.tiles import HP, NAMES, RGB
 from cortex.world import FOOD_NAMES, FOOD_RGB, N_ODOUR, Config, World
 
@@ -332,6 +333,8 @@ def main(argv=None) -> None:
     p.add_argument("--cell", type=int, default=12, help="pixels per cell")
     p.add_argument("--size", type=int, default=512, help="world side; 0 = unbounded")
     p.add_argument("--blind", action="store_true", help="start in senses-only mode")
+    p.add_argument("--player", default="human", help="name for the session log")
+    p.add_argument("--no-log", action="store_true", help="do not record the session")
     p.add_argument("--fps", type=int, default=60)
     args = p.parse_args(argv)
 
@@ -342,7 +345,22 @@ def main(argv=None) -> None:
     pygame.display.set_caption(f"cortex — seed {args.seed}")
     clock = pygame.time.Clock()
     t0, frames = time.time(), 0
-    running = True
+    running, logged = True, False
+
+    def log(note):
+        """A human life is the calibration every other number is read against, so it
+        is recorded on death AND on quit — a session you walked away from still says
+        how long you lasted."""
+        nonlocal logged
+        if logged or args.no_log or app.world.tick < 50:
+            return
+        logged = True
+        rec = record(app.world, args.player,
+                     note=note + (" blind" if app.blind else ""))
+        print(f"session: {rec['ticks']} ticks, {rec['meals']} meals, "
+              f"{rec['gained']:+.0f} energy eaten, {rec['distance']:.0f} cells walked")
+        print(summarise())
+
     while running:
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -363,6 +381,8 @@ def main(argv=None) -> None:
                     print("saved", name)
         if not app.paused:
             app.step(pygame.key.get_pressed())
+            if not app.world.agent.alive:
+                log("starved")
         screen.blit(app.draw(), (0, 0))
         pygame.display.flip()
         clock.tick(args.fps)
@@ -371,6 +391,7 @@ def main(argv=None) -> None:
             now = time.time()
             app.fps = 20.0 / max(1e-6, now - t0)
             t0 = now
+    log("quit")
     pygame.quit()
 
 

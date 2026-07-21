@@ -135,7 +135,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "cortex.app",
-      "args": ["--seed", "1", "--view", "65", "--cell", "12"],
+      "args": ["--seed", "2", "--view", "65", "--cell", "12"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -160,6 +160,42 @@
       "request": "launch",
       "module": "cortex.app",
       "args": ["--seed", "1", "--view", "65", "--cell", "12", "--size", "0"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the BASELINE the brain has to beat: a twenty-line reflex, senses only
+      "name": "cortex: baseline reflex (8 seeds)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.baseline",
+      "args": ["--agent", "reflex", "--seeds", "0-7", "--ticks", "30000"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the FLOOR: a correlated random walk
+      "name": "cortex: baseline random (8 seeds)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.baseline",
+      "args": ["--agent", "random", "--seeds", "0-7", "--ticks", "30000"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // play with the map hidden — the sensorium completeness test
+      "name": "cortex: PLAY BLIND (senses only)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "65", "--cell", "12", "--blind"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",

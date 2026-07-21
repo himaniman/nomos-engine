@@ -1357,3 +1357,78 @@ and the measurement kept a design decision the note had reasoned out properly. A
 the right ROW is now enough — which is exactly the granularity a brain will have.
 
 41 cortex tests, suite 234 green, 0.0038 ms/step.
+
+## 2026-07-22 — cortex: the sensorium, a radar you can play blind by, poison, baselines
+
+Four commits closing out the world. Design agreed first (docs/cortex-world.md), then
+built in order, each with its own commit.
+
+**Senses (`cortex/senses.py`), 412 slots, 0.21 ms per step+sense.** Vision is 64 rays
+over 120 degrees marched by exact grid DDA — 1.9 degrees per ray, so a 2x2 tree ten
+cells away spans about six rays and its shape is legible; at aqua's 3-12 rays it would
+be one ray and a guess. Per ray: hue as (cos, sin), saturation, brightness, nearness,
+solid. Hue is put on the CIRCLE deliberately: a raw 0..1 hue has a seam between the
+berry (~0.97) and the wrap, which is exactly where the poison discrimination has to
+happen. OPAQUE became separate from SOLID so leaves stop a ray but not a body.
+Brightness is multiplied by the same `damage_frac` the renderer darkens with — one
+fact, so the player and the agent cannot see different worlds.
+
+Smell is GEODESIC: a BFS from the agent's four neighbours flows around walls, so a
+morsel sealed behind rock smells of NOTHING (not faintly), and each odorant reports
+intensity plus the egocentric direction of the shortest WALKABLE path. Recomputed only
+when the agent changes cell or the map version changes, so smashing a wall re-opens the
+scent.
+
+**The panel is drawn from the sensor vector alone**, and TAB blanks the map. That makes
+the completeness test from the design note literal — if a human cannot play from the
+panel, the brain has no chance. Two tests keep it honest: move the agent without
+re-sensing and the panel must not notice; zero the vector and it must go blank. The
+radial scale is sqrt(d/reach), because a true-scale scope crushes the first few cells
+into the apex and the first few cells are where everything happens.
+
+**Poison.** A nightcap only ever replaces a BERRY: same habitat, identical odour,
+different hue. It drains 30 energy at 0.15/tick rather than striking, because a morsel
+that kills outright teaches nothing — the dead do not learn. Combined with eating being
+a DECISION rather than a collision, avoiding it is a perception problem ("do not eat the
+purple one") and not a navigation one ("never step there").
+
+**Baselines — and three bugs they found.** `random` (correlated walk) is the floor;
+`reflex` (twenty lines: follow the nose, avoid walls, eat what is under it) is the bar.
+Over 8 seeds x 30k ticks:
+
+```
+who        runs   ticks  meals  gained  cells   diet
+reflex        8   15038   18.5   286.5   2410   berr46 frui78 mush12 nigh12
+random        8    7035    3.4    71.8   1580   berr7  frui15 mush5
+```
+
+Getting the reflex there took three fixes, and each was a real defect rather than
+tuning:
+
+1. **Escaping a wall needs COMMITMENT.** The first version re-decided "turn to the
+   emptier side" every tick, and in a corner the two sides trade places, so it
+   oscillated against the wall and walked 208 cells to random's 1275. Holding the
+   escape turn for 14 ticks fixed it — the same reactive limit cycle, and the same
+   cure, that the forage world taught us a week ago.
+2. **Approach slowly.** At full speed the body covers 2.1 cells between the 6-tick
+   interact attempts while the eat reach is 1.1, so a confident sprinter flies past
+   its dinner. Easing off near the source took meals from 3.0 to 8.8 — more than any
+   steering change.
+3. **Use the `solid` channel.** The policy was fleeing its own food: a morsel two cells
+   ahead is a near return like any other, so the escape branch fired every time it
+   closed in and it ORBITED the meal. Weighting nearness by solidity took meals 8.8 ->
+   18.5. That channel now has an earned reason to exist.
+
+And a sensor bug the baseline exposed, which would have hit the brain identically: the
+smell direction was quantised to four cardinal directions, useless in the last two
+cells — forever told to go "east" when east is 40 degrees off. The true bearing is now
+blended in as the morsel gets near, which is not cheating: at that range the shortest
+walkable path IS the straight line.
+
+The reflex ate 12 nightcaps out of 58 berry-like morsels — about the ambient rate,
+i.e. it cannot tell poison from berry at all. That is the specific, measurable gap the
+brain is supposed to close, and it is now on the record before the brain exists.
+
+Sessions (human, baseline or brain) append one JSON line to `out/cortex/sessions.jsonl`
+with the same schema, so they are directly comparable; the app logs a life on death and
+on quit. Suite 266 green.

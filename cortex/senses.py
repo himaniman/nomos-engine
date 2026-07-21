@@ -202,6 +202,7 @@ def _smell(w: World, field: ScentField, out: np.ndarray, off: int) -> None:
     field.update(w)
     bins = np.zeros((N_ODOUR, len(_DIRS)))
     total = np.zeros(N_ODOUR)
+    fine = np.zeros((N_ODOUR, 2))                        # sub-cell direction, close in
     for s in w.nearby_food(a.y, a.x, field.radius):
         cell = (int(round(s.y)), int(round(s.x)))
         d = field.dist.get(cell)
@@ -210,15 +211,26 @@ def _smell(w: World, field: ScentField, out: np.ndarray, off: int) -> None:
         amp = 1.0 / (1.0 + (d / c.smell_sharp) ** 2)
         mix = FOOD_ODOUR[s.kind] * amp
         total += mix
+        # The first-step tag is one of four cardinal directions, which is the right
+        # answer far away and a useless one up close: within a cell or two it makes the
+        # agent ORBIT its dinner, forever told to go "east" when east is 40 degrees off.
+        # So blend in the TRUE bearing as the morsel gets near. This is not cheating —
+        # at that range the shortest walkable path IS the straight line.
+        dy, dx = s.y - a.y, s.x - a.x
+        near = math.hypot(dy, dx)
+        blend = max(0.0, min(1.0, (2.5 - near) / 1.5))
+        if blend > 0.0 and near > 1e-9:
+            fine += np.outer(mix * blend, (dy / near, dx / near))
         k = field.first.get(cell, -1)
-        if k >= 0:
-            bins[:, k] += mix
+        if k >= 0 and blend < 1.0:
+            bins[:, k] += mix * (1.0 - blend)
     sh, ch = math.sin(a.heading), math.cos(a.heading)
     for j in range(N_ODOUR):
-        fwd = lat = 0.0
+        fwd = fine[j, 0] * sh + fine[j, 1] * ch          # heading unit = (sin, cos)
+        lat = fine[j, 0] * ch - fine[j, 1] * sh          # its right-hand normal
         for k, (uy, ux) in enumerate(_DIRS):
-            fwd += bins[j, k] * (uy * sh + ux * ch)      # heading unit = (sin, cos)
-            lat += bins[j, k] * (uy * ch - ux * sh)      # its right-hand normal
+            fwd += bins[j, k] * (uy * sh + ux * ch)
+            lat += bins[j, k] * (uy * ch - ux * sh)
         norm = max(1e-9, total[j])
         out[off + j * ODOUR_CH + 0] = min(1.0, total[j])
         out[off + j * ODOUR_CH + 1] = fwd / norm

@@ -9,7 +9,7 @@ import pytest
 
 from cortex import tiles as T
 from cortex.tiles import TileMap
-from cortex.world import Config, World
+from cortex.world import BERRY, FRUIT, MUSHROOM, Config, World
 
 
 # --- generation ------------------------------------------------------------------
@@ -341,6 +341,95 @@ def test_interaction_costs_energy_even_when_it_achieves_nothing():
     w.step(interact=1.0)
     assert w.agent.energy < e0 - w.cfg.stand_cost
     assert w.last_event == "nothing to do here"
+
+
+# --- habitats, damage and the sealed-pocket guard ----------------------------------
+
+def test_spawn_is_never_in_a_sealed_pocket():
+    """seed 1 used to start the player inside a hollow rock with no door."""
+    for seed in range(12):
+        w = World(seed=seed)
+        cells, has_door, bounded = w.enclosure(int(w.agent.y), int(w.agent.x), limit=300)
+        assert (not bounded) or has_door, f"seed {seed} spawned in a coffin"
+
+
+def test_enclosure_tells_room_pocket_and_open_apart():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    for k in range(10, 21):                                   # a sealed 9x9 box
+        w.tiles.set(10, k, T.STONE)
+        w.tiles.set(20, k, T.STONE)
+        w.tiles.set(k, 10, T.STONE)
+        w.tiles.set(k, 20, T.STONE)
+    cells, has_door, bounded = w.enclosure(15, 15)
+    assert bounded and not has_door and len(cells) == 81
+    w.tiles.set(10, 15, T.DOOR)                               # ...now give it a door
+    _, has_door, bounded = w.enclosure(15, 15)
+    assert bounded and has_door
+    _, _, bounded_open = w.enclosure(5, 5)                    # outside is the big region
+    assert not bounded_open
+
+
+def test_fruit_only_grows_by_a_trunk():
+    w = World(seed=2)
+    fruit = [s for s in w.nearby_food(256, 256, 150) if s.kind == FRUIT]
+    assert fruit, "fruit should exist"
+    for s in fruit:
+        near = w.tiles.region(int(round(s.y)) - 2, int(round(s.x)) - 2, 5, 5)
+        assert (near == T.TRUNK).any(), "fruit away from any tree"
+
+
+def test_every_kind_has_a_habitat_and_food_is_not_lavish():
+    w = World(seed=2)
+    spots = w.nearby_food(256, 256, 150)
+    kinds = {s.kind for s in spots}
+    assert {BERRY, FRUIT, MUSHROOM} <= kinds
+    per = math.pi * 150 * 150 / len(spots)
+    assert 250 < per < 700, f"one spot per {per:.0f} cells^2 — retune the economy"
+
+
+def test_felling_a_tree_takes_its_crown():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.TRUNK)
+    for dy, dx in ((-1, 1), (0, 2), (1, 1)):                  # leaves around the trunk
+        w.tiles.set(20 + dy, 21 + dx, T.FOLIAGE)
+    for _ in range(int(T.HP[T.TRUNK])):
+        _press(w)
+    assert w.tiles.material(20, 21) == T.GROUND
+    for dy, dx in ((-1, 1), (0, 2), (1, 1)):
+        assert w.tiles.material(20 + dy, 21 + dx) == T.GROUND, "canopy left floating"
+    assert "felled" in w.last_event
+
+
+def test_damage_is_visible_as_a_fraction():
+    w = World(seed=0, cfg=Config(size=64))
+    _clear(w)
+    w.agent.y, w.agent.x, w.agent.heading = 20.0, 20.0, 0.0
+    w.tiles.set(20, 21, T.RUBBLE)
+    assert w.damage_frac(20, 21) == 0.0
+    _press(w)
+    assert 0.0 < w.damage_frac(20, 21) < 1.0
+    _press(w)
+    assert w.damage_frac(20, 21) > 1 / 3
+
+
+def test_rooms_behind_doors_are_stocked():
+    """A door that leads to an empty room teaches the agent doors are not worth
+    opening — larders are what make the room worth entering."""
+    w = World(seed=2)
+    stocked = 0
+    checked = 0
+    for cy in range(6, 10):
+        for cx in range(6, 10):
+            for s in w._ensure_food(cy, cx):
+                cells, has_door, bounded = w.enclosure(int(round(s.y)), int(round(s.x)),
+                                                       limit=260)
+                if bounded and has_door:
+                    stocked += 1
+                checked += 1
+    assert checked and stocked, "no food ended up inside any room"
 
 
 # --- render ----------------------------------------------------------------------

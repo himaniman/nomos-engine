@@ -1288,3 +1288,41 @@ computed by the same context rule the verb uses (a test asserts prompt and effec
 never disagree), a last-event line, the diet so far, the eat radius drawn around the
 body and an outline on the cell E would act on. 13 more tests, 31 for cortex, suite
 224 green.
+
+**Playtest 2 — the fixes the player asked for.** The user walked the world and came
+back with seven things, one of which was a genuine bug: **seed 1 spawned him inside a
+hollow rock with no door.** A coffin, not a world. Fixed with a primitive that turned
+out to answer three questions at once — `World.enclosure(y, x, limit)` flood-fills the
+walkable region and reports (cells, has_door, bounded), which distinguishes a ROOM
+(bounded, with a door) from a SEALED POCKET (bounded, no door) from the open world
+(unbounded). Spawn now refuses sealed pockets; there is a test over 12 seeds.
+
+The same primitive fixed the complaint that rooms behind doors were usually empty — a
+door that leads to nothing teaches an agent that doors are not worth opening. Rooms
+are now stocked with berry LARDERS, so opening one pays.
+
+Each food kind now has a HABITAT, which is the economy working as designed: berries in
+rooms and open ground, fruit only at a TRUNK (planted on actual trunks, since random
+scatter almost never lands next to one), mushrooms only in walled-in cave cells (again
+planted deliberately — random scatter finds tunnels far too rarely, which is why they
+were 2.6% of food before and are 12-16% now). So colour and odour will correlate with
+PLACE, and "go to the trees / go into the cave" become learnable strategies rather than
+noise.
+
+Food was halved as asked: one spot per ~200 cells^2 became one per ~375, by cutting
+scattered spots from 9 to 1 and letting the habitat passes carry the rest.
+
+**Damage is now visible, and visible to BOTH.** A chipped tile darkens toward its break
+point via `World.damage_frac`, which the renderer multiplies into the material colour —
+and vision will call the same function next chunk. That is the shared-colour-table
+decision paying off: there is no way for the player and the agent to see different
+worlds, because there is only one fact.
+
+Felling a TRUNK now drops its crown (8-connected foliage flood fill, capped at 12 so
+two touching trees do not chain into a clear-cut). A canopy floating over a stump reads
+as a bug, and to an eye the leaves and the trunk are one object anyway. The first
+version removed radius 1 only, matching the generator exactly — the test that placed a
+wider crown caught it, and the flood fill is the version that survives a generator
+change.
+
+0.0047 ms/step, 38 cortex tests, suite 231 green.

@@ -86,7 +86,14 @@ class App:
         # scroll offset always has a spare row/column to reveal
         y0, x0 = int(math.floor(a.y)) - half - 1, int(math.floor(a.x)) - half - 1
         mats = self.world.tiles.region(y0, x0, v + 2, v + 2)
-        img = RGB[mats]                                        # (h, w, 3) uint8
+        img = RGB[mats].astype(np.float64)                     # (h, w, 3)
+        # DAMAGE is visible: a chipped tile darkens toward its break point. The agent's
+        # eye will read the same `damage_frac`, so player and brain see one world.
+        for (dy, dx), _ in self.world.damage.items():
+            i, j = dy - y0, dx - x0
+            if 0 <= i < img.shape[0] and 0 <= j < img.shape[1]:
+                img[i, j] *= 1.0 - 0.55 * self.world.damage_frac(dy, dx)
+        img = img.astype(np.uint8)
         # pygame surfaces are (x, y); numpy gives (y, x) — swap before make_surface
         tile_surf = pygame.surfarray.make_surface(np.transpose(img, (1, 0, 2)))
         tile_surf = pygame.transform.scale(tile_surf, ((v + 2) * cs, (v + 2) * cs))

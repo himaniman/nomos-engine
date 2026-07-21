@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import colorsys
 import math
+from collections import deque
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -93,7 +94,13 @@ class Config:
     interact_every: int = 6         # ticks between attempts (holding E chips, not melts)
     eat_reach: float = 1.1          # how far from the body centre food can be taken
     # --- food economy
-    food_per_chunk: int = 9
+    food_per_chunk: int = 1         # scattered spots (cut hard after the first
+                                    # playtest: the world was too generous to starve in)
+    larder_doors: int = 3           # rooms per chunk that get stocked...
+    larder_max: int = 2             # ...with up to this many berries each
+    tree_spots: int = 2             # fruit planted right at a trunk (its only habitat)
+    cave_spots: int = 4             # extra attempts that only take in walled-in cells,
+                                    # so mushrooms are actually worth going caving for
     renewable_frac: float = 0.7     # the rest are one-shot: exploration vs memory
     regrow_ticks: int = 1200
     poison_weight: float = 0.0      # nightcaps are not planted until their own stage
@@ -127,10 +134,44 @@ class World:
         y, x = self._spawn_spot()
         self.agent = Agent(y=y, x=x, energy=self.cfg.start_energy)
 
+    # --- enclosure ------------------------------------------------------------------
+    def enclosure(self, y: int, x: int, limit: int = 400) -> tuple[list, bool, bool]:
+        """Flood-fill the walkable region containing cell (y, x), capped at `limit`.
+        Returns (cells, has_door, bounded). Deterministic (fixed neighbour order).
+
+        This one primitive answers three different questions: is this a ROOM (bounded,
+        with a door), is it a SEALED pocket (bounded, no door — never spawn there, and
+        food in one is unreachable), or is it the open world (unbounded)."""
+        start = (int(y), int(x))
+        if SOLID[self.tiles.material(*start)]:
+            return [], False, True
+        seen = {start}
+        queue = deque([start])
+        cells: list[tuple[int, int]] = []
+        has_door = False
+        while queue:
+            qy, qx = queue.popleft()
+            cells.append((qy, qx))
+            if len(cells) > limit:
+                return cells, has_door, False                # too big to be a pocket
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                n = (qy + dy, qx + dx)
+                if n in seen:
+                    continue
+                seen.add(n)
+                m = self.tiles.material(*n)
+                if m in (DOOR, DOOR_OPEN):
+                    has_door = True                          # a way in or out exists
+                if not SOLID[m]:
+                    queue.append(n)
+        return cells, has_door, True
+
     # --- spawn -------------------------------------------------------------------
     def _spawn_spot(self) -> tuple[float, float]:
-        """The first free cell found spiralling out from the world's centre — a pure
-        function of the map, so a seed always spawns in the same place."""
+        """The first free cell spiralling out from the world's centre that is NOT in a
+        sealed pocket — a pure function of the map, so a seed always spawns in the same
+        place. The pocket test matters: seed 1 used to start the player inside a hollow
+        rock with no door, which is not a world, it is a coffin."""
         c = self.cfg
         cy = cx = (c.size // 2) if c.size is not None else 0
         for r in range(0, 400):
@@ -139,8 +180,12 @@ class World:
                     if max(abs(dy), abs(dx)) != r:          # only the ring at radius r
                         continue
                     y, x = cy + dy, cx + dx
-                    if not self.tiles.blocked_circle(float(y), float(x), c.radius):
-                        return float(y), float(x)
+                    if self.tiles.blocked_circle(float(y), float(x), c.radius):
+                        continue
+                    _, has_door, bounded = self.enclosure(y, x, limit=300)
+                    if bounded and not has_door:
+                        continue                            # sealed: keep looking
+                    return float(y), float(x)
         raise RuntimeError("no free spawn cell found near the world centre")
 
     # --- food ---------------------------------------------------------------------
@@ -155,34 +200,77 @@ class World:
         c, ch = self.cfg, self.cfg.chunk
         rng = np.random.default_rng(_mix(self.seed ^ 0x5EED, cy, cx))
         spots = []
-        for _ in range(c.food_per_chunk):
-            y = cy * ch + int(rng.integers(ch))
-            x = cx * ch + int(rng.integers(ch))
+
+        def plant(y: int, x: int, kind: int | None = None):
             # jitter FIRST, then validate the position we actually plant at: a cell
             # whose centre is clear can still have its off-grid offset land a morsel
             # inside a wall, and unreachable food is worse than no food
             fy = float(y) + float(rng.uniform(-0.35, 0.35))
             fx = float(x) + float(rng.uniform(-0.35, 0.35))
             if self.tiles.blocked_circle(fy, fx, c.radius):
-                continue
-            spots.append(FoodSpot(y=fy, x=fx, kind=self._kind_for(y, x, rng),
+                return
+            spots.append(FoodSpot(y=fy, x=fx,
+                                  kind=self._kind_for(y, x, rng) if kind is None else kind,
                                   renewable=bool(rng.random() < c.renewable_frac)))
+
+        for _ in range(c.food_per_chunk):                    # scattered over the chunk
+            plant(cy * ch + int(rng.integers(ch)), cx * ch + int(rng.integers(ch)))
+
+        # ORCHARDS: fruit hangs by a TRUNK and nowhere else, so a tree — the most
+        # visible landmark the world has — is a place worth walking to. Anchored on
+        # actual trunks, because random scatter finds them far too rarely.
+        trunks = np.argwhere(self.tiles.region(cy * ch, cx * ch, ch, ch) == TRUNK)
+        if len(trunks):
+            for k in rng.choice(len(trunks), size=min(c.tree_spots, len(trunks)),
+                                replace=False):
+                ty, tx = trunks[int(k)]
+                oy, ox = ((-1, 0), (1, 0), (0, -1), (0, 1))[int(rng.integers(4))]
+                plant(cy * ch + int(ty) + oy, cx * ch + int(tx) + ox, kind=FRUIT)
+
+        # CAVE CACHES: extra attempts that only take in a walled-in cell. Random
+        # scatter almost never lands in a tunnel, so without this the best food in the
+        # world is too rare to be a reason to go anywhere.
+        for _ in range(c.cave_spots):
+            y = cy * ch + int(rng.integers(ch))
+            x = cx * ch + int(rng.integers(ch))
+            near = self.tiles.region(y - 2, x - 2, 5, 5)
+            if not SOLID[self.tiles.material(y, x)] and float(SOLID[near].mean()) > 0.3:
+                plant(y, x, kind=MUSHROOM)
+
+        # LARDERS: a room behind a door gets berries, so a closed room is worth the
+        # trouble of opening. Empty rooms were the user's complaint — a door that
+        # leads to nothing teaches the agent that doors are not worth opening.
+        block = self.tiles.region(cy * ch, cx * ch, ch, ch)
+        doors = np.argwhere((block == DOOR) | (block == DOOR_OPEN))[:c.larder_doors]
+        for dy, dx in doors:
+            for oy, ox in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                cells, _, bounded = self.enclosure(cy * ch + int(dy) + oy,
+                                                   cx * ch + int(dx) + ox, limit=260)
+                if not bounded or len(cells) < 4:
+                    continue                                 # outside, or a crack
+                inside = [p for p in cells                   # keep larders in the chunk
+                          if cy * ch <= p[0] < (cy + 1) * ch
+                          and cx * ch <= p[1] < (cx + 1) * ch]
+                for _ in range(int(rng.integers(1, c.larder_max + 1))):
+                    if inside:
+                        py, px = inside[int(rng.integers(len(inside)))]
+                        plant(py, px, kind=BERRY)
+                break                                        # one side is the interior
         self.food[(cy, cx)] = spots
         return spots
 
     def _kind_for(self, y: int, x: int, rng) -> int:
         """What grows here — read off the surroundings, so food sits where it looks
-        like it should and the world's colours correlate with its rewards."""
+        like it should and the world's colours correlate with its rewards. Fruit grows
+        ONLY by a trunk (it is tree fruit); mushrooms want walls around them."""
         if self.cfg.poison_weight > 0 and rng.random() < self.cfg.poison_weight:
             return NIGHTCAP
         near = self.tiles.region(y - 2, x - 2, 5, 5)
-        if (near == TRUNK).any() and rng.random() < 0.7:
-            return FRUIT
-        if (near == FOLIAGE).any() and rng.random() < 0.8:
-            return BERRY
-        if float(SOLID[near].mean()) > 0.45:                 # walled in: a cave nook
+        if (near == TRUNK).any():
+            return FRUIT if rng.random() < 0.85 else BERRY
+        if float(SOLID[near].mean()) > 0.3:                  # walled in: a cave nook
             return MUSHROOM
-        return BERRY if rng.random() < 0.7 else FRUIT
+        return BERRY
 
     def nearby_food(self, y: float, x: float, r: float) -> list[FoodSpot]:
         """Every READY spot within `r` of (y, x), by true distance. Scans only the
@@ -304,15 +392,50 @@ class World:
 
     def _break(self, y: int, x: int, mat: int) -> str:
         """Chipping: a breakable tile takes several hits, so opening a shortcut is a
-        real cost paid in energy and time, not a free click."""
+        real cost paid in energy and time, not a free click. Felling a TRUNK takes its
+        crown with it — a floating canopy over a stump reads as a bug, and the foliage
+        is part of the same object as far as the eye is concerned."""
         hits = self.damage.get((y, x), 0) + 1
         need = int(HP[mat])
-        if hits >= need:
-            self.damage.pop((y, x), None)
-            self.tiles.set(y, x, GROUND)
-            return self._event(f"broke the {self._name(mat)}")
-        self.damage[(y, x)] = hits
-        return self._event(f"chipping {self._name(mat)} {hits}/{need}")
+        if hits < need:
+            self.damage[(y, x)] = hits
+            return self._event(f"chipping {self._name(mat)} {hits}/{need}")
+        self.damage.pop((y, x), None)
+        self.tiles.set(y, x, GROUND)
+        if mat == TRUNK:
+            self._drop_crown(y, x)
+            return self._event("felled the tree")
+        return self._event(f"broke the {self._name(mat)}")
+
+    def _drop_crown(self, y: int, x: int, cap: int = 12) -> None:
+        """Clear the FOLIAGE connected to a felled trunk (8-connected flood fill,
+        capped). A canopy floating over a stump reads as a bug, and to an eye the
+        leaves and the trunk are one object. Capped because two trees whose crowns
+        touch should not chain into a clear-cut."""
+        queue = deque([(y, x)])
+        seen = {(y, x)}
+        removed = 0
+        while queue and removed < cap:
+            qy, qx = queue.popleft()
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    n = (qy + dy, qx + dx)
+                    if n in seen or self.tiles.material(*n) != FOLIAGE:
+                        continue
+                    seen.add(n)
+                    self.tiles.set(n[0], n[1], GROUND)
+                    removed += 1
+                    queue.append(n)
+
+    def damage_frac(self, y: int, x: int) -> float:
+        """How chewed-up the tile at (y, x) is, 0..1. The RENDERER darkens by this and
+        (next chunk) VISION will read the same call, so damage is visible to the player
+        and to the agent through one shared fact — nobody sees a wall the other does
+        not."""
+        hits = self.damage.get((int(y), int(x)), 0)
+        if not hits:
+            return 0.0
+        return min(1.0, hits / max(1, int(HP[self.tiles.material(y, x)])))
 
     def _push(self, y: int, x: int) -> str:
         a = self.agent

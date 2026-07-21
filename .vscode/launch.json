@@ -129,6 +129,54 @@
       "justMyCode": true
     },
     {
+      // PLAY the cortex world yourself (stage 1: walk around, no senses/food yet).
+      // W/Up thrust, A/D turn, SPACE pause, P screenshot, H help, ESC quit.
+      "name": "cortex: PLAY the world (keyboard)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "1", "--view", "65", "--cell", "12"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // a wider, zoomed-out view — good for judging the GENERATOR rather than playing
+      "name": "cortex: PLAY (wide view, seed 4)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "4", "--view", "101", "--cell", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the generator is infinite-capable; --size 0 unbounds it (walk forever)
+      "name": "cortex: PLAY (unbounded world)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "1", "--view", "65", "--cell", "12", "--size", "0"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "cortex: tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/test_cortex.py", "-q"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "Python: current file",
       "type": "debugpy",
       "request": "launch",

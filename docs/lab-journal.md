@@ -1191,3 +1191,62 @@ and corpses are all float geometry, collisions/vision are analytic, senses are
 heritable AND legible, and the agent-agent O(n^2) is gone. Open follow-ups if wanted:
 a numba/bucket pass if very large populations are needed; angled walls (the AABB ->
 capsule swap is isolated); merging the branch.
+
+## 2026-07-21 — cortex: the design, then the world you can walk around
+
+New arc, new playground. Two design notes first (`docs/cortex-design.md`,
+`docs/cortex-world.md`), agreed over a long session with the user and written down
+so we argue with them instead of re-deriving them. The thesis: **one player, one
+big brain, and a genome that stops BEING the brain and becomes a program for
+GROWING one.** Cells get morphogenetic outputs (divide / apoptose / retype /
+become-organ / sprout-axon) on the same per-cell rule they already think with,
+applied on a rare development tick; symmetry is broken by morphogen gradients,
+growth is bounded by a global cell cost plus a local diffusing resource, migration
+falls out of divide+apoptose for free.
+
+Three things settled that were worth the argument. (1) "One long life with a
+dead-end trigger" IS (1+lambda) with lambda=1 — something must change after the dead
+end, that something is the genome, and regrowing from it is a new life; so the real
+axes are lambda, who proposes the next genome, and what is inherited. (2)
+Inheritance: **genome only**. Carrying the grown SHAPE forward is rejected because
+the growth program would stop being expressed, stop being selected, and rot
+unnoticed. (3) The task ladder is an **observer**, not a curriculum: probes run on a
+full copy of the brain after death, in prepared arenas, with plasticity frozen — the
+open world stays open, the probes are the thermometer. And the payoff that falls out
+for free: growth reads sensory state, so **genome x world grows different brains**;
+one program in two worlds is the headline experiment.
+
+**Then stage 1: the world, playable, before any brain.** `cortex/` is written from
+scratch (only the lessons come from aqua, not the code). Tiles STORE the map, floats
+SIMULATE it: chunked generation from a seed, a float agent, circle-vs-tile collision,
+sub-step marched movement with wall sliding. `python -m cortex.app` and you walk
+around it with W/A/D — and the keyboard drives `World.step(thrust, turn, interact)`,
+the exact call the brain will use, because playtesting a different interface than the
+agent lives in is how you fool yourself.
+
+Chunk generation is seam-free by construction: a chunk rasterises the features of the
+3x3 block of chunks around it, each feature drawn from its OWN chunk's rng, so a rock
+mass or a cave straddling an edge is identical from both sides regardless of visit
+order (there is a test that generates the map in reverse and compares). Features:
+rock masses with hollow rooms and doors, caves bored by rim-anchored random walks (so
+a cave always has mouths and is never a sealed pocket), veins with gaps, breakable
+rubble, tree clumps, pushable blocks. Open fraction lands ~0.69 across seeds —
+structured but walkable. Material colours live in ONE table shared by the renderer and
+(next stage) the vision sensor, so what the user sees is literally what the agent will
+sense.
+
+The world is bounded (512) by default even though the generator is infinite-capable
+(`--size 0` unbounds it, verified). Not laziness: a geodesic scent needs a boundary,
+and — the real reason — in an endless world MEMORY never pays, because "there is
+always more ahead" beats "go back to the patch I remember", which would delete a whole
+line of the economy before we ever test it.
+
+Numbers: 0.016 ms/step (62k steps/s), 18 new tests, full suite 211 green. Verified:
+same seed same map, visit order irrelevant, the body never overlaps a solid tile over
+a 600-step random walk, a 40-cell move in ONE call stops at the wall instead of
+tunnelling, a diagonal into a wall slides instead of sticking, moving costs more than
+standing and standing is not free, death is by energy and not by age.
+
+Next chunk: senses (DDA vision with hue/sat/brightness over 64 rays, odour channels,
+touch) and the radar sensor panel — which doubles as a completeness test, because if a
+human cannot play the world from the sensor panel alone, the brain has no chance.

@@ -101,6 +101,16 @@ class Config:
     max_age: int = 200_000          # a cap, NOT the cause of death — energy is life
     spawn_room: int = 600           # a spawn must reach at least this many cells (via
                                     # doors and breakables) or it counts as a coffin
+    # --- senses (see cortex/senses.py)
+    n_rays: int = 64                # a single agent can afford a real retina: at 64 over
+                                    # a 120 deg fov a ray is 1.9 deg, so a 2x2 tree ten
+                                    # cells away spans ~6 rays and its SHAPE is legible.
+                                    # At aqua's 3-12 rays it would be one ray and a guess
+    fov: float = math.radians(120)
+    ray_reach: float = 22.0         # how far sight carries (cells)
+    food_radius: float = 0.25       # a morsel's visual size
+    smell_radius: int = 24          # how far the geodesic scent BFS is computed
+    smell_sharp: float = 5.0        # half strength at this many cells of WALKED path
     # --- interaction
     interact_cost: float = 0.05     # energy per attempt, whether or not it achieves
     interact_every: int = 6         # ticks between attempts (holding E chips, not melts)
@@ -124,7 +134,9 @@ class Agent:
     x: float
     heading: float = 0.0            # radians; 0 = +x (east)
     speed: float = 0.0
+    last_turn: float = 0.0          # proprioception: what we just commanded
     energy: float = 0.0
+    poison: float = 0.0             # energy still to be drained by something eaten
     age: int = 0
     alive: bool = True
     ate: list = field(default_factory=lambda: [0, 0, 0, 0])
@@ -334,7 +346,8 @@ class World:
         if not a.alive:
             return
         c = self.cfg
-        a.heading = (a.heading + max(-1.0, min(1.0, turn)) * c.max_turn) % (2 * math.pi)
+        a.last_turn = max(-1.0, min(1.0, turn))
+        a.heading = (a.heading + a.last_turn * c.max_turn) % (2 * math.pi)
         a.speed = max(0.0, min(1.0, thrust)) * c.max_speed
         if a.speed > 0.0:
             self._advance(a.y + math.sin(a.heading) * a.speed,

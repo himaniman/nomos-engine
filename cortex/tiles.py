@@ -41,6 +41,10 @@ _MATERIALS = (("ground",   False, False,     0,  (54, 48, 40)),
 N_MATERIALS = len(_MATERIALS)
 NAMES = tuple(m[0] for m in _MATERIALS)
 SOLID = np.array([m[1] for m in _MATERIALS], dtype=bool)
+# OPAQUE is not the same as SOLID: leaves stop a ray but not a body. Keeping the two
+# apart is what lets an agent learn that green means "I can walk in, but I cannot see
+# through" — a real affordance, and one it has to discover from colour plus touch.
+OPAQUE = SOLID.copy()
 BREAKABLE = np.array([m[2] for m in _MATERIALS], dtype=bool)
 HP = np.array([m[3] for m in _MATERIALS], dtype=np.int64)
 RGB = np.array([m[4] for m in _MATERIALS], dtype=np.uint8)
@@ -48,6 +52,7 @@ RGB = np.array([m[4] for m in _MATERIALS], dtype=np.uint8)
 # vision sensor, so what the user sees is literally what the agent senses.
 HSV = np.array([colorsys.rgb_to_hsv(*(np.array(m[4]) / 255.0)) for m in _MATERIALS],
                dtype=np.float64)
+OPAQUE[FOLIAGE] = True                       # leaves block sight, not passage
 
 
 def _mix(seed: int, cy: int, cx: int) -> int:
@@ -69,6 +74,9 @@ class TileMap:
         self.size = size                      # None = unbounded (the generator allows it)
         self.chunk = int(chunk)
         self._chunks: dict[tuple[int, int], np.ndarray] = {}
+        self.version = 0                      # bumped by every edit, so caches that
+                                              # depend on the geometry (the scent field)
+                                              # know when a broken wall invalidated them
 
     # --- access ------------------------------------------------------------------
     def in_bounds(self, y: int, x: int) -> bool:
@@ -93,6 +101,7 @@ class TileMap:
         self.material(y, x)                   # ensure the chunk exists
         ch = self.chunk
         self._chunks[(y // ch, x // ch)][y - (y // ch) * ch, x - (x // ch) * ch] = mat
+        self.version += 1
 
     def solid(self, y: int, x: int) -> bool:
         return bool(SOLID[self.material(y, x)])

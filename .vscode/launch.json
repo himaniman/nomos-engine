@@ -166,6 +166,20 @@
       "justMyCode": true
     },
     {
+      // WATCH A BRAIN PLAY. B hands the wheel between you and it, V cycles the sheet
+      // view (type / activity / hormone / organs), T animates the thinking sub-ticks.
+      "name": "cortex: WATCH a brain play",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "57", "--cell", "12", "--brain",
+               "--brain-seed", "0", "--think-every", "2"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // the BASELINE the brain has to beat: a twenty-line reflex, senses only
       "name": "cortex: baseline reflex (8 seeds)",
       "type": "debugpy",

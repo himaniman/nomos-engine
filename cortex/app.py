@@ -33,6 +33,7 @@ import time
 import numpy as np
 import pygame
 
+from cortex.brainpanel import BRAIN_W, BrainPanel
 from cortex.senses import (INTERO, N_TOUCH, ODOUR_CH, RAY_CH, TOUCH_CH, ScentField,
                            layout, sense)
 from cortex.session import record, summarise
@@ -54,6 +55,9 @@ TOUCH_NAMES = ("front", "right", "back", "left")
 HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "E               interact:", "                eat / open / break / push",
         "TAB             blind mode (senses only)",
+        "B               brain drives / you drive",
+        "V               brain view: type/activity/hormone/organs",
+        "T               animate the thinking sub-ticks",
         "SPACE           pause", "P               screenshot", "H               this help",
         "ESC / Q         quit"]
 
@@ -67,18 +71,26 @@ def _hsv_rgb(hue_cos: float, hue_sin: float, sat: float, val: float):
 
 class App:
     def __init__(self, seed: int = 2, view: int = 65, cell: int = 12,
-                 size: int | None = 512):
+                 size: int | None = 512, mind=None):
         self.world = World(seed=seed, cfg=Config(size=size))
         self.field = ScentField(self.world.cfg.smell_radius)
         self.layout = layout(self.world.cfg.n_rays)
         self.vec = sense(self.world, self.field)
+        # a brain, if one is playing. `auto` says who is driving right now — the same
+        # world, the same action tuple, so you can take the wheel off it and hand it
+        # back mid-life and compare like for like.
+        self.mind = mind
+        self.auto = mind is not None
+        self.brain_panel = BrainPanel(self) if mind is not None else None
+        if mind is not None:
+            mind.attach(self.world)
         self.view = int(view) | 1                 # odd, so the agent sits dead centre
         self.cell = int(cell)
         self.paused = False
         self.blind = False
         self.show_help = False
         self.fps = 0.0
-        self.w = self.view * self.cell + PANEL_W
+        self.w = self.view * self.cell + PANEL_W + (BRAIN_W if mind else 0)
         self.h = self.view * self.cell
         self.font = pygame.font.SysFont("consolas", 14)
         self.small = pygame.font.SysFont("consolas", 11)
@@ -97,8 +109,18 @@ class App:
         return thrust, turn, interact
 
     def step(self, keys) -> None:
-        self.world.step(*self.action(keys))
-        self.vec = sense(self.world, self.field)
+        """One world tick, driven by whoever has the wheel. In brain mode the panel
+        shows the sensor vector the BRAIN was handed — stale between thoughts, which
+        is honest: that is what it is acting on."""
+        if self.auto and self.mind is not None:
+            self.mind.step(self.world)
+            if self.mind.sensors is not None:
+                self.vec = self.mind.sensors
+        else:
+            self.world.step(*self.action(keys))
+            self.vec = sense(self.world, self.field)
+        if self.brain_panel is not None and self.brain_panel.trace_on:
+            self.brain_panel.advance_trace()
 
     # --- render -------------------------------------------------------------------
     def draw(self) -> pygame.Surface:
@@ -109,6 +131,8 @@ class App:
         else:
             self._draw_world(surf)
         self._draw_panel(surf)
+        if self.brain_panel is not None:
+            self.brain_panel.draw(surf, self.view * self.cell + PANEL_W)
         return surf
 
     def _draw_blind(self, surf: pygame.Surface) -> None:
@@ -334,12 +358,29 @@ def main(argv=None) -> None:
     p.add_argument("--size", type=int, default=512, help="world side; 0 = unbounded")
     p.add_argument("--blind", action="store_true", help="start in senses-only mode")
     p.add_argument("--player", default="human", help="name for the session log")
+    p.add_argument("--brain", action="store_true", help="let a fresh brain play")
+    p.add_argument("--brain-seed", type=int, default=0, help="which fresh brain")
+    p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
+    p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
     p.add_argument("--no-log", action="store_true", help="do not record the session")
     p.add_argument("--fps", type=int, default=60)
     args = p.parse_args(argv)
 
     pygame.init()
-    app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None))
+    mind = None
+    if args.brain or args.load_brain:
+        from cortex import brain as B
+        from cortex.agent import Mind, fresh_genome
+        if args.load_brain:
+            import json
+            genome = B.Genome.from_dict(json.load(open(args.load_brain, encoding="utf-8")))
+        else:
+            genome = fresh_genome(seed=args.brain_seed)
+        mind = Mind(genome, think_every=args.think_every)
+        if args.player == "human":
+            args.player = f"brain-{args.brain_seed}"
+    app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None),
+              mind=mind)
     app.blind = args.blind
     screen = pygame.display.set_mode((app.w, app.h))
     pygame.display.set_caption(f"cortex — seed {args.seed}")
@@ -372,6 +413,15 @@ def main(argv=None) -> None:
                     app.paused = not app.paused
                 elif ev.key == pygame.K_TAB:
                     app.blind = not app.blind
+                elif ev.key == pygame.K_b and app.mind is not None:
+                    app.auto = not app.auto          # take the wheel, or give it back
+                elif ev.key == pygame.K_v and app.brain_panel is not None:
+                    app.brain_panel.cycle_view()
+                elif ev.key == pygame.K_t and app.mind is not None:
+                    bp = app.brain_panel
+                    bp.trace_on = not bp.trace_on    # watch a thought cross the sheet
+                    bp.trace_i = 0
+                    app.mind.phenotype.record = bp.trace_on
                 elif ev.key == pygame.K_h:
                     app.show_help = not app.show_help
                 elif ev.key == pygame.K_p:

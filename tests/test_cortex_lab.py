@@ -14,7 +14,7 @@ import pytest
 from cortex import brain as B
 from cortex import lab
 from cortex import program as PROG
-from nomos.llm import MockClient
+from nomos.llm import LLMError, MockClient
 
 TICKS, PROBE = 260, 90
 SEEDS = (0,)
@@ -238,3 +238,58 @@ def test_the_hardcoded_baselines_still_match_the_probes():
         got = probes.run_suite_policy(POLICIES[name], lay)["profile"]
         assert {k: round(v, 2) for k, v in got.items()} == expected, \
             f"{name} baseline has drifted — re-measure and update lab.BASELINES"
+
+
+def test_a_transient_model_failure_does_not_end_the_run(tmp_path):
+    """Both failures actually seen are transient — a thinking model returning empty
+    content, and a timed-out connection. A fifty-minute run should not be lost to
+    either."""
+    class Flaky:
+        model = "flaky"
+
+        def __init__(self):
+            self.n = 0
+
+        def chat(self, messages, **_):
+            self.n += 1
+            if self.n == 1:
+                raise LLMError("empty response from model")
+            return _reply({"grow_thresh": 0.15}, "after a stumble")
+
+    out = lab.run_lab(Flaky(), iterations=1, seeds=SEEDS, ticks=TICKS,
+                      probe_ticks=PROBE, out_dir=str(tmp_path), shots=False)
+    assert len(out["board"]) == 2
+    assert out["board"][1]["hypothesis"] == "after a stumble"
+
+
+def test_the_model_is_shown_the_cell_ceiling_it_ran_into(tmp_path):
+    """A body at the lattice ceiling is a specific failure, and "2098 cells" does not
+    say which one it is."""
+    client = MockClient([_reply({"grow_thresh": 0.15})])
+    lab.run_lab(client, iterations=1, seeds=SEEDS, ticks=TICKS, probe_ticks=PROBE,
+                out_dir=str(tmp_path), shots=False)
+    whole = "\n".join(m["content"] for call in client.calls for m in call)
+    assert f"/{B.Config().max_cells} cells" in whole
+    assert "4096" in whole, "the spec has to name the ceiling, not only report it"
+
+
+def test_growing_tissue_is_never_free(tmp_path):
+    """The hole a live run walked straight through: `embryo_ticks` is writable, so a
+    FREE embryo means an arbitrarily large brain costs nothing — just widen the
+    window."""
+    from cortex.agent import Mind
+    from cortex.world import Config as WorldConfig
+    from cortex.world import World
+    from cortex.agent import fresh_genome as fg
+    drops = []
+    for frac in (0.0, 1.0):
+        g = fg(seed=0)
+        g.program.update({"embryo_ticks": 5000, "embryo_cost_frac": frac})
+        w = World(seed=0, cfg=WorldConfig())
+        mind = Mind(g)
+        mind.attach(w)
+        before = w.agent.energy
+        for _ in range(600):
+            mind.step(w)
+        drops.append(before - w.agent.energy)
+    assert drops[1] > drops[0], "an embryo has to cost something"

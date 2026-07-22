@@ -74,12 +74,20 @@ class Mind:
         """Growth on its own slow clock, and paid for.
 
         TWO PHASES, straight out of biology and out of arithmetic. In the EMBRYO the
-        tissue develops often and its cells are free, so a brain gets to exist before
-        the world starts charging for it — without that, growth is a tax you take out
-        before you can forage and no lineage would ever pay it. Afterwards development
-        is rare and every cell costs energy every tick, so a bigger brain has to earn
-        its keep by eating more. That cost IS the selection pressure against bloat;
-        nothing else in the system argues for a small brain."""
+        tissue develops often and its cells are CHEAP, so a brain gets to exist before
+        the world charges full price for it — without that, growth is a tax you take
+        out before you can forage and no lineage would ever pay it. Afterwards
+        development is rare and every cell costs full price every tick, so a bigger
+        brain has to earn its keep by eating more. That cost IS the selection pressure
+        against bloat; nothing else in the system argues for a small brain.
+
+        Cheap, though, and not FREE — which it was until the first live lab run walked
+        straight through the hole. `embryo_ticks` is part of the growth program, so a
+        free embryo means an arbitrarily large brain can be bought for nothing simply
+        by extending the window. The model did exactly that (900 -> 3000 ticks) while
+        its bodies went 434 -> 4096 cells and every score fell; at the ceiling the
+        agent walked 27 cells in a whole life. A capability that does not pay is one
+        nothing can argue against."""
         c = self.phenotype.cfg
         if not c.develop:
             return
@@ -88,8 +96,8 @@ class Mind:
         if w.tick % every == 0:
             self.last_dev = self.phenotype.develop(
                 energy_frac=max(0.0, w.agent.energy / w.cfg.max_energy), embryo=embryo)
-        if not embryo:
-            w.agent.energy -= c.cell_cost * self.phenotype.cells()
+        rate = c.cell_cost * (c.embryo_cost_frac if embryo else 1.0)
+        w.agent.energy -= rate * self.phenotype.cells()
 
 
     def hormone(self, w: World) -> np.ndarray:

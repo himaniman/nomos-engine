@@ -93,8 +93,17 @@ FIELDS: dict[str, tuple] = {
                         "supply not spent is lost, so it is a flow and not a store"),
     "divide_cost":     (0.35, 0.02, 3.0, False, "supply one division spends"),
     "cell_cost":  (0.000015, 0.0, 0.002, False,
-                   "energy per cell per world tick, charged to the AGENT once adult."
-                   " This is the only thing arguing for a small brain"),
+                   "energy per cell per world tick, charged to the AGENT. This is the"
+                   " only thing arguing for a small brain, so a big one has to earn"
+                   " its keep by eating more"),
+    # The embryo used to be FREE, and `embryo_ticks` is writable, so the way to buy an
+    # arbitrarily large brain for nothing was to extend the free window — which is
+    # exactly what the first live lab run did, 900 -> 3000 while the body went 434 ->
+    # 4096 cells and the score fell. Cheaper, never free: the same shape as the forage
+    # world's "standing still costs half, not nothing".
+    "embryo_cost_frac": (0.25, 0.0, 1.0, False,
+                         "share of cell_cost charged while still an embryo. The embryo"
+                         " is a discount on growth, not an exemption from it"),
     # --- the chemical layer: what a cell reads its own position from ---------------
     "chem_mix":   (0.35, 0.0, 0.95, False,
                    "share of the neighbourhood average a chemical channel takes per"

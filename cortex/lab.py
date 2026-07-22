@@ -103,8 +103,18 @@ the French-flag model: concentration decides fate, so an "eye region" is somethi
 that can FORM rather than something anyone places.
 
 Life has two phases: an EMBRYO window where development is frequent and its cells are
-FREE, then adulthood where structure changes rarely and every cell costs energy every
-tick. That cost is the only thing arguing for a small brain.
+CHEAP, then adulthood where structure changes rarely and cells cost full price. Either
+way TISSUE COSTS ENERGY EVERY TICK, and that cost is the only thing arguing for a small
+brain.
+
+BIGGER IS NOT BETTER, and this is the failure mode to avoid. The lattice holds at most
+4096 cells. A run before yours raised every growth lever it could find, generation after
+generation, until the body hit that ceiling — and every score fell. At 4096 cells the
+agent walked twenty-seven cells in a whole life: a brain too large to act, paying for
+tissue that never earns anything back. A signal still crosses ONE CELL PER SUB-TICK, so
+a wider body is a body whose senses are further from its effectors, not a smarter one.
+If you want more capability, look at where tissue sits and what it costs before you look
+at how much of it there is.
 
 YOU WRITE THE PROGRAM, NOT THE WEIGHTS. The connection weights are random and are held
 FIXED across every candidate, so whatever changes in the score is attributable to your
@@ -260,8 +270,13 @@ def report(res: dict) -> str:
     here on purpose: a program that grows 900 cells of which 800 are ears explains its
     own score, and the model cannot see the sheet."""
     b = res["body"]
+    cap = B.Config().max_cells
+    # cells are shown AGAINST THE CEILING because a body at the ceiling is a specific
+    # failure, not a big success, and "2098 cells" does not say which one it is
+    at_cap = "  AT THE CEILING" if b["cells"] >= cap * 0.98 else ""
     return (_profile_table(res["skills"]) + "\n\n"
-            + f"  body     {b['cells']:.0f} cells  {b['sensory']:.0f} sensory"
+            + f"  body     {b['cells']:.0f}/{cap} cells{at_cap}"
+              f"  {b['sensory']:.0f} sensory"
               f"  {b['effector']:.0f} effector  {b['axons']:.0f} axons"
               f"  ({b['born']:.0f} born, {b['died']:.0f} died)\n"
             + f"  life     {b['ticks']:.0f} ticks  {b['meals']:.1f} meals"
@@ -456,11 +471,21 @@ def run_lab(client, iterations: int = 8, seeds=(0, 1), ticks: int = 4000,
     done = 0
     while done < iterations:
         if is_llm:
-            try:
-                reply = client.chat(messages, temperature=temperature)
-            except LLMError as e:
-                log(f"\n---\n\n## Iteration {done + 1} — the model errored\n\n{e}\n")
-                print(f"[gen {done + 1}] {e}", file=sys.stderr)
+            # RETRY, because the two failures actually seen are both transient: a
+            # thinking model returning empty content (a known deepseek-v4 quirk, see
+            # CLAUDE.md) and a timed-out connection. Losing a fifty-minute run to
+            # either is the wrong trade.
+            reply, err = None, None
+            for attempt in range(3):
+                try:
+                    reply = client.chat(messages, temperature=temperature)
+                    break
+                except LLMError as e:
+                    err = e
+                    print(f"[gen {done + 1}] {e} (attempt {attempt + 1}/3)",
+                          file=sys.stderr)
+            if reply is None:
+                log(f"\n---\n\n## Iteration {done + 1} — the model errored\n\n{err}\n")
                 break
             messages.append({"role": "assistant", "content": reply})
             spec = extract_json(reply)

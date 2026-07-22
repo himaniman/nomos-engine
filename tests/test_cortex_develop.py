@@ -229,15 +229,25 @@ def test_the_seed_already_has_several_cell_types_laid_out_as_regions():
     assert g.n_types == cfg.seed_types > 1
     counts = np.bincount(g.type_map[g.mask], minlength=g.n_types)
     assert (counts > 0).all(), f"a type with no cells in the seed: {counts}"
-    # regions, not speckle: most cells share a type with a 4-neighbour
+    # regions, not speckle — measured AGAINST speckle rather than against a magic
+    # threshold: in a 24-cell seed split three ways most cells are boundary cells, so
+    # what matters is that neighbours agree far more often than chance
     ys, xs = np.nonzero(g.mask)
-    touching = 0
-    for y, x in zip(ys, xs):
-        same = [g.type_map[y + dy, x + dx] == g.type_map[y, x]
-                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
-                if g.mask[y + dy, x + dx]]
-        touching += any(same)
-    assert touching > 0.9 * len(ys), "the types are speckled, not laid out in regions"
+
+    def agreement(tmap):
+        hits = total = 0
+        for y, x in zip(ys, xs):
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                if g.mask[y + dy, x + dx]:
+                    total += 1
+                    hits += int(tmap[y + dy, x + dx] == tmap[y, x])
+        return hits / max(1, total)
+
+    speckle = g.type_map.copy()
+    rng = np.random.default_rng(0)
+    speckle[ys, xs] = rng.permutation(g.type_map[ys, xs])
+    laid_out, scattered = agreement(g.type_map), agreement(speckle)
+    assert laid_out > scattered + 0.2,         f"neighbours agree {laid_out:.0%} vs {scattered:.0%} shuffled — that is speckle"
 
 
 def test_type_regions_grow_with_the_tissue():

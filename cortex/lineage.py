@@ -227,18 +227,23 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1, 2, 3), max_ticks: int =
             children.append(
                 (evaluate(child, turn, max_ticks, think_every, bcfg), child))
         cand, cgen = max(children, key=lambda kv: kv[0]["fitness"])
-        # RE-MEASURE THE INCUMBENT rather than trusting the score it happened to get
-        # when it was young. A life is noisy, and in a (1 + 1) loop a lucky parent
-        # measurement is permanent: it becomes a bar nothing can clear, and the run
-        # reads as "no child was ever better" when it means "the parent was measured on
-        # a good day". Averaging the estimate lets a flattered parent come back down.
+        # A PAIRED COMPARISON: the incumbent is re-lived on THIS generation's worlds and
+        # the child is judged against that, nothing else.
+        #
+        # The previous version averaged the parent's fresh score with the one it carried
+        # from whenever it was accepted — which was measured on DIFFERENT maps, so the
+        # bar added two incomparable numbers. It showed: the bar swung between 84 and
+        # 152 across eighteen generations, a spread as large as the differences between
+        # children, and acceptance became a lottery on which maps a child happened to
+        # draw. Eight of eighteen accepted and not a hint of a trend.
+        #
+        # Facing both on the same worlds cancels the map out of the comparison entirely.
+        # Rotation still does its job across generations: a genome that only suits the
+        # maps it grew up on will lose the moment the window moves on.
         again = evaluate(parent, turn, max_ticks, think_every, bcfg)
-        bar = 0.5 * (best["fitness"] + again["fitness"])
+        bar = again["fitness"]
         kept = cand["fitness"] >= bar
-        if kept:
-            best, parent = cand, cgen
-        else:
-            best = dict(again, fitness=bar)     # the incumbent, re-scored
+        best, parent = (cand, cgen) if kept else (again, parent)
         accepts.append(kept)
         step = adapt(step, kept)
         history.append(best["fitness"])

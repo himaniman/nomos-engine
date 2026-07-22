@@ -170,3 +170,27 @@ def test_a_brain_good_at_tests_and_bad_at_living_does_not_win():
     exam = {"gained": 40.0, "ticks": 5000, "skills": {"mean": 0.95}}
     fit = lambda p: p["gained"] + 0.002 * p["ticks"]            # noqa: E731
     assert fit(lived) > fit(exam)
+
+
+def test_parent_and_child_are_judged_on_the_same_worlds():
+    """The comparison has to be PAIRED. Averaging the parent's fresh score with one it
+    carried from different maps adds two incomparable numbers: the bar swung between 84
+    and 152 over eighteen generations — a spread as large as the differences between
+    children — and acceptance became a lottery on which maps a child happened to draw."""
+    seen = []
+    real = lineage.evaluate
+
+    def spy(genome, seeds, *a, **kw):
+        seen.append(tuple(seeds))
+        return real(genome, seeds, *a, **kw)
+
+    lineage.evaluate = spy
+    try:
+        run(generations=2, seeds=(0, 1, 2, 3), max_ticks=150, think_every=4,
+            per_gen=2, save="", log=False, quiet=True, strips="")
+    finally:
+        lineage.evaluate = real
+    # generation 0 is scored once; each generation after scores a child and the parent,
+    # and those two calls must name the same worlds
+    for child_worlds, parent_worlds in zip(seen[1::2], seen[2::2]):
+        assert child_worlds == parent_worlds

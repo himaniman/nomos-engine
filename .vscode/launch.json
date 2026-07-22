@@ -175,7 +175,56 @@
       "request": "launch",
       "module": "cortex.app",
       "args": ["--seed", "2", "--view", "65", "--cell", "11", "--brain",
-               "--brain-seed", "0", "--think-every", "3"],
+               "--brain-seed", "0", "--think-every", "30"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // *** WATCH A BRAIN WITH ITS INNATE REFLEXES ***  The arcs it is born knowing:
+      // smell-forward -> thrust, smell-lateral -> turn, smell-right-here -> eat, each
+      // carried from the nose organs to the effectors by a PIONEER TRACT. In the brain
+      // column the tracts are part of the green web and the header says how many are
+      // innate. Press R for the TRACK — a brain that forages draws a line to its food
+      // instead of a closed loop. Slow the world with - to watch a thought cross.
+      "name": "cortex: WATCH a REFLEX brain play",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "65", "--cell", "11", "--brain",
+               "--brain-seed", "2", "--think-every", "3"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // ...and the SAME brain with the whole innate arc stripped out — the ablation
+      // arm, made watchable. Run this beside the one above: if they look alike, the
+      // reflex is not doing the work we think it is.
+      "name": "cortex: WATCH the same brain WITHOUT reflexes (ablation)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "65", "--cell", "11", "--brain",
+               "--brain-seed", "2", "--think-every", "3", "--no-reflex"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // do the arcs help, and does the TISSUE add anything on top of them? Three arms:
+      // the brain as it lived, the brain with the arc removed, and the twenty-line
+      // reflex policy with no brain at all. The third is what stops us fooling
+      // ourselves that a decorative brain riding a reflex has learnt something.
+      "name": "cortex: REFLEX ablation (do the innate arcs earn their keep?)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.cradle",
+      "args": ["--reflex", "--world", "real", "--seeds", "0,1,2,3,4,5",
+               "--ticks", "2500", "--probe-ticks", "300"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",

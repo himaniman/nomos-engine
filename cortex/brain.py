@@ -428,8 +428,17 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     n_chem = max(1, int(min(cfg.chem_channels, C - 2)))
     organ_map = rng.integers(1, cfg.organ_mods + 1, n_chem)
     prog = Program({k: getattr(cfg, k) for k in _program.FIELDS if hasattr(cfg, k)})
-    return Genome(n_in, mask, type_map, rules, P_in, P_out, b_out, C, H,
-                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm, organ_map, prog)
+    g = Genome(n_in, mask, type_map, rules, P_in, P_out, b_out, C, H,
+               cfg.subticks, in_mask, out_mask, organ_mod, P_horm, organ_map, prog)
+    # INNATE REFLEXES: what the genome is born knowing. Written as ordinary weights on
+    # the projections, so mutation and plasticity can argue with them from the first
+    # generation — see cortex/reflex.py for why they exist at all, which is not the
+    # obvious reason. `reflex_gain = 0` is a brain born knowing nothing: the control arm.
+    from cortex import reflex as _reflex
+    from cortex.senses import layout as _layout
+    from cortex.senses import rays_from_size as _rays
+    _reflex.install(g, _layout(_rays(n_in)), prog["reflex_gain"], prog["reflex_out"])
+    return g
 
 
 # --- running a brain ----------------------------------------------------------------
@@ -947,7 +956,12 @@ class Phenotype:
             self.resource[y, x] *= 0.5
             alive += 1
             born += 1
-        grown_ax = self._sprout(ys, xs, morph)
+        # PIONEER TRACTS, before the growth cones. They are attempted every development
+        # tick until they exist, because at the first one the seed has often not grown
+        # a nose or an effector yet, and a reflex that failed to wire on tick eight and
+        # was never retried would be a reflex nothing could ever select on.
+        grown_ax = self._pioneer()
+        grown_ax += self._sprout(ys, xs, morph)
         if born or died:
             self._reindex()
         elif grown_ax:
@@ -958,6 +972,22 @@ class Phenotype:
         self.dev_ticks += 1
         return {"born": born, "died": died, "cells": alive, "embryo": embryo,
                 "axons": len(self.axon_cells)}
+
+    def _pioneer(self) -> int:
+        """Grow the INNATE tracts if they are not already there — nose organs wired
+        straight to the effectors. See cortex/reflex.py: this is the transport half of
+        a reflex arc, and it exists because a signal crosses one cell per sub-tick and
+        a body is tens of cells across, so an arc that had to crawl would not arrive
+        inside a thought."""
+        cfg = self.cfg
+        if not cfg.axons or cfg.reflex_tracts <= 0 or cfg.reflex_gain <= 0.0:
+            return 0
+        from cortex import reflex
+        have = reflex.count(self)
+        if have >= cfg.reflex_tracts:
+            return 0
+        return reflex.pioneer(self, weight=cfg.reflex_w0,
+                              max_tracts=int(cfg.reflex_tracts) - have)
 
     def _sprout(self, ys, xs, morph) -> int:
         """Grow axons. A GROWTH CONE: from the cell, walk up the guidance chemical one
@@ -1002,7 +1032,7 @@ class Phenotype:
             if any(a[0] == y and a[1] == x and a[2] == cy and a[3] == cx
                    for a in self.axon_cells):
                 continue
-            self.axon_cells.append([y, x, cy, cx, cfg.axon_w0])
+            self.axon_cells.append([y, x, cy, cx, cfg.axon_w0, 0])   # 0 = grown, not innate
             self.resource[y, x] -= cfg.axon_cost
             made += 1
         return made
@@ -1015,8 +1045,13 @@ class Phenotype:
             return
         keep = []
         for ax in self.axon_cells:
-            ax[4] *= (1.0 - self.cfg.axon_decay)
-            if abs(ax[4]) >= self.cfg.axon_min_w:
+            # an INNATE tract decays far more slowly and is never pruned. Plasticity
+            # still moves its weight, so the tissue can turn a reflex down, up, or
+            # around — it simply cannot let one rot by neglect. That asymmetry IS
+            # "hardwired, but retunable with effort".
+            innate = len(ax) > 5 and ax[5]
+            ax[4] *= (1.0 - (self.cfg.reflex_decay if innate else self.cfg.axon_decay))
+            if innate or abs(ax[4]) >= self.cfg.axon_min_w:
                 keep.append(ax)
         if len(keep) != len(self.axon_cells):
             self.axon_cells = keep

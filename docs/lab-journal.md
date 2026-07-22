@@ -2013,3 +2013,113 @@ Also this session, from reading a failing test rather than the code: the brain's
 upkeep was charged AFTER the reward was measured, so a brain never felt the cost of its
 own tissue. Upkeep is now inside the tick's ledger.
 
+
+## 2026-07-24 (later still) â€” innate reflexes, and the brain finally forages
+
+The user's idea, and their words for what it had to be: "hardwired, but retunable with
+effort â€” so the brain already does the basic things at the start". Built as
+`cortex/reflex.py`. The result is the best thing this playground has produced, and the
+route to it went through a blocker nobody had noticed.
+
+**Why reflexes, stated so we do not misremember it.** Not to raise the score. The
+previous entry ends with the measurement that matters: credit now reaches the behaviour
+that earned a meal, and learning still contributes nothing, because **what the agent
+does and whether it eats are uncorrelated**. It blunders into food, so what gets
+reinforced is whatever it happened to be doing. An innate approach makes eating a
+CONSEQUENCE of a behaviour, which is the precondition for reinforcing that behaviour at
+all. Reflexes do not replace learning. They manufacture the correlation learning needs.
+
+**An arc, not a shortcut.** The ten-line version is `command = policy(sensors) + sheet`,
+and it would make the tissue a decoration on a hand-written policy while every number
+improved. So a reflex here is assembled out of what the brain already is:
+
+1. a SENSORY PROJECTION â€” each odorant's forward / lateral / intensity component drives
+   a reserved state channel, so the organs that smell are holding the signal;
+2. a PIONEER TRACT â€” axons from those nose organs to the effectors, grown at the first
+   development ticks. Not `_sprout`'s growth cones wandering up a chemical: a pioneer
+   has a target and is guided to it, which is how a species is born already able to do
+   something. Both end up as ordinary axons in the same list;
+3. a COHERENT READ-OUT â€” that channel wired to the command it means.
+
+All three are ordinary weights and ordinary wires. Mutation jitters them, plasticity
+moves them, and the cell rules write to the very same channels, so the tissue can
+suppress, amplify or repurpose any of it. The one asymmetry is decay: an innate tract
+loses 0.001 per development tick against a grown axon's 0.02, and is never pruned. That
+asymmetry is the whole of "retunable with effort" â€” the tissue can argue with a reflex,
+it simply cannot let one rot by neglect.
+
+Only SMELL gets an arc. Smell is the one sense here that says which way to GO â€” it is
+geodesic, so its direction is a walkable path around walls rather than a bearing through
+rock. Vision would require the agent to already know which hue is food, and that is the
+poison experiment's entire question; an innate arc must not answer it in advance.
+
+**The blocker, which was worth the whole detour.** The first tracts refused to grow: 0,
+3 and 3 of a requested 16 across three brains. `organ_map` decides which chemical region
+becomes which sense and it is drawn at random from nine modalities â€” so **most fresh
+genomes had no odour organ anywhere and could not smell at all.** Every brain we have
+ever measured was, with high probability, noseless. A reflex has to bring the organ it
+needs: `install` now claims ONE chemical region for smell and leaves the rest to decide
+their own fates.
+
+**The measurement, three arms, eight brains.** `brain` as it lived; `no reflex`, the
+same brain with the whole arc removed â€” sensory drive, tracts and read-out â€” and
+everything it grew and learned left alone; and `reflex only`, the twenty-line baseline
+policy with no brain at all. The second says whether the arcs are load-bearing. The
+third is what stops us congratulating a decorative brain for riding one.
+
+```
+brain   tracts   near  open  side  behind  corner  maze  patience | mean
+0            7   1.00  0.24  0.35   0.33    0.24   0.11    0.34   | 0.37
+1           15   0.33  0.32  0.09   0.26    0.24   0.06    0.00   | 0.18
+2           16   1.00  1.00  1.00   1.00    0.34   0.01    0.30   | 0.66
+3           13   1.00  1.00  0.35   1.00    1.00   0.02    0.41   | 0.68
+4           16   0.35  0.32  0.35   0.35    0.13   0.08    0.16   | 0.25
+5           16   1.00  1.00  1.00   1.00    0.22   0.19    0.29   | 0.67
+6           16   1.00  0.27  0.23   0.00    0.24   0.11    0.00   | 0.26
+7           16   1.00  0.31  0.15   0.32    0.22   0.12    0.00   | 0.30
+
+delta from the arcs, mean of 8:
+            +0.39 +0.46 +0.23  +0.14   +0.20  +0.01    +0.06   | +0.21
+
+reflex POLICY (no brain at all):
+             1.00  1.00  1.00   1.00    0.23   0.23    0.14   | 0.66
+```
+
+Read it in three passes.
+
+**The arcs are load-bearing.** +0.21 mean, and positive on every one of the seven
+probes. Brain 5 goes 0.05 -> 0.67 when its arc is restored. This is not a tuning gain;
+without the arc these brains circle.
+
+**Three brains now forage.** 2, 3 and 5 take all four foraging rungs at 1.00 â€” reach
+food dead ahead, far over open ground, off to the side, and out of sight behind them on
+smell alone. No brain in this project has ever done that. The milestone in
+`docs/cortex-design.md` â€” *an LLM writes a growth program; the body develops from it,
+moves, and eats* â€” has its second and third clauses for the first time.
+
+**And the tissue is doing something the policy cannot.** Brain 3 scores **1.00 on
+`corner`** against the reflex policy's 0.23 â€” food behind a wall with one gap, where a
+nose-follower walks into the wall and stays there. Its overall 0.68 edges the policy's
+0.66. That is one brain out of eight and I am not going to call it a trend, but it is
+the specific thing the three-arm design was built to be able to see: not "the brain
+scores well", but "the brain scores well WHERE THE REFLEX DOES NOT", which cannot be
+explained by riding it.
+
+**What is not true.** The mean brain is 0.42, well under the policy's 0.66, and the
+spread is enormous (0.18 to 0.68) across nothing but the weight seed. `maze` stays noise
+â€” a random walk aces it, as recorded earlier. And meals in the real world are still 1-3
+per 2500 ticks against the reflex's 8-15, so scoring on the ladder has run ahead of
+living in the world; the probes are small arenas and the world is not.
+
+The obvious next question is now finally worth asking, because there is variation with a
+cause: with reflexes making meals correlate with behaviour, does within-life learning
+start contributing? The ablation harness for that already exists â€” `--unlearn` against
+`--no-reflex`, two knobs, four arms.
+
+Watchable, since that is the rule here: `cortex: WATCH a REFLEX brain play` and `WATCH
+the same brain WITHOUT reflexes` side by side, the brain column counting innate tracts
+apart from grown ones, and R for the track â€” a forager draws a line to its food where a
+circler draws a closed loop.
+
+16 tests, suite 423.
+

@@ -122,6 +122,27 @@ FIELDS: dict[str, tuple] = {
     "axon_decay":   (0.02, 0.0, 0.5, False,
                      "weight lost per development tick: use it or lose it"),
     "axon_lr":      (0.02, 0.0, 0.4, False, "reward-gated Hebbian rate on a wire"),
+    # --- innate reflexes: what the brain is born knowing (cortex/reflex.py) ---------
+    # Not there to raise the score. Measured: with credit finally reaching far enough
+    # back, learning still contributes nothing, because what the agent DOES and whether
+    # it eats are uncorrelated — it blunders into food, so what gets reinforced is
+    # whatever it happened to be doing. An innate approach makes eating a CONSEQUENCE
+    # of a behaviour, which is what makes that behaviour reinforceable at all.
+    "reflex_gain":   (2.5, 0.0, 8.0, False,
+                      "how hard a smell drives its reserved state channel. 0 = born"
+                      " knowing nothing, which is the control arm"),
+    "reflex_out":    (2.5, 0.0, 8.0, False,
+                      "how hard that channel is read out as its command"),
+    "reflex_w0":     (0.9, 0.0, 2.0, False,
+                      "the weight an innate TRACT is born with — a wire from the nose"
+                      " organs to the effectors, so the signal does not have to crawl"
+                      " cell by cell across the sheet"),
+    "reflex_decay":  (0.001, 0.0, 0.2, False,
+                      "what an innate tract loses per development tick. Far slower than"
+                      " a grown axon, and innate tracts are never pruned: this is the"
+                      " whole of 'hardwired, but retunable with effort'"),
+    "reflex_tracts": (16, 0, 64, True,
+                      "how many innate tracts to grow at most"),
     # --- thinking and the read-out -------------------------------------------------
     "think_every": (2, 1, 32, True,
                     "world ticks per THOUGHT, the command held in between. Thinking is"

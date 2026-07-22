@@ -447,6 +447,10 @@ def main(argv=None) -> None:
     p.add_argument("--brain-seed", type=int, default=0, help="which fresh brain")
     p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
     p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
+    p.add_argument("--no-reflex", action="store_true",
+                   help="strip the INNATE ARCS — the smell drive, the pioneer tracts "
+                        "and the read-out — and watch the same brain without them. "
+                        "This is the ablation arm, made watchable")
     p.add_argument("--probe", default="", help="drop into a PROBE arena instead of the "
                                                "world: open/corner/door/rubble/poison/patience")
     p.add_argument("--no-log", action="store_true", help="do not record the session")
@@ -463,9 +467,15 @@ def main(argv=None) -> None:
             genome = B.Genome.from_dict(json.load(open(args.load_brain, encoding="utf-8")))
         else:
             genome = fresh_genome(seed=args.brain_seed)
+        if args.no_reflex:
+            from cortex import reflex
+            reflex.silence(genome)     # the tracts never grow: `_pioneer` needs the gain
+            genome.program.update({"reflex_gain": 0.0})
         mind = Mind(genome, think_every=args.think_every)
         if args.player == "human":
             args.player = f"brain-{args.brain_seed}"
+            if args.no_reflex:
+                args.player += "-noreflex"
     app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None),
               mind=mind)
     if args.probe:

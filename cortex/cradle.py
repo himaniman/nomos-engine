@@ -137,6 +137,62 @@ def run(seeds=(0, 1, 2), ticks: int = 4000, probe_ticks: int = 500,
     return out
 
 
+def reflex_arms(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
+                world: str = "cradle", quiet: bool = False) -> dict:
+    """Do the innate reflexes help, and does the TISSUE add anything on top of them?
+
+    Three arms, and the third is the one that stops us fooling ourselves:
+
+      * `brain` — as it lived, arcs and all;
+      * `no reflex` — the same brain with the whole innate arc removed (the sensory
+        drive, the pioneer tracts and the read-out) and everything it grew and learned
+        left alone;
+      * `reflex only` — the twenty-line baseline policy, no brain at all.
+
+    `brain` beating `no reflex` says the arcs are load-bearing. `brain` beating `reflex
+    only` says the tissue is doing something a hand-written policy does not. Without the
+    second number a reflex makes everything look good; without the third we would never
+    learn that a decorative brain was riding it."""
+    from cortex.baseline import POLICIES
+    rows = []
+    wcfg = cradle_config() if world == "cradle" else WorldConfig()
+    for s in seeds:
+        g = fresh_genome(seed=s)
+        w = World(seed=0, cfg=wcfg)
+        mind = Mind(g)
+        mind.attach(w)
+        while w.agent.alive and w.tick < ticks:
+            mind.step(w)
+        tracts = _innate_count(mind)
+        with_arc = probes.run_suite(mind, ticks=probe_ticks)["profile"]
+        without = probes.run_suite(mind, ticks=probe_ticks, no_reflex=True)["profile"]
+        rows.append({"seed": s, "tracts": tracts, "meals": int(sum(w.agent.ate)),
+                     "brain": with_arc, "no_reflex": without})
+        if not quiet:
+            print(f"\n  brain {s}: {rows[-1]['meals']} meals, {tracts} innate tracts, "
+                  f"{mind.phenotype.cells()} cells")
+            print(_row("  brain (arcs on)", with_arc))
+            print(_row("  no reflex", without))
+            print(_row("  delta (= the arcs)",
+                       {k: with_arc[k] - without[k] for k in with_arc}))
+            sys.stdout.flush()
+    pol = probes.run_suite_policy(POLICIES["reflex"], mind.layout,
+                                  ticks=probe_ticks)["profile"]
+    keys = list(rows[0]["brain"])
+    mean_arc = {k: float(np.mean([r["brain"][k] - r["no_reflex"][k] for r in rows]))
+                for k in keys}
+    if not quiet:
+        print()
+        print(_row(f"delta MEAN over {len(rows)} brains", mean_arc))
+        print(_row("reflex POLICY (no brain)", pol))
+    return {"rows": rows, "policy": pol, "mean_delta": mean_arc}
+
+
+def _innate_count(mind) -> int:
+    from cortex import reflex
+    return reflex.count(mind.phenotype)
+
+
 def sweep(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
           grid=((0.5, 0.002), (0.95, 0.0002), (0.98, 0.00005)),
           quiet: bool = False) -> list[dict]:
@@ -187,8 +243,18 @@ def main(argv=None) -> int:
                    help="reward_baseline values to compare (0 = the old raw reward)")
     p.add_argument("--sweep", action="store_true",
                    help="sweep the two learning TIME CONSTANTS instead")
+    p.add_argument("--reflex", action="store_true",
+                   help="do the INNATE ARCS help, and does the tissue add anything?")
+    p.add_argument("--world", choices=("cradle", "real"), default="cradle")
     args = p.parse_args(argv)
     seeds = [int(s) for s in args.seeds.split(",")]
+    if args.reflex:
+        print("  " + " " * 22 + "".join(f"{k[:7]:>8}" for k in
+                                        ("near", "open", "side", "behind", "corner",
+                                         "maze", "patience")) + f"{'mean':>9}")
+        reflex_arms(seeds=seeds, ticks=args.ticks, probe_ticks=args.probe_ticks,
+                    world=args.world)
+        return 0
     if args.sweep:
         print("  the ablation delta, by how long credit survives")
         print("  " + " " * 42 + "".join(f"{k[:7]:>8}" for k in

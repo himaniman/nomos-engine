@@ -314,7 +314,8 @@ PROBES = BASIC
 
 # --- running the suite ----------------------------------------------------------------
 
-def snapshot(mind, learning: bool = False, unlearn: bool = False) -> B.Phenotype:
+def snapshot(mind, learning: bool = False, unlearn: bool = False,
+             no_reflex: bool = False) -> B.Phenotype:
     """A deep copy of the brain as it stands: grown body, cell states, resource, and
     everything learned. Plasticity is OFF unless this is the learning probe, because an
     exam that teaches is not an exam.
@@ -327,11 +328,22 @@ def snapshot(mind, learning: bool = False, unlearn: bool = False) -> B.Phenotype
 
     Axon weights are deliberately NOT reset. A wire is topology that was grown, not a
     delta that was learned; cutting the wiring is a different ablation and answers a
-    different question."""
+    different question.
+
+    `no_reflex` is that other ablation: it removes the whole INNATE ARC — the sensory
+    drive, the pioneer tracts and the read-out — leaving everything the life grew and
+    learned. It is the only way to tell "the tissue improved on its reflexes" from "the
+    tissue rode its reflexes", and without it a reflex would make every number look
+    good while telling us nothing (cortex/reflex.py)."""
+    from cortex import reflex
     cfg = B.Config(**vars(mind.phenotype.cfg))
     cfg.plastic = cfg.rule_plastic = bool(learning)
     cfg.develop = False                                   # a body does not grow mid-exam
-    p = B.Phenotype(mind.genome, cfg, mind.layout)
+    genome = mind.genome
+    if no_reflex:
+        genome = genome.copy()                            # never damage the real one
+        reflex.silence(genome)
+    p = B.Phenotype(genome, cfg, mind.layout)
     src = mind.phenotype
     p.mask, p.type_map = src.mask.copy(), src.type_map.copy()
     p.in_mask, p.out_mask = src.in_mask.copy(), src.out_mask.copy()
@@ -343,6 +355,8 @@ def snapshot(mind, learning: bool = False, unlearn: bool = False) -> B.Phenotype
     p.learned = bool(src.learned) and not unlearn
     p.axon_cells = [list(a) for a in src.axon_cells]
     p._rewire()
+    if no_reflex:
+        reflex.cut(p)
     if B._NUMBA:
         p._nb_dW = B._NbList(p._dW_rule)
     return p
@@ -353,10 +367,12 @@ def suite_for(which: str = "basic"):
 
 
 def run_suite(mind, ticks: int = TICKS, learning: bool = False,
-              which: str = "basic", unlearn: bool = False) -> dict:
+              which: str = "basic", unlearn: bool = False,
+              no_reflex: bool = False) -> dict:
     """The whole exam for a BRAIN. Each probe gets its OWN fresh copy, so nothing one
     does can reach the next — the order they run in cannot matter."""
-    return _suite(lambda: BrainDriver(snapshot(mind, learning, unlearn)), ticks, which)
+    return _suite(lambda: BrainDriver(snapshot(mind, learning, unlearn, no_reflex)),
+                  ticks, which)
 
 
 def run_suite_policy(policy, layout, ticks: int = TICKS, which: str = "basic") -> dict:

@@ -56,6 +56,14 @@ def sensor_size(n_rays: int) -> int:
     return n_rays * RAY_CH + N_ODOUR * ODOUR_CH + N_TOUCH * TOUCH_CH + INTERO
 
 
+def rays_from_size(n_in: int) -> int:
+    """The inverse: how many rays a sensor vector of this width implies. So a genome
+    and a world can never silently disagree about which slot means what, wherever the
+    question is asked from."""
+    static = N_ODOUR * ODOUR_CH + N_TOUCH * TOUCH_CH + INTERO
+    return max(1, (int(n_in) - static) // RAY_CH)
+
+
 def layout(n_rays: int) -> dict:
     """Index map of the sensor vector. `ray_mod_channel` / `static_mod_idx` are in the
     exact shape `vivarium/nca.py::_build_listen` expects, so a brain cell that becomes

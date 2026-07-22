@@ -157,9 +157,14 @@ class BrainPanel:
         # appears the moment the first wire grows shifts the fixed sheet box down by
         # its own height, which is the exact twitch the fixed box exists to prevent
         if p.cfg.axons:
+            from cortex import reflex as _reflex
             ax = p.axon_stats()
-            line(f"axons  {ax['n']}  mean length {ax['mean_len']} cells, "
-                 f"mean |w| {ax['mean_w']}",
+            # INNATE tracts counted apart from grown ones: they are wired to a target
+            # rather than found by a growth cone, they barely decay, and they are never
+            # pruned — a different kind of wire, so a different number
+            innate = _reflex.count(p)
+            line(f"axons  {ax['n']}  ({innate} innate)  "
+                 f"mean length {ax['mean_len']} cells, mean |w| {ax['mean_w']}",
                  (150, 230, 170) if ax["n"] else DIM, dy=17)
         # TIME: the brain's two clocks, against the world's one
         line(f"time  {g.subticks} subticks per thought, "

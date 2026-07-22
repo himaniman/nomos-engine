@@ -187,6 +187,26 @@ def test_scent_is_steeper_up_close():
     assert near > far * 3, f"inverse-square expected, got {near:.3f} vs {far:.3f}"
 
 
+def test_scent_seeps_through_what_can_be_opened_but_only_faintly():
+    """A door is not airtight and neither is rubble. This matters more than it sounds:
+    with a shut door as a hard scent wall, food behind one is undetectable and the door
+    mechanic could never be learned at all. The PENALTY is what keeps it honest — you
+    can tell something is back there, and it smells further away than it is."""
+    def odour(mat):
+        w = _bare()
+        for y in range(64):
+            w.tiles.set(y, 24, mat)
+        w.food[(0, 0)] = [FoodSpot(y=20.0, x=26.0, kind=BERRY)]
+        lo, _ = layout(w.cfg.n_rays)["slices"]["odour"]
+        return float(sense(w)[lo])
+
+    assert odour(T.STONE) == 0.0, "stone is stone"
+    through_door = odour(T.DOOR)
+    through_rubble = odour(T.RUBBLE)
+    assert 0.0 < through_door < odour(T.GROUND) / 2, through_door
+    assert 0.0 < through_rubble < through_door, "rubble should muffle more than a door"
+
+
 def test_scent_cache_notices_a_broken_wall():
     w = _bare()
     for y in range(64):
@@ -195,9 +215,9 @@ def test_scent_cache_notices_a_broken_wall():
     field = ScentField(w.cfg.smell_radius)
     L = layout(w.cfg.n_rays)
     lo, _ = L["slices"]["odour"]
-    assert sense(w, field)[lo] == 0.0
+    muffled = sense(w, field)[lo]
     w.tiles.set(20, 24, T.GROUND)                             # smash the wall
-    assert sense(w, field)[lo] > 0.0, "the scent field ignored a changed map"
+    assert sense(w, field)[lo] > muffled * 2, "the scent field ignored a changed map"
 
 
 # --- touch and interoception --------------------------------------------------------

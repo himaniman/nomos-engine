@@ -30,6 +30,7 @@ import os
 import numpy as np
 
 from cortex import brain as B
+from cortex import probes
 from cortex.agent import Mind, fresh_genome
 from cortex.session import record, summarise
 from cortex.world import Config as WorldConfig
@@ -39,11 +40,12 @@ BEST = os.path.join("out", "cortex", "best_genome.json")
 
 
 def evaluate(genome: B.Genome, seeds, max_ticks: int = 20000, think_every: int = 2,
-             bcfg: B.Config | None = None, wcfg: WorldConfig | None = None) -> dict:
+             bcfg: B.Config | None = None, wcfg: WorldConfig | None = None,
+             probe_ticks: int = 500) -> dict:
     """Live one life per world seed and average. Returns the life's PROFILE, not a
     single number: at lambda = 1 there is one sample per turn, so it had better say
     more than 'better' or 'worse' (and it is what an LLM would later be handed)."""
-    lives = []
+    lives, minds = [], []
     for seed in seeds:
         w = World(seed=int(seed), cfg=wcfg or WorldConfig())
         mind = Mind(genome, bcfg, think_every=think_every)
@@ -54,11 +56,25 @@ def evaluate(genome: B.Genome, seeds, max_ticks: int = 20000, think_every: int =
             if w.tick % think_every == 0:
                 acts.append(mind.command)
         lives.append(_profile(w, mind, acts, max_ticks))
+        minds.append(mind)
     out = {k: float(np.mean([lf[k] for lf in lives])) for k in lives[0]
            if isinstance(lives[0][k], (int, float))}
     out["ate"] = [int(sum(lf["ate"][k] for lf in lives)) for k in range(4)]
-    out["fitness"] = out["gained"] + 0.002 * out["ticks"]
     out["lives"] = lives
+    # THE EXAM. A life's score is one noisy number; the profile is what an LLM (or we)
+    # can actually reason about, and what stops a mean from flattering a brain that has
+    # only learned to hold the interact button down.
+    if probe_ticks:
+        suites = [probes.run_suite(m, ticks=probe_ticks) for m in minds]
+        keys = suites[0]["profile"].keys()
+        out["skills"] = {k: round(float(np.mean([s["profile"][k] for s in suites])), 3)
+                         for k in keys}
+    else:
+        out["skills"] = {}
+    # fitness leans on the LIFE (what the world actually paid it) and takes the exam as
+    # a tie-break, so a brain cannot win by being good at tests and bad at living
+    out["fitness"] = (out["gained"] + 0.002 * out["ticks"]
+                      + 40.0 * out["skills"].get("mean", 0.0))
     return out
 
 
@@ -168,11 +184,14 @@ class _fake_world:
 
 
 def _report(gen: int, prof: dict, flags, genome: B.Genome, kept: bool = True) -> None:
+    sk = prof.get("skills") or {}
+    skills = "  ".join(f"{k[:4]} {v:.2f}" for k, v in sk.items() if k != "mean")
     print(f"gen {gen:>3}  fit {prof['fitness']:>8.1f}  ticks {prof['ticks']:>7.0f}"
-          f"  meals {prof['meals']:>5.1f}  poison {prof['poisoned']:>4.1f}"
-          f"  H {prof['entropy']:.2f}  |dW| {prof['dW']:.3f}"
-          f"  cells {genome.cells():>4} types {genome.n_types}"
-          f"  {'' if kept else '(rejected)'}  {' '.join(flags)}")
+          f"  meals {prof['meals']:>5.1f}  H {prof['entropy']:.2f}"
+          f"  types {genome.n_types}"
+          f"  {'' if kept else '(rejected)'} {' '.join(flags)}")
+    if skills:
+        print(f"        skills  {skills}   | mean {sk.get('mean', 0):.2f}")
 
 
 def main(argv=None) -> None:

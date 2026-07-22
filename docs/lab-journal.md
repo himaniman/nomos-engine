@@ -1615,3 +1615,72 @@ every channel it is holding coloured by signal layer, and its whole layer stack 
 maps. An inserted near-identity layer shows up as a literal diagonal.
 
 14 new tests for development alone, suite 319 green.
+
+## 2026-07-23 — cortex: several cell types in the seed, and the observer
+
+**The seed carries three cell types now, laid out as REGIONS.** One type meant every
+cell ran the same network until a 4%-per-mutation split happened to fire, so a fresh
+brain was uniform tissue and clicking any two cells showed the same thing — for a good
+reason nobody had written down. Types are placed by a small Voronoi over the seed
+cells, which matters because a daughter inherits her mother's type: patches grow
+outward with the tissue rather than staying a speckle. It surfaced a phenomenon worth
+naming — TYPES COMPETE DURING DEVELOPMENT. On two fresh genomes one type ended with 416
+and 421 of ~465 cells, because growth is driven by each type's own rule and whichever
+asks to divide hardest takes the tissue.
+
+**Two HUD corrections, both the user's, and one of them mine to own.** Clicking cells
+showed identical panels because a layer stack belongs to a TYPE — true, but the panel
+said nothing about it and showed nothing per-cell. It now says "SHARED by its N cells"
+outright, and shows what genuinely varies: what the cell is ASKING FOR (its six
+morphogenetic outputs, plus its resource) and what is DRIVING it (neighbourhood weights
+times what those neighbours actually hold). And I had written that aqua draws NEAT and
+that a node-and-edge picture would not work here. aqua's brain is the NCA, and
+`vivarium/app.py::_draw_rule_net` DOES draw a cell rule as a net — it makes a dense
+stack legible by averaging the nine neighbour slots down to C and drawing only the
+strongest edges. Both tricks are now copied, and the net sits beside the heat maps
+rather than instead of them.
+
+**The observer (`cortex/probes.py`).** Six fixed exams a brain sits at the end of its
+life, on a DEEP COPY, with plasticity FROZEN, each probe getting its own fresh copy so
+order cannot matter, and the live world never touched. `open` (food over open ground),
+`corner` (food behind a wall with one gap), `door`, `rubble`, `poison` (a nightcap
+under your nose and a berry further off), `patience` (no food at all — standing still
+is half price, so the score is energy kept).
+
+The calibration is the point, and it immediately earned its keep:
+
+```
+             open  corner  door  rubble  poison  patience | mean
+reflex       1.00   0.23   0.10   0.10    0.30    0.17    | 0.32
+random       0.15   0.17   0.07   0.07    0.60    0.00    | 0.18
+fresh brain  0.18   0.19   0.65   0.66    0.60    0.00    | 0.36   (an earlier run)
+```
+
+Read the MEAN and the fresh brain beats the reflex. Read the PROFILE and it obviously
+does not: it scores on `door` and `rubble` only because it holds the interact button
+down, and it is a fifth of the reflex on `open`, which is the actual skill. That is
+exactly the failure mode the suite was built to catch, and it caught it on the first
+run. The `poison` number is the other one to watch: the reflex scores 0.30 because it
+eats BOTH morsels — it follows its nose and the nightcap is the nearer smell — which is
+the same blindness the live world measured (12 nightcaps in 58 berry-like meals), now
+isolated into one number.
+
+Three things had to be fixed for the probes to measure anything. The first `poison`
+arena put the two morsels equidistant and everything scored exactly 0.50 by eating
+neither: two equal scent sources average to a bearing straight between them and the
+agent oscillates — the forage limit cycle, reproduced in a test tube. True, useless as
+a measurement, so the temptation is asymmetric now. The `corner` detour was longer than
+the scent radius, so there was no cue at all. And the big one: **a shut door was a hard
+scent wall**, which makes food behind one undetectable and the door mechanic
+unlearnable in principle. A door is not airtight and neither is rubble — scent now
+seeps through both with a distance penalty (7 and 11 cells), so you can tell there is
+something back there and it smells further away than it is.
+
+The strip render is what made all three obvious: you can see the reflex walk straight
+to its food in `open`, circle in the left half of `corner` never finding the gap, and
+go directly to the nightcap in `poison`. A probe that can only be read as a number is
+a probe we would not have trusted.
+
+The lineage now reports a skill profile per generation, and fitness leans on the LIFE
+with the exam as a tie-break, so a brain cannot win by being good at tests and bad at
+living. 19 new tests, suite 342 green.

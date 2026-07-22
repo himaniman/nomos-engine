@@ -40,7 +40,7 @@ from collections import deque
 
 import numpy as np
 
-from cortex.tiles import HSV, OPAQUE, SOLID
+from cortex.tiles import BREAKABLE, DOOR, DOOR_OPEN, HSV, OPAQUE, SOLID
 from cortex.world import FOOD_HSV, FOOD_ODOUR, N_ODOUR, World
 
 RAY_CH = 6          # hue_cos, hue_sin, saturation, brightness, nearness, solid
@@ -154,6 +154,23 @@ def _vision(w: World, out: np.ndarray) -> None:
 
 # --- smell -------------------------------------------------------------------------
 
+def _passing(mat) -> float | None:
+    """What it costs a SMELL to get past this tile, or None if it cannot.
+
+    A door is not airtight and neither is a pile of rubble: scent seeps through, just
+    faintly. This matters more than it sounds — with a shut door as a hard scent wall,
+    food behind one is undetectable and the only way to find it is blind luck, so the
+    door mechanic could never be learned at all. The penalty is what keeps it honest:
+    you can tell there is something back there, and it smells further away than it is."""
+    if not SOLID[mat]:
+        return 1.0
+    if mat in (DOOR, DOOR_OPEN):
+        return 7.0
+    if BREAKABLE[mat]:
+        return 11.0
+    return None                                          # stone is stone
+
+
 class ScentField:
     """Geodesic distance from the agent, plus which of its four steps each cell is
     reached through. Recomputed only when the agent changes CELL or the map changes
@@ -182,15 +199,19 @@ class ScentField:
                 queue.append(n)
         while queue:
             qy, qx = queue.popleft()
-            d = dist[(qy, qx)] + 1.0
-            if d > R:
+            base = dist[(qy, qx)]
+            if base + 1.0 > R:
                 continue
             tag = first[(qy, qx)]
             for dy, dx in _DIRS:
                 n = (qy + dy, qx + dx)
                 if n in dist or abs(n[0] - ay) > R or abs(n[1] - ax) > R:
                     continue
-                if SOLID[w.tiles.material(*n)]:
+                cost = _passing(w.tiles.material(*n))
+                if cost is None:
+                    continue
+                d = base + cost
+                if d > R:
                     continue
                 dist[n], first[n] = d, tag
                 queue.append(n)

@@ -21,7 +21,7 @@ from __future__ import annotations
 import numpy as np
 import pygame
 
-BRAIN_W = 400
+BRAIN_W = 470
 FG = (210, 210, 220)
 DIM = (120, 120, 132)
 ACCENT = (150, 200, 255)
@@ -59,14 +59,43 @@ class BrainPanel:
         self.view = 0
         self.trace_on = False
         self.trace_i = 0
+        # The animation runs on its OWN clock, not the world's. A thought is ~20
+        # sub-ticks and the world runs at 60 fps, so tying them together flashes the
+        # whole relaxation past in a third of a second and you see nothing.
+        self.trace_every = 6            # rendered frames per sub-tick shown
+        self._frames = 0
+        self.picked = None              # (y, x) of the cell being inspected
+        self._sheet_rect = None         # where the sheet was drawn, for hit-testing
+        self._sheet_scale = 1
+        self._sheet_origin = (0, 0)
 
     def cycle_view(self) -> str:
         self.view = (self.view + 1) % len(VIEWS)
         return VIEWS[self.view]
 
+    def slower(self) -> None:
+        self.trace_every = min(60, self.trace_every + 2)
+
+    def faster(self) -> None:
+        self.trace_every = max(1, self.trace_every - 2)
+
     def advance_trace(self) -> None:
+        self._frames += 1
+        if self._frames % max(1, self.trace_every):
+            return
         frames = len(self.app.mind.phenotype.trace) if self.app.mind else 0
         self.trace_i = (self.trace_i + 1) % max(1, frames)
+
+    def click(self, pos) -> bool:
+        """Pick the cell under the cursor, so its own little perceptron can be shown."""
+        if self._sheet_rect is None or not self._sheet_rect.collidepoint(pos):
+            return False
+        oy, ox = self._sheet_origin
+        y = oy + (pos[1] - self._sheet_rect.top) // self._sheet_scale
+        x = ox + (pos[0] - self._sheet_rect.left) // self._sheet_scale
+        g = self.app.mind.genome
+        self.picked = (int(y), int(x)) if g.mask[int(y), int(x)] else None
+        return True
 
     # --- the whole column -------------------------------------------------------------
     def draw(self, surf, x: int) -> None:
@@ -95,17 +124,23 @@ class BrainPanel:
              f"= {mind.thoughts * g.subticks} sheet updates", (140, 150, 175))
         y += 4
 
-        y = self._draw_sheet(surf, x, y, pw)
+        # the sheet takes whatever vertical room is left after the panels below it —
+        # otherwise picking a cell pushes the command bars off the bottom of the window
+        reserved = 200 + (170 if self.picked is not None else 0) + 13 * g.n_types
+        y = self._draw_sheet(surf, x, y, pw, max(60, self.app.h - y - reserved))
+        if self.picked is not None:
+            y = self._draw_cell(surf, x, y, pw)
         y = self._draw_types(surf, x, y, pw)
         y = self._draw_command(surf, x, y, pw)
         y = self._draw_weights(surf, x, y, pw)
-        line(f"view {VIEWS[self.view]}   V cycle   T watch it think"
-             + ("  [tracing]" if self.trace_on else ""), DIM, dy=14)
+        line(f"view {VIEWS[self.view]}   V cycle   T watch it think   click a cell",
+             DIM, dy=14)
         if self.trace_on:
-            line(f"sub-tick {self.trace_i + 1}/{max(1, len(p.trace))}", DIM, dy=14)
+            line(f"sub-tick {self.trace_i + 1}/{max(1, len(p.trace))}   "
+                 f"[ / ] speed ({self.trace_every} frames each)", (250, 220, 130), dy=14)
 
     # --- the tissue -------------------------------------------------------------------
-    def _draw_sheet(self, surf, x, y, pw) -> int:
+    def _draw_sheet(self, surf, x, y, pw, max_h: int = 300) -> int:
         mind = self.app.mind
         g, p = mind.genome, mind.phenotype
         ys, xs = np.nonzero(g.mask)
@@ -148,7 +183,7 @@ class BrainPanel:
                     img[i, j] = (52, 54, 66)
         if mode == "chemistry":                   # normalise the frame, then paint
             img *= 255.0 / max(1e-6, float(img.max()))
-        scale = max(1, min(pw // max(1, w), 240 // max(1, h)))
+        scale = max(1, min(pw // max(1, w), int(max_h) // max(1, h)))
         sheet = pygame.surfarray.make_surface(
             np.transpose(img.clip(0, 255).astype(np.uint8), (1, 0, 2)))
         sheet = pygame.transform.scale(sheet, (w * scale, h * scale))
@@ -164,6 +199,13 @@ class BrainPanel:
                     pygame.draw.rect(surf, MOD_COL[k],
                                      pygame.Rect(px, py, max(2, scale // 2),
                                                  max(2, scale // 2)))
+        self._sheet_rect = pygame.Rect(x, y, w * scale, h * scale)
+        self._sheet_scale, self._sheet_origin = scale, (y0, x0)
+        if self.picked is not None and g.mask[self.picked]:      # ring the picked cell
+            py = y + (self.picked[0] - y0) * scale
+            px = x + (self.picked[1] - x0) * scale
+            pygame.draw.rect(surf, (255, 255, 120),
+                             pygame.Rect(px - 1, py - 1, scale + 2, scale + 2), 1)
         pygame.draw.rect(surf, (52, 54, 66), pygame.Rect(x, y, w * scale, h * scale), 1)
         y += h * scale + 5
         if mode == "organs":                      # legend, only for what is present
@@ -178,6 +220,60 @@ class BrainPanel:
                     cx, y = x, y + 12
             y += 14
         return y + 2
+
+    # --- one cell's own little network ----------------------------------------------
+    def _draw_cell(self, surf, x, y, pw) -> int:
+        """The PERCEPTRON behind the picked cell: what it is, what it currently holds in
+        each channel, and the layer stack it computes with. Every cell of a type shares
+        that stack — differentiation is by TYPE, not per cell — so this answers "what is
+        THIS cell running", which the type colours alone cannot tell you."""
+        g, p = self.app.mind.genome, self.app.mind.phenotype
+        cy, cx = self.picked
+        k = int(g.type_map[cy, cx])
+        role = ("sense " + MOD_NAME[int(g.organ_mod[cy, cx]) % len(MOD_NAME)]
+                if g.in_mask[cy, cx] else
+                "effector" if g.out_mask[cy, cx] else "interneuron")
+        pygame.draw.rect(surf, TYPE_COL[k % len(TYPE_COL)], pygame.Rect(x, y + 1, 8, 8))
+        surf.blit(self.app.small.render(
+            f"cell ({cy},{cx})  type {k}  {role}   ESC unpicks", True, FG), (x + 12, y))
+        y += 14
+        # what it is holding right now, coloured by which LAYER each channel belongs to
+        cmap = g.channel_map(p.cfg)
+        state = (p.trace[self.trace_i] if (self.trace_on and p.trace) else p.state)[cy, cx]
+        bw = max(3, min(14, (pw - 70) // max(1, g.C)))
+        for c in range(g.C):
+            v = float(state[c])
+            col = ((120, 200, 255) if c < cmap["chemical"][0]
+                   else (140, 240, 180) if c < cmap["hormone"][0] else (250, 170, 120))
+            hgt = int(min(1.0, abs(v)) * 22)
+            pygame.draw.rect(surf, (30, 30, 38), pygame.Rect(x + c * bw, y, bw - 1, 46))
+            pygame.draw.rect(surf, col,
+                             pygame.Rect(x + c * bw, y + 23 - (hgt if v > 0 else 0),
+                                         bw - 1, max(1, hgt)))
+        pygame.draw.line(surf, GRID, (x, y + 23), (x + g.C * bw, y + 23))
+        for i, (name, col) in enumerate((("electric", (120, 200, 255)),
+                                         ("chem", (140, 240, 180)),
+                                         ("hormone", (250, 170, 120)))):
+            surf.blit(self.app.small.render(name, True, col),
+                      (x + g.C * bw + 6, y + i * 13))
+        y += 50
+        # the layer stack itself: 9C -> H -> ... -> C, one heat map per layer
+        rule = g.rules[k]
+        surf.blit(self.app.small.render(
+            f"its perceptron: {9 * g.C} in -> "
+            + " -> ".join(str(int(L["W"].shape[0])) for L in rule), True, DIM), (x, y))
+        y += 13
+        cxp, height = x, 40
+        for i, L in enumerate(rule):
+            W = np.asarray(L["W"], dtype=np.float64)
+            if p.cfg.rule_plastic and i == len(rule) - 1 and k < len(p._dW_rule):
+                W = W + p._dW_rule[k].T
+            wpx = max(10, min(pw // len(rule) - 6, 120))
+            img = pygame.surfarray.make_surface(np.transpose(_heat(W), (1, 0, 2)))
+            surf.blit(pygame.transform.scale(img, (wpx, height)), (cxp, y))
+            pygame.draw.rect(surf, (70, 72, 88), pygame.Rect(cxp, y, wpx, height), 1)
+            cxp += wpx + 5
+        return y + height + 8
 
     # --- what kinds of cell there are ----------------------------------------------------
     def _draw_types(self, surf, x, y, pw) -> int:

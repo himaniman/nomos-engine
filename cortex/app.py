@@ -58,6 +58,8 @@ HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "B               brain drives / you drive",
         "V               brain view: type/activity/hormone/organs",
         "T               animate the thinking sub-ticks",
+        "[ / ]           slower / faster animation",
+        "click a cell    show its perceptron",
         "SPACE           pause", "P               screenshot", "H               this help",
         "ESC / Q         quit"]
 
@@ -406,8 +408,12 @@ def main(argv=None) -> None:
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 running = False
+            elif ev.type == pygame.MOUSEBUTTONDOWN and app.brain_panel is not None:
+                app.brain_panel.click(ev.pos)
             elif ev.type == pygame.KEYDOWN:
-                if ev.key in (pygame.K_ESCAPE, pygame.K_q):
+                if ev.key == pygame.K_ESCAPE and app.brain_panel is not None                         and app.brain_panel.picked is not None:
+                    app.brain_panel.picked = None        # unpick before quitting
+                elif ev.key in (pygame.K_ESCAPE, pygame.K_q):
                     running = False
                 elif ev.key == pygame.K_SPACE:
                     app.paused = not app.paused
@@ -417,6 +423,10 @@ def main(argv=None) -> None:
                     app.auto = not app.auto          # take the wheel, or give it back
                 elif ev.key == pygame.K_v and app.brain_panel is not None:
                     app.brain_panel.cycle_view()
+                elif ev.key == pygame.K_LEFTBRACKET and app.brain_panel is not None:
+                    app.brain_panel.slower()             # watch the wave, not a flicker
+                elif ev.key == pygame.K_RIGHTBRACKET and app.brain_panel is not None:
+                    app.brain_panel.faster()
                 elif ev.key == pygame.K_t and app.mind is not None:
                     bp = app.brain_panel
                     bp.trace_on = not bp.trace_on    # watch a thought cross the sheet

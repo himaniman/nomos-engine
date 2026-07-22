@@ -365,7 +365,36 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
     whole ladder falls below random.
   - The live HUD draws the agent's TRACK, fading (key R). A circler is invisible as a
     number and unmistakable as a line.
-  - Open: a brain that actually forages. Nothing downstream of that matters yet.
+  - FINDING (2026-07-24): **the brain was never being taught.** Over 4000 ticks it got
+    ZERO positive reward events and 4000 negative ones — living costs energy every tick
+    and it never ate — so the three-factor rule faithfully learnt "everything I do is
+    bad". Reward is SURPRISE now (`reward_baseline` subtracts a running mean). Then:
+    the EXAM was discarding what a life learned (`cfg.plastic` gated both "go on
+    learning" and "use what was learned", and probes turn plasticity off), so every
+    probe ever run measured an untrained brain. Then: both learning TIME CONSTANTS were
+    off by 1-2 orders — eligibility half-life was ONE THOUGHT while a meal is the end of
+    an approach tens of ticks long, and a delta kept 19-53% of itself between meals.
+  - `cortex/cradle.py` = the bench that decides such questions. An easy food-rich world
+    (no score from it counts) plus ABLATION: one snapshot, two copies at the same exams,
+    one with the learned deltas wiped and the body identical — so learning can be told
+    apart from growth. `--sweep` (time constants), `--reflex` (three arms), `--matrix`
+    (learning x reflex, four arms).
+  - `cortex/reflex.py` = INNATE REFLEXES, the user's idea: hardwired, retunable with
+    effort. NOT for score — measured, learning contributed nothing because what the
+    agent does and whether it eats were UNCORRELATED; an innate approach makes eating a
+    CONSEQUENCE of a behaviour, which is what makes a behaviour reinforceable. Built as
+    an ARC through the brain's own parts, never a bypass: smell -> a reserved state
+    channel, a PIONEER TRACT (targeted axons nose->effectors, unlike `_sprout`'s growth
+    cones) and a coherent read-out. Ordinary weights; only the decay is asymmetric
+    (0.001 vs 0.02, never pruned). Blocker found on the way: `organ_map` draws senses at
+    random from nine modalities, so **most fresh genomes had no nose at all** — install
+    now claims one chemical region for smell.
+  - RESULT: +0.21 mean from the arcs over 8 brains, positive on all 7 probes; three
+    brains (seeds 2/3/5) take all four foraging rungs at 1.00 — a first. Brain 3 scores
+    `corner` 1.00 vs the reflex policy's 0.23. NOT true: the mean brain is 0.42 vs the
+    policy's 0.66, spread 0.18-0.68 on the weight seed alone, and real-world meals are
+    still 1-3 per 2500 ticks vs the reflex's 8-15.
+  - Open: whether learning contributes now that reflexes exist; the world vs the ladder.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

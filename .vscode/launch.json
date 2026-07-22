@@ -231,6 +231,23 @@
       "justMyCode": true
     },
     {
+      // LEARNING x REFLEX, four arms. Does within-life learning contribute now that
+      // the innate arcs make eating a CONSEQUENCE of a behaviour — and does it need
+      // them to? The learning delta is measured twice, once with the arcs and once
+      // without. If it is the same either way, the reflexes bought foraging and the
+      // correlation argument for them was wrong.
+      "name": "cortex: LEARNING x REFLEX matrix",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.cradle",
+      "args": ["--matrix", "--world", "real", "--seeds", "0,1,2,3,4,5",
+               "--ticks", "2500", "--probe-ticks", "300"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // *** THE CRADLE ***  Does within-life learning contribute ANYTHING, given
       // reward that actually arrives? A small world thick with food — a bench, not a
       // benchmark, no score from it counts. The answer comes from an ABLATION: one

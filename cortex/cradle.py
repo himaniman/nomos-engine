@@ -188,6 +188,62 @@ def reflex_arms(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
     return {"rows": rows, "policy": pol, "mean_delta": mean_arc}
 
 
+def matrix(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
+           world: str = "real", quiet: bool = False) -> dict:
+    """Does within-life learning contribute NOW — and does it need the reflexes to?
+
+    Two knobs, four arms, one brain per seed. The learning delta is measured twice: once
+    with the innate arcs intact and once with them removed. That is the whole question
+    in one table, because the argument for reflexes was never "they raise the score" —
+    it was that they make eating a CONSEQUENCE of a behaviour, and a behaviour that
+    causes a meal is the only kind that can be reinforced. If that argument is right,
+    learning should contribute MORE with the arcs than without them. If learning's
+    contribution is the same either way, the reflexes bought foraging and nothing else,
+    and the correlation story was wrong."""
+    wcfg = cradle_config() if world == "cradle" else WorldConfig()
+    rows = []
+    for s in seeds:
+        w = World(seed=0, cfg=wcfg)
+        mind = Mind(fresh_genome(seed=s))
+        mind.attach(w)
+        while w.agent.alive and w.tick < ticks:
+            mind.step(w)
+        arms = {}
+        for arc in (True, False):
+            for learn in (True, False):
+                arms[(arc, learn)] = probes.run_suite(
+                    mind, ticks=probe_ticks, unlearn=not learn,
+                    no_reflex=not arc)["profile"]
+        rows.append({"seed": s, "meals": int(sum(w.agent.ate)),
+                     "tracts": _innate_count(mind), "arms": arms})
+        if not quiet:
+            a = arms
+            print(f"\n  brain {s}: {rows[-1]['meals']} meals, "
+                  f"{rows[-1]['tracts']} tracts")
+            print(_row("  arcs on,  learned", a[(True, True)]))
+            print(_row("  arcs on,  wiped", a[(True, False)]))
+            print(_row("  -> learning WITH arcs",
+                       {k: a[(True, True)][k] - a[(True, False)][k] for k in a[(True, True)]}))
+            print(_row("  arcs off, learned", a[(False, True)]))
+            print(_row("  arcs off, wiped", a[(False, False)]))
+            print(_row("  -> learning WITHOUT arcs",
+                       {k: a[(False, True)][k] - a[(False, False)][k]
+                        for k in a[(True, True)]}))
+            sys.stdout.flush()
+    keys = list(rows[0]["arms"][(True, True)])
+    with_arcs = {k: float(np.mean([r["arms"][(True, True)][k]
+                                   - r["arms"][(True, False)][k] for r in rows]))
+                 for k in keys}
+    without = {k: float(np.mean([r["arms"][(False, True)][k]
+                                 - r["arms"][(False, False)][k] for r in rows]))
+               for k in keys}
+    if not quiet:
+        print()
+        print(_row(f"learning delta WITH arcs   (n={len(rows)})", with_arcs))
+        print(_row(f"learning delta WITHOUT arcs(n={len(rows)})", without))
+    return {"rows": rows, "with_arcs": with_arcs, "without_arcs": without}
+
+
 def _innate_count(mind) -> int:
     from cortex import reflex
     return reflex.count(mind.phenotype)
@@ -246,8 +302,18 @@ def main(argv=None) -> int:
     p.add_argument("--reflex", action="store_true",
                    help="do the INNATE ARCS help, and does the tissue add anything?")
     p.add_argument("--world", choices=("cradle", "real"), default="cradle")
+    p.add_argument("--matrix", action="store_true",
+                   help="learning x reflex, four arms: does learning contribute NOW, "
+                        "and does it need the innate arcs to?")
     args = p.parse_args(argv)
     seeds = [int(s) for s in args.seeds.split(",")]
+    if args.matrix:
+        print("  " + " " * 30 + "".join(f"{k[:7]:>8}" for k in
+                                        ("near", "open", "side", "behind", "corner",
+                                         "maze", "patience")) + f"{'mean':>9}")
+        matrix(seeds=seeds, ticks=args.ticks, probe_ticks=args.probe_ticks,
+               world=args.world)
+        return 0
     if args.reflex:
         print("  " + " " * 22 + "".join(f"{k[:7]:>8}" for k in
                                         ("near", "open", "side", "behind", "corner",

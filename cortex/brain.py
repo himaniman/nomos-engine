@@ -50,8 +50,8 @@ N_HORMONE = 3                    # energy, poison load, recent reward
 # what the cell wants to DO WITH ITSELF. They are computed by the very same little
 # network the cell thinks with, from the very same 3x3 perception — there is no separate
 # "growth brain", which is the whole point (docs/cortex-design.md).
-GROW, DIR_Y, DIR_X, DIE, BE_SENSE, BE_ACT = range(6)
-N_MORPH = 6
+GROW, DIR_Y, DIR_X, DIE, BE_SENSE, BE_ACT, SPROUT = range(7)
+N_MORPH = 7
 MOD_ALL = 0                      # an organ that hears the whole sensor vector
 _MIN_DEPTH = 2                   # a rule always has an input and an output layer
 _OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
@@ -170,6 +170,31 @@ class Config:
                                      # scaled by how full the body is — so the tissue
                                      # can only grow on what the agent has actually
                                      # eaten, and the deep interior grows last
+        # AXONS: long-range directed links, the one thing the 3x3 neighbourhood cannot
+        # express. A sheet without them is a RELAY — every message crosses cell by cell,
+        # one cell per sub-tick, so a sense on one rim and an effector on the other are
+        # further apart in time than a thought is long. An axon is a shortcut with a
+        # weight, and a set of shortcuts is a TOPOLOGY: which regions can talk at all.
+        # It grows like a growth cone, up the guidance chemical, and it is pruned by
+        # decay, so the wiring is grown and lost rather than designed.
+        self.axons = True
+        self.sprout_bias = 0.26      # the seed's innate urge to send one out. Near the
+                                     # threshold on purpose, like the other seed urges:
+                                     # at 0.10 no cell ever reached it and the whole
+                                     # mechanism was dead code mutation could not even
+                                     # find, because a wire that is never grown is never
+                                     # selected for or against.
+        self.sprout_thresh = 0.30
+        self.axon_min_len = 3        # shorter than this and the neighbourhood already
+        self.axon_max_len = 22       # covers it; longer and it leaves the body
+        self.axon_cost = 0.5         # RESOURCE to grow one — dearer than a cell, since
+                                     # a wire that costs nothing would fill the sheet
+        self.axon_w0 = 0.35
+        self.axon_decay = 0.02       # per development tick: use it or lose it
+        self.axon_min_w = 0.05       # below this it is pruned
+        self.axon_lr = 0.02          # reward-gated Hebbian on the weight
+        self.axon_clip = 1.2
+        self.max_axons = 400
         self.cell_cost = 0.000015    # energy per cell per world tick, charged to the
                                      # AGENT. This is the counterweight to growth: a
                                      # bigger brain has to earn its keep by eating more
@@ -420,9 +445,10 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     b_out = np.zeros(N_OUT)
     b_out[THRUST] += 0.5                                   # a nudge to get moving
     for r in rules:                                        # the SEED PROGRAM's innate
-        r[-1]["b"][C + GROW] += cfg.grow_bias              # urges: grow, sense, act.
-        r[-1]["b"][C + BE_SENSE] += cfg.sense_bias         # Mutation edits these from
-        r[-1]["b"][C + BE_ACT] += cfg.act_bias             # the first generation on
+        r[-1]["b"][C + GROW] += cfg.grow_bias              # urges: grow, sense, act,
+        r[-1]["b"][C + BE_SENSE] += cfg.sense_bias         # and send a wire out.
+        r[-1]["b"][C + BE_ACT] += cfg.act_bias             # Mutation edits these from
+        r[-1]["b"][C + SPROUT] += cfg.sprout_bias          # the first generation on
     P_horm = rng.normal(0.0, 0.25, (N_HORMONE, C))
     n_chem = max(1, int(min(cfg.chem_channels, C - 2)))
     organ_map = rng.integers(1, cfg.organ_mods + 1, n_chem)
@@ -451,12 +477,29 @@ if _NUMBA:
     def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
                   mod_ch, dW_last, elig_out, plastic, subticks,
                   chem0, chem1, chem_mix, chem_decay, chem_every, hgate,
-                  tick0, morph):   # pragma: no cover
+                  tick0, morph, ax_src, ax_dst, ax_w, ax_buf, ax_elig):  # pragma: no cover
         """All `subticks` rounds as one kernel: scatter the alive rows into the padded
         buffer, gather each cell's 9-neighbour perception, push each TYPE's rows
         through its layer stack, then the residual tanh update with the hormone gate."""
         n, C = st.shape
+        n_ax = ax_w.shape[0]
         for _ in range(subticks):
+            # AXONS: what arrives down the wires, gathered from the state as it stands
+            # and delivered as an additive drive, exactly like a sense.
+            if n_ax > 0:
+                for i in range(n):
+                    for c in range(C):
+                        ax_buf[i, c] = 0.0
+                for k in range(n_ax):
+                    a = ax_src[k]
+                    b = ax_dst[k]
+                    sa = 0.0
+                    sb = 0.0
+                    for c in range(C):
+                        ax_buf[b, c] += ax_w[k] * st[a, c]
+                        sa += abs(st[a, c])
+                        sb += abs(st[b, c])
+                    ax_elig[k] += (sa / C) * (sb / C)     # Hebbian: fired together
             for i in range(n):
                 for c in range(C):
                     padF[centre[i], c] = st[i, c]
@@ -489,8 +532,13 @@ if _NUMBA:
             for i in range(n):
                 gate = (1.0 + math.tanh(st[i, mod_ch])) if mod_ch >= 0 else 1.0
                 gate *= hgate                              # the whole-sheet mode switch
-                for c in range(C):
-                    st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + drive[i, c])
+                if n_ax > 0:
+                    for c in range(C):
+                        st[i, c] = np.tanh(st[i, c] + gate * delta[i, c]
+                                           + drive[i, c] + ax_buf[i, c])
+                else:
+                    for c in range(C):
+                        st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + drive[i, c])
                 for m in range(M):                         # what the cell wants to DO
                     morph[i, m] += delta[i, C + m]         # with itself, accumulated
             # CHEMISTRY: a slow pass in which the chem channels leak into their
@@ -576,6 +624,14 @@ class Phenotype:
         # every cell wanted to divide and two had the means. A neuron does not write
         # its own blood supply. Fed at the border, diffused, spent by division.
         self.resource = np.zeros((G, G))
+        # AXONS live as CELL COORDINATES, not row indices: rows are rebuilt every time
+        # the body changes, and a wire that silently re-pointed at whatever cell
+        # inherited its row number would be worse than no wire at all.
+        self.axon_cells: list = []          # [sy, sx, dy, dx, weight]
+        self._ax_src = np.zeros(0, dtype=np.int64)
+        self._ax_dst = np.zeros(0, dtype=np.int64)
+        self._ax_w = np.zeros(0)
+        self._ax_elig = np.zeros(0)
         self.births = 0
         self.deaths = 0
         self.dev_ticks = 0
@@ -628,8 +684,29 @@ class Phenotype:
         if len(self._out_rows) == 0:
             self._out_rows = np.arange(len(ys))
         self.morph = np.zeros((len(ys), N_MORPH))
+        self._ax_buf = np.zeros((len(ys), C))
+        self._rewire()
         if _NUMBA:
             self._nb_rows = _NbList(self._type_rows)
+
+    def _rewire(self) -> None:
+        """Re-point the axons at rows after the body changed, dropping any whose end
+        died. Wiring outlives cells only as long as both ends are alive."""
+        row = {(int(y), int(x)): i for i, (y, x) in enumerate(zip(self._ys, self._xs))}
+        kept, src, dst, w = [], [], [], []
+        for ax in self.axon_cells:
+            a, b = row.get((ax[0], ax[1])), row.get((ax[2], ax[3]))
+            if a is None or b is None:
+                continue
+            kept.append(ax)
+            src.append(a)
+            dst.append(b)
+            w.append(ax[4])
+        self.axon_cells = kept
+        self._ax_src = np.array(src, dtype=np.int64)
+        self._ax_dst = np.array(dst, dtype=np.int64)
+        self._ax_w = np.array(w, dtype=np.float64)
+        self._ax_elig = np.zeros(len(kept))
 
     def cells(self) -> int:
         return int(self.mask.sum())
@@ -676,12 +753,15 @@ class Phenotype:
                                1 if self.record else g.subticks,
                                self._chem0, self._chem1, self.cfg.chem_mix,
                                self.cfg.chem_decay, max(1, self.cfg.chem_every),
-                               hgate, self._subtick, self.morph)
+                               hgate, self._subtick, self.morph,
+                               self._ax_src, self._ax_dst, self._ax_w,
+                               self._ax_buf, self._ax_elig)
                 self._subtick += 1 if self.record else g.subticks
                 if self.record:
                     self._snap(st)
         else:
             for _ in range(g.subticks):
+                ax = self._axon_drive(st)
                 self._padF[self._centre] = st
                 perc = self._padF[self._nbr].reshape(n, 9 * g.C)
                 delta = np.empty((n, g.C + N_MORPH))
@@ -695,7 +775,7 @@ class Phenotype:
                 gate = np.ones((n, 1))
                 if self._mod_ch >= 0:
                     gate = (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
-                st = np.tanh(st + gate * hgate * delta + drive)
+                st = np.tanh(st + gate * hgate * delta + drive + ax)
                 self._subtick += 1
                 if self._chem1 > self._chem0 and self._subtick % max(1, self.cfg.chem_every) == 0:
                     self._padF[self._centre] = st           # diffuse + decay the
@@ -837,12 +917,81 @@ class Phenotype:
             self.resource[y, x] *= 0.5
             alive += 1
             born += 1
+        grown_ax = self._sprout(ys, xs, morph)
         if born or died:
             self._reindex()
+        elif grown_ax:
+            self._rewire()
+        self._prune_axons()
         self.births += born
         self.deaths += died
         self.dev_ticks += 1
-        return {"born": born, "died": died, "cells": alive, "embryo": embryo}
+        return {"born": born, "died": died, "cells": alive, "embryo": embryo,
+                "axons": len(self.axon_cells)}
+
+    def _sprout(self, ys, xs, morph) -> int:
+        """Grow axons. A GROWTH CONE: from the cell, walk up the guidance chemical one
+        neighbour at a time, and wherever it ends up — if that is far enough away and
+        alive — becomes the far end. So wiring follows the same gradient development
+        reads its position from, which is the point of having the chemical layer at all,
+        and the topology is GROWN rather than designed."""
+        cfg = self.cfg
+        if not cfg.axons or self._chem1 <= self._chem0:
+            return 0
+        guide = self._chem1 - 1                          # the last chemical guides
+        made = 0
+        order = [i for i in range(len(ys)) if morph[i, SPROUT] > cfg.sprout_thresh]
+        order.sort(key=lambda i: (-float(morph[i, SPROUT]), i))
+        for i in order:
+            if len(self.axon_cells) >= cfg.max_axons or made >= cfg.max_born_per_dev:
+                break
+            y, x = int(ys[i]), int(xs[i])
+            if not self.mask[y, x] or self.resource[y, x] < cfg.axon_cost:
+                continue
+            cy, cx = y, x
+            seen = {(y, x)}
+            # A cone that stopped at the first local peak walked two cells and gave up:
+            # the guidance chemical is written by the cells themselves and is bumpy. So
+            # it always MOVES, to the best neighbour it has not already visited — uphill
+            # where there is a hill, onward where there is not.
+            for _ in range(cfg.axon_max_len):
+                best, by, bx = -1e18, cy, cx
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    ny, nx = cy + dy, cx + dx
+                    if (0 <= ny < self.genome.G and 0 <= nx < self.genome.G
+                            and self.mask[ny, nx] and (ny, nx) not in seen
+                            and self.state[ny, nx, guide] > best):
+                        best, by, bx = self.state[ny, nx, guide], ny, nx
+                if (by, bx) == (cy, cx):                 # nowhere left to go
+                    break
+                cy, cx = by, bx
+                seen.add((cy, cx))
+            if math.hypot(cy - y, cx - x) < cfg.axon_min_len:
+                continue                                 # the neighbourhood covers this
+            if any(a[0] == y and a[1] == x and a[2] == cy and a[3] == cx
+                   for a in self.axon_cells):
+                continue
+            self.axon_cells.append([y, x, cy, cx, cfg.axon_w0])
+            self.resource[y, x] -= cfg.axon_cost
+            made += 1
+        return made
+
+    def _prune_axons(self) -> None:
+        """Use it or lose it. Weight decays every development tick and a wire too weak
+        to matter is removed, so a topology is lost as well as grown — otherwise the
+        sheet only ever accumulates wiring and nothing is ever a decision."""
+        if not self.axon_cells:
+            return
+        keep = []
+        for ax in self.axon_cells:
+            ax[4] *= (1.0 - self.cfg.axon_decay)
+            if abs(ax[4]) >= self.cfg.axon_min_w:
+                keep.append(ax)
+        if len(keep) != len(self.axon_cells):
+            self.axon_cells = keep
+            self._rewire()
+        else:
+            self._ax_w = np.array([a[4] for a in keep])
 
     def _free_spot(self, y: int, x: int, wy: float, wx: float):
         """Where a daughter can go: the four neighbours in the order the cell ASKED
@@ -883,6 +1032,20 @@ class Phenotype:
         self.resource[ys, xs] *= (1.0 - cfg.resource_decay)
         np.clip(self.resource, 0.0, cfg.resource_cap, out=self.resource)
 
+    def _axon_drive(self, st) -> np.ndarray:
+        """What arrives down the wires this sub-tick. A shortcut, not a new kind of
+        signal: it lands as an additive DRIVE exactly like a sense does, so nothing
+        about the cell's own rule has to change to receive one."""
+        if len(self._ax_w) == 0:
+            return 0.0
+        self._ax_buf[:] = 0.0
+        np.add.at(self._ax_buf, self._ax_dst, self._ax_w[:, None] * st[self._ax_src])
+        # HEBBIAN eligibility: how much this wire's two ends fired together, which is
+        # what `learn` reinforces when a reward lands. A topology that never changed
+        # would be a wiring diagram, not a brain.
+        self._ax_elig += np.abs(st[self._ax_src]).mean(axis=1) *             np.abs(st[self._ax_dst]).mean(axis=1)
+        return self._ax_buf
+
     def _snap(self, st) -> None:
         full = np.zeros_like(self.state)
         full[self._ys, self._xs] = st
@@ -899,6 +1062,7 @@ class Phenotype:
             if reward:
                 self.dW += c.plastic_lr * reward * self._E
                 np.clip(self.dW, -c.plastic_clip, c.plastic_clip, out=self.dW)
+        self.axon_learn(reward)
         if c.rule_plastic:
             for k in range(len(self._dW_rule)):
                 self._dW_rule[k] *= (1.0 - c.plastic_forget)
@@ -906,6 +1070,27 @@ class Phenotype:
                     self._dW_rule[k] += c.rule_lr * reward * self._E_rule[k]
                     np.clip(self._dW_rule[k], -c.rule_clip, c.rule_clip,
                             out=self._dW_rule[k])
+
+    def axon_learn(self, reward: float) -> None:
+        """Reward-gated Hebb on the wires, then forget a little. Same three-factor idea
+        as the readout, applied to the topology instead of the weights."""
+        if len(self._ax_w) == 0 or not self.cfg.axons:
+            return
+        c = self.cfg
+        if reward:
+            n = max(1e-9, float(self._ax_elig.max()))
+            self._ax_w += c.axon_lr * reward * (self._ax_elig / n)
+            np.clip(self._ax_w, -c.axon_clip, c.axon_clip, out=self._ax_w)
+            for i, ax in enumerate(self.axon_cells):
+                ax[4] = float(self._ax_w[i])
+        self._ax_elig *= 0.5
+
+    def axon_stats(self) -> dict:
+        if not len(self._ax_w):
+            return {"n": 0, "mean_len": 0.0, "mean_w": 0.0}
+        lens = [math.hypot(a[2] - a[0], a[3] - a[1]) for a in self.axon_cells]
+        return {"n": len(self._ax_w), "mean_len": round(float(np.mean(lens)), 1),
+                "mean_w": round(float(np.abs(self._ax_w).mean()), 3)}
 
     def plastic_norm(self) -> float:
         return float(np.abs(self.dW).sum())

@@ -153,6 +153,14 @@ class BrainPanel:
         if p.cfg.develop:
             line(f"grown from a {g.cells()}-cell seed  -  {p.births} born, {p.deaths} died"
                  f" over {p.dev_ticks} dev ticks", (170, 220, 190), dy=17)
+        # ALWAYS drawn when axons are enabled, even at zero: a header line that
+        # appears the moment the first wire grows shifts the fixed sheet box down by
+        # its own height, which is the exact twitch the fixed box exists to prevent
+        if p.cfg.axons:
+            ax = p.axon_stats()
+            line(f"axons  {ax['n']}  mean length {ax['mean_len']} cells, "
+                 f"mean |w| {ax['mean_w']}",
+                 (150, 230, 170) if ax["n"] else DIM, dy=17)
         # TIME: the brain's two clocks, against the world's one
         line(f"time  {g.subticks} subticks per thought, "
              f"1 thought per {mind.think_every} world ticks", (170, 190, 220))
@@ -253,6 +261,24 @@ class BrainPanel:
                     pygame.draw.rect(surf, MOD_COL[k],
                                      pygame.Rect(px, py, max(2, scale // 2),
                                                  max(2, scale // 2)))
+        # AXONS over the tissue: the topology is the point of having them, so it has to
+        # be visible. Green carries a positive weight, red a negative one; brightness is
+        # how strong the wire is. Sampled when there are many, or the sheet vanishes
+        # under its own wiring.
+        if scale >= 2 and len(p._ax_w):
+            step = max(1, len(p.axon_cells) // 120)
+            for ax in p.axon_cells[::step]:
+                q = min(1.0, abs(float(ax[4])) / max(1e-9, p.cfg.axon_clip) * 3)
+                col = ((60, int(90 + 165 * q), 90) if ax[4] >= 0
+                       else (int(90 + 165 * q), 60, 70))
+                pygame.draw.line(surf, col,
+                                 (x + (ax[1] - x0) * scale + scale // 2,
+                                  y + (ax[0] - y0) * scale + scale // 2),
+                                 (x + (ax[3] - x0) * scale + scale // 2,
+                                  y + (ax[2] - y0) * scale + scale // 2))
+                pygame.draw.circle(surf, col,
+                                   (int(x + (ax[3] - x0) * scale + scale // 2),
+                                    int(y + (ax[2] - y0) * scale + scale // 2)), 2)
         self._sheet_rect = pygame.Rect(x, y, w * scale, h * scale)
         self._sheet_scale, self._sheet_origin = scale, (y0, x0)
         if self.picked is not None and p.mask[self.picked]:      # ring the picked cell

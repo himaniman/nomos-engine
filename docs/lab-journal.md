@@ -1725,3 +1725,62 @@ The next milestone is written into `docs/cortex-design.md` and is deliberately n
 an LLM writes a growth program, the body develops from it, moves, and eats.
 
 Suite 344 green.
+
+## 2026-07-23 (later) — the diagnostic, and axons
+
+**The diagnostic first, because it was cheap and it decided the design.** Grow ONE body,
+then sit that same body at the `open` probe with different think-times — which isolates
+"can the signal get there" from "did it grow well":
+
+```
+brain 0 (470 cells, span 30, 38 sensory / 242 effector)
+   subticks   10:0.09   20:0.16   40:0.26   80:0.26   160:0.34
+brain 4 (488 cells, span 33, 128 sensory / 222 effector)
+   subticks   10:0.12   20:0.18   40:0.23   80:0.24   160:0.24
+```
+
+Two things fall out. **The relay bottleneck is real**: eight times the think-time
+roughly doubles the score, which is what you would expect if the problem is that a
+signal crosses one cell per sub-tick and the body is thirty cells wide. And **it is not
+the only problem**: even at 160 sub-ticks — eight times the cost — the brain sits at a
+third of the reflex's 1.00. The other number in that line says where to look next:
+**242 effectors out of 470 cells.** The readout pools over ALL of them, so whatever does
+arrive is averaged with half a body that heard nothing. That fix is three lines and is
+deliberately NOT bundled with this one, because changing two things at once measures
+neither.
+
+**Axons (`cortex/brain.py`).** A seventh morphogenetic output, `SPROUT`. A cell that
+asks for one, and can pay in resource, grows a GROWTH CONE: it walks up the guidance
+chemical — the same gradient development already reads its position from — and wherever
+it ends up, if that is far enough and alive, becomes the far end. The wire lands as an
+additive drive exactly like a sense, so nothing about a cell's rule has to change to
+receive one. Weights are reward-gated Hebbian (fired together, and the reward landed),
+decay every development tick, and are pruned below a floor: use it or lose it, so a
+topology is lost as well as grown. Axons are stored as CELL COORDINATES and re-pointed
+on every reindex, dropping any whose end died — a wire that silently re-pointed at
+whatever cell inherited its row number would be worse than no wire.
+
+Two blockers, both the same shape as earlier ones. `sprout_bias` at 0.10 against a 0.30
+threshold meant no cell ever asked, so the whole mechanism was dead code that mutation
+could not even find — a wire never grown is never selected for or against. And the cone
+stopped at the first local peak, which in a chemical the cells write themselves is two
+cells away; it now always MOVES, to the best neighbour it has not visited.
+
+**The A/B, reported as it came out:**
+
+```
+brain 0  axons on  0.40   off  0.24      (behind 1.00 vs 0.11, open 0.28 vs 0.15)
+brain 4  axons on  0.10   off  0.14
+```
+
+One clear win, one small loss, n = 2. That is not evidence. What IS established is the
+diagnostic above, and that the mechanism works: wires grow, carry signal (cutting them
+all changes the state), learn, prune, die with their cells, and are visible as a green
+web on the sheet with `axons N mean length 7.4 cells` in the HUD. Whether they pay is
+an open question needing more genomes than an evening.
+
+One regression I caused and the tests caught: the new axon header line only appeared
+once a wire existed, which pushed the fixed sheet box down by its own height — the exact
+twitch that box exists to prevent. It is drawn always now, zero included.
+
+8 new tests, suite 352 green.

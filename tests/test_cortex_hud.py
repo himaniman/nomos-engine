@@ -114,9 +114,13 @@ def test_cells_of_different_types_show_different_perceptrons():
     app = _app(mutations=10)
     # split the types deliberately rather than hoping a random walk does it: the claim
     # under test is about the PANEL, not about how often mutation happens to speciate
+    # ...and split them LOUDLY. A daughter type is born nearly identical to its mother
+    # on purpose (new tissue arrives quiet), and since mutation was gentled the default
+    # jitter leaves two rules that render to the same pixels. The claim under test is
+    # about the PANEL, so the setup has to guarantee there is something to show.
     rng = np.random.default_rng(1)
     for _ in range(3):
-        B._split_type(app.mind.genome, rng, B.Config())
+        B._split_type(app.mind.genome, rng, B.Config(weight_mut=0.6, weight_mut_prob=1.0))
     app.mind.phenotype = B.Phenotype(app.mind.genome, app.mind.cfg, app.mind.layout)
     keys = defaultdict(bool)
     for _ in range(300):

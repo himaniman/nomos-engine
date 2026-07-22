@@ -110,6 +110,38 @@ def _entropy(acts) -> float:
     return float(-sum((c / n) * math.log(c / n + 1e-12) for c in buckets.values()))
 
 
+# how far a mutation may be scaled up or down by the 1/5 rule, and how fast
+STEP_MIN, STEP_MAX, STEP_UP, STEP_DOWN = 0.15, 3.0, 1.30, 0.82
+# the rates a STEP scales. Not the ceilings and not the mechanisms — only how often and
+# how far a mutation reaches.
+_STEP_KEYS = ("weight_mut", "weight_mut_prob", "program_mut", "program_mut_prob",
+              "grow_prob", "shrink_prob", "add_in_prob", "del_in_prob", "add_out_prob",
+              "del_out_prob", "organ_mod_prob", "retype_prob", "split_prob",
+              "add_layer_prob", "del_layer_prob", "widen_prob", "narrow_prob",
+              "subtick_mut_prob")
+
+
+def scaled(cfg: B.Config, step: float) -> B.Config:
+    """A config whose mutation is `step` times as strong. One number for the whole
+    operator, because the question the 1/5 rule asks — is this a step or a leap — is
+    about the operator, not about any one of its rates."""
+    out = B.Config(**vars(cfg))
+    for k in _STEP_KEYS:
+        setattr(out, k, min(1.0, getattr(cfg, k) * step) if k.endswith("prob")
+                else getattr(cfg, k) * step)
+    return out
+
+
+def adapt(step: float, accepted: bool) -> float:
+    """Rechenberg's 1/5 success rule: grow the step when children are accepted, shrink
+    it when they are not. A (1 + 1) strategy wants roughly one child in five to be an
+    improvement — the first lineage run on a foraging brain accepted ZERO of fourteen,
+    which says the operator was leaping, not stepping, and no amount of patience would
+    have fixed it."""
+    return float(min(STEP_MAX, max(STEP_MIN,
+                                   step * (STEP_UP if accepted else STEP_DOWN))))
+
+
 def diagnose(profile: dict, history: list[float], patience: int = 3) -> list[str]:
     """Which dead-end signals are firing. Not just "restart" — WHICH kind of change is
     called for, which is the whole reason to name them separately."""
@@ -139,24 +171,42 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
         if strips and best.get("suite"):
             os.makedirs(strips, exist_ok=True)
             probes.render(best["suite"], os.path.join(strips, "gen000.png"))
+    step, accepts = 1.0, []
     for gen in range(1, generations + 1):
         flags = diagnose(best, history)
-        # a STALLED lineage gets a bigger shove, not another nudge — the same
-        # basin-escape logic scientist.py uses on laws, pointed at brains
-        cfg = B.Config(**vars(bcfg))
-        if "stalled" in flags:
-            cfg.grow_prob = min(1.0, bcfg.grow_prob * 2.5)
-            cfg.split_prob = min(1.0, bcfg.split_prob * 3.0)
-            cfg.add_layer_prob = min(1.0, bcfg.add_layer_prob * 3.0)
-            cfg.weight_mut = bcfg.weight_mut * 2.0
+        # THE STEP SIZE adapts (Rechenberg's 1/5 rule, `adapt`). What used to be here
+        # did the opposite: a stalled lineage got its mutation rates multiplied by
+        # 2.5-3x, on the assumption that stalling means the steps are too small. The
+        # first run on a brain that could forage falsified that — fourteen children,
+        # zero accepted, a parent eating 8.5 meals against children eating 0.5. The
+        # steps were far too LARGE and the handler made them larger every generation
+        # from the fourth on. Basin escape is still available, but only when the
+        # acceptance rate says we are genuinely inching along a local optimum rather
+        # than falling off one.
+        cfg = scaled(bcfg, step)
+        recent = accepts[-5:]
+        if "stalled" in flags and recent and sum(recent) / len(recent) >= 0.4:
+            cfg.split_prob = min(1.0, cfg.split_prob * 3.0)
+            cfg.add_layer_prob = min(1.0, cfg.add_layer_prob * 3.0)
         children = []
         for _ in range(max(1, lam)):
             child = B.mutate(parent, rng, cfg)
             children.append((evaluate(child, seeds, max_ticks, think_every, bcfg), child))
         cand, cgen = max(children, key=lambda kv: kv[0]["fitness"])
-        kept = cand["fitness"] >= best["fitness"]
+        # RE-MEASURE THE INCUMBENT rather than trusting the score it happened to get
+        # when it was young. A life is noisy, and in a (1 + 1) loop a lucky parent
+        # measurement is permanent: it becomes a bar nothing can clear, and the run
+        # reads as "no child was ever better" when it means "the parent was measured on
+        # a good day". Averaging the estimate lets a flattered parent come back down.
+        again = evaluate(parent, seeds, max_ticks, think_every, bcfg)
+        bar = 0.5 * (best["fitness"] + again["fitness"])
+        kept = cand["fitness"] >= bar
         if kept:
             best, parent = cand, cgen
+        else:
+            best = dict(again, fitness=bar)     # the incumbent, re-scored
+        accepts.append(kept)
+        step = adapt(step, kept)
         history.append(best["fitness"])
         if log:
             # log the CHILD that was actually lived, accepted or not — logging the
@@ -164,7 +214,7 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
             record(_fake_world(cand), f"brain-g{gen}",
                    note=("kept" if kept else "rejected") + f" {' '.join(flags)}")
         if not quiet:
-            _report(gen, cand, flags, cgen, kept=kept)
+            _report(gen, cand, flags, cgen, kept=kept, step=step, bar=bar)
             if strips and cand.get("suite"):
                 os.makedirs(strips, exist_ok=True)
                 probes.render(cand["suite"], os.path.join(strips, f"gen{gen:03d}.png"))
@@ -191,10 +241,17 @@ class _fake_world:
                                     "energy": 0.0, "ate": p["ate"]})()
 
 
-def _report(gen: int, prof: dict, flags, genome: B.Genome, kept: bool = True) -> None:
+def _report(gen: int, prof: dict, flags, genome: B.Genome, kept: bool = True,
+            step: float | None = None, bar: float | None = None) -> None:
     sk = prof.get("skills") or {}
     skills = "  ".join(f"{k[:4]} {v:.2f}" for k, v in sk.items() if k != "mean")
-    print(f"gen {gen:>3}  fit {prof['fitness']:>8.1f}  ticks {prof['ticks']:>7.0f}"
+    # the BAR and the STEP are printed because a rejection is uninformative without
+    # them: it could mean the child was bad, or that the parent was measured on a good
+    # day, or that the operator is still leaping
+    extra = ("" if bar is None else f"  vs {bar:>7.1f}") + \
+            ("" if step is None else f"  step {step:.2f}")
+    print(f"gen {gen:>3}  fit {prof['fitness']:>8.1f}{extra}"
+          f"  ticks {prof['ticks']:>7.0f}"
           f"  meals {prof['meals']:>5.1f}  H {prof['entropy']:.2f}"
           f"  types {genome.n_types}"
           f"  {'' if kept else '(rejected)'} {' '.join(flags)}")

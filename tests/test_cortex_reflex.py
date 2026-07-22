@@ -218,13 +218,18 @@ def test_a_lineage_cannot_lose_its_last_nose_in_one_mutation():
 
 
 def test_but_a_species_with_no_reflexes_may_lose_it():
-    """The guard is for arcs that need the organ, not a permanent fixture of biology."""
+    """The guard is for arcs that need the organ, not a permanent fixture of biology.
+
+    Re-mapping is driven hard here rather than waited for: the claim is about what the
+    guard PERMITS, and tying it to the shipped rate would make it a slow test of
+    `organ_mod_prob` instead."""
     g = fresh_genome(seed=0)
     g.program.update({"reflex_gain": 0.0})
+    cfg = B.Config(organ_mod_prob=1.0)
     rng = np.random.default_rng(1)
     lost = False
-    for _ in range(400):
-        g = B.mutate(g, rng)
+    for _ in range(200):
+        g = B.mutate(g, rng, cfg)
         g.program.update({"reflex_gain": 0.0})
         if R.ODOUR_MOD not in list(g.organ_map):
             lost = True

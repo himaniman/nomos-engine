@@ -4,8 +4,10 @@ import json
 import os
 
 import numpy as np
+import pytest
 
 from cortex import brain as B
+from cortex import lineage
 from cortex.agent import fresh_genome
 from cortex.lineage import diagnose, evaluate, run
 
@@ -74,3 +76,53 @@ def test_a_lineage_never_goes_backwards():
               save="", log=False, quiet=True)
     h = out["history"]
     assert all(h[i + 1] >= h[i] - 1e-9 for i in range(len(h) - 1)), h
+
+
+# --- the step size, and why it adapts --------------------------------------------------
+
+def test_a_scaled_config_changes_only_how_far_a_mutation_reaches():
+    """Not the ceilings, not which mechanisms exist — only the rates."""
+    base = B.Config()
+    half = lineage.scaled(base, 0.5)
+    for k in lineage._STEP_KEYS:
+        assert getattr(half, k) < getattr(base, k) + 1e-12
+    for k in ("max_cells", "max_types", "max_layers", "grid", "channels", "axons"):
+        assert getattr(half, k) == getattr(base, k)
+
+
+def test_probabilities_never_scale_past_one():
+    big = lineage.scaled(B.Config(), lineage.STEP_MAX * 10)
+    for k in lineage._STEP_KEYS:
+        if k.endswith("prob"):
+            assert getattr(big, k) <= 1.0
+
+
+def test_the_step_shrinks_on_rejection_and_grows_on_acceptance():
+    """Rechenberg's 1/5 rule. The first lineage run on a foraging brain accepted ZERO
+    of fourteen children, which says the operator was leaping, not stepping."""
+    step = 1.0
+    for _ in range(6):
+        step = lineage.adapt(step, accepted=False)
+    assert step < 0.5
+    up = step
+    for _ in range(6):
+        up = lineage.adapt(up, accepted=True)
+    assert up > step
+
+
+def test_the_step_is_bounded_both_ways():
+    down, up = 1.0, 1.0
+    for _ in range(200):
+        down = lineage.adapt(down, accepted=False)
+        up = lineage.adapt(up, accepted=True)
+    assert down == pytest.approx(lineage.STEP_MIN)
+    assert up == pytest.approx(lineage.STEP_MAX)
+
+
+def test_mutation_is_gentle_enough_to_be_a_step():
+    """Measured: the old rates changed all the weights, a quarter of the growth program
+    and several structural moves at once, on a body grown from a 24-cell seed."""
+    cfg = B.Config()
+    assert cfg.weight_mut <= 0.03 and cfg.weight_mut_prob <= 0.05
+    assert cfg.program_mut_prob <= 0.10
+    assert cfg.grow_prob <= 0.10 and cfg.add_in_prob <= 0.05

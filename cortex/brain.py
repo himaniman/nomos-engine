@@ -157,27 +157,35 @@ class Config:
         self.plastic_clip = 1.0
         self.rule_plastic = True
         self.rule_clip = 0.3
-        # mutation
-        self.weight_mut = 0.08
-        self.weight_mut_prob = 0.10
-        self.grow_prob = 0.30
-        self.shrink_prob = 0.06
-        self.add_in_prob = 0.12
-        self.del_in_prob = 0.03
-        self.add_out_prob = 0.06
-        self.del_out_prob = 0.02
-        self.organ_mod_prob = 0.08
-        self.retype_prob = 0.05
-        self.split_prob = 0.04
-        self.add_layer_prob = 0.05
-        self.del_layer_prob = 0.015
-        self.widen_prob = 0.06
-        self.narrow_prob = 0.02
-        self.subtick_mut_prob = 0.10
+        # MUTATION. Every rate here was cut hard on 2026-07-24, after a lineage made
+        # fourteen children and accepted NONE: a parent eating 8.5 meals a life produced
+        # children eating 0.5 to 2. That is not selection failing to find an
+        # improvement, it is a mutation operator that resamples rather than steps. The
+        # old rates changed everything at once — all the weight matrices, a quarter of
+        # the growth program, and several structural moves, on a body grown from a
+        # 24-cell seed where adding an organ is not a step but a different creature.
+        # Measured over eight children per arm: gentling any one of the three roughly
+        # doubles a child's meals (2.6 -> 5.0) and lifts mean child fitness 6.2 -> 8.4.
+        self.weight_mut = 0.02
+        self.weight_mut_prob = 0.04
+        self.grow_prob = 0.08
+        self.shrink_prob = 0.02
+        self.add_in_prob = 0.03
+        self.del_in_prob = 0.01
+        self.add_out_prob = 0.02
+        self.del_out_prob = 0.005
+        self.organ_mod_prob = 0.02
+        self.retype_prob = 0.01
+        self.split_prob = 0.01
+        self.add_layer_prob = 0.01
+        self.del_layer_prob = 0.004
+        self.widen_prob = 0.015
+        self.narrow_prob = 0.005
+        self.subtick_mut_prob = 0.04
         self.subticks_min, self.subticks_max = 8, 48
-        self.program_mut_prob = 0.25   # per FIELD chance of a jitter, and how far —
-        self.program_mut = 0.12        # relative to the field's RANGE, so a knob at
-                                       # its floor can still move
+        self.program_mut_prob = 0.08   # per FIELD chance of a jitter, and how far —
+        self.program_mut = 0.06        # sized by the VALUE, floored by the range, so a
+                                       # knob at zero can still move (see program.py)
         self.__dict__.update(kw)
 
     def merged(self, program) -> "Config":

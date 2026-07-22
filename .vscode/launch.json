@@ -182,6 +182,67 @@
       "justMyCode": true
     },
     {
+      // *** THE LLM LAB ***  The model writes the brain's GROWTH PROGRAM between
+      // lives — never a weight — and every candidate is grown from the same fixed
+      // random weights, so a score difference is attributable to the program.
+      // Needs WAVESPEED_API_KEY in .env (see nomos/llm.py).
+      // Each iteration writes a HUD SCREENSHOT and a probe strip into
+      //   out/cortex/lab/<timestamp>/     — open gallery.png to watch the run,
+      //                                     journal.md to read what it argued.
+      "name": "cortex: LLM LAB (model writes the growth program)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.lab",
+      "args": ["--iterations", "10", "--seeds", "0,1", "--ticks", "4000"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the CONTROL ARM: the identical loop with a random program mutation in the
+      // model's chair. "Is the LLM better than chance at writing growth programs" is
+      // a question this harness should answer, not assume. No API key needed.
+      "name": "cortex: LLM LAB — rng control arm",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.lab",
+      "args": ["--proposer", "rng", "--iterations", "10", "--seeds", "0,1",
+               "--ticks", "4000"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // a quick one to check the wiring before spending a real run
+      "name": "cortex: LLM LAB (quick, 3 iterations)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.lab",
+      "args": ["--iterations", "3", "--seeds", "0", "--ticks", "1500",
+               "--probe-ticks", "300"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // WATCH the program the lab settled on. Point --load-brain at the genome the
+      // run saved; R shows the TRACK it has walked, which is how a circler gives
+      // itself away at a glance.
+      "name": "cortex: WATCH the lab's best program",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--seed", "2", "--view", "65", "--cell", "11",
+               "--load-brain", "out/cortex/lab/best_genome.json"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // EVOLVE a lineage: one agent, one long life at a time, genome carried forward
       "name": "cortex: LINEAGE (evolve a brain)",
       "type": "debugpy",

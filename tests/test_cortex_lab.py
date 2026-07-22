@@ -186,3 +186,40 @@ def test_the_winning_program_is_saved_as_a_genome_you_can_watch(tmp_path):
         g = B.Genome.from_dict(json.loads(path.read_text(encoding="utf-8")))
         assert g.program.to_dict() == out["best"]["spec"]["program"]
         Mind(g)                                  # it loads and runs, not just parses
+
+
+def test_a_proposal_is_written_on_top_of_the_best_not_the_defaults(tmp_path):
+    """The bug this pins down was found in a live run and is the kind that hides: the
+    prompt promised omitted fields keep their value, and the code applied every
+    proposal to the DEFAULTS, so a field the model chose not to mention silently
+    reverted. The model believed it was refining one program; it was drawing
+    independent samples around the default."""
+    client = MockClient([_reply({"grow_thresh": 0.09}, "grow hard"),
+                         _reply({"chem_decay": 0.21}, "fade faster")])
+    out = lab.run_lab(client, iterations=2, seeds=SEEDS, ticks=TICKS,
+                      probe_ticks=PROBE, out_dir=str(tmp_path), shots=False)
+    first, second = out["board"][1], out["board"][2]
+    if second["fitness"] >= first["fitness"] or first["fitness"] >= out["board"][0]["fitness"]:
+        pass                                   # ordering is irrelevant to the claim
+    base = max(out["board"][:2], key=lambda e: e["fitness"])["spec"]["program"]
+    assert second["spec"]["program"]["chem_decay"] == pytest.approx(0.21)
+    for k, v in base.items():
+        if k != "chem_decay":
+            assert second["spec"]["program"][k] == v, \
+                f"{k} moved without being asked to"
+
+
+def test_the_model_is_told_which_program_it_is_editing(tmp_path):
+    client = MockClient([_reply({"grow_thresh": 0.09}), _reply({"chem_decay": 0.21})])
+    lab.run_lab(client, iterations=2, seeds=SEEDS, ticks=TICKS, probe_ticks=PROBE,
+                out_dir=str(tmp_path), shots=False)
+    last = client.calls[-1][-1]["content"]
+    assert "written on top of iteration" in last
+    assert "What actually changed" in last
+
+
+def test_the_journal_reports_what_moved_not_the_whole_vector(tmp_path):
+    client = MockClient([_reply({"grow_thresh": 0.09}, "grow hard")])
+    out = lab.run_lab(client, iterations=1, seeds=SEEDS, ticks=TICKS,
+                      probe_ticks=PROBE, out_dir=str(tmp_path), shots=False)
+    assert set(out["board"][1]["changed"]) == {"grow_thresh"}

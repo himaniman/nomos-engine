@@ -130,8 +130,10 @@ WHAT TO REPLY WITH. Reason first, in prose, then ONE fenced json block:
 }
 ```
 
-Only "program" is required, and only the fields you want to CHANGE — everything you
-omit keeps its current value. "subticks" (8..48) is how many rounds the sheet relaxes
+Only "program" is required, and only the fields you want to CHANGE: your program is
+applied ON TOP OF the best one so far, so everything you omit keeps the value that
+program has, and you will be shown that program each turn. "subticks" (8..48) is how
+many rounds the sheet relaxes
 per thought, so it is how far a signal can travel before the command is read.
 "organ_map" says which sensory modality each chemical region becomes: 1-6 are sight
 ray channels, 7 odour, 8 touch, 9 interoception. "seed_types" (1..6) is how many cell
@@ -167,14 +169,23 @@ State a hypothesis and write the next program.
 
 # --- growing and scoring a candidate --------------------------------------------------
 
-def build_genome(spec: dict, brain_seed: int, wcfg: WorldConfig | None = None):
+def build_genome(spec: dict, brain_seed: int, wcfg: WorldConfig | None = None,
+                 base: dict | None = None):
     """A genome from a proposal. The WEIGHTS come from `brain_seed` and nothing the
     model writes touches them — that is what makes a generation's difference
-    attributable to the program."""
+    attributable to the program.
+
+    `base` is the program being EDITED, and it matters more than it looks. Without it
+    every proposal was applied to the defaults, so a field the model chose not to
+    mention silently reverted — the model believed it was refining one program and was
+    in fact drawing independent samples around the default. The prompt promises that
+    omitted fields keep their value; this is where that promise is kept."""
     bcfg = B.Config()
     if spec.get("seed_types"):
         bcfg.seed_types = int(min(bcfg.max_types, max(1, int(spec["seed_types"]))))
     g = fresh_genome(seed=brain_seed, wcfg=wcfg, bcfg=bcfg)
+    if base:
+        g.program.update(base)
     unknown = g.program.update(spec.get("program") or {})
     if spec.get("subticks"):
         g.subticks = int(min(bcfg.subticks_max,
@@ -394,8 +405,9 @@ def run_lab(client, iterations: int = 8, seeds=(0, 1), ticks: int = 4000,
 
     board: list[dict] = []
 
-    def record_entry(i: int, spec: dict, hyp: str, res: dict) -> dict:
-        entry = {"iter": i, "spec": spec, "hypothesis": hyp,
+    def record_entry(i: int, spec: dict, hyp: str, res: dict,
+                     changed: dict | None = None) -> dict:
+        entry = {"iter": i, "spec": spec, "hypothesis": hyp, "changed": changed or {},
                  "skills": res["skills"], "body": res["body"],
                  "fitness": res["fitness"]}
         strip = run / f"iter{i:02d}_probes.png"
@@ -414,7 +426,9 @@ def run_lab(client, iterations: int = 8, seeds=(0, 1), ticks: int = 4000,
         log(f"\n---\n\n## Iteration {i}"
             f"{'  (best so far)' if entry['fitness'] >= max(e['fitness'] for e in board) else ''}"
             f"\n\n**Hypothesis:** {hyp}\n\n"
-            f"**Changed:** `{json.dumps(spec.get('program', {}))}`\n\n"
+            # what MOVED, not the whole vector: a generation reporting thirty numbers
+            # teaches nothing next to one reporting the three that changed
+            f"**Changed:** `{json.dumps(entry['changed']) if i else 'the defaults'}`\n\n"
             f"```\n{report(res)}\n```\n\n"
             + (f"![brain {i}]({rel(entry['shot'])})\n\n" if entry.get("shot") else "")
             + (f"![probes {i}]({rel(entry['strip'])})\n" if entry.get("strip") else ""))
@@ -457,13 +471,19 @@ def run_lab(client, iterations: int = 8, seeds=(0, 1), ticks: int = 4000,
             reply = ""
 
         done += 1
-        genome, unknown = build_genome(spec, brain_seed)
+        # EDIT THE BEST, not the defaults. (1 + lambda) with lambda = 1, which is the
+        # lineage scheme the rest of the project already runs on, and it is what makes
+        # "change a few things at a time" a coherent instruction: a proposal is a step
+        # from a known program rather than a fresh draw around the default.
+        base = max(board, key=lambda e: e["fitness"])["spec"]["program"]
+        genome, unknown = build_genome(spec, brain_seed, base=base)
         print(f"[gen {done}/{iterations}] growing...", file=sys.stderr)
         res = evaluate(genome, seeds, ticks, probe_ticks)
         # what the genome ACTUALLY carries, not what was asked for: values are clamped
         # into range on the way in, and a run must journal what it ran
+        changed = {k: v for k, v in genome.program.to_dict().items() if base.get(k) != v}
         spec = dict(spec, program=genome.program.to_dict())
-        entry = record_entry(done, spec, hyp, res)
+        entry = record_entry(done, spec, hyp, res, changed)
         best = max(board, key=lambda e: e["fitness"])
         print(f"[gen {done}] fit {entry['fitness']:.3f}"
               + ("  <- best" if best is entry else f"  (best #{best['iter']} "
@@ -472,11 +492,20 @@ def run_lab(client, iterations: int = 8, seeds=(0, 1), ticks: int = 4000,
         if is_llm:
             note = (f"Fields I did not recognise and dropped: {unknown}\n\n"
                     if unknown else "")
+            nxt = max(board, key=lambda e: e["fitness"])
+            moved = json.dumps(changed) if changed else "nothing (it matched the base)"
             messages.append({"role": "user", "content":
-                             f"{note}Your program grew this:\n\n{report(res)}\n\n"
+                             f"{note}What actually changed: {moved}\n\n"
+                             f"Your program grew this:\n\n{report(res)}\n\n"
                              f"{leaderboard(board)}\n"
-                             "Say what you conclude from that, then write the next "
-                             "program. Change a few things and say why."})
+                             # be explicit about WHICH program the next edit lands on.
+                             # Leaving this implicit is how a model ends up believing it
+                             # is refining one thing while it edits another.
+                             f"Your next program will be written on top of iteration "
+                             f"{nxt['iter']}, the best so far. That is:\n\n"
+                             f"{PROG.Program(nxt['spec']['program']).summary()}\n\n"
+                             "Say what you conclude, then write the next program. "
+                             "Change a few things and say why."})
 
     best = max(board, key=lambda e: e["fitness"])
     (run / "best_program.json").write_text(

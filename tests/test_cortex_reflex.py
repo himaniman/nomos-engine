@@ -202,3 +202,31 @@ def test_a_smell_dead_ahead_drives_thrust_through_the_tissue():
     for _ in range(3):
         smelled = p.act(loud)[0]
     assert smelled > base, "a smell straight ahead did not make it go"
+
+
+def test_a_lineage_cannot_lose_its_last_nose_in_one_mutation():
+    """A cliff, not a gradient: with no odour region nothing smells, the pioneer tracts
+    never grow, and every descendant is blind to the one sense the reflexes are built
+    on — silently, because there is nothing left for selection to act on."""
+    g = fresh_genome(seed=0)
+    rng = np.random.default_rng(0)
+    for i in range(300):
+        g = B.mutate(g, rng)
+        if g.program["reflex_gain"] <= 0.0:
+            break            # arcs switched off: the organ they needed may go too
+        assert R.ODOUR_MOD in list(g.organ_map), f"went noseless at mutation {i}"
+
+
+def test_but_a_species_with_no_reflexes_may_lose_it():
+    """The guard is for arcs that need the organ, not a permanent fixture of biology."""
+    g = fresh_genome(seed=0)
+    g.program.update({"reflex_gain": 0.0})
+    rng = np.random.default_rng(1)
+    lost = False
+    for _ in range(400):
+        g = B.mutate(g, rng)
+        g.program.update({"reflex_gain": 0.0})
+        if R.ODOUR_MOD not in list(g.organ_map):
+            lost = True
+            break
+    assert lost

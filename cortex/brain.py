@@ -1259,7 +1259,19 @@ def mutate(genome, rng, cfg=None):
     _jitter(g.P_horm, rng, cfg.weight_mut_prob, cfg.weight_mut)
     if rng.random() < cfg.organ_mod_prob:                   # re-read one chemical as a
         j = int(rng.integers(len(g.organ_map)))             # different organ FATE
+        was = int(g.organ_map[j])
         g.organ_map[j] = int(rng.integers(1, cfg.organ_mods + 1))
+        # ...but a lineage may not lose its LAST NOSE in one mutation while it still
+        # has innate arcs that need one. This is a cliff, not a gradient: with no odour
+        # region nothing smells, the pioneer tracts never grow, and every descendant is
+        # blind to the one sense the reflexes are built on — silently, and unrecoverably
+        # in practice, because there is nothing left for selection to act on. Set
+        # `reflex_gain` to 0 and the guard lifts: a species with no reflexes may lose
+        # the organ they needed.
+        from cortex.reflex import ODOUR_MOD as _NOSE
+        if (g.program["reflex_gain"] > 0.0 and was == _NOSE
+                and _NOSE not in list(g.organ_map)):
+            g.organ_map[j] = was
 
     if rng.random() < cfg.subtick_mut_prob:                 # heritable THINK TIME
         g.subticks = int(min(cfg.subticks_max, max(cfg.subticks_min,

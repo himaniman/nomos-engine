@@ -263,17 +263,29 @@ class Program:
     def from_dict(cls, d: dict | None) -> "Program":
         return cls(d or {})
 
+    # a step is this share of the field's RANGE at minimum, whatever its current value
+    _FLOOR_FRAC = 0.03
+
     def mutate(self, rng, prob: float = 0.25, scale: float = 0.20) -> "Program":
-        """A jittered copy. RELATIVE to the field's range, not to its value, so a knob
-        currently sitting at zero can still move — an absolute-fraction jitter would
-        pin any field that ever reached its floor, which is the quiet way a search
-        space collapses."""
+        """A jittered copy, with a step sized by the VALUE but floored by the RANGE.
+
+        Both halves are there because each fixes what the other breaks. A jitter
+        proportional to the value alone pins any field that ever reaches zero, which is
+        the quiet way a search space collapses. A jitter proportional to the range alone
+        is violent wherever a default sits near its floor, and it was: `cell_cost`
+        defaults to 1.5e-5 with a range to 0.002, so every mutation threw it sixteen
+        times its own size, and `reflex_gain` random-walked 2.5 -> 0.04 -> 0 in ten
+        mutations — silently deleting the innate arcs mid-lineage.
+
+        So: step ~ max(|value|, 3% of the range). A field at its typical value moves by
+        a fraction of itself; a field at zero can still climb off the floor."""
         out = self.copy()
         for k, (default, lo, hi, is_int, _) in FIELDS.items():
             if rng.random() >= prob:
                 continue
             span = float(hi) - float(lo)
-            out.values[k] = clamp(k, out.values[k] + rng.normal(0.0, scale * span))
+            step = scale * max(abs(float(out.values[k])), self._FLOOR_FRAC * span)
+            out.values[k] = clamp(k, out.values[k] + rng.normal(0.0, step))
         return out
 
     def diff(self, other: "Program") -> dict:

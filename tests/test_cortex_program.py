@@ -74,8 +74,8 @@ def test_mutation_stays_in_range_and_moves_something():
 
 
 def test_mutation_can_lift_a_field_off_its_floor():
-    """Jitter is relative to the RANGE, not the value — an absolute-fraction jitter
-    would pin any knob that ever reached zero, which is how a search space quietly
+    """A step is floored by a share of the RANGE — a purely value-relative jitter would
+    pin any knob that ever reached zero, which is how a search space quietly
     collapses."""
     rng = np.random.default_rng(1)
     prog = P.Program({"axon_lr": 0.0})
@@ -281,3 +281,25 @@ def test_the_baseline_can_be_switched_off():
     for _ in range(50):
         mind._reward(-1.2)
     assert mind.last_reward == pytest.approx(mind.last_delta)
+
+
+def test_a_mutation_step_is_sized_by_the_value_not_only_the_range():
+    """A range-relative jitter is violent wherever a default sits near its floor:
+    `cell_cost` defaults to 1.5e-5 with a range to 0.002, so every mutation threw it
+    sixteen times its own size. A field must move by a fraction of ITSELF."""
+    rng = np.random.default_rng(0)
+    prog = P.Program()
+    moves = [abs(prog.mutate(rng, prob=1.0)["cell_cost"] - prog["cell_cost"])
+             for _ in range(60)]
+    span = P.FIELDS["cell_cost"][2] - P.FIELDS["cell_cost"][1]
+    assert np.median(moves) < 0.1 * span
+
+
+def test_a_wide_field_does_not_random_walk_off_a_cliff():
+    """`reflex_gain` went 2.5 -> 1.37 -> 0.04 -> 0 in ten mutations, silently deleting
+    a lineage's innate arcs. A knob at its default must survive a handful of hits."""
+    rng = np.random.default_rng(0)
+    prog = P.Program()
+    for _ in range(10):
+        prog = prog.mutate(rng, prob=1.0)
+    assert prog["reflex_gain"] > 0.2

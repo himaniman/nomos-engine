@@ -112,6 +112,12 @@ class Config:
         # unaffordable. Rare development is not a compromise, it is the enabling trick.
         self.develop = True
         self.seed_cells = 24         # the SEED: a genome is a program, not a body
+        self.seed_types = 3          # cell TYPES the seed already has. One meant every
+                                     # cell ran the same network until a 4%-per-mutation
+                                     # split happened to fire, so a fresh brain was
+                                     # uniform tissue. Laid out as REGIONS, not
+                                     # salt-and-pepper: a daughter inherits her mother's
+                                     # type, so regions grow outward with the body.
         self.embryo_ticks = 900      # a head start in which growth is fast and FREE...
         self.dev_every_embryo = 8    # ...development ticks this often, then:
         self.dev_every = 120         # slow structural plasticity for the rest of life
@@ -394,7 +400,18 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     if not out_mask.any():                       # a brain always has a voice
         y, x = (deep or border)[int(rng.integers(len(deep or border)))]
         out_mask[y, x] = True
-    rules = [_fresh_rule(9 * C, H, C, _MIN_DEPTH, rng)]
+    # TYPES AS REGIONS. Each type claims a random seed cell and every cell takes the
+    # nearest claim (a small Voronoi). Because a daughter inherits her mother's type,
+    # these patches then grow outward with the tissue instead of staying a speckle.
+    n_types = max(1, int(cfg.seed_types))
+    rules = [_fresh_rule(9 * C, H, C, _MIN_DEPTH, rng) for _ in range(n_types)]
+    if n_types > 1:
+        alive = np.argwhere(mask)
+        claims = alive[rng.choice(len(alive), size=min(n_types, len(alive)),
+                                  replace=False)]
+        for y, x in alive:
+            d = ((claims[:, 0] - y) ** 2 + (claims[:, 1] - x) ** 2)
+            type_map[y, x] = int(np.argmin(d))
     # Xavier on the sensor projection: 412 inputs summed into C channels would
     # saturate tanh instantly at N(0, 0.5) — the same regression that once broke NEAT
     # in the vivarium when the sensor vector got wide (see docs/lab-journal.md).

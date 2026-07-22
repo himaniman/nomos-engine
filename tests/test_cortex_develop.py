@@ -218,3 +218,33 @@ def test_a_life_with_development_is_still_reproducible():
     assert (a.agent.y, a.agent.x, a.agent.energy) == (b.agent.y, b.agent.x, b.agent.energy)
     assert ma.phenotype.cells() == mb.phenotype.cells()
     assert np.array_equal(ma.phenotype.mask, mb.phenotype.mask)
+
+
+def test_the_seed_already_has_several_cell_types_laid_out_as_regions():
+    """One type meant every cell ran the same network until a 4%-per-mutation split
+    happened to fire. Several, and laid out as REGIONS rather than salt-and-pepper,
+    because a daughter inherits her mother's type — so patches grow with the body."""
+    cfg = B.Config()
+    g, p = _pheno(cfg, seed=4)
+    assert g.n_types == cfg.seed_types > 1
+    counts = np.bincount(g.type_map[g.mask], minlength=g.n_types)
+    assert (counts > 0).all(), f"a type with no cells in the seed: {counts}"
+    # regions, not speckle: most cells share a type with a 4-neighbour
+    ys, xs = np.nonzero(g.mask)
+    touching = 0
+    for y, x in zip(ys, xs):
+        same = [g.type_map[y + dy, x + dx] == g.type_map[y, x]
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+                if g.mask[y + dy, x + dx]]
+        touching += any(same)
+    assert touching > 0.9 * len(ys), "the types are speckled, not laid out in regions"
+
+
+def test_type_regions_grow_with_the_tissue():
+    cfg = B.Config()
+    g, p = _pheno(cfg, seed=4)
+    before = np.bincount(g.type_map[g.mask], minlength=g.n_types)
+    _grow(p, 60)
+    after = np.bincount(p.type_map[p.mask], minlength=g.n_types)
+    assert after.sum() > before.sum(), "nothing grew"
+    assert (after >= 1).sum() >= 2, f"development collapsed to one type: {after}"

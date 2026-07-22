@@ -67,6 +67,14 @@ nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
                   the model), scored on the game, leaderboard in the prompt;
                   `python -m nomos.brain_lab` (mirrors scientist.py)
 nomos/__main__.py CLI `python -m nomos run`
+cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
+                  tiles.py map · world.py physics + economy · senses.py the
+                  sensorium (properties, never labels) · brain.py the sheet +
+                  morphogenesis + axons · program.py THE NAMED GENOME (40 scalars
+                  with ranges; Config.merged(program) is what a phenotype runs on)
+                  · agent.py the wiring · lineage.py (1+lambda) · probes.py the
+                  seven-probe ladder · lab.py the LLM writes the growth program ·
+                  app.py + brainpanel.py the HUD (R = the track) · baseline.py
 laws/*.nomos      law files (the "physics")
 tests/            pytest; GoL glider/blinker = engine ground truth
 docs/lab-journal.md  chronological record of experiments + conclusions
@@ -326,6 +334,38 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   eyes (far-sighted many-ray vs sharp short-range).
 - The manual physicist (Claude-in-session) still runs the deeper experiments;
   every one is written up in `docs/lab-journal.md` (keep doing this).
+- Done (cortex — one player, a brain that GROWS itself; branch `cortex-design`):
+  see `docs/cortex-design.md` (+ `cortex-world.md`) and the journal from 2026-07-21.
+  `cortex/` is an open top-down world (tiles store it, floats simulate it, senses
+  report PROPERTIES not labels, one contextual INTERACT, death by starvation only)
+  plus a brain that is a 24-cell SEED and a growth PROGRAM: morphogenesis on a rare
+  development tick under a resource budget, three signal layers, axons grown by
+  growth cones up the chemical gradient, within-life plasticity, a lambda=1 lineage,
+  and an observer of seven probes (`near/open/side/behind/corner/maze/patience`) run
+  on a deep copy with plasticity frozen. Bars to beat: reflex 0.66 mean, random 0.21.
+  - `cortex/program.py` (2026-07-24) is THE GENOME'S NAMED HALF — 40 scalars with
+    ranges and docs (thresholds, innate urges, development pace, metabolism,
+    chemistry, axons, learning rates, read-out). Before it, every developmental
+    constant sat in `brain.Config`: identical in every generation, untouched by
+    `mutate`, so **selection could not reach development at all**. `Config` says
+    which mechanisms exist; a `Program` is the heritable override; `Config.merged(
+    program)` is what a phenotype runs on.
+  - `cortex/lab.py` = the LLM loop. The model writes the PROGRAM, never a weight
+    (there is a test asserting the prompt carries no matrices); every candidate grows
+    from the SAME fixed random weights so a score difference is attributable to the
+    program; generation 0 is the default program; `--proposer rng` is the control
+    arm. Each iteration writes a HUD screenshot + probe strip into
+    `out/cortex/lab/<ts>/` and rebuilds `gallery.png`.
+  - FINDING (2026-07-24): the command read-out was a mean over ALL effector cells and
+    that attenuates TURN 2-3x (measured on the command stream — the probe ladder
+    could NOT answer it, it moves as much between settings as between unselected
+    brains). `pool_frac` reads the loudest slice now. It does not move the score yet:
+    steering authority is a precondition, not a policy. And a silent sheet used to
+    SPRINT, so `near`/`behind` were free marks — remove the sprint entirely and the
+    whole ladder falls below random.
+  - The live HUD draws the agent's TRACK, fading (key R). A circler is invisible as a
+    number and unmistakable as a line.
+  - Open: a brain that actually forages. Nothing downstream of that matters yet.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

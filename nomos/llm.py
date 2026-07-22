@@ -42,7 +42,8 @@ class MockClient:
 
 class OpenAICompatClient:
     def __init__(self, base_url: str | None = None, model: str | None = None,
-                 api_key: str | None = None):
+                 api_key: str | None = None, timeout: float | None = None,
+                 max_retries: int = 2):
         from openai import OpenAI
 
         base_url = base_url or os.environ.get("NOMOS_LLM_BASE_URL", DEFAULT_BASE_URL)
@@ -51,7 +52,14 @@ class OpenAICompatClient:
                    or os.environ.get("WAVESPEED_API_KEY"))
         if not api_key:
             raise LLMError("no API key found — set WAVESPEED_API_KEY (see .env)")
-        self._client = OpenAI(base_url=base_url, api_key=api_key)
+        # A TIMEOUT, because these loops run unattended for hours. Without one a single
+        # stalled connection hangs the whole run silently — and the runs that matter are
+        # exactly the long ones nobody is watching. Generous, since a thinking model on
+        # a long prompt legitimately takes minutes.
+        self.timeout = float(os.environ.get("NOMOS_LLM_TIMEOUT", 600.0)
+                             if timeout is None else timeout)
+        self._client = OpenAI(base_url=base_url, api_key=api_key,
+                              timeout=self.timeout, max_retries=max_retries)
 
     def chat(self, messages: list[Message], temperature: float = 1.0,
              max_tokens: int | None = None) -> str:

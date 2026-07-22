@@ -1784,3 +1784,111 @@ once a wire existed, which pushed the fixed sheet box down by its own height —
 twitch that box exists to prevent. It is drawn always now, zero included.
 
 8 new tests, suite 352 green.
+
+## 2026-07-24 — cortex: the read-out was muffling the turn, and the growth program gets names
+
+Three things this session, in the order they had to happen: a diagnostic that changed
+what "fix the read-out" meant, the refactor that made a growth program something you
+can write, and the loop that lets an LLM write one.
+
+**The diagnostic, and how it nearly lied.** The previous session left two suspects for
+why a brain circles: the command is pooled as a mean over ALL effector cells (242 of
+470 in one body), and a silent sheet SPRINTS, because sigmoid rests at 0.5 and the seed
+added another +0.5 of bias on top. The obvious test is to run the probe ladder with
+each changed. I did, on three grown bodies, and got this:
+
+```
+brain 0   pool 1.00 -> 0.23   pool 0.10 -> 0.39     (better)
+brain 1   pool 1.00 -> 0.34   pool 0.10 -> 0.48     (better, but 0.25 gave 0.14)
+brain 2   pool 1.00 -> 0.34   pool 0.10 -> 0.13     (worse)
+```
+
+Which settles nothing. The ladder moved as much BETWEEN SETTINGS ON ONE BRAIN as it
+moved between brains — the signature of a measurement reading luck. These brains have
+never been selected for anything; what a probe scores is mostly whether this particular
+random tissue happens to drift somewhere useful.
+
+So measure the MECHANISM instead of its consequence. The claim was "a mean over
+everything attenuates the TURN command", and that is a claim about the command stream,
+not about food. Drive one grown body through an arena and look at the spread of the
+turns it issues:
+
+```
+             n_eff      pool 1.0     pool 0.25      pool 0.1     (turn std / peak-to-peak)
+brain 0         71   0.050/0.470   0.104/0.656   0.177/0.791
+brain 1        168   0.077/0.495   0.154/0.930   0.249/1.336
+brain 2        137   0.094/0.425   0.152/0.962   0.174/1.061
+brain 3         37   0.027/0.272   0.061/0.710   0.060/0.737
+```
+
+Every brain, same direction, two to three times. THRUST survives the mean because it is
+unsigned and a whole sheet can lean on it together; TURN does not, because it has to
+swing and a handful of cells pulling right gets averaged with three hundred holding
+zero. `pool_frac` is 0.25 now, the loudest slice.
+
+The honest report is that this does NOT move the ladder yet, and that is written into
+the commit rather than smoothed over. Steering authority is a precondition, not a
+policy. There is nothing yet that wants to steer.
+
+The sprint half came out differently and is worth recording as a lesson about the
+ladder itself. Removing it entirely (`thrust_rest` 0.15) collapses every score to 0.11
+mean — below random. Which does not mean the sprint was good; it means `near` and
+`behind` were handing out free marks to any brain that merely existed, and with the
+free marks gone there is nothing underneath. Default is 0.50: the arbitrary +0.5 nudge
+gone, the sigmoid's natural rest kept, and it is a named knob now so a lineage can
+argue with the choice.
+
+**The growth program gets names (`cortex/program.py`).** Writing that diagnostic
+surfaced something nobody had written down. Every constant governing how a body
+DEVELOPS — the thresholds a cell's request is judged against, the innate urges it
+starts from, the pace of development, the metabolism paying for it, the chemistry, the
+axon rules, the learning rates — lived in `brain.Config`. Shared by every lineage,
+identical in every generation, and untouched by `mutate`. So:
+
+> **Evolution could not reach development at all.** Eight generations of a lineage
+> jittered weights, and every brain in every one of them grew under exactly the same
+> developmental physics.
+
+That is a substantial part of the reason the lineage does not improve, and it was
+invisible because the constants were *right there*, well commented, and being read
+every development tick. Being read is not being selected.
+
+Forty named scalars with a range and a sentence each. `Config` still says which
+mechanisms exist and how big the machine is; a `Program` is the heritable override over
+it and `Config.merged(program)` is what a phenotype runs on, so all the existing
+`cfg.X` reads work untouched. Mutation jitters relative to each field's RANGE rather
+than its value — an absolute-fraction jitter pins any knob that ever reaches zero,
+which is the quiet way a search space collapses.
+
+The innate urges had to move out of the weights to get here. They were added into every
+rule's output bias at birth: identical arithmetic, since the morph tail is a raw mean,
+but smeared across every cell type and thereafter indistinguishable from a weight. Same
+numbers, one name each, and `urge = what the cell asked for + the program's bias` is
+now a line you can read.
+
+This is the adapter `docs/cortex-design.md` names as the one thing missing before an
+LLM can write a growth program.
+
+**The lab (`cortex/lab.py`).** The model gets a skill profile, what the life did, and a
+summary of the body that grew — cells, sensory, effector, axons, born, died — and
+writes back a program. It never sees a weight, and there is a test asserting the prompt
+contains no `P_in`/`P_out`/`b_out`/rule matrix, because that is the sort of thing that
+leaks in later by accident. Every candidate grows from the SAME fixed random weights,
+so a score difference is attributable to the program. Generation 0 is the default
+program on identical terms, because without it "better" has no referent. `--proposer
+rng` is the control arm: is an LLM actually better than chance at this?
+
+The smoke run made the previous commit's case by accident. Default program: 345 cells.
+One random mutation: 998 cells, 649 of them sensory. Another: 329 cells with FOUR
+sensory cells and a single effector. The program reaches morphology, plainly.
+
+**The track, in the live HUD (R).** The probe strips have always drawn one and it is
+the most legible thing on them. The live world had no equivalent, so the same failures
+were invisible in the world they actually happen in. It fades by alpha AND hue so
+direction survives a still screenshot — and the very first lab screenshot shows the
+agent walking a closed loop, which is the whole diagnosis in one glance.
+
+Each lab iteration writes that screenshot plus a probe strip into the run directory and
+rebuilds a contact sheet as they arrive, so a run can be watched while it runs.
+
+40 new tests, suite 392.

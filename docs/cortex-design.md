@@ -437,16 +437,20 @@ harness should be able to answer, not assume.
    60% sensory across four fresh genomes). Structural plasticity is ON from the
    start rather than deferred — the same machinery runs in the adult phase, only
    rarely and charged for.
-3. **Axons** — sparse edge list, growth cones following the chemical gradient,
-   decay-pruning.
+3. ~~**Axons**~~ BUILT 2026-07-23. Sparse edge list, growth cones following the chemical
+   gradient, decay-pruning. One clear win and one small loss over two genomes: the
+   mechanism works, whether it pays is open.
 4. **Structural plasticity ON** — the same growth machinery allowed to run (slowly,
    charged) through adult life. This is the user's original "the brain rebuilds
    itself using its own senses".
 5. **The observer** — the probe suite (watchable, on a post-life brain copy) +
    dead-end detection + the brain behaviour map.
-6. **The LLM** — rewriting the genome at the life boundary from the skill profile
-   and world statistics (the `scientist.py` loop, brains as the object of study),
-   with rng mutation as the control arm.
+6. ~~**The LLM**~~ BUILT 2026-07-24 (`cortex/lab.py`). It writes the GROWTH PROGRAM at
+   the life boundary from the skill profile, what the life did and a summary of the
+   body that grew; every candidate develops from the same fixed random weights, so a
+   difference is attributable to the program. rng mutation is the control arm
+   (`--proposer rng`). Whether it beats the reflex is open; whether it beats rng is a
+   question the harness can now answer.
 
 Stages 1-2 are the ones that decide whether the idea is real. 4 is the research
 prize. Everything stays SEQUENTIAL (lambda=1) on one machine; the k8s fan-out over
@@ -529,8 +533,9 @@ lambda=1 with named dead-end detectors, and an observer of six probes.
 
 ## Not built
 
-Axons (stage 3). The LLM writing the growth program (stage 6). And, honestly, a brain
-that forages.
+*(2026-07-24: axons and the LLM loop are both built now — see the stage list above and
+the journal. What remains true is the last sentence.)* And, honestly, a brain that
+forages.
 
 ## THE NEXT MILESTONE, stated as narrowly as it can be
 
@@ -560,6 +565,29 @@ on five of six probes — a whole suite carrying one probe's worth of signal. A
 measurement has to have resolution WHERE ITS SUBJECT IS. The hard probes are kept in
 `ADVANCED` and are worth running the day something can forage, not before.
 
+## Settled 2026-07-24 — the read-out, and the constants nobody could select on
+
+Both halves of "what stops the brain steering" were run and are recorded in the journal
+under that date. In brief:
+
+- **The relay bottleneck is real but is not alone** (2026-07-23 diagnostic). Eight
+  times the think-time roughly doubles `open`, and even then the brain sits at a third
+  of the reflex.
+- **The mean-over-all-effectors read-out attenuates TURN by 2-3x**, measured on the
+  command stream rather than on the ladder — the ladder could not answer it, because on
+  unselected brains it moves as much between settings as between brains. `pool_frac`
+  now reads the loudest slice. It does not move the score yet, and that is the honest
+  state: steering authority is a precondition, not a policy.
+- **A silent sheet used to sprint**, so `near` and `behind` handed out free marks. With
+  the sprint removed entirely the whole ladder falls below random, which is what those
+  marks were worth.
+- **The developmental constants were not heritable.** Everything governing how a body
+  grows sat in `brain.Config`, identical in every generation of every lineage and
+  untouched by `mutate`, so selection could not reach development at all — it only ever
+  jittered weights. They are `cortex/program.py` now: forty named scalars with ranges,
+  mutable, serialisable, and small enough for a model to read and write. This was the
+  adapter the section below asks for, and it is built.
+
 ## The next experiment, and it is cheap
 
 Before reaching for a new primitive, settle WHY `open` fails. The hypothesis worth
@@ -586,16 +614,26 @@ genome is a seed plus a program rather than 30k weights, so it is small enough f
 model to read and write. And the observer returns a six-number PROFILE with per-probe
 detail, so there is something to reason about instead of one noisy score.
 
-What is missing to make it real is one adapter: a named, serialisable view of the
-growth program — `grow_bias`, `sense_bias`, `act_bias`, the three thresholds,
-`organ_map`, the chemistry constants, `subticks`, `think_every` — a couple of dozen
-NAMED scalars, plus structural moves the model can request ("split a type", "add a
-layer", "re-map chemical 2 to touch"). `nomos/brain_lab.py` is the pattern to follow;
-what changes is that the object being authored is a developmental program rather than
-a `.nomos` law.
+The adapter this section asked for — a named, serialisable view of the growth program —
+is `cortex/program.py`, and the loop around it is `cortex/lab.py`. Forty named scalars
+with ranges and documentation, plus `subticks`, `organ_map` and `seed_types` as
+structural asks. `nomos/brain_lab.py` was the pattern; what changed is that the object
+being authored is a developmental program rather than a `.nomos` law.
 
 Do NOT hand the model raw weight matrices. That was never the plan and it is the one
-way to waste a good model.
+way to waste a good model. There is a test asserting the prompt never contains one.
+
+Still open, and worth deciding with a run rather than an argument:
+
+- **Which model.** DeepSeek is the cheap default and the journal already rates it a
+  fine mutation operator. The lab takes `--model`, so the smarter-model arm is one
+  flag, and the rng arm is what says whether either is earning its keep.
+- **More structural moves.** The model can ask for cell types and organ maps but cannot
+  yet say "split this type" or "add a layer" — those live in `mutate` and are not
+  addressable by name.
+- **The picture.** The model still sees only numbers, which is the right call while the
+  agent cannot forage; a sheet is worth showing when its SHAPE is what is being argued
+  about.
 
 ## Housekeeping for a fresh session
 

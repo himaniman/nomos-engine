@@ -150,3 +150,23 @@ def test_a_pool_smaller_than_the_window_still_works():
 def test_the_window_is_a_pure_function_of_the_generation():
     """Reproducibility: a run is a pure function of (genome, seeds, steps)."""
     assert lineage.worlds_for(range(6), 4, 2) == lineage.worlds_for(range(6), 4, 2)
+
+
+def test_the_exam_does_not_select():
+    """docs/cortex-design.md: the ladder is an OBSERVER, not a curriculum. It used to
+    sit in fitness at 40x the profile mean, called a tie-break — against a `gained` of
+    100 to 280 that is too small to steer and big enough to flip a coin toss, which is
+    the worst of both. A measurement that also steers the thing it measures is not a
+    measurement."""
+    g = fresh_genome(seed=0)
+    prof = evaluate(g, seeds=[2], max_ticks=200, think_every=4, probe_ticks=60)
+    assert prof["fitness"] == pytest.approx(prof["gained"] + 0.002 * prof["ticks"])
+    assert prof["skills"], "the profile must still be measured and reported"
+
+
+def test_a_brain_good_at_tests_and_bad_at_living_does_not_win():
+    """The other half of the same claim, and the reason the term was there at all."""
+    lived = {"gained": 200.0, "ticks": 8000, "skills": {"mean": 0.10}}
+    exam = {"gained": 40.0, "ticks": 5000, "skills": {"mean": 0.95}}
+    fit = lambda p: p["gained"] + 0.002 * p["ticks"]            # noqa: E731
+    assert fit(lived) > fit(exam)

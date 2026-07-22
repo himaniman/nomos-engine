@@ -72,10 +72,21 @@ def evaluate(genome: B.Genome, seeds, max_ticks: int = 20000, think_every: int =
         out["suite"] = suites[0]              # kept so a generation can be LOOKED at
     else:
         out["skills"] = {}
-    # fitness leans on the LIFE (what the world actually paid it) and takes the exam as
-    # a tie-break, so a brain cannot win by being good at tests and bad at living
-    out["fitness"] = (out["gained"] + 0.002 * out["ticks"]
-                      + 40.0 * out["skills"].get("mean", 0.0))
+    # FITNESS IS THE LIFE. What the world actually paid it, plus a little for lasting.
+    #
+    # The exam used to be in here at 40 x the profile mean, described as a tie-break. It
+    # was not one. Against a `gained` of 100 to 280 it contributed about 24 — too small
+    # to steer anything, big enough to flip the occasional coin toss, which is the worst
+    # of both. The second lineage run made the cost visible: generation 9 posted the
+    # best skill profile of the whole run (0.61, against the reflex policy's 0.66) and
+    # was rejected for eating less, while the accepted generation 5 scored 0.23.
+    #
+    # docs/cortex-design.md is unambiguous — the ladder is an OBSERVER, not a
+    # curriculum; it does not gate anything and does not change the world. So it does
+    # not select either. The profile is still computed, reported and rendered every
+    # generation, because what it is FOR is telling us what grew, and a measurement
+    # that also steers the thing it measures is not a measurement.
+    out["fitness"] = out["gained"] + 0.002 * out["ticks"]
     return out
 
 

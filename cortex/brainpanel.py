@@ -18,11 +18,20 @@ view uses, plus a box that never changes size, so a cell being born does not shu
 every panel underneath it. At a few thousand cells, one pygame rect per cell would cost
 more than the thinking does.
 
-On heat maps rather than a node-and-edge picture like aqua's NEAT panel: aqua's graph
-is SPARSE, so lines are legible. A cell rule is fully DENSE — 126 -> 28 -> 20 is 4088
-weights and every input touches every hidden unit — so lines would be a solid black
-rectangle. The readable rendering of a dense matrix is a matrix. What a wiring diagram
-WOULD have told you is kept, in the "listens to" 3x3.
+On drawing a rule: BOTH ways, because they answer different questions. A cell rule is
+fully DENSE — 126 -> 28 -> 20 is 4088 weights and every input touches every hidden unit
+— so plain lines would be a solid black rectangle. `vivarium/app.py::_draw_rule_net`
+(which is what aqua's NCA panel uses, and the thing to copy here) makes a net legible
+with two tricks: AVERAGE the nine neighbour slots down to C so the input column is 14
+nodes rather than 126, and draw only the STRONGEST edges. That gives the shape of the
+computation. The heat map beside it gives every weight, unaggregated. Neither replaces
+the other.
+
+And a warning the panel now states out loud, because it looks exactly like a bug: the
+layer stack belongs to a cell TYPE, not to a cell. Every cell of one type runs the SAME
+network, so on a one-type brain every cell you click shows the same picture. What is
+genuinely per-cell — its live perception, what it is asking to do with itself, what its
+neighbours are actually driving it with — is shown separately and clearly labelled.
 """
 
 from __future__ import annotations
@@ -102,6 +111,13 @@ class BrainPanel:
         frames = len(self.app.mind.phenotype.trace) if self.app.mind else 0
         self.trace_i = (self.trace_i + 1) % max(1, frames)
 
+    def _row_of(self, cy: int, cx: int):
+        """Which row of the phenotype's alive-cell arrays this cell is — needed to read
+        anything per-cell (its morph requests, its eligibility)."""
+        p = self.app.mind.phenotype
+        hit = np.nonzero((p._ys == cy) & (p._xs == cx))[0]
+        return int(hit[0]) if len(hit) else None
+
     def click(self, pos) -> bool:
         """Pick the cell under the cursor, so its own little perceptron can be shown."""
         if self._sheet_rect is None or not self._sheet_rect.collidepoint(pos):
@@ -147,7 +163,7 @@ class BrainPanel:
         # never below a legible floor: a sheet squeezed to two pixels a cell tells you
         # nothing, and it is better to lose the bottom panel than the picture
         box = min(SHEET_BOX, max(150, self.app.h - y - 200
-                                 - (215 if self.picked is not None else 0)
+                                 - (275 if self.picked is not None else 0)
                                  - 13 * g.n_types))
         y = self._draw_sheet(surf, x, y, pw, box)
         if self.picked is not None:
@@ -298,16 +314,45 @@ class BrainPanel:
             surf.blit(self.app.small.render(name, True, col),
                       (x + g.C * bw + 6, y + i * 13))
         y += 50
-        # WHO THIS CELL LISTENS TO. The one thing a node-and-edge drawing would have
-        # told you, in a form that fits: the first layer's weight mass summed over each
-        # of the nine neighbourhood slots. Bright = this cell weighs that direction
-        # heavily; the centre is itself. A cell that is bright only in the middle is
-        # holding rather than relaying — which is `self` in the type table, per cell.
+        # WHAT THIS CELL IS ASKING TO DO WITH ITSELF — the morphogenetic outputs, and
+        # about as per-cell as it gets: two neighbours of the same type can be asking
+        # for opposite things because their surroundings differ.
+        row = self._row_of(cy, cx)
+        if row is not None:
+            want = p.morph[row]
+            surf.blit(self.app.small.render("asking for", True, DIM), (x, y))
+            names = ("grow", "dir y", "dir x", "die", "sense", "act")
+            bw2 = 30
+            for j, nm in enumerate(names):
+                v = float(np.clip(want[j], -1, 1))
+                bx2 = x + 74 + j * (bw2 + 6)
+                pygame.draw.rect(surf, (30, 30, 38), pygame.Rect(bx2, y + 1, bw2, 9))
+                mid = bx2 + bw2 // 2
+                wid = int(abs(v) * bw2 / 2)
+                col = (130, 230, 150) if v > 0 else (230, 120, 110)
+                pygame.draw.rect(surf, col,
+                                 pygame.Rect(mid if v >= 0 else mid - wid, y + 1, wid, 9))
+                surf.blit(self.app.small.render(nm, True, DIM), (bx2, y + 11))
+            surf.blit(self.app.small.render(
+                f"resource {p.resource[cy, cx]:.2f}", True, DIM),
+                (x + 74 + 6 * (bw2 + 6) + 4, y + 5))
+            y += 24
+        # WHAT IS ACTUALLY DRIVING IT: the first layer's weight on each neighbourhood
+        # slot TIMES what that neighbour is currently holding. The weights are shared by
+        # type; the neighbours are not, so this square differs from cell to cell.
         rule = g.rules[k]
         W0 = np.asarray(rule[0]["W"], dtype=np.float64)
-        slots = np.array([np.abs(W0[:, j * g.C:(j + 1) * g.C]).sum() for j in range(9)])
+        slots = np.zeros(9)
+        for j, (dy, dx) in enumerate([(a, b) for a in (-1, 0, 1) for b in (-1, 0, 1)]):
+            ny, nx = cy + dy, cx + dx
+            live = (0 <= ny < g.G and 0 <= nx < g.G and p.mask[ny, nx])
+            act = np.abs(state if live else np.zeros(g.C)) if live else np.zeros(g.C)
+            if live:
+                act = np.abs((p.trace[self.trace_i] if (self.trace_on and p.trace)
+                              else p.state)[ny, nx])
+            slots[j] = float((np.abs(W0[:, j * g.C:(j + 1) * g.C]).sum(axis=0) * act).sum())
         slots = slots / max(1e-9, slots.max())
-        surf.blit(self.app.small.render("listens to", True, DIM), (x, y))
+        surf.blit(self.app.small.render("driven by", True, DIM), (x, y))
         cell_px = 13
         for j in range(9):
             q = float(slots[j])
@@ -319,8 +364,8 @@ class BrainPanel:
                 pygame.draw.rect(surf, (255, 255, 130),
                                  pygame.Rect(px, py, cell_px - 1, cell_px - 1), 1)
         surf.blit(self.app.small.render(
-            f"self {slots[4] / max(1e-9, slots.mean()):.2f}x", True, DIM),
-            (x + 74 + 3 * cell_px + 8, y + cell_px))
+            f"self {slots[4] / max(1e-9, slots.mean()):.2f}x   (neighbours x weights)",
+            True, DIM), (x + 74 + 3 * cell_px + 8, y + cell_px))
         y += 3 * cell_px + 6
         # the layer stack itself: 9C -> H -> ... -> C, one heat map per layer
         # Why HEAT MAPS and not a node-and-edge picture like aqua's NEAT panel: aqua's
@@ -329,22 +374,58 @@ class BrainPanel:
         # and every input touches every hidden unit. Drawn as lines that is a solid
         # black rectangle; drawn as a matrix it is one pixel per weight and you can read
         # it. It is not a size problem, it is a density one.
+        shared = int((p.mask & (p.type_map == k)).sum())
         surf.blit(self.app.small.render(
-            f"perceptron {9 * g.C} in -> "
+            f"type {k}'s rule {9 * g.C} -> "
             + " -> ".join(str(int(L["W"].shape[0])) for L in rule)
-            + f"   ({sum(int(L['W'].size) for L in rule)} weights)", True, DIM), (x, y))
+            + f"   SHARED by its {shared} cells", True, (200, 190, 140)), (x, y))
         y += 13
-        cxp, height = x, 40
+        # THE NET, aqua's way (vivarium/app.py::_draw_rule_net): the input layer's nine
+        # neighbour slots averaged down to C so the left column is channels rather than
+        # 126 nodes, and only the strongest edges drawn. Shape at a glance; the heat
+        # maps beside it keep every weight.
+        net_w = min(150, pw // 2 - 4)
+        self._draw_rule_net(surf, rule, g.C, x, y, net_w, 62)
+        cxp, height = x + net_w + 8, 62
         for i, L in enumerate(rule):
             W = np.asarray(L["W"], dtype=np.float64)
             if p.cfg.rule_plastic and i == len(rule) - 1 and k < len(p._dW_rule):
                 W = W + p._dW_rule[k].T
-            wpx = max(10, min(pw // len(rule) - 6, 120))
+            wpx = max(8, min((pw - net_w - 16) // len(rule) - 5, 90))
             img = pygame.surfarray.make_surface(np.transpose(_heat(W), (1, 0, 2)))
             surf.blit(pygame.transform.scale(img, (wpx, height)), (cxp, y))
             pygame.draw.rect(surf, (70, 72, 88), pygame.Rect(cxp, y, wpx, height), 1)
             cxp += wpx + 5
         return y + height + 8
+
+    def _draw_rule_net(self, surf, rule, C, x, y, w, h) -> None:
+        """A rule as a layered net. Two tricks make a dense stack legible, both taken
+        from aqua's NCA panel: the input layer's NINE neighbour slots are averaged down
+        to C, so the left column is channels rather than 126 nodes; and only edges above
+        a fraction of the layer's largest weight are drawn. Blue is positive, red
+        negative."""
+        mats = [np.abs(np.asarray(rule[0]["W"])).reshape(
+            rule[0]["W"].shape[0], 9, C).mean(axis=1)]
+        mats += [np.asarray(L["W"]) for L in rule[1:]]
+        widths = [C] + [int(m.shape[0]) for m in mats]
+        cols = [x + 6 + int(i / max(1, len(widths) - 1) * (w - 12))
+                for i in range(len(widths))]
+        ycol = [[y + 4 + int((j + 0.5) / max(1, n) * (h - 8)) for j in range(n)]
+                for n in widths]
+        pygame.draw.rect(surf, (24, 24, 30), pygame.Rect(x, y, w, h))
+        for li, W in enumerate(mats):
+            thr = 0.6 * (float(np.abs(W).max()) + 1e-9)
+            ya, yb = ycol[li], ycol[li + 1]
+            for a in range(W.shape[0]):
+                for b in range(W.shape[1]):
+                    if abs(float(W[a, b])) < thr:
+                        continue
+                    col = (90, 160, 255) if W[a, b] >= 0 else (255, 110, 90)
+                    pygame.draw.line(surf, col, (cols[li], ya[b]), (cols[li + 1], yb[a]))
+        for i, n in enumerate(widths):
+            for j in range(n):
+                pygame.draw.circle(surf, (200, 205, 220), (cols[i], ycol[i][j]), 2)
+        pygame.draw.rect(surf, (60, 62, 76), pygame.Rect(x, y, w, h), 1)
 
     # --- what kinds of cell there are ----------------------------------------------------
     def _draw_types(self, surf, x, y, pw) -> int:

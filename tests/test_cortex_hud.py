@@ -105,3 +105,61 @@ def test_the_wheel_can_change_hands():
     assert app.mind.thoughts == thoughts, "the brain kept thinking after being unplugged"
     assert app.world.tick == 40
     pygame.quit()
+
+
+def test_cells_of_different_types_show_different_perceptrons():
+    """The complaint that started this: clicking around showed the same picture every
+    time. It was not a bug — a rule belongs to a TYPE — but the panel said nothing
+    about it and showed nothing per-cell. Both are fixed, and this pins the first."""
+    app = _app(mutations=10)
+    # split the types deliberately rather than hoping a random walk does it: the claim
+    # under test is about the PANEL, not about how often mutation happens to speciate
+    rng = np.random.default_rng(1)
+    for _ in range(3):
+        B._split_type(app.mind.genome, rng, B.Config())
+    app.mind.phenotype = B.Phenotype(app.mind.genome, app.mind.cfg, app.mind.layout)
+    keys = defaultdict(bool)
+    for _ in range(300):
+        app.frame(keys)
+    app.draw()
+    bp, p = app.brain_panel, app.mind.phenotype
+    r, sc = bp._sheet_rect, bp._sheet_scale
+    shots = {}
+    for dy in range(0, r.height, sc):
+        for dx in range(0, r.width, sc):
+            if bp.click((r.left + dx + 1, r.top + dy + 1)) and bp.picked:
+                k = int(p.type_map[bp.picked])
+                shots.setdefault(k, pygame.surfarray.array3d(
+                    app.draw())[app.w - BRAIN_W:].copy())
+    assert len(shots) >= 2, "the brain never differentiated, so nothing is proved"
+    keys_ = sorted(shots)
+    assert not np.array_equal(shots[keys_[0]], shots[keys_[1]]), \
+        "two cell types drew the same perceptron"
+    pygame.quit()
+
+
+def test_two_cells_of_the_SAME_type_still_differ_per_cell():
+    """...and the second: even sharing a rule, two cells differ in what they are
+    holding, what their neighbours are driving them with, and what they are asking to
+    do with themselves."""
+    app = _app(mutations=20)
+    keys = defaultdict(bool)
+    for _ in range(300):
+        app.frame(keys)
+    app.draw()
+    bp, p = app.brain_panel, app.mind.phenotype
+    r, sc = bp._sheet_rect, bp._sheet_scale
+    same_type = {}
+    for dy in range(0, r.height, sc):
+        for dx in range(0, r.width, sc):
+            if bp.click((r.left + dx + 1, r.top + dy + 1)) and bp.picked:
+                k = int(p.type_map[bp.picked])
+                same_type.setdefault(k, []).append(
+                    (bp.picked, pygame.surfarray.array3d(app.draw())[app.w - BRAIN_W:].copy()))
+    pair = next((v for v in same_type.values() if len(v) >= 2), None)
+    assert pair, "need two cells of one type"
+    (c1, a), (c2, b) = pair[0], pair[1]
+    assert c1 != c2
+    assert not np.array_equal(a, b), \
+        f"cells {c1} and {c2} share a type AND drew an identical panel"
+    pygame.quit()

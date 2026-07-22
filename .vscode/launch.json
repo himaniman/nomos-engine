@@ -182,6 +182,37 @@
       "justMyCode": true
     },
     {
+      // *** THE CRADLE ***  Does within-life learning contribute ANYTHING, given
+      // reward that actually arrives? A small world thick with food — a bench, not a
+      // benchmark, no score from it counts. The answer comes from an ABLATION: one
+      // brain at the end of its life, sat at the exams twice, once with what it
+      // learned and once with the deltas wiped and the body identical. Read the DELTA
+      // row; it is learning with growth held fixed.
+      "name": "cortex: CRADLE (does learning do anything?)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.cradle",
+      "args": ["--seeds", "0,1,2", "--ticks", "2500", "--probe-ticks", "300"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the two TIME CONSTANTS of learning, swept against how often the world rewards.
+      // Credit has to survive as long as an approach and no longer.
+      "name": "cortex: CRADLE — sweep the learning time constants",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.cradle",
+      "args": ["--sweep", "--seeds", "0,1,2", "--ticks", "2500",
+               "--probe-ticks", "300"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // *** THE LLM LAB ***  The model writes the brain's GROWTH PROGRAM between
       // lives — never a weight — and every candidate is grown from the same fixed
       // random weights, so a score difference is attributable to the program.

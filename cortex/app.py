@@ -29,6 +29,7 @@ import colorsys
 import math
 import os
 import time
+from collections import deque
 
 import numpy as np
 import pygame
@@ -51,6 +52,12 @@ GRID = (44, 46, 56)
 ODOUR_COL = ((235, 110, 110), (235, 200, 110), (120, 220, 190), (170, 150, 240))
 INTERO_NAMES = ("energy", "speed", "turn", "sin h", "cos h", "age", "poison", "bias")
 TOUCH_NAMES = ("front", "right", "back", "left")
+# THE TRACK: how far back the agent's own path is remembered, and how often it is
+# sampled. 600 samples every 3 ticks is ~1800 ticks of history — long enough that a
+# circler closes a visible loop, short enough that a forager's line does not fill the
+# screen with everywhere it has ever been.
+TRAIL_LEN, TRAIL_EVERY = 600, 3
+TRAIL_NEW, TRAIL_OLD = (120, 235, 190), (60, 70, 110)
 
 HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "E               interact:", "                eat / open / break / push",
@@ -58,6 +65,7 @@ HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "B               brain drives / you drive",
         "V               brain view: type/activity/hormone/organs",
         "T               animate the thinking sub-ticks",
+        "R               the track it has walked (fading)",
         "- / =           world speed (1/20x .. 8x)",
         "[ / ]           slower / faster sub-tick animation",
         "click a cell    show its perceptron",
@@ -99,6 +107,13 @@ class App:
         self.speed_i = 4
         self._accum = 0.0
         self.blind = False
+        # THE TRACK. Where it has actually BEEN, fading with age. The probe strips have
+        # always drawn one and it is the single most legible thing on them — circling
+        # in place, oscillating between two smells, walking a wall look like nothing in
+        # a number and are unmistakable as a line. The live HUD had no equivalent, so
+        # the same failures were invisible in the world they actually happen in.
+        self.trail: deque = deque(maxlen=TRAIL_LEN)
+        self.trail_on = True
         self.show_help = False
         self.fps = 0.0
         self.w = self.view * self.cell + PANEL_W + (BRAIN_W if mind else 0)
@@ -155,6 +170,9 @@ class App:
         else:
             self.world.step(*self.action(keys))
             self.vec = sense(self.world, self.field)
+        if self.world.tick % TRAIL_EVERY == 0:
+            a = self.world.agent
+            self.trail.append((a.y, a.x))
 
     # --- render -------------------------------------------------------------------
     def draw(self) -> pygame.Surface:
@@ -205,6 +223,7 @@ class App:
         # landing on the view centre gives blit = -(1 + frac)*cs on each axis
         surf.blit(tile_surf, (-cs - offx, -cs - offy))
         cy = cx = v * cs // 2
+        self._draw_trail(surf, cy, cx, cs)
         for s in self.world.nearby_food(a.y, a.x, half * 1.5):
             sy, sx = cy + (s.y - a.y) * cs, cx + (s.x - a.x) * cs
             if not world_rect.collidepoint(sx, sy):
@@ -228,6 +247,36 @@ class App:
         pygame.draw.circle(surf, (90, 170, 255), (cx, cy), max(1, rad // 2))
         surf.set_clip(None)
         pygame.draw.rect(surf, (40, 40, 48), world_rect, 1)
+
+    def _draw_trail(self, surf, cy: int, cx: int, cs: int) -> None:
+        """The path already walked, oldest end faded out.
+
+        Drawn onto a per-pixel-alpha overlay rather than blended toward the background
+        colour, because the ground it crosses is not one colour — a track that fades
+        into stone would still be opaque over grass. Age is carried by BOTH alpha and
+        hue, so the direction of travel is readable in a still screenshot, which is the
+        form these mostly get looked at in."""
+        if not self.trail_on or len(self.trail) < 2:
+            return
+        a = self.world.agent
+        side = self.view * cs
+        layer = pygame.Surface((side, side), pygame.SRCALPHA)
+        pts = list(self.trail)
+        n = len(pts)
+        prev = None
+        for i, (ty, tx) in enumerate(pts):
+            sy, sx = cy + (ty - a.y) * cs, cx + (tx - a.x) * cs
+            age = i / max(1, n - 1)                    # 0 oldest .. 1 newest
+            if prev is not None:
+                # a jump means the pair straddles a teleport or a paused stretch —
+                # joining them would draw a line through terrain never crossed
+                if abs(sy - prev[0]) < side / 2 and abs(sx - prev[1]) < side / 2:
+                    col = tuple(int(o + (nw - o) * age)
+                                for o, nw in zip(TRAIL_OLD, TRAIL_NEW))
+                    pygame.draw.line(layer, col + (int(25 + 190 * age * age),),
+                                     prev, (sx, sy), max(1, cs // 6))
+            prev = (sx, sy)
+        surf.blit(layer, (0, 0))
 
     # --- the sense panel ------------------------------------------------------------
     def _draw_panel(self, surf: pygame.Surface) -> None:
@@ -482,6 +531,8 @@ def main(argv=None) -> None:
                     bp.trace_on = not bp.trace_on    # watch a thought cross the sheet
                     bp.trace_i = 0
                     app.mind.phenotype.record = bp.trace_on
+                elif ev.key == pygame.K_r:
+                    app.trail_on = not app.trail_on      # the track it has walked
                 elif ev.key == pygame.K_h:
                     app.show_help = not app.show_help
                 elif ev.key == pygame.K_p:

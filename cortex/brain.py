@@ -38,6 +38,9 @@ import math
 
 import numpy as np
 
+from cortex import program as _program
+from cortex.program import Program
+
 # the three commands the world takes, exactly as a human's keyboard produces them
 THRUST, TURN, INTERACT = 0, 1, 2
 N_OUT = 3
@@ -69,6 +72,12 @@ class Config:
     does not care how the agent thinks, and the brain does not care where food grows."""
 
     def __init__(self, **kw):
+        # THE GROWTH PROGRAM's defaults, laid in first so everything below and every
+        # `Config(grow_thresh=...)` keyword still reads and writes exactly as before.
+        # These few dozen fields are the HERITABLE half — see cortex/program.py, which
+        # owns their ranges and their documentation. Everything else in this class is a
+        # fixture of the machine: lattice size, ceilings, which mechanisms exist at all.
+        self.__dict__.update(_program.DEFAULTS)
         self.grid = 64               # lattice side. 64 so an eye region CAN resolve
                                      # all 64 rays — retinotopy hands out ray slots by
                                      # column, so a narrower sheet would see double
@@ -84,6 +93,12 @@ class Config:
         self.organ_frac = 0.55       # of BORDER cells that become sensory organs
         self.effector_frac = 0.04    # of DEEP cells that become effectors
         self.subticks = 20           # relaxation rounds per world tick
+        # THE READ-OUT (`pool_frac`, `thrust_rest`, both in the program). Both used to
+        # be implicit and both were wrong in the same direction: they made a brain that
+        # says NOTHING drive forward at full tilt, which is free marks on every probe
+        # whose food is straight ahead and a 20x attenuator on the one command that has
+        # to swing. See Phenotype._pool.
+        self.pool_min = 8            # never read a command off fewer effectors than this
         self.max_cells = 4096
         self.max_types = 6
         self.max_layers = 5
@@ -99,11 +114,8 @@ class Config:
         #   regardless of organs (a bloodstream, not a wire), and gating every rule —
         #   so the same tissue computes differently when starving or poisoned.
         self.chem_channels = 3       # how many of the tail channels diffuse
-        self.chem_mix = 0.35         # share of the neighbourhood average taken per pass
-        self.chem_decay = 0.04       # per pass, so a plume fades instead of piling up
-        self.chem_every = 2          # sub-ticks per diffusion pass (slower than thought)
+                                     # (chem_mix / chem_decay / chem_every: program)
         self.hormone = True          # the global gate + bloodstream drive
-        self.hormone_gain = 0.6      # how hard it swings each cell's rule
         self.neuromod = True         # the LOCAL hormone channel (per-cell gate)
         # DEVELOPMENT. The genome carries a SEED and a program; the body is grown.
         # Growth fires on a rare DEVELOPMENT TICK, never per sub-tick: partly because
@@ -118,58 +130,15 @@ class Config:
                                      # uniform tissue. Laid out as REGIONS, not
                                      # salt-and-pepper: a daughter inherits her mother's
                                      # type, so regions grow outward with the body.
-        self.embryo_ticks = 900      # a head start in which growth is fast and FREE...
-        self.dev_every_embryo = 8    # ...development ticks this often, then:
-        self.dev_every = 120         # slow structural plasticity for the rest of life
-        self.grow_bias = 0.55        # the seed's INNATE urge to divide, written into
-                                     # the rule's output bias. An embryo grows unless
-                                     # told not to — without it a fresh genome's morph
-                                     # outputs sit near zero, no cell ever asks for
-                                     # anything, and "development" is a no-op that
-                                     # merely made the brain smaller. Mutation shapes
-                                     # this from the first generation.
-        self.sense_bias = 0.10       # ...and to become a SENSE. Deliberately BELOW the
-                                     # threshold, so only cells whose perception pushes
-                                     # them over it become organs. Too low and the sheet
-                                     # is deaf (18 organs in 700 cells, nothing to
-                                     # select on); too high and it is all ears (424 in
-                                     # 471) with no interneurons left to think with.
-        self.act_bias = 0.12         # below threshold: only strongly-driven cells
-                                     # become effectors, so a body has a few, not a sea
-        self.max_born_per_dev = 5    # an ABSOLUTE ceiling on births per development
-                                     # tick. The percentage alone compounds: at 5% over
-                                     # a 112-tick embryo a seed of 24 reached 2344 cells
-                                     # and the tick cost 7 ms. With a ceiling, growth is
-                                     # linear in developmental time and a body lands in
-                                     # the hundreds, which is the size that thinks fast
-                                     # enough to live a long life.
-        self.max_change_frac = 0.05  # of the body may be BORN in one dev tick...
-        self.die_ratio = 0.4         # ...and this fraction of that may die. Appearance
-                                     # is biased over disappearance on purpose: with
-                                     # equal budgets the sheet sat at its seed size
-                                     # forever, churning and never becoming anything.
-        self.grow_thresh = 0.25      # how loud a cell's GROW output must be to divide
-        self.die_thresh = 0.25       # ...and its DIE output to apoptose. Set where the
-                                     # natural spread of a fresh rule can actually
-                                     # REACH it: at 0.55 no cell ever died, so
-                                     # "structural plasticity" was growth only and the
-                                     # apoptosis half of it was dead code
-        self.organ_thresh = 0.30
-        self.divide_cost = 0.35      # RESOURCE spent by a division, taken from the cell
-        self.resource_spread = 1     # seepage passes per development tick
-        self.resource_mix = 0.25     # how much of a neighbour's supply seeps across.
-                                     # Kept LOW on purpose: at 3 passes x 0.5 the fresh
-                                     # supply was carried off the border and pooled in
-                                     # the interior — exactly where there is no room to
-                                     # divide — so the cells that could grow never had
-                                     # the means and the cells with the means could not
-                                     # grow. Supply must stay where the growing is.
-        self.resource_decay = 0.10   # what is not used is lost, so supply is a FLOW
-        self.resource_cap = 3.0
-        self.resource_gain = 0.55    # resource fed in at the BORDER each dev tick,
-                                     # scaled by how full the body is — so the tissue
-                                     # can only grow on what the agent has actually
-                                     # eaten, and the deep interior grows last
+        # The PACE of development (embryo_ticks, dev_every*, max_born_per_dev,
+        # max_change_frac, die_ratio), the THRESHOLDS a cell's request is judged
+        # against (grow/die/organ/sprout_thresh), the INNATE URGES that request starts
+        # from (grow/die/sense/act/sprout_bias) and the METABOLISM that pays for it
+        # (resource_*, divide_cost, cell_cost) are all in the growth PROGRAM now:
+        # cortex/program.py holds their values, ranges and the reasoning behind each.
+        # They were here, fixed, unmutated and unwritable, which meant evolution could
+        # not reach development at all — it only ever jittered weights.
+        self.resource_cap = 3.0      # a ceiling, not a rate: fixture, stays here
         # AXONS: long-range directed links, the one thing the 3x3 neighbourhood cannot
         # express. A sheet without them is a RELAY — every message crosses cell by cell,
         # one cell per sub-tick, so a sense on one rim and an effector on the other are
@@ -177,35 +146,16 @@ class Config:
         # weight, and a set of shortcuts is a TOPOLOGY: which regions can talk at all.
         # It grows like a growth cone, up the guidance chemical, and it is pruned by
         # decay, so the wiring is grown and lost rather than designed.
-        self.axons = True
-        self.sprout_bias = 0.26      # the seed's innate urge to send one out. Near the
-                                     # threshold on purpose, like the other seed urges:
-                                     # at 0.10 no cell ever reached it and the whole
-                                     # mechanism was dead code mutation could not even
-                                     # find, because a wire that is never grown is never
-                                     # selected for or against.
-        self.sprout_thresh = 0.30
-        self.axon_min_len = 3        # shorter than this and the neighbourhood already
-        self.axon_max_len = 22       # covers it; longer and it leaves the body
-        self.axon_cost = 0.5         # RESOURCE to grow one — dearer than a cell, since
-                                     # a wire that costs nothing would fill the sheet
-        self.axon_w0 = 0.35
-        self.axon_decay = 0.02       # per development tick: use it or lose it
+        self.axons = True            # (min_len / max_len / cost / w0 / decay / lr and
+                                     #  the sprout urge + threshold: program)
         self.axon_min_w = 0.05       # below this it is pruned
-        self.axon_lr = 0.02          # reward-gated Hebbian on the weight
         self.axon_clip = 1.2
         self.max_axons = 400
-        self.cell_cost = 0.000015    # energy per cell per world tick, charged to the
-                                     # AGENT. This is the counterweight to growth: a
-                                     # bigger brain has to earn its keep by eating more
-        # within-life learning (see Phenotype.learn)
+        # within-life learning (see Phenotype.learn). The RATES are in the program;
+        # whether the mechanism exists at all, and its hard clips, are not.
         self.plastic = True
-        self.plastic_lr = 0.03
-        self.plastic_forget = 0.002
-        self.plastic_elig = 0.5
         self.plastic_clip = 1.0
         self.rule_plastic = True
-        self.rule_lr = 0.006
         self.rule_clip = 0.3
         # mutation
         self.weight_mut = 0.08
@@ -225,7 +175,27 @@ class Config:
         self.narrow_prob = 0.02
         self.subtick_mut_prob = 0.10
         self.subticks_min, self.subticks_max = 8, 48
+        self.program_mut_prob = 0.25   # per FIELD chance of a jitter, and how far —
+        self.program_mut = 0.12        # relative to the field's RANGE, so a knob at
+                                       # its floor can still move
         self.__dict__.update(kw)
+
+    def merged(self, program) -> "Config":
+        """A copy with a growth PROGRAM written over it. This is the one place the two
+        halves meet: `Config` says which mechanisms exist and how big the machine is, a
+        `Program` says how the ones that exist are tuned, and every `cfg.X` read in the
+        phenotype below sees the answer without knowing which half it came from."""
+        out = Config(**vars(self))
+        if program is not None:
+            out.__dict__.update(program.to_dict())
+        return out
+
+
+def _logit(p: float) -> float:
+    """The bias a sigmoid needs to rest at `p`. Clamped so 0 and 1 are askable for
+    without producing an infinity that would poison every later mutation."""
+    p = min(0.99, max(0.01, float(p)))
+    return math.log(p / (1.0 - p))
 
 
 def _fresh_rule(in_dim, H, C, depth, rng, scale=0.5) -> list[dict]:
@@ -245,8 +215,11 @@ class Genome:
 
     def __init__(self, n_in, mask, type_map, rules, P_in, P_out, b_out,
                  channels, hidden, subticks, in_mask, out_mask, organ_mod,
-                 P_horm=None, organ_map=None):
+                 P_horm=None, organ_map=None, program=None):
         self.n_in = int(n_in)
+        # THE GROWTH PROGRAM: the named, readable, writable half of the genome. Weights
+        # are the other half and no model should ever be shown them.
+        self.program = program if isinstance(program, Program) else Program.from_dict(program)
         self.n_out = N_OUT
         self.mask = mask.astype(bool)
         self.type_map = type_map.astype(np.int64)
@@ -293,7 +266,8 @@ class Genome:
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.subticks, self.in_mask.copy(), self.out_mask.copy(),
-                      self.organ_mod.copy(), self.P_horm.copy(), self.organ_map.copy())
+                      self.organ_mod.copy(), self.P_horm.copy(), self.organ_map.copy(),
+                      self.program.copy())
 
     # --- the numbers the HUD and the LLM read -------------------------------------
     def cells(self) -> int:
@@ -329,7 +303,8 @@ class Genome:
                           for r in self.rules],
                 "P_in": self.P_in.tolist(), "P_out": self.P_out.tolist(),
                 "b_out": self.b_out.tolist(), "P_horm": self.P_horm.tolist(),
-                "organ_map": self.organ_map.tolist()}
+                "organ_map": self.organ_map.tolist(),
+                "program": self.program.to_dict()}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Genome":
@@ -341,7 +316,8 @@ class Genome:
                    np.array(d["in_mask"], dtype=bool), np.array(d["out_mask"], dtype=bool),
                    np.array(d["organ_mod"], dtype=np.int64),
                    np.array(d["P_horm"]) if "P_horm" in d else None,
-                   np.array(d["organ_map"]) if "organ_map" in d else None)
+                   np.array(d["organ_map"]) if "organ_map" in d else None,
+                   d.get("program"))
 
 
 def _grow_blob(G: int, n_cells: int, rng) -> np.ndarray:
@@ -442,18 +418,18 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     # in the vivarium when the sensor vector got wide (see docs/lab-journal.md).
     P_in = rng.normal(0.0, 1.0 / math.sqrt(n_in), (n_in, C))
     P_out = rng.normal(0.0, 0.5, (C, N_OUT))
+    # b_out starts at zero. The innate urges (grow / sense / act / sprout) and the
+    # resting thrust used to be added into weights here — the same arithmetic, since
+    # the morph tail is a raw mean and the read-out is a plain sigmoid, but smeared
+    # across every cell type and thereafter indistinguishable from a weight. They live
+    # in the PROGRAM now, where they have names and can be read, written and mutated.
     b_out = np.zeros(N_OUT)
-    b_out[THRUST] += 0.5                                   # a nudge to get moving
-    for r in rules:                                        # the SEED PROGRAM's innate
-        r[-1]["b"][C + GROW] += cfg.grow_bias              # urges: grow, sense, act,
-        r[-1]["b"][C + BE_SENSE] += cfg.sense_bias         # and send a wire out.
-        r[-1]["b"][C + BE_ACT] += cfg.act_bias             # Mutation edits these from
-        r[-1]["b"][C + SPROUT] += cfg.sprout_bias          # the first generation on
     P_horm = rng.normal(0.0, 0.25, (N_HORMONE, C))
     n_chem = max(1, int(min(cfg.chem_channels, C - 2)))
     organ_map = rng.integers(1, cfg.organ_mods + 1, n_chem)
+    prog = Program({k: getattr(cfg, k) for k in _program.FIELDS if hasattr(cfg, k)})
     return Genome(n_in, mask, type_map, rules, P_in, P_out, b_out, C, H,
-                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm, organ_map)
+                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm, organ_map, prog)
 
 
 # --- running a brain ----------------------------------------------------------------
@@ -598,7 +574,10 @@ class Phenotype:
 
     def __init__(self, genome: Genome, cfg: Config | None = None, layout=None):
         self.genome = genome
-        self.cfg = cfg = cfg or Config()
+        # The genome's own growth PROGRAM wins over the ambient config: a lineage that
+        # evolved a slower chemistry carries it in the genome, and a phenotype built
+        # from that genome must develop under it wherever it is instantiated.
+        self.cfg = cfg = (cfg or Config()).merged(genome.program)
         self.layout = layout
         G, C = genome.G, genome.C
         self._mod_ch = (C - 1) if cfg.neuromod else -1
@@ -794,12 +773,15 @@ class Phenotype:
                 self._E_rule[k] += self._elig[k] / nrm
         self.morph /= max(1, g.subticks)       # a mean, so think-time does not decide
         self.state[self._ys, self._xs] = st    # how loudly a cell asks to divide
-        pooled = st[self._out_rows].mean(axis=0)
+        pooled = self._pool(st)
         eff = g.P_out + self.dW if self.cfg.plastic else g.P_out
         logits = pooled @ eff + g.b_out
         self.last_input, self.last_logits = sensors, logits
-        # the three commands, in exactly the range World.step expects
-        thrust = 1.0 / (1.0 + math.exp(-float(logits[THRUST])))
+        # the three commands, in exactly the range World.step expects. `thrust_rest` is
+        # the offset at which a sheet holding NOTHING sits, applied here rather than
+        # baked into b_out so it stays a named, mutable knob for its whole life.
+        thrust = 1.0 / (1.0 + math.exp(
+            -float(logits[THRUST]) - _logit(self.cfg.thrust_rest)))
         turn = math.tanh(float(logits[TURN]))
         interact = 1.0 if logits[INTERACT] > 0.0 else 0.0
         if self.cfg.plastic:                               # credit what we just did
@@ -809,6 +791,32 @@ class Phenotype:
             self._E[:, INTERACT] += pooled * (1.0 if interact else -1.0)
         self.last_command = (thrust, turn, interact)
         return thrust, turn, interact
+
+    def _pool(self, st: np.ndarray) -> np.ndarray:
+        """The command, read off the effector cells that are actually SAYING something.
+
+        A mean over every effector is not a neutral choice. A body grows hundreds of
+        them and only the few a signal reached are holding anything, so the mean is the
+        answer divided by the size of the crowd. THRUST survives that — it is unsigned,
+        and a whole sheet can lean on it together — but TURN does not: it has to swing
+        one way or the other, and a handful of cells pulling right, averaged with three
+        hundred holding zero, arrives as a whisper. That is the shape of the failure the
+        probe ladder shows (`side` below random, `near` at ceiling).
+
+        So: rank the effectors by how loudly they are holding anything at all and pool
+        the top slice. Ties break row-major (a stable sort), so this stays a pure
+        function of the state, like everything else here."""
+        rows = self._out_rows
+        n = len(rows)
+        frac = float(self.cfg.pool_frac)
+        if frac >= 1.0 or n <= 1:
+            return st[rows].mean(axis=0)
+        k = min(n, max(int(self.cfg.pool_min), int(math.ceil(frac * n))))
+        if k >= n:
+            return st[rows].mean(axis=0)
+        loud = np.abs(st[rows]).sum(axis=1)
+        idx = np.argsort(-loud, kind="stable")[:k]
+        return st[rows[idx]].mean(axis=0)
 
     # --- development ------------------------------------------------------------------
     def develop(self, energy_frac: float = 1.0, embryo: bool = False) -> dict:
@@ -849,8 +857,17 @@ class Phenotype:
         # concession to stability, it is what makes a shape mean anything at all.
         budget = max(1, min(int(alive * cfg.max_change_frac), cfg.max_born_per_dev))
         die_budget = int(budget * cfg.die_ratio)
-        order_die = [i for i in range(len(ys)) if morph[i, DIE] > cfg.die_thresh]
-        order_die.sort(key=lambda i: (-float(morph[i, DIE]), i))
+        # THE URGE a cell is judged on is what its rule asked for PLUS the program's
+        # innate bias. These two used to be one number because the bias was baked into
+        # the rule's output layer at birth; splitting them changes no arithmetic and
+        # buys a knob with a name — the learnt part stays in the tissue, the innate
+        # part is heritable, mutable and writable.
+        urge_die = morph[:, DIE] + cfg.die_bias
+        urge_grow = morph[:, GROW] + cfg.grow_bias
+        urge_sense = morph[:, BE_SENSE] + cfg.sense_bias
+        urge_act = morph[:, BE_ACT] + cfg.act_bias
+        order_die = [i for i in range(len(ys)) if urge_die[i] > cfg.die_thresh]
+        order_die.sort(key=lambda i: (-float(urge_die[i]), i))
         for i in order_die[:die_budget]:
             if alive <= 4:
                 break
@@ -868,14 +885,14 @@ class Phenotype:
         grow_plan = {}
         for i in range(len(ys)):
             y, x = int(ys[i]), int(xs[i])
-            if not self.mask[y, x] or morph[i, GROW] <= cfg.grow_thresh:
+            if not self.mask[y, x] or urge_grow[i] <= cfg.grow_thresh:
                 continue
             if self.resource[y, x] < cfg.divide_cost:
                 continue
             spot = self._free_spot(y, x, float(morph[i, DIR_Y]), float(morph[i, DIR_X]))
             if spot is not None:
                 grow_plan[i] = spot
-        ranked = sorted(grow_plan, key=lambda i: (-float(morph[i, GROW]), i))[:budget]
+        ranked = sorted(grow_plan, key=lambda i: (-float(urge_grow[i]), i))[:budget]
         grow_allow = set(ranked)
         for i in range(len(ys)):
             y, x = int(ys[i]), int(xs[i])
@@ -884,17 +901,17 @@ class Phenotype:
             want = morph[i]
             # ORGAN FATE, re-read every development tick, so a cell can also stop being
             # an organ when the chemistry around it changes
-            if want[BE_SENSE] > cfg.organ_thresh and not self.out_mask[y, x]:
+            if urge_sense[i] > cfg.organ_thresh and not self.out_mask[y, x]:
                 self.in_mask[y, x] = True
                 if n_chem:
                     j = int(np.argmax(np.abs(self.state[y, x, chem0:chem1])))
                     self.organ_mod[y, x] = int(g.organ_map[j % len(g.organ_map)])
-            elif want[BE_SENSE] < -cfg.organ_thresh:
+            elif urge_sense[i] < -cfg.organ_thresh:
                 self.in_mask[y, x] = False
                 self.organ_mod[y, x] = 0
-            if want[BE_ACT] > cfg.organ_thresh and not self.in_mask[y, x]:
+            if urge_act[i] > cfg.organ_thresh and not self.in_mask[y, x]:
                 self.out_mask[y, x] = True
-            elif want[BE_ACT] < -cfg.organ_thresh:
+            elif urge_act[i] < -cfg.organ_thresh:
                 self.out_mask[y, x] = False
             # DIVISION, paid for in resource, rate-limited, bounded by the lattice
             if i not in grow_allow or alive >= cfg.max_cells:
@@ -940,8 +957,9 @@ class Phenotype:
             return 0
         guide = self._chem1 - 1                          # the last chemical guides
         made = 0
-        order = [i for i in range(len(ys)) if morph[i, SPROUT] > cfg.sprout_thresh]
-        order.sort(key=lambda i: (-float(morph[i, SPROUT]), i))
+        urge = morph[:, SPROUT] + cfg.sprout_bias        # asked for + innate, as above
+        order = [i for i in range(len(ys)) if urge[i] > cfg.sprout_thresh]
+        order.sort(key=lambda i: (-float(urge[i]), i))
         for i in order:
             if len(self.axon_cells) >= cfg.max_axons or made >= cfg.max_born_per_dev:
                 break
@@ -1177,6 +1195,11 @@ def mutate(genome, rng, cfg=None):
     the new tissue earns its keep."""
     cfg = cfg or Config()
     g = genome.copy()
+    # THE GROWTH PROGRAM mutates too. Before this it could not: development ran on
+    # fixed constants in Config, identical in every generation of every lineage, so
+    # selection had no purchase on how a body grows — only on the weights it grows
+    # with. This one line is what makes the rest of the file's morphogenesis evolvable.
+    g.program = g.program.mutate(rng, cfg.program_mut_prob, cfg.program_mut)
     for r in g.rules:
         for L in r:
             _jitter(L["W"], rng, cfg.weight_mut_prob, cfg.weight_mut)

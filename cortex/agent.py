@@ -34,12 +34,15 @@ class Mind:
     """A brain plus everything it needs to keep sensing the same world."""
 
     def __init__(self, genome: B.Genome, cfg: B.Config | None = None,
-                 think_every: int = 2, reward_scale: float = 12.0):
-        self.cfg = cfg or B.Config()
+                 think_every: int | None = None, reward_scale: float = 12.0):
         self.genome = genome
         self.layout = layout(_rays_of(genome))
-        self.phenotype = B.Phenotype(genome, self.cfg, self.layout)
-        self.think_every = int(think_every)
+        self.phenotype = B.Phenotype(genome, cfg, self.layout)
+        # the phenotype resolved the genome's program against the ambient config; use
+        # THAT, so a Mind and its brain can never disagree about how fast it thinks
+        self.cfg = self.phenotype.cfg
+        self.think_every = int(self.cfg.think_every if think_every is None
+                               else think_every)
         self.reward_scale = float(reward_scale)
         self.field: ScentField | None = None
         self.command = (0.0, 0.0, 0.0)

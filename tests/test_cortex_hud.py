@@ -163,3 +163,46 @@ def test_two_cells_of_the_SAME_type_still_differ_per_cell():
     assert not np.array_equal(a, b), \
         f"cells {c1} and {c2} share a type AND drew an identical panel"
     pygame.quit()
+
+
+# --- the track it has walked ----------------------------------------------------------
+
+def test_the_track_is_recorded_and_fades_out_of_memory():
+    """The path is sampled, not kept whole: a life runs tens of thousands of ticks and
+    the interesting question is always 'where has it been LATELY'."""
+    from cortex.app import TRAIL_EVERY, TRAIL_LEN
+    app = _app()
+    keys = defaultdict(bool)
+    for _ in range(TRAIL_EVERY * 12):
+        app.frame(keys)
+    assert 8 <= len(app.trail) <= TRAIL_LEN
+    for _ in range(TRAIL_EVERY * (TRAIL_LEN + 40)):
+        app.frame(keys)
+    assert len(app.trail) == TRAIL_LEN, "the track has to forget its oldest end"
+    pygame.quit()
+
+
+def test_the_track_is_drawn_and_can_be_turned_off():
+    app = _app()
+    keys = defaultdict(bool)
+    for _ in range(120):
+        app.frame(keys)
+    world = pygame.Rect(0, 0, app.view * app.cell, app.view * app.cell)
+    with_trail = pygame.surfarray.array3d(app.draw().subsurface(world)).copy()
+    app.trail_on = False
+    without = pygame.surfarray.array3d(app.draw().subsurface(world)).copy()
+    assert not np.array_equal(with_trail, without), "the track drew nothing"
+    pygame.quit()
+
+
+def test_the_track_never_leaves_the_world_view():
+    """It is drawn on an overlay the size of the camera, so a long walk cannot smear
+    across the sense panel or the brain column."""
+    app = _app()
+    keys = defaultdict(bool)
+    for _ in range(400):
+        app.frame(keys)
+    right = pygame.surfarray.array3d(app.draw())[app.view * app.cell:].copy()
+    app.trail_on = False
+    assert np.array_equal(right, pygame.surfarray.array3d(app.draw())[app.view * app.cell:])
+    pygame.quit()

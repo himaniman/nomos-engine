@@ -223,3 +223,18 @@ def test_the_journal_reports_what_moved_not_the_whole_vector(tmp_path):
     out = lab.run_lab(client, iterations=1, seeds=SEEDS, ticks=TICKS,
                       probe_ticks=PROBE, out_dir=str(tmp_path), shots=False)
     assert set(out["board"][1]["changed"]) == {"grow_thresh"}
+
+
+def test_the_hardcoded_baselines_still_match_the_probes():
+    """These go into the prompt as the bar to beat, so a stale one misinforms every
+    generation of every run. Both players are deterministic policies, so this is an
+    equality check and not a tolerance."""
+    from cortex import probes
+    from cortex.baseline import POLICIES
+    from cortex.senses import layout
+    from cortex.world import Config as WorldConfig
+    lay = layout(WorldConfig().n_rays)
+    for name, expected in lab.BASELINES.items():
+        got = probes.run_suite_policy(POLICIES[name], lay)["profile"]
+        assert {k: round(v, 2) for k, v in got.items()} == expected, \
+            f"{name} baseline has drifted — re-measure and update lab.BASELINES"

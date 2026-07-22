@@ -1706,6 +1706,13 @@ random       0.35  0.15  0.32   0.35    0.17   0.13    0.00   | 0.21
 fresh brain  0.30  0.16  0.03   0.00    0.11   0.21    0.00   | 0.11
 ```
 
+*(2026-07-24: re-measured. `reflex` reproduces exactly; `random` does not — it is
+0.35 0.23 0.32 0.35 0.24 **1.00** 0.00 | 0.36, because a blind stagger ACES `maze`.
+The arena is small enough that wandering finds the food, so `maze` is not measuring
+what it is named for and `corner` is the honest terrain probe of the two. Both
+players are deterministic; `python -m cortex.probes --player reflex|random`
+re-measures either in one command.)*
+
 That is a ladder with rungs. The reflex aces open ground and stumbles on terrain, so
 beating 0.66 means doing what a nose-follower does AND coping with a wall. A fresh
 brain sits at 0.11, below a coin flip — and the generation strips show why in one

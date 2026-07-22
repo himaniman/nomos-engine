@@ -47,14 +47,19 @@ from cortex.world import Config as WorldConfig
 from cortex.world import World
 from nomos.llm import LLMError, make_client
 
-# The reflex and the random walker are POLICIES, not brains: they do not develop and
-# the read-out changes cannot touch them, so these numbers stand from the run that
-# calibrated the ladder (docs/lab-journal.md, 2026-07-23).
+# The reflex and the random walker are POLICIES, not brains — they do not develop, so
+# nothing about growth or the read-out can move them. Both are deterministic; re-measure
+# either in one command (`python -m cortex.probes --player reflex|random`) if you
+# suspect drift, which is how the stale `random` row below was caught.
+#
+# Note what the random walker does to `maze`: it scores 1.00 there. A probe a blind
+# stagger aces is not measuring the skill it is named for — the arena is small enough
+# that wandering finds the food. `corner` is the honest terrain probe of the two.
 BASELINES = {
     "reflex": {"near": 1.00, "open": 1.00, "side": 1.00, "behind": 1.00,
                "corner": 0.23, "maze": 0.23, "patience": 0.17, "mean": 0.66},
-    "random": {"near": 0.35, "open": 0.15, "side": 0.32, "behind": 0.35,
-               "corner": 0.17, "maze": 0.13, "patience": 0.00, "mean": 0.21},
+    "random": {"near": 0.35, "open": 0.23, "side": 0.32, "behind": 0.35,
+               "corner": 0.24, "maze": 1.00, "patience": 0.00, "mean": 0.36},
 }
 
 SPEC = """\

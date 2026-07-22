@@ -9,11 +9,20 @@ and the WEIGHTS that plasticity is moving within the life.
 Press T and the sheet animates its SUB-TICKS: one frame per round of relaxation, so
 you watch a thought cross the tissue from an organ to an effector. The trace comes
 from the same arithmetic as an ordinary act, so watching an agent think never changes
-what it thinks.
+what it thinks. To actually SEE a wave you also want to slow the WORLD down (- and =
+in the app): the brain re-thinks every few world ticks, so at full speed the animation
+is showing frames from a different thought each time and reads as flicker.
 
-The sheet is drawn as a small image and scaled up — the same trick the world view
-uses. At a few thousand cells, one pygame rect per cell would cost more than the
-thinking does.
+The sheet is drawn as a small image scaled into a FIXED box — the same trick the world
+view uses, plus a box that never changes size, so a cell being born does not shuffle
+every panel underneath it. At a few thousand cells, one pygame rect per cell would cost
+more than the thinking does.
+
+On heat maps rather than a node-and-edge picture like aqua's NEAT panel: aqua's graph
+is SPARSE, so lines are legible. A cell rule is fully DENSE — 126 -> 28 -> 20 is 4088
+weights and every input touches every hidden unit — so lines would be a solid black
+rectangle. The readable rendering of a dense matrix is a matrix. What a wiring diagram
+WOULD have told you is kept, in the "listens to" 3x3.
 """
 
 from __future__ import annotations
@@ -22,6 +31,12 @@ import numpy as np
 import pygame
 
 BRAIN_W = 470
+# The sheet always occupies THIS box, whatever size the body has grown to. Fitting the
+# drawing to the body instead would move every panel below it every time a cell was
+# born, and an interface that twitches while you are reading it is worse than a small
+# picture. The body is scaled into the box and centred; the box never moves.
+SHEET_BOX = 300
+MAX_CELL_PX = 14
 FG = (210, 210, 220)
 DIM = (120, 120, 132)
 ACCENT = (150, 200, 255)
@@ -66,6 +81,7 @@ class BrainPanel:
         self._frames = 0
         self.picked = None              # (y, x) of the cell being inspected
         self._sheet_rect = None         # where the sheet was drawn, for hit-testing
+        self._box_rect = None           # the FIXED box it is drawn inside
         self._sheet_scale = 1
         self._sheet_origin = (0, 0)
 
@@ -128,10 +144,12 @@ class BrainPanel:
              f"= {mind.thoughts * g.subticks} sheet updates", (140, 150, 175))
         y += 4
 
-        # the sheet takes whatever vertical room is left after the panels below it —
-        # otherwise picking a cell pushes the command bars off the bottom of the window
-        reserved = 200 + (170 if self.picked is not None else 0) + 13 * g.n_types
-        y = self._draw_sheet(surf, x, y, pw, max(60, self.app.h - y - reserved))
+        # never below a legible floor: a sheet squeezed to two pixels a cell tells you
+        # nothing, and it is better to lose the bottom panel than the picture
+        box = min(SHEET_BOX, max(150, self.app.h - y - 200
+                                 - (215 if self.picked is not None else 0)
+                                 - 13 * g.n_types))
+        y = self._draw_sheet(surf, x, y, pw, box)
         if self.picked is not None:
             y = self._draw_cell(surf, x, y, pw)
         y = self._draw_types(surf, x, y, pw)
@@ -192,11 +210,20 @@ class BrainPanel:
                     img[i, j] = (52, 54, 66)
         if mode == "chemistry":                   # normalise the frame, then paint
             img *= 255.0 / max(1e-6, float(img.max()))
-        scale = max(1, min(pw // max(1, w), int(max_h) // max(1, h)))
+        # AUTOSCALE into the fixed box, centred, so growth changes the picture and
+        # never the layout
+        box = int(max_h)
+        bx, by = x, y                                     # the box: fixed, never moves
+        scale = max(1, min(MAX_CELL_PX, min(pw, box) // max(1, max(h, w))))
+        sw, sh = w * scale, h * scale
+        ox, oy = bx + (min(pw, box) - sw) // 2, by + (box - sh) // 2
+        self._box_rect = pygame.Rect(bx, by, min(pw, box), box)
+        pygame.draw.rect(surf, (20, 20, 26), self._box_rect)
         sheet = pygame.surfarray.make_surface(
             np.transpose(img.clip(0, 255).astype(np.uint8), (1, 0, 2)))
-        sheet = pygame.transform.scale(sheet, (w * scale, h * scale))
-        surf.blit(sheet, (x, y))
+        sheet = pygame.transform.scale(sheet, (sw, sh))
+        surf.blit(sheet, (ox, oy))
+        x, y = ox, oy                                     # the drawing, inside the box
         # organ pips only over the views they do not obscure: in a field view (chemistry,
         # hormone, resource) a sheet that is mostly organs would be entirely pips
         if mode in ("type", "activity") and scale >= 4:
@@ -217,8 +244,11 @@ class BrainPanel:
             px = x + (self.picked[1] - x0) * scale
             pygame.draw.rect(surf, (255, 255, 120),
                              pygame.Rect(px - 1, py - 1, scale + 2, scale + 2), 1)
-        pygame.draw.rect(surf, (52, 54, 66), pygame.Rect(x, y, w * scale, h * scale), 1)
-        y += h * scale + 5
+        pygame.draw.rect(surf, (52, 54, 66), pygame.Rect(x, y, sw, sh), 1)
+        pygame.draw.rect(surf, (40, 42, 52), pygame.Rect(bx, by, min(pw, box), box), 1)
+        surf.blit(self.app.small.render(f"{scale}px/cell", True, (70, 72, 86)),
+                  (bx + 3, by + box - 13))
+        y = by + box + 5                                  # ALWAYS the box's bottom
         if mode == "organs":                      # legend, only for what is present
             cx = x
             for k, name in enumerate(MOD_NAME):
@@ -268,11 +298,41 @@ class BrainPanel:
             surf.blit(self.app.small.render(name, True, col),
                       (x + g.C * bw + 6, y + i * 13))
         y += 50
-        # the layer stack itself: 9C -> H -> ... -> C, one heat map per layer
+        # WHO THIS CELL LISTENS TO. The one thing a node-and-edge drawing would have
+        # told you, in a form that fits: the first layer's weight mass summed over each
+        # of the nine neighbourhood slots. Bright = this cell weighs that direction
+        # heavily; the centre is itself. A cell that is bright only in the middle is
+        # holding rather than relaying — which is `self` in the type table, per cell.
         rule = g.rules[k]
+        W0 = np.asarray(rule[0]["W"], dtype=np.float64)
+        slots = np.array([np.abs(W0[:, j * g.C:(j + 1) * g.C]).sum() for j in range(9)])
+        slots = slots / max(1e-9, slots.max())
+        surf.blit(self.app.small.render("listens to", True, DIM), (x, y))
+        cell_px = 13
+        for j in range(9):
+            q = float(slots[j])
+            px = x + 74 + (j % 3) * cell_px
+            py = y + (j // 3) * cell_px
+            col = (int(40 + 210 * q), int(40 + 200 * q), int(60 + 60 * q))
+            pygame.draw.rect(surf, col, pygame.Rect(px, py, cell_px - 1, cell_px - 1))
+            if j == 4:
+                pygame.draw.rect(surf, (255, 255, 130),
+                                 pygame.Rect(px, py, cell_px - 1, cell_px - 1), 1)
         surf.blit(self.app.small.render(
-            f"its perceptron: {9 * g.C} in -> "
-            + " -> ".join(str(int(L["W"].shape[0])) for L in rule), True, DIM), (x, y))
+            f"self {slots[4] / max(1e-9, slots.mean()):.2f}x", True, DIM),
+            (x + 74 + 3 * cell_px + 8, y + cell_px))
+        y += 3 * cell_px + 6
+        # the layer stack itself: 9C -> H -> ... -> C, one heat map per layer
+        # Why HEAT MAPS and not a node-and-edge picture like aqua's NEAT panel: aqua's
+        # graph is SPARSE (a few hundred nodes, ~1300 links, most pairs unconnected), so
+        # lines are legible. A cell rule is fully DENSE — 126 -> 28 -> 20 is 4088 links
+        # and every input touches every hidden unit. Drawn as lines that is a solid
+        # black rectangle; drawn as a matrix it is one pixel per weight and you can read
+        # it. It is not a size problem, it is a density one.
+        surf.blit(self.app.small.render(
+            f"perceptron {9 * g.C} in -> "
+            + " -> ".join(str(int(L["W"].shape[0])) for L in rule)
+            + f"   ({sum(int(L['W'].size) for L in rule)} weights)", True, DIM), (x, y))
         y += 13
         cxp, height = x, 40
         for i, L in enumerate(rule):

@@ -58,7 +58,8 @@ HELP = ["W / Up          thrust", "A D / Left Right    turn",
         "B               brain drives / you drive",
         "V               brain view: type/activity/hormone/organs",
         "T               animate the thinking sub-ticks",
-        "[ / ]           slower / faster animation",
+        "- / =           world speed (1/20x .. 8x)",
+        "[ / ]           slower / faster sub-tick animation",
         "click a cell    show its perceptron",
         "SPACE           pause", "P               screenshot", "H               this help",
         "ESC / Q         quit"]
@@ -89,6 +90,14 @@ class App:
         self.view = int(view) | 1                 # odd, so the agent sits dead centre
         self.cell = int(cell)
         self.paused = False
+        # SPEED as a ladder, not a multiplier on the frame rate: the display stays at a
+        # steady 30 fps and the WORLD runs slower or faster inside it. Slowing down is
+        # the point — a thought is twenty sub-ticks and the brain re-thinks every few
+        # world ticks, so at 1x the animation is showing frames from a different thought
+        # each time and reads as flicker rather than a wave.
+        self.speeds = (0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
+        self.speed_i = 4
+        self._accum = 0.0
         self.blind = False
         self.show_help = False
         self.fps = 0.0
@@ -110,6 +119,31 @@ class App:
         interact = 1.0 if keys[pygame.K_e] else 0.0
         return thrust, turn, interact
 
+    @property
+    def speed(self) -> float:
+        return self.speeds[self.speed_i]
+
+    def slower(self) -> None:
+        self.speed_i = max(0, self.speed_i - 1)
+
+    def faster(self) -> None:
+        self.speed_i = min(len(self.speeds) - 1, self.speed_i + 1)
+
+    def frame(self, keys) -> int:
+        """Advance the world by however much this frame is worth. Returns the number of
+        ticks actually taken, so a fractional speed simply skips most frames."""
+        if self.paused:
+            return 0
+        self._accum += self.speed
+        n = 0
+        while self._accum >= 1.0:
+            self._accum -= 1.0
+            self.step(keys)
+            n += 1
+        if self.brain_panel is not None and self.brain_panel.trace_on:
+            self.brain_panel.advance_trace()
+        return n
+
     def step(self, keys) -> None:
         """One world tick, driven by whoever has the wheel. In brain mode the panel
         shows the sensor vector the BRAIN was handed — stale between thoughts, which
@@ -121,8 +155,6 @@ class App:
         else:
             self.world.step(*self.action(keys))
             self.vec = sense(self.world, self.field)
-        if self.brain_panel is not None and self.brain_panel.trace_on:
-            self.brain_panel.advance_trace()
 
     # --- render -------------------------------------------------------------------
     def draw(self) -> pygame.Surface:
@@ -238,8 +270,10 @@ class App:
         y = self._draw_odour(surf, x, y, pw)
         y = self._draw_touch_intero(surf, x, y, pw)
 
-        line(f"fps {self.fps:.0f}   seed {w.seed}   {NAMES[w.tiles.material(*w.facing_cell())]}",
-             DIM, self.small, dy=15)
+        sp = self.speed
+        line(f"fps {self.fps:.0f}   speed {('x%g' % sp) if sp >= 1 else ('1/%gx' % (1 / sp))}"
+             f"   seed {w.seed}   {NAMES[w.tiles.material(*w.facing_cell())]}",
+             (250, 210, 130) if sp != 1.0 else DIM, self.small, dy=15)
         line("TAB blind   H help", DIM, self.small, dy=15)
         if self.show_help:
             for h in HELP:
@@ -365,7 +399,7 @@ def main(argv=None) -> None:
     p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
     p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
     p.add_argument("--no-log", action="store_true", help="do not record the session")
-    p.add_argument("--fps", type=int, default=60)
+    p.add_argument("--fps", type=int, default=30, help="display rate; speed is separate")
     args = p.parse_args(argv)
 
     pygame.init()
@@ -423,8 +457,12 @@ def main(argv=None) -> None:
                     app.auto = not app.auto          # take the wheel, or give it back
                 elif ev.key == pygame.K_v and app.brain_panel is not None:
                     app.brain_panel.cycle_view()
+                elif ev.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                    app.slower()                         # 1/20x .. 8x world speed
+                elif ev.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                    app.faster()
                 elif ev.key == pygame.K_LEFTBRACKET and app.brain_panel is not None:
-                    app.brain_panel.slower()             # watch the wave, not a flicker
+                    app.brain_panel.slower()             # sub-tick animation rate
                 elif ev.key == pygame.K_RIGHTBRACKET and app.brain_panel is not None:
                     app.brain_panel.faster()
                 elif ev.key == pygame.K_t and app.mind is not None:
@@ -439,10 +477,9 @@ def main(argv=None) -> None:
                     name = f"out/cortex/t{app.world.tick:07d}_seed{args.seed}.png"
                     pygame.image.save(app.draw(), name)
                     print("saved", name)
-        if not app.paused:
-            app.step(pygame.key.get_pressed())
-            if not app.world.agent.alive:
-                log("starved")
+        app.frame(pygame.key.get_pressed())
+        if not app.world.agent.alive:
+            log("starved")
         screen.blit(app.draw(), (0, 0))
         pygame.display.flip()
         clock.tick(args.fps)

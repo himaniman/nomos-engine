@@ -167,13 +167,15 @@
     },
     {
       // WATCH A BRAIN PLAY. B hands the wheel between you and it, V cycles the sheet
-      // view (type / activity / hormone / organs), T animates the thinking sub-ticks.
+      // view, T animates the sub-ticks, - and = change WORLD SPEED (1/20x .. 8x) —
+      // slow it right down to watch a thought cross the tissue. Click a cell to open
+      // the perceptron behind it.
       "name": "cortex: WATCH a brain play",
       "type": "debugpy",
       "request": "launch",
       "module": "cortex.app",
-      "args": ["--seed", "2", "--view", "57", "--cell", "12", "--brain",
-               "--brain-seed", "0", "--think-every", "2"],
+      "args": ["--seed", "2", "--view", "65", "--cell", "11", "--brain",
+               "--brain-seed", "0", "--think-every", "3"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "python": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -198,7 +200,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "cortex.app",
-      "args": ["--seed", "2", "--view", "57", "--cell", "12",
+      "args": ["--seed", "2", "--view", "65", "--cell", "11",
                "--load-brain", "out/cortex/best_genome.json"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",

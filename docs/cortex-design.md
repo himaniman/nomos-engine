@@ -501,3 +501,108 @@ open here:
   afford)?
 - How big is the seed, and does the genome place it, or is it always one cell?
 - What exactly is a "brain summary" the LLM can act on?
+
+---
+
+# Where this stands, and what comes next
+
+Written 2026-07-23 at the end of the build session, for whoever picks this up next
+(quite possibly a fresh session with none of the above in its head).
+
+## Built
+
+The world (`docs/cortex-world.md`) is finished and playable, and the sensorium passes
+its own completeness test — the user played it from the SENSE PANEL ALONE. Baselines
+are on the record, and they are the thing to beat:
+
+```
+who       runs   ticks  meals  gained   walked
+reflex       8   15038   18.5   286.5    2410
+human        1   17276    9.0   106.0     930
+random       8    7035    3.4    71.8    1580
+```
+
+The brain is stage 0-2 of this note: a 24-cell SEED plus a growth program, three
+signal layers (electric / chemical / hormonal), morphogenesis on a rare development
+tick under a resource budget, within-life plasticity, a (1+lambda) lineage at
+lambda=1 with named dead-end detectors, and an observer of six probes.
+
+## Not built
+
+Axons (stage 3). The LLM writing the growth program (stage 6). And, honestly, a brain
+that forages.
+
+## THE NEXT MILESTONE, stated as narrowly as it can be
+
+**An LLM writes a growth program; the body develops from it, moves, and eats.**
+
+Nothing else. Not doors, not poison, not memory — those are all downstream of an
+agent that can get to food, and an agent that cannot get to food tells you nothing
+about them. The user set this scope and it is the right one.
+
+The measurement is the BASIC probe ladder, which was rebuilt for exactly this:
+
+```
+             near  open  side  behind  corner  maze  patience | mean
+reflex       1.00  1.00  1.00   1.00    0.23   0.23    0.17   | 0.66
+random       0.35  0.15  0.32   0.35    0.17   0.13    0.00   | 0.21
+fresh brain  0.30  0.16  0.03   0.00    0.11   0.21    0.00   | 0.11
+```
+
+Read it as a ladder. The first four rungs are only "reach the food", varying where it
+is: dead ahead, far, off to the side, behind you (out of sight — smell alone). The
+reflex aces all four and stumbles on terrain, which makes it a perfect bar: to beat
+0.66 a brain has to do what a nose-follower does AND cope with a wall. A fresh brain
+is at 0.11, below a coin flip.
+
+The earlier suite led with doors, breakables and poison, and every player scored ~0.1
+on five of six probes — a whole suite carrying one probe's worth of signal. A
+measurement has to have resolution WHERE ITS SUBJECT IS. The hard probes are kept in
+`ADVANCED` and are worth running the day something can forage, not before.
+
+## The next experiment, and it is cheap
+
+Before reaching for a new primitive, settle WHY `open` fails. The hypothesis worth
+testing first: **signal cannot get from an organ to an effector in time.** A grown
+body is ~25 cells across, a thought is ~20 sub-ticks, and each sub-tick moves a signal
+one cell — so a sense on one rim can barely reach an effector at the far side before
+the command is read, and the readout pools over ALL effector cells, which averages
+whatever does arrive with a lot of cells that heard nothing.
+
+Sweep it: `subticks` in {10, 20, 40, 80} and effector count, scored on the `open`
+probe alone. That is minutes of compute and it decides the next month of work:
+
+- if `open` improves sharply with sub-ticks -> the tissue is a RELAY BOTTLENECK, and
+  AXONS are the right answer (stage 3): sparse directed edges growing along the
+  chemical gradient, which now exists and which development already reads;
+- if it does not -> the problem is the read-out or the drive, and the fix is
+  cheaper than a new primitive (pool over the strongest effectors rather than all
+  of them; drop the +0.5 thrust bias that makes a fresh brain sprint by default).
+
+## The LLM writes the growth program — the milestone above
+
+This is now viable in a way it was not two days ago, for two specific reasons. The
+genome is a seed plus a program rather than 30k weights, so it is small enough for a
+model to read and write. And the observer returns a six-number PROFILE with per-probe
+detail, so there is something to reason about instead of one noisy score.
+
+What is missing to make it real is one adapter: a named, serialisable view of the
+growth program — `grow_bias`, `sense_bias`, `act_bias`, the three thresholds,
+`organ_map`, the chemistry constants, `subticks`, `think_every` — a couple of dozen
+NAMED scalars, plus structural moves the model can request ("split a type", "add a
+layer", "re-map chemical 2 to touch"). `nomos/brain_lab.py` is the pattern to follow;
+what changes is that the object being authored is a developmental program rather than
+a `.nomos` law.
+
+Do NOT hand the model raw weight matrices. That was never the plan and it is the one
+way to waste a good model.
+
+## Housekeeping for a fresh session
+
+- Branch `cortex-design`, not merged to `main`. `python -m pytest tests -q` -> 342.
+- `cortex/tiles.py` map, `world.py` physics + economy, `senses.py` the sensorium,
+  `brain.py` the sheet + development, `agent.py` the wiring, `lineage.py` the loop,
+  `probes.py` the observer, `app.py` + `brainpanel.py` the HUD, `baseline.py` the bar.
+- F5: PLAY / PLAY BLIND / WATCH a brain / WALK a probe arena / PROBES / LINEAGE.
+- Read `docs/lab-journal.md` from 2026-07-21 onward: every wrong turn is written up,
+  including the four that morphogenesis took and the three the probes forced.

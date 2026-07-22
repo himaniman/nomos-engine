@@ -69,6 +69,7 @@ def evaluate(genome: B.Genome, seeds, max_ticks: int = 20000, think_every: int =
         keys = suites[0]["profile"].keys()
         out["skills"] = {k: round(float(np.mean([s["profile"][k] for s in suites])), 3)
                          for k in keys}
+        out["suite"] = suites[0]              # kept so a generation can be LOOKED at
     else:
         out["skills"] = {}
     # fitness leans on the LIFE (what the world actually paid it) and takes the exam as
@@ -126,7 +127,8 @@ def diagnose(profile: dict, history: list[float], patience: int = 3) -> list[str
 
 def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000,
         think_every: int = 2, brain_seed: int = 0, lamarck: bool = False,
-        save: str = BEST, log: bool = True, quiet: bool = False) -> dict:
+        save: str = BEST, log: bool = True, quiet: bool = False,
+        strips: str = "out/cortex/probes") -> dict:
     rng = np.random.default_rng(brain_seed)
     bcfg = B.Config()
     parent = fresh_genome(seed=brain_seed)
@@ -134,6 +136,9 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
     history = [best["fitness"]]
     if not quiet:
         _report(0, best, [], parent)
+        if strips and best.get("suite"):
+            os.makedirs(strips, exist_ok=True)
+            probes.render(best["suite"], os.path.join(strips, "gen000.png"))
     for gen in range(1, generations + 1):
         flags = diagnose(best, history)
         # a STALLED lineage gets a bigger shove, not another nudge — the same
@@ -160,6 +165,9 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
                    note=("kept" if kept else "rejected") + f" {' '.join(flags)}")
         if not quiet:
             _report(gen, cand, flags, cgen, kept=kept)
+            if strips and cand.get("suite"):
+                os.makedirs(strips, exist_ok=True)
+                probes.render(cand["suite"], os.path.join(strips, f"gen{gen:03d}.png"))
     if save:
         os.makedirs(os.path.dirname(save) or ".", exist_ok=True)
         with open(save, "w", encoding="utf-8") as fh:
@@ -203,6 +211,8 @@ def main(argv=None) -> None:
     p.add_argument("--think-every", type=int, default=2)
     p.add_argument("--brain-seed", type=int, default=0)
     p.add_argument("--save", default=BEST)
+    p.add_argument("--strips", default="out/cortex/probes",
+                   help="write one probe strip per generation here ('' to skip)")
     args = p.parse_args(argv)
     if "-" in args.seeds:
         lo, hi = args.seeds.split("-")
@@ -211,7 +221,7 @@ def main(argv=None) -> None:
         seeds = [int(s) for s in args.seeds.split(",")]
     out = run(generations=args.generations, lam=args.lam, seeds=seeds,
               max_ticks=args.ticks, think_every=args.think_every,
-              brain_seed=args.brain_seed, save=args.save)
+              brain_seed=args.brain_seed, save=args.save, strips=args.strips)
     print()
     print(summarise())
     print(f"\nbest genome -> {args.save}  "

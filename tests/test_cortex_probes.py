@@ -7,9 +7,9 @@ from cortex import brain as B
 from cortex import tiles as T
 from cortex.agent import Mind, fresh_genome, live
 from cortex.baseline import random_policy, reflex_policy
-from cortex.probes import (ARENA, PROBES, BrainDriver, PolicyDriver, probe_door,
-                           probe_open, probe_poison, run_suite, run_suite_policy,
-                           snapshot)
+from cortex.probes import (ADVANCED, ARENA, BASIC, PROBES, BrainDriver, PolicyDriver,
+                           probe_door, probe_open, probe_poison, run_suite,
+                           run_suite_policy, snapshot)
 from cortex.senses import layout
 
 L = layout(64)
@@ -100,6 +100,26 @@ def test_a_profile_is_a_vector_not_a_number():
     for name, v in prof.items():
         assert 0.0 <= v <= 1.0, (name, v)
     assert set(out["detail"]) == set(p.__name__.replace("probe_", "") for p in PROBES)
+
+
+def test_the_default_suite_is_a_foraging_ladder():
+    """A measurement needs resolution WHERE ITS SUBJECT IS. Leading with doors and
+    poison put five of six probes beyond everything alive, so the suite carried one
+    probe's worth of signal. The default is now just: reach the food."""
+    names = [p.__name__.replace("probe_", "") for p in BASIC]
+    assert "near" in names and "open" in names, names
+    assert not ({"door", "rubble", "poison"} & set(names)),         "the hard probes are back in the default suite"
+    assert {p.__name__.replace("probe_", "") for p in ADVANCED} ==         {"door", "rubble", "poison"}
+
+
+def test_the_ladder_is_graded_for_a_nose_follower():
+    """The reflex is the calibration: it should ace open ground and struggle with
+    terrain, or the ladder has no rungs."""
+    prof = run_suite_policy(reflex_policy, L, ticks=TICKS)["profile"]
+    easy = min(prof["near"], prof["open"], prof["side"], prof["behind"])
+    hard = max(prof["corner"], prof["maze"])
+    assert easy > 0.8, f"the reflex cannot even reach open food: {prof}"
+    assert hard < easy - 0.3, f"terrain is no harder than open ground: {prof}"
 
 
 def test_the_suite_separates_a_reflex_from_a_coin_flip():

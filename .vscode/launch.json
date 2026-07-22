@@ -208,6 +208,55 @@
       "justMyCode": true
     },
     {
+      // WALK A PROBE ARENA YOURSELF — the same situation the observer scores, live and
+      // with the full HUD. Change --probe to corner / door / rubble / poison / patience.
+      "name": "cortex: WALK a probe arena",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--probe", "corner", "--view", "33", "--cell", "16", "--no-log"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // ...and watch the BRAIN sit the same exam, with its sheet beside it
+      "name": "cortex: WATCH a brain in a probe arena",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--probe", "poison", "--view", "33", "--cell", "16", "--no-log",
+               "--load-brain", "out/cortex/best_genome.json", "--think-every", "3"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // SCORE a player on all six probes and write the strip to out/cortex/probes.png
+      "name": "cortex: PROBES (reflex baseline)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.probes",
+      "args": ["--player", "reflex"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "cortex: PROBES (best evolved brain)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.probes",
+      "args": ["--player", "brain", "--load-brain", "out/cortex/best_genome.json"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       // the BASELINE the brain has to beat: a twenty-line reflex, senses only
       "name": "cortex: baseline reflex (8 seeds)",
       "type": "debugpy",

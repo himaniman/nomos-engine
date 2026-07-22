@@ -136,11 +136,63 @@ def _reach(w, spot, path, ticks) -> tuple[float, dict]:
 
 # --- the probes ---------------------------------------------------------------------
 
+def _maze(w) -> None:
+    """A few short walls, no dead ends: enough terrain that a straight line will not do
+    and the scent has to be followed round something."""
+    for y in range(6, 20):
+        w.tiles.set(y, 13, T.STONE)
+    for x in range(13, 25):
+        w.tiles.set(20, x, T.STONE)
+    for y in range(22, ARENA - 2):
+        w.tiles.set(y, 20, T.STONE)
+
+
+def build(name: str) -> tuple[World, dict]:
+    """Build a probe's arena WITHOUT running it — so the app can drop you (or a brain)
+    into the same situation live, with the full HUD, instead of only ever seeing the
+    aftermath as a track on a PNG."""
+    w = _arena()
+    spots = {}
+    if name in ("corner", "door", "rubble"):
+        for y in range(1, ARENA - 1):
+            w.tiles.set(y, 16, T.STONE)
+    if name == "corner":
+        w.tiles.set(12, 16, T.GROUND)
+        spots["food"] = _put(w, ARENA // 2, 20.0)
+    elif name == "door":
+        w.tiles.set(ARENA // 2, 16, T.DOOR)
+        spots["food"] = _put(w, ARENA // 2, 22.0)
+    elif name == "rubble":
+        w.tiles.set(ARENA // 2, 16, T.RUBBLE)
+        spots["food"] = _put(w, ARENA // 2, 22.0)
+    elif name == "poison":
+        spots["poison"] = _put(w, ARENA // 2, 17.0, NIGHTCAP)
+        spots["food"] = _put(w, ARENA // 2 - 7, 23.0, BERRY)
+    elif name == "open":
+        spots["food"] = _put(w, ARENA // 2, 22.0)
+    elif name == "near":                      # four cells dead ahead: the very floor
+        spots["food"] = _put(w, ARENA // 2, 10.0)
+    elif name == "side":                      # off the line: it has to turn
+        spots["food"] = _put(w, ARENA // 2 - 9, 15.0)
+    elif name == "behind":                    # out of sight entirely: smell only
+        spots["food"] = _put(w, ARENA // 2 + 2, 3.0)
+    elif name == "maze":
+        _maze(w)
+        spots["food"] = _put(w, 26.0, 26.0)
+    elif name != "patience":
+        raise KeyError(f"no probe called {name}: try {', '.join(NAMES)}")
+    return w, spots
+
+
+NAMES = ("near", "open", "side", "behind", "corner", "maze", "patience",
+         "door", "rubble", "poison")
+
+
 def probe_open(driver, ticks=TICKS):
     """Can it get to food it can see and smell, over open ground? The floor of the
     suite: everything else assumes this."""
-    w = _arena()
-    spot = _put(w, ARENA // 2, 22.0)
+    w, sp = build("open")
+    spot = sp["food"]
     path = _run(w, driver, ticks)
     score, detail = _reach(w, spot, path, ticks)
     return Result("open", score, detail, path, w)
@@ -149,11 +201,8 @@ def probe_open(driver, ticks=TICKS):
 def probe_corner(driver, ticks=TICKS):
     """Food behind a wall with one gap: the straight line is blocked, the geodesic
     scent points the way round. Tests that it follows the WALK, not the sightline."""
-    w = _arena()
-    for y in range(1, ARENA - 1):
-        w.tiles.set(y, 16, T.STONE)
-    w.tiles.set(12, 16, T.GROUND)                         # the gap, close enough that
-    spot = _put(w, ARENA // 2, 20.0)                      # the detour is within smell
+    w, sp = build("corner")
+    spot = sp["food"]
     path = _run(w, driver, ticks)
     score, detail = _reach(w, spot, path, ticks)
     detail["through_gap"] = int(any(x > 16.5 for _, x in path))
@@ -163,11 +212,8 @@ def probe_corner(driver, ticks=TICKS):
 def probe_door(driver, ticks=TICKS):
     """Food behind a closed door. Only INTERACT opens it, so this asks whether the verb
     is ever used on something that is not a meal."""
-    w = _arena()
-    for y in range(1, ARENA - 1):
-        w.tiles.set(y, 16, T.STONE)
-    w.tiles.set(ARENA // 2, 16, T.DOOR)
-    spot = _put(w, ARENA // 2, 22.0)
+    w, sp = build("door")
+    spot = sp["food"]
     path = _run(w, driver, ticks)
     score, detail = _reach(w, spot, path, ticks)
     opened = w.tiles.material(ARENA // 2, 16) != T.DOOR
@@ -178,11 +224,8 @@ def probe_door(driver, ticks=TICKS):
 def probe_rubble(driver, ticks=TICKS):
     """The same, behind breakable rubble: several presses in one place, which needs
     persistence rather than a single lucky button."""
-    w = _arena()
-    for y in range(1, ARENA - 1):
-        w.tiles.set(y, 16, T.STONE)
-    w.tiles.set(ARENA // 2, 16, T.RUBBLE)
-    spot = _put(w, ARENA // 2, 22.0)
+    w, sp = build("rubble")
+    spot = sp["food"]
     path = _run(w, driver, ticks)
     score, detail = _reach(w, spot, path, ticks)
     broke = w.tiles.material(ARENA // 2, 16) != T.RUBBLE
@@ -200,9 +243,8 @@ def probe_poison(driver, ticks=TICKS):
     eating neither: two equal scent sources average to a bearing straight between them
     and the agent oscillates, which is the forage limit cycle reproduced in a test tube.
     True, but useless as a measurement, so the temptation is now asymmetric."""
-    w = _arena()
-    bad = _put(w, ARENA // 2, 17.0, NIGHTCAP)             # right under the nose
-    good = _put(w, ARENA // 2 - 7, 23.0, BERRY)           # further, and off the line
+    w, sp = build("poison")
+    bad, good = sp["poison"], sp["food"]
     path = _run(w, driver, ticks)
     ate_good, ate_bad = int(not good.ready), int(not bad.ready)
     score = (1.0 if (ate_good and not ate_bad) else
@@ -215,7 +257,7 @@ def probe_patience(driver, ticks=TICKS):
     """No food anywhere. Standing still costs half of walking, so the only sane play is
     to stop — and a brain that sprints into a wall for nine hundred ticks is telling us
     it has no idea what its energy is for. Scored on energy KEPT."""
-    w = _arena()
+    w, _ = build("patience")
     path = _run(w, driver, ticks)
     kept = w.agent.energy / w.cfg.start_energy
     floor = 1.0 - ticks * w.cfg.move_cost / w.cfg.start_energy
@@ -225,8 +267,41 @@ def probe_patience(driver, ticks=TICKS):
                   path, w)
 
 
-PROBES = (probe_open, probe_corner, probe_door, probe_rubble, probe_poison,
-          probe_patience)
+def _forage(name, ticks):
+    """The whole of a foraging probe: build it, run it, score reaching and eating. The
+    only difference between them is WHERE the food is and what is in the way."""
+    w, sp = build(name)
+    spot = sp["food"]
+    path = _run(w, _forage.driver, ticks)
+    score, detail = _reach(w, spot, path, ticks)
+    return Result(name, score, detail, path, w)
+
+
+def _forage_probe(name):
+    def probe(driver, ticks=TICKS):
+        _forage.driver = driver
+        return _forage(name, ticks)
+    probe.__name__ = f"probe_{name}"
+    probe.__doc__ = f"Reach and eat the food in the `{name}` arena."
+    return probe
+
+
+probe_near = _forage_probe("near")
+probe_side = _forage_probe("side")
+probe_behind = _forage_probe("behind")
+probe_maze = _forage_probe("maze")
+
+# THE DEFAULT SUITE IS A FORAGING LADDER, and deliberately nothing else. An earlier
+# version led with doors, breakables and poison; the strip showed every brain circling
+# in place and scoring ~0.1 on five of six, so the whole suite carried one probe's worth
+# of signal. A measurement has to have resolution WHERE ITS SUBJECT ACTUALLY IS. Eat and
+# you have done well; the arenas only vary where the food is and what stands in the way,
+# which is exactly the terrain-and-smell competence everything else will be built on.
+BASIC = (probe_near, probe_open, probe_side, probe_behind, probe_corner, probe_maze,
+         probe_patience)
+# kept, and worth running once something can forage — but not while nothing can
+ADVANCED = (probe_door, probe_rubble, probe_poison)
+PROBES = BASIC
 
 
 # --- running the suite ----------------------------------------------------------------
@@ -252,20 +327,25 @@ def snapshot(mind, learning: bool = False) -> B.Phenotype:
     return p
 
 
-def run_suite(mind, ticks: int = TICKS, learning: bool = False) -> dict:
+def suite_for(which: str = "basic"):
+    return {"basic": BASIC, "advanced": ADVANCED, "all": BASIC + ADVANCED}[which]
+
+
+def run_suite(mind, ticks: int = TICKS, learning: bool = False,
+              which: str = "basic") -> dict:
     """The whole exam for a BRAIN. Each probe gets its OWN fresh copy, so nothing one
     does can reach the next — the order they run in cannot matter."""
-    return _suite(lambda: BrainDriver(snapshot(mind, learning)), ticks)
+    return _suite(lambda: BrainDriver(snapshot(mind, learning)), ticks, which)
 
 
-def run_suite_policy(policy, layout, ticks: int = TICKS) -> dict:
+def run_suite_policy(policy, layout, ticks: int = TICKS, which: str = "basic") -> dict:
     """The same exam for a baseline. This is the calibration: a brain's profile means
     nothing until you know what twenty lines of reflex score on it."""
-    return _suite(lambda: PolicyDriver(policy, layout), ticks)
+    return _suite(lambda: PolicyDriver(policy, layout), ticks, which)
 
 
-def _suite(make_driver, ticks: int) -> dict:
-    results = [fn(make_driver(), ticks) for fn in PROBES]
+def _suite(make_driver, ticks: int, which: str = "basic") -> dict:
+    results = [fn(make_driver(), ticks) for fn in suite_for(which)]
     profile = {r.name: round(r.score, 3) for r in results}
     profile["mean"] = round(float(np.mean([r.score for r in results])), 3)
     return {"profile": profile, "results": results,
@@ -331,3 +411,49 @@ def render(out: dict, path: str = "out/cortex/probes.png", cell: int = 7):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     pygame.image.save(surf, path)
     return path
+
+
+# --- the command line -----------------------------------------------------------------
+
+def main(argv=None) -> None:
+    """    .\.venv\Scripts\python.exe -m cortex.probes --player reflex
+
+    Sit a player at the exam, print the profile and write the strip. `--player brain`
+    needs `--load-brain`; a brain is grown for `--grow` ticks in the live world first,
+    because the exam is of a DEVELOPED mind and a bare seed is not one."""
+    import argparse
+    import json
+
+    from cortex.baseline import POLICIES
+    from cortex.senses import layout as _layout
+
+    p = argparse.ArgumentParser(description="Run the probe suite and write the strip.")
+    p.add_argument("--player", default="reflex",
+                   choices=sorted(POLICIES) + ["brain"])
+    p.add_argument("--load-brain", default="out/cortex/best_genome.json")
+    p.add_argument("--grow", type=int, default=2500, help="ticks of life before the exam")
+    p.add_argument("--world-seed", type=int, default=2)
+    p.add_argument("--ticks", type=int, default=TICKS)
+    p.add_argument("--out", default="out/cortex/probes.png")
+    p.add_argument("--learning", action="store_true",
+                   help="let the copy learn during the exam (a probe of adaptation)")
+    args = p.parse_args(argv)
+
+    if args.player == "brain":
+        from cortex.agent import Mind, live
+        genome = B.Genome.from_dict(json.load(open(args.load_brain, encoding="utf-8")))
+        _, mind = live(genome, seed=args.world_seed, max_ticks=args.grow, think_every=3)
+        print(f"grown: {mind.phenotype.cells()} cells, "
+              f"{mind.phenotype.organs()[0]} sensory / {mind.phenotype.organs()[1]} effector")
+        out = run_suite(mind, ticks=args.ticks, learning=args.learning)
+    else:
+        out = run_suite_policy(POLICIES[args.player], _layout(64), ticks=args.ticks)
+
+    print(f"{args.player:<8} {summarise(out)}")
+    for name, detail in out["detail"].items():
+        print(f"   {name:<9} {detail}")
+    print("strip ->", render(out, args.out))
+
+
+if __name__ == "__main__":
+    main()

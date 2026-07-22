@@ -1684,3 +1684,44 @@ a probe we would not have trusted.
 The lineage now reports a skill profile per generation, and fitness leans on the LIFE
 with the exam as a tie-break, so a brain cannot win by being good at tests and bad at
 living. 19 new tests, suite 342 green.
+
+**Same day, the suite rebuilt as a ladder.** The user looked at the strip and said what
+the picture was already saying: start with tests where the player just EATS — no doors,
+no poison — only different surroundings so it learns terrain and smell. He was right,
+and the reason is worth keeping: the first suite led with door, rubble and poison, and
+every player scored ~0.1 on five of six probes. A whole suite carrying one probe's
+worth of signal. **A measurement has to have resolution where its subject actually is.**
+
+The default suite is now a foraging ladder — `near` (four cells dead ahead), `open`
+(far), `side` (off the line, it has to turn), `behind` (out of sight entirely: smell
+only), `corner` (a wall with one gap), `maze` (a few short walls), `patience` (no food
+at all) — and the arenas differ only in where the food is and what stands in the way.
+door / rubble / poison are kept in `ADVANCED`, worth running the day something can
+forage and not before.
+
+```
+             near  open  side  behind  corner  maze  patience | mean
+reflex       1.00  1.00  1.00   1.00    0.23   0.23    0.17   | 0.66
+random       0.35  0.15  0.32   0.35    0.17   0.13    0.00   | 0.21
+fresh brain  0.30  0.16  0.03   0.00    0.11   0.21    0.00   | 0.11
+```
+
+That is a ladder with rungs. The reflex aces open ground and stumbles on terrain, so
+beating 0.66 means doing what a nose-follower does AND coping with a wall. A fresh
+brain sits at 0.11, below a coin flip — and the generation strips show why in one
+glance: it circles in place in all six arenas.
+
+Also this session, so a run can be LOOKED at rather than only read: `python -m
+cortex.probes --player reflex|random|brain` prints the profile and writes the strip;
+the lineage writes one strip per generation into `out/cortex/probes/genNNN.png`; and
+`python -m cortex.app --probe corner` drops you (or a brain) into a probe arena LIVE
+with the whole HUD, so the exam can be walked by hand.
+
+One real bug on the way: `import os` inside a branch of `lineage.run` made `os` a local
+for the whole function, and the genome save at the end died with UnboundLocalError. The
+module already imported it.
+
+The next milestone is written into `docs/cortex-design.md` and is deliberately narrow:
+an LLM writes a growth program, the body develops from it, moves, and eats.
+
+Suite 344 green.

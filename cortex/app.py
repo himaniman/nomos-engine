@@ -398,6 +398,8 @@ def main(argv=None) -> None:
     p.add_argument("--brain-seed", type=int, default=0, help="which fresh brain")
     p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
     p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
+    p.add_argument("--probe", default="", help="drop into a PROBE arena instead of the "
+                                               "world: open/corner/door/rubble/poison/patience")
     p.add_argument("--no-log", action="store_true", help="do not record the session")
     p.add_argument("--fps", type=int, default=30, help="display rate; speed is separate")
     args = p.parse_args(argv)
@@ -417,6 +419,16 @@ def main(argv=None) -> None:
             args.player = f"brain-{args.brain_seed}"
     app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None),
               mind=mind)
+    if args.probe:
+        # the same arena the observer builds, but LIVE and with the whole HUD — so a
+        # probe can be walked through by hand instead of only read as a track on a PNG
+        from cortex import probes as _probes
+        app.world, _ = _probes.build(args.probe)
+        app.field = ScentField(app.world.cfg.smell_radius)
+        if mind is not None:
+            mind.attach(app.world)
+        app.vec = sense(app.world, app.field)
+        pygame.display.set_caption(f"cortex — probe: {args.probe}")
     app.blind = args.blind
     screen = pygame.display.set_mode((app.w, app.h))
     pygame.display.set_caption(f"cortex — seed {args.seed}")

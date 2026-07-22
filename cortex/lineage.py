@@ -132,6 +132,26 @@ def scaled(cfg: B.Config, step: float) -> B.Config:
     return out
 
 
+def worlds_for(pool, gen: int, per_gen: int) -> list:
+    """Which worlds this generation is judged on — a rotating window over the pool.
+
+    Two reasons, and the second was found the hard way. **A lineage scored on one map
+    learns that map**: `nomos/lamarck.py` measured exactly that, skill accumulating on
+    the mazes a lineage had seen and collapsing on a held-out one, and this file's own
+    docstring claimed lives rotated when the code ran the same pair every generation.
+
+    And re-measuring the incumbent — added to catch a parent flattered by a lucky life —
+    was a NO-OP. `evaluate` is a pure function of (genome, seeds, ticks), so re-scoring
+    the same genome on the same seeds returns the same number to the last digit. It cost
+    a full evaluation per generation and bought nothing; the printed bar sat at 283.6
+    for eleven generations without moving. On rotating worlds it finally means what it
+    was meant to: a parent that is good only where it grew up gets found out."""
+    pool = list(pool)
+    n = max(1, min(int(per_gen), len(pool)))
+    start = (gen * n) % len(pool)
+    return [pool[(start + i) % len(pool)] for i in range(n)]
+
+
 def adapt(step: float, accepted: bool) -> float:
     """Rechenberg's 1/5 success rule: grow the step when children are accepted, shrink
     it when they are not. A (1 + 1) strategy wants roughly one child in five to be an
@@ -157,14 +177,15 @@ def diagnose(profile: dict, history: list[float], patience: int = 3) -> list[str
     return flags
 
 
-def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000,
+def run(generations: int = 8, lam: int = 1, seeds=(0, 1, 2, 3), max_ticks: int = 20000,
         think_every: int = 2, brain_seed: int = 0, lamarck: bool = False,
         save: str = BEST, log: bool = True, quiet: bool = False,
-        strips: str = "out/cortex/probes") -> dict:
+        strips: str = "out/cortex/probes", per_gen: int = 2) -> dict:
     rng = np.random.default_rng(brain_seed)
     bcfg = B.Config()
     parent = fresh_genome(seed=brain_seed)
-    best = evaluate(parent, seeds, max_ticks, think_every, bcfg)
+    best = evaluate(parent, worlds_for(seeds, 0, per_gen), max_ticks,
+                    think_every, bcfg)
     history = [best["fitness"]]
     if not quiet:
         _report(0, best, [], parent)
@@ -173,6 +194,7 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
             probes.render(best["suite"], os.path.join(strips, "gen000.png"))
     step, accepts = 1.0, []
     for gen in range(1, generations + 1):
+        turn = worlds_for(seeds, gen, per_gen)
         flags = diagnose(best, history)
         # THE STEP SIZE adapts (Rechenberg's 1/5 rule, `adapt`). What used to be here
         # did the opposite: a stalled lineage got its mutation rates multiplied by
@@ -191,14 +213,15 @@ def run(generations: int = 8, lam: int = 1, seeds=(0, 1), max_ticks: int = 20000
         children = []
         for _ in range(max(1, lam)):
             child = B.mutate(parent, rng, cfg)
-            children.append((evaluate(child, seeds, max_ticks, think_every, bcfg), child))
+            children.append(
+                (evaluate(child, turn, max_ticks, think_every, bcfg), child))
         cand, cgen = max(children, key=lambda kv: kv[0]["fitness"])
         # RE-MEASURE THE INCUMBENT rather than trusting the score it happened to get
         # when it was young. A life is noisy, and in a (1 + 1) loop a lucky parent
         # measurement is permanent: it becomes a bar nothing can clear, and the run
         # reads as "no child was ever better" when it means "the parent was measured on
         # a good day". Averaging the estimate lets a flattered parent come back down.
-        again = evaluate(parent, seeds, max_ticks, think_every, bcfg)
+        again = evaluate(parent, turn, max_ticks, think_every, bcfg)
         bar = 0.5 * (best["fitness"] + again["fitness"])
         kept = cand["fitness"] >= bar
         if kept:
@@ -263,7 +286,11 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(description="Run a cortex lineage.")
     p.add_argument("--generations", type=int, default=8)
     p.add_argument("--lam", type=int, default=1, help="children per generation")
-    p.add_argument("--seeds", default="0-1", help="world seeds a life rotates over")
+    p.add_argument("--seeds", default="0-5",
+                   help="the POOL of worlds a lineage may be judged on")
+    p.add_argument("--worlds", type=int, default=2, dest="per_gen",
+                   help="how many of the pool each generation uses, rotating — a "
+                        "lineage scored on one map learns that map")
     p.add_argument("--ticks", type=int, default=20000, help="cap on one life")
     p.add_argument("--think-every", type=int, default=2)
     p.add_argument("--brain-seed", type=int, default=0)
@@ -278,7 +305,8 @@ def main(argv=None) -> None:
         seeds = [int(s) for s in args.seeds.split(",")]
     out = run(generations=args.generations, lam=args.lam, seeds=seeds,
               max_ticks=args.ticks, think_every=args.think_every,
-              brain_seed=args.brain_seed, save=args.save, strips=args.strips)
+              brain_seed=args.brain_seed, save=args.save, strips=args.strips,
+              per_gen=args.per_gen)
     print()
     print(summarise())
     print(f"\nbest genome -> {args.save}  "

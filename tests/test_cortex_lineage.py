@@ -126,3 +126,27 @@ def test_mutation_is_gentle_enough_to_be_a_step():
     assert cfg.weight_mut <= 0.03 and cfg.weight_mut_prob <= 0.05
     assert cfg.program_mut_prob <= 0.10
     assert cfg.grow_prob <= 0.10 and cfg.add_in_prob <= 0.05
+
+
+def test_a_generation_is_judged_on_a_rotating_window_of_worlds():
+    """A lineage scored on one map learns that map — nomos/lamarck.py measured exactly
+    that. And it is what makes re-measuring the incumbent mean anything: `evaluate` is
+    a pure function of (genome, seeds, ticks), so re-scoring on the SAME seeds returns
+    the same number to the last digit."""
+    pool = [0, 1, 2, 3, 4, 5]
+    seen = {tuple(lineage.worlds_for(pool, g, 2)) for g in range(6)}
+    assert len(seen) >= 3, "every generation saw the same worlds"
+    for g in range(20):
+        w = lineage.worlds_for(pool, g, 2)
+        assert len(w) == 2 and len(set(w)) == 2
+        assert all(s in pool for s in w)
+
+
+def test_a_pool_smaller_than_the_window_still_works():
+    assert lineage.worlds_for([7], 3, 2) == [7]
+    assert sorted(lineage.worlds_for([7, 9], 3, 5)) == [7, 9]
+
+
+def test_the_window_is_a_pure_function_of_the_generation():
+    """Reproducibility: a run is a pure function of (genome, seeds, steps)."""
+    assert lineage.worlds_for(range(6), 4, 2) == lineage.worlds_for(range(6), 4, 2)

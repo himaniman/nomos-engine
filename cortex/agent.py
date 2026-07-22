@@ -45,6 +45,7 @@ class Mind:
         self.command = (0.0, 0.0, 0.0)
         self.thoughts = 0
         self.last_reward = 0.0
+        self.last_dev = {"born": 0, "died": 0}
         self.sensors: np.ndarray | None = None
 
     def attach(self, w: World) -> None:
@@ -64,6 +65,28 @@ class Mind:
         w.step(*self.command)
         self.last_reward = (w.agent.energy - before) / self.reward_scale
         self.phenotype.learn(self.last_reward)
+        self._develop(w)
+
+    def _develop(self, w: World) -> None:
+        """Growth on its own slow clock, and paid for.
+
+        TWO PHASES, straight out of biology and out of arithmetic. In the EMBRYO the
+        tissue develops often and its cells are free, so a brain gets to exist before
+        the world starts charging for it — without that, growth is a tax you take out
+        before you can forage and no lineage would ever pay it. Afterwards development
+        is rare and every cell costs energy every tick, so a bigger brain has to earn
+        its keep by eating more. That cost IS the selection pressure against bloat;
+        nothing else in the system argues for a small brain."""
+        c = self.phenotype.cfg
+        if not c.develop:
+            return
+        embryo = w.tick < c.embryo_ticks
+        every = c.dev_every_embryo if embryo else c.dev_every
+        if w.tick % every == 0:
+            self.last_dev = self.phenotype.develop(
+                energy_frac=max(0.0, w.agent.energy / w.cfg.max_energy), embryo=embryo)
+        if not embryo:
+            w.agent.energy -= c.cell_cost * self.phenotype.cells()
 
 
     def hormone(self, w: World) -> np.ndarray:

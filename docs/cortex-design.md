@@ -424,13 +424,19 @@ harness should be able to answer, not assume.
    report properties instead of labels, and an economy verified by a human
    playing it. Only then fork `vivarium/nca.py` in as the brain and get a running
    single-agent baseline to A/B against.
-1. **Three signal layers** — add chemistry (diffusing channels) + a global hormone
-   on top of the existing electric CA. First measurable experiment: A/B
-   "chemistry + hormone" vs "electric only" on the probes. Cheap, and it answers
-   whether slow layers are worth anything before we build development on them.
-2. **Development** — morph outputs, the development tick, the energy/resource
-   budget, morphogen-driven differentiation. Brain grows from a seed; genome
-   becomes the program. Embryonic phase, structural plasticity OFF.
+1. ~~**Three signal layers**~~ BUILT 2026-07-22, NOT YET JUSTIFIED. Chemistry
+   (diffusing channels) and a global hormone are in and separately switchable. The
+   first A/B went to the CONTROL arm (electric only), on a run far too small to
+   mean anything — see the journal. The layers stand on their design argument and
+   on being what development reads position from; they have not yet paid for
+   themselves on score, and that is recorded rather than re-run until it agrees.
+2. ~~**Development**~~ DONE 2026-07-22. Morph outputs on the same per-cell rule, a
+   rare development tick, an energy/resource budget, chemistry-driven organ fate,
+   the embryo/adult split. The genome is a 24-cell SEED and a program; a body grows
+   to ~400-600 cells and different programs grow visibly different bodies (5% to
+   60% sensory across four fresh genomes). Structural plasticity is ON from the
+   start rather than deferred — the same machinery runs in the adult phase, only
+   rarely and charged for.
 3. **Axons** — sparse edge list, growth cones following the chemical gradient,
    decay-pruning.
 4. **Structural plasticity ON** — the same growth machinery allowed to run (slowly,

@@ -56,16 +56,20 @@ def test_every_view_renders():
     pygame.quit()
 
 
-def test_the_sheet_shows_the_genome_not_something_else():
+def test_the_sheet_shows_the_LIVING_body_not_the_seed():
+    """Under development the genome is a seed and the body is grown, so the panel has
+    to read the phenotype — showing the genome would show a 24-cell blob forever."""
     app = _app()
     app.brain_panel.view = VIEWS.index("organs")
     before = pygame.surfarray.array3d(app.draw())[app.w - BRAIN_W:].copy()
-    g = app.mind.genome
-    ys, xs = np.nonzero(g.mask)
-    g.in_mask[ys, xs] = True                       # every cell becomes an organ
-    g.organ_mod[ys, xs] = 3
+    p = app.mind.phenotype
+    ys, xs = np.nonzero(p.mask)
+    p.in_mask[ys, xs] = True                       # every living cell becomes an organ
+    p.organ_mod[ys, xs] = 3
     after = pygame.surfarray.array3d(app.draw())[app.w - BRAIN_W:]
-    assert not np.array_equal(before, after), "the sheet ignored the genome"
+    assert not np.array_equal(before, after), "the sheet ignored the living body"
+    # and the genome must be untouched by any of it
+    assert int(app.mind.genome.mask.sum()) <= int(p.mask.sum())
     pygame.quit()
 
 

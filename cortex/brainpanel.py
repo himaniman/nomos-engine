@@ -37,7 +37,7 @@ MOD_COL = ((235, 235, 235), (250, 90, 90), (250, 150, 80), (245, 215, 90),
            (235, 110, 200), (120, 220, 200), (255, 180, 140))
 MOD_NAME = ("all", "hue+", "hue-", "sat", "light", "near", "solid",
             "smell", "touch", "inner")
-VIEWS = ("type", "activity", "chemistry", "hormone", "organs")
+VIEWS = ("type", "activity", "chemistry", "hormone", "organs", "resource")
 
 
 def _heat(W) -> np.ndarray:
@@ -93,8 +93,8 @@ class BrainPanel:
         oy, ox = self._sheet_origin
         y = oy + (pos[1] - self._sheet_rect.top) // self._sheet_scale
         x = ox + (pos[0] - self._sheet_rect.left) // self._sheet_scale
-        g = self.app.mind.genome
-        self.picked = (int(y), int(x)) if g.mask[int(y), int(x)] else None
+        p = self.app.mind.phenotype
+        self.picked = (int(y), int(x)) if p.mask[int(y), int(x)] else None
         return True
 
     # --- the whole column -------------------------------------------------------------
@@ -111,12 +111,16 @@ class BrainPanel:
             surf.blit((font or small).render(text, True, colour), (x, y))
             y += dy
 
-        sens, eff = g.organs()
+        sens, eff = p.organs()
         line("brain", ACCENT, big, dy=22)
-        line(f"cells {g.cells():<5} types {g.types_used()}/{g.n_types:<3}"
+        # the GROWN body first, the seed it came from second: the genome is a program
+        line(f"cells {p.cells():<5} types {p.types_used()}/{g.n_types:<3}"
              f" depth {g.max_depth()}  width {g.max_width()}", FG, f, dy=18)
         line(f"organs {sens} sensory / {eff} effector    {g.params() / 1000:.1f}k params",
              FG, f, dy=18)
+        if p.cfg.develop:
+            line(f"grown from a {g.cells()}-cell seed  -  {p.births} born, {p.deaths} died"
+                 f" over {p.dev_ticks} dev ticks", (170, 220, 190), dy=17)
         # TIME: the brain's two clocks, against the world's one
         line(f"time  {g.subticks} subticks per thought, "
              f"1 thought per {mind.think_every} world ticks", (170, 190, 220))
@@ -143,7 +147,7 @@ class BrainPanel:
     def _draw_sheet(self, surf, x, y, pw, max_h: int = 300) -> int:
         mind = self.app.mind
         g, p = mind.genome, mind.phenotype
-        ys, xs = np.nonzero(g.mask)
+        ys, xs = np.nonzero(p.mask)               # the LIVING body, not the seed
         if not len(ys):
             return y
         y0, y1 = int(ys.min()), int(ys.max())
@@ -153,11 +157,12 @@ class BrainPanel:
         state = p.trace[self.trace_i] if (self.trace_on and p.trace) else p.state
         mode = VIEWS[self.view]
         self._chem = g.channel_map(p.cfg)["chemical"]
+        res_max = max(1e-6, float(p.resource[ys, xs].max())) if mode == "resource" else 1.0
         for yy, xx in zip(ys, xs):
             i, j = yy - y0, xx - x0
             cell = state[yy, xx]
             if mode == "type":                    # what a cell IS, lit by what it does
-                base = np.array(TYPE_COL[int(g.type_map[yy, xx]) % len(TYPE_COL)])
+                base = np.array(TYPE_COL[int(p.type_map[yy, xx]) % len(TYPE_COL)])
                 img[i, j] = base * (0.28 + 0.72 * min(1.0, float(np.abs(cell).mean()) * 2.2))
             elif mode == "activity":
                 a = min(1.0, float(np.abs(cell).mean()) * 2.5)
@@ -174,10 +179,14 @@ class BrainPanel:
                 img[i, j] = (np.array((250, 120, 90)) * max(0.0, hv)
                              + np.array((90, 150, 250)) * max(0.0, -hv)
                              + np.array((34, 34, 44)) * (1 - abs(hv)))
+            elif mode == "resource":              # what growth is paid for with: fed
+                q = float(p.resource[yy, xx]) / res_max   # at the border, seeping in
+                img[i, j] = (np.array((250, 210, 120)) * q
+                             + np.array((34, 36, 46)) * (1 - q))
             else:
-                if g.in_mask[yy, xx]:
-                    img[i, j] = MOD_COL[int(g.organ_mod[yy, xx]) % len(MOD_COL)]
-                elif g.out_mask[yy, xx]:
+                if p.in_mask[yy, xx]:
+                    img[i, j] = MOD_COL[int(p.organ_mod[yy, xx]) % len(MOD_COL)]
+                elif p.out_mask[yy, xx]:
                     img[i, j] = (255, 255, 255)
                 else:
                     img[i, j] = (52, 54, 66)
@@ -188,20 +197,22 @@ class BrainPanel:
             np.transpose(img.clip(0, 255).astype(np.uint8), (1, 0, 2)))
         sheet = pygame.transform.scale(sheet, (w * scale, h * scale))
         surf.blit(sheet, (x, y))
-        if mode != "organs" and scale >= 4:       # mark where signal enters and leaves
+        # organ pips only over the views they do not obscure: in a field view (chemistry,
+        # hormone, resource) a sheet that is mostly organs would be entirely pips
+        if mode in ("type", "activity") and scale >= 4:
             for yy, xx in zip(ys, xs):
                 px, py = x + (xx - x0) * scale, y + (yy - y0) * scale
-                if g.out_mask[yy, xx]:
+                if p.out_mask[yy, xx]:
                     pygame.draw.rect(surf, (255, 255, 255),
                                      pygame.Rect(px, py, scale, scale), 1)
-                elif g.in_mask[yy, xx]:
-                    k = int(g.organ_mod[yy, xx]) % len(MOD_COL)
+                elif p.in_mask[yy, xx]:
+                    k = int(p.organ_mod[yy, xx]) % len(MOD_COL)
                     pygame.draw.rect(surf, MOD_COL[k],
                                      pygame.Rect(px, py, max(2, scale // 2),
                                                  max(2, scale // 2)))
         self._sheet_rect = pygame.Rect(x, y, w * scale, h * scale)
         self._sheet_scale, self._sheet_origin = scale, (y0, x0)
-        if self.picked is not None and g.mask[self.picked]:      # ring the picked cell
+        if self.picked is not None and p.mask[self.picked]:      # ring the picked cell
             py = y + (self.picked[0] - y0) * scale
             px = x + (self.picked[1] - x0) * scale
             pygame.draw.rect(surf, (255, 255, 120),
@@ -211,7 +222,7 @@ class BrainPanel:
         if mode == "organs":                      # legend, only for what is present
             cx = x
             for k, name in enumerate(MOD_NAME):
-                if not (g.in_mask & g.mask & (g.organ_mod == k)).any():
+                if not (p.in_mask & p.mask & (p.organ_mod == k)).any():
                     continue
                 pygame.draw.rect(surf, MOD_COL[k], pygame.Rect(cx, y + 2, 7, 7))
                 surf.blit(self.app.small.render(name, True, DIM), (cx + 9, y))
@@ -229,10 +240,10 @@ class BrainPanel:
         THIS cell running", which the type colours alone cannot tell you."""
         g, p = self.app.mind.genome, self.app.mind.phenotype
         cy, cx = self.picked
-        k = int(g.type_map[cy, cx])
-        role = ("sense " + MOD_NAME[int(g.organ_mod[cy, cx]) % len(MOD_NAME)]
-                if g.in_mask[cy, cx] else
-                "effector" if g.out_mask[cy, cx] else "interneuron")
+        k = int(p.type_map[cy, cx])
+        role = ("sense " + MOD_NAME[int(p.organ_mod[cy, cx]) % len(MOD_NAME)]
+                if p.in_mask[cy, cx] else
+                "effector" if p.out_mask[cy, cx] else "interneuron")
         pygame.draw.rect(surf, TYPE_COL[k % len(TYPE_COL)], pygame.Rect(x, y + 1, 8, 8))
         surf.blit(self.app.small.render(
             f"cell ({cy},{cx})  type {k}  {role}   ESC unpicks", True, FG), (x + 12, y))
@@ -294,7 +305,7 @@ class BrainPanel:
             "cell types   (self = listens to itself, keep = feeds itself back)",
             True, DIM), (x, y))
         y += 13
-        counts = np.bincount(g.type_map[g.mask], minlength=g.n_types)
+        counts = np.bincount(p.type_map[p.mask], minlength=g.n_types)
         C = g.C
         for k, rule in enumerate(g.rules):
             W0 = np.asarray(rule[0]["W"], dtype=np.float64)     # (H, 9C)

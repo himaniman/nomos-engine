@@ -1550,3 +1550,68 @@ the probe suite from the design note — a skill profile per life instead of one
 number — and more replicates than a laptop evening.
 
 Suite 304 green.
+
+## 2026-07-22 (night) — cortex: the genome stops being a body
+
+Stage 2 of `docs/cortex-design.md`. Until now the genome CARRIED the brain — a 340-cell
+mask, a type map, organ flags. Now it carries a **24-cell seed and a program**, and the
+tissue grows itself to 400-600 cells over a life. That is the thing the whole design
+note was pointing at: what is inherited is small enough to be read and written, by
+evolution now and by an LLM later.
+
+**How it works.** A rule's output is C state channels plus six MORPHOGENETIC ones —
+grow, direction y, direction x, die, be-a-sense, be-an-effector — computed by the very
+same little network the cell thinks with, from the very same 3x3 perception. There is
+no separate growth brain. They accumulate over the sub-ticks of a thought and are read
+on a rare DEVELOPMENT TICK (every 8 world ticks in the embryo, every 120 after). The
+rarity is not a compromise: a shape change rebuilds the phenotype's index arrays, so a
+per-tick version would cost more than the thinking.
+
+**The living body is the phenotype's, never the genome's.** A life can grow, kill and
+re-purpose cells all it likes; `Genome.mask` and friends are untouched, with a test that
+says so. That is what makes "only the genome crosses the boundary" true rather than
+aspirational — if a life could edit its genome, the phenotype would silently become the
+heredity and the growth program would rot unselected.
+
+**Four things went wrong, and each was informative.**
+
+1. *Nothing grew at all.* A fresh rule's morph outputs sit near zero, so no cell ever
+   asked for anything and "development" was a no-op that had merely made the brain
+   smaller. Fixed with an INNATE BIAS in the seed program: an embryo grows unless told
+   not to. Mutation shapes it from the first generation.
+2. *Everything grew, then everything churned.* Unlimited, a 24-cell seed hit 2344 cells;
+   with an aggressive death threshold it turned over 13611 births and 11572 deaths in one
+   life and settled nothing. A body has to change slowly enough to mean something, so
+   births and deaths are rate-limited per development tick — with deaths on a smaller
+   budget than births, because with equal budgets the sheet sat at its seed size forever.
+3. *The resource was a signal channel, and the rule flooded it.* Every cell wanted to
+   divide and two had the means. A neuron does not write its own blood supply: RESOURCE
+   is now metabolism, outside the cell's channels entirely — fed at the BORDER in
+   proportion to how full the agent is, seeping inward, spent by division. And it had to
+   seep only a LITTLE: at three passes of half-mixing the fresh supply was carried off
+   the border and pooled in the interior, which is precisely where there is no room to
+   divide, so the cells that could grow had no means and the cells with means had no
+   room.
+4. *Ranking by urge before checking feasibility grew nothing.* The loudest cell was
+   usually one buried in the middle with nowhere to put a daughter; it burned the whole
+   budget failing. Feasibility first, then rank.
+
+**What it produces.** Bodies of 400-600 cells from a 24-cell seed, and — the part worth
+looking at — different programs grow visibly different bodies: across four fresh genomes
+the sensory share came out 60%, 32%, 10% and 5%, with effector counts from 7 to 429. The
+`resource` view shows the metabolic gradient plainly: bright at the rim, dark in the
+depths. That gradient is why a body is not a disc.
+
+Organ FATE is read from the chemistry where a cell stands — `organ_map` says which
+chemical means which sense — so a cell's position decides what it becomes. That is the
+French-flag model, and it is what makes an eye REGION something that can form rather
+than something we place. It also finally gives the chemical layer a job that the failed
+A/B could not: development reads position from it.
+
+Also this session: the sub-tick animation now runs on its own clock with `[`/`]` (tied
+to the world's it flashed a whole thought past in a third of a second), the sheet grew
+into the space available, and CLICKING A CELL opens the perceptron behind it — role,
+every channel it is holding coloured by signal layer, and its whole layer stack as heat
+maps. An inserted near-identity layer shows up as a literal diagonal.
+
+14 new tests for development alone, suite 319 green.

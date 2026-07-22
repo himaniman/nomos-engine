@@ -45,6 +45,13 @@ N_OUT = 3
 # The BLOODSTREAM: what the body tells the whole sheet at once, no organ involved.
 # Energy first, because it is the one that has to swing the whole brain's mode.
 N_HORMONE = 3                    # energy, poison load, recent reward
+
+# MORPHOGENESIS. A rule's output is not only a state delta: the last N_MORPH values are
+# what the cell wants to DO WITH ITSELF. They are computed by the very same little
+# network the cell thinks with, from the very same 3x3 perception — there is no separate
+# "growth brain", which is the whole point (docs/cortex-design.md).
+GROW, DIR_Y, DIR_X, DIE, BE_SENSE, BE_ACT = range(6)
+N_MORPH = 6
 MOD_ALL = 0                      # an organ that hears the whole sensor vector
 _MIN_DEPTH = 2                   # a rule always has an input and an output layer
 _OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
@@ -98,6 +105,68 @@ class Config:
         self.hormone = True          # the global gate + bloodstream drive
         self.hormone_gain = 0.6      # how hard it swings each cell's rule
         self.neuromod = True         # the LOCAL hormone channel (per-cell gate)
+        # DEVELOPMENT. The genome carries a SEED and a program; the body is grown.
+        # Growth fires on a rare DEVELOPMENT TICK, never per sub-tick: partly because
+        # tissue is slower than signal, and partly because a shape change rebuilds the
+        # phenotype's index arrays, which is what would make a per-tick version
+        # unaffordable. Rare development is not a compromise, it is the enabling trick.
+        self.develop = True
+        self.seed_cells = 24         # the SEED: a genome is a program, not a body
+        self.embryo_ticks = 900      # a head start in which growth is fast and FREE...
+        self.dev_every_embryo = 8    # ...development ticks this often, then:
+        self.dev_every = 120         # slow structural plasticity for the rest of life
+        self.grow_bias = 0.55        # the seed's INNATE urge to divide, written into
+                                     # the rule's output bias. An embryo grows unless
+                                     # told not to — without it a fresh genome's morph
+                                     # outputs sit near zero, no cell ever asks for
+                                     # anything, and "development" is a no-op that
+                                     # merely made the brain smaller. Mutation shapes
+                                     # this from the first generation.
+        self.sense_bias = 0.10       # ...and to become a SENSE. Deliberately BELOW the
+                                     # threshold, so only cells whose perception pushes
+                                     # them over it become organs. Too low and the sheet
+                                     # is deaf (18 organs in 700 cells, nothing to
+                                     # select on); too high and it is all ears (424 in
+                                     # 471) with no interneurons left to think with.
+        self.act_bias = 0.12         # below threshold: only strongly-driven cells
+                                     # become effectors, so a body has a few, not a sea
+        self.max_born_per_dev = 5    # an ABSOLUTE ceiling on births per development
+                                     # tick. The percentage alone compounds: at 5% over
+                                     # a 112-tick embryo a seed of 24 reached 2344 cells
+                                     # and the tick cost 7 ms. With a ceiling, growth is
+                                     # linear in developmental time and a body lands in
+                                     # the hundreds, which is the size that thinks fast
+                                     # enough to live a long life.
+        self.max_change_frac = 0.05  # of the body may be BORN in one dev tick...
+        self.die_ratio = 0.4         # ...and this fraction of that may die. Appearance
+                                     # is biased over disappearance on purpose: with
+                                     # equal budgets the sheet sat at its seed size
+                                     # forever, churning and never becoming anything.
+        self.grow_thresh = 0.25      # how loud a cell's GROW output must be to divide
+        self.die_thresh = 0.25       # ...and its DIE output to apoptose. Set where the
+                                     # natural spread of a fresh rule can actually
+                                     # REACH it: at 0.55 no cell ever died, so
+                                     # "structural plasticity" was growth only and the
+                                     # apoptosis half of it was dead code
+        self.organ_thresh = 0.30
+        self.divide_cost = 0.35      # RESOURCE spent by a division, taken from the cell
+        self.resource_spread = 1     # seepage passes per development tick
+        self.resource_mix = 0.25     # how much of a neighbour's supply seeps across.
+                                     # Kept LOW on purpose: at 3 passes x 0.5 the fresh
+                                     # supply was carried off the border and pooled in
+                                     # the interior — exactly where there is no room to
+                                     # divide — so the cells that could grow never had
+                                     # the means and the cells with the means could not
+                                     # grow. Supply must stay where the growing is.
+        self.resource_decay = 0.10   # what is not used is lost, so supply is a FLOW
+        self.resource_cap = 3.0
+        self.resource_gain = 0.55    # resource fed in at the BORDER each dev tick,
+                                     # scaled by how full the body is — so the tissue
+                                     # can only grow on what the agent has actually
+                                     # eaten, and the deep interior grows last
+        self.cell_cost = 0.000015    # energy per cell per world tick, charged to the
+                                     # AGENT. This is the counterweight to growth: a
+                                     # bigger brain has to earn its keep by eating more
         # within-life learning (see Phenotype.learn)
         self.plastic = True
         self.plastic_lr = 0.03
@@ -129,7 +198,9 @@ class Config:
 
 
 def _fresh_rule(in_dim, H, C, depth, rng, scale=0.5) -> list[dict]:
-    dims = [in_dim] + [H] * (depth - 1) + [C]
+    """The output layer is C + N_MORPH wide: the state delta AND what the cell wants to
+    do with itself, from one network and one perception."""
+    dims = [in_dim] + [H] * (depth - 1) + [C + N_MORPH]
     return [{"W": rng.normal(0.0, scale / math.sqrt(a), (b, a)), "b": np.zeros(b)}
             for a, b in zip(dims[:-1], dims[1:])]
 
@@ -143,7 +214,7 @@ class Genome:
 
     def __init__(self, n_in, mask, type_map, rules, P_in, P_out, b_out,
                  channels, hidden, subticks, in_mask, out_mask, organ_mod,
-                 P_horm=None):
+                 P_horm=None, organ_map=None):
         self.n_in = int(n_in)
         self.n_out = N_OUT
         self.mask = mask.astype(bool)
@@ -160,6 +231,12 @@ class Genome:
         # (N_HORMONE, C): the bloodstream's drive into every cell, organs or not
         self.P_horm = (np.zeros((N_HORMONE, self.C)) if P_horm is None
                        else np.asarray(P_horm, dtype=np.float64))
+        # ORGAN FATE: which sensory modality a cell that decides to become an organ
+        # takes on, chosen by WHICH CHEMICAL is strongest where it stands. That is the
+        # French-flag model — a concentration decides a fate — and it is what makes an
+        # "eye region" a thing that can form rather than a thing we place.
+        self.organ_map = (np.array([1, 7, 8], dtype=np.int64) if organ_map is None
+                          else np.asarray(organ_map, dtype=np.int64))
         self.subticks = int(subticks)
 
     @property
@@ -185,7 +262,7 @@ class Genome:
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.subticks, self.in_mask.copy(), self.out_mask.copy(),
-                      self.organ_mod.copy(), self.P_horm.copy())
+                      self.organ_mod.copy(), self.P_horm.copy(), self.organ_map.copy())
 
     # --- the numbers the HUD and the LLM read -------------------------------------
     def cells(self) -> int:
@@ -220,7 +297,8 @@ class Genome:
                 "rules": [[[L["W"].tolist(), L["b"].tolist()] for L in r]
                           for r in self.rules],
                 "P_in": self.P_in.tolist(), "P_out": self.P_out.tolist(),
-                "b_out": self.b_out.tolist(), "P_horm": self.P_horm.tolist()}
+                "b_out": self.b_out.tolist(), "P_horm": self.P_horm.tolist(),
+                "organ_map": self.organ_map.tolist()}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Genome":
@@ -231,7 +309,8 @@ class Genome:
                    int(d["C"]), int(d["H"]), int(d["subticks"]),
                    np.array(d["in_mask"], dtype=bool), np.array(d["out_mask"], dtype=bool),
                    np.array(d["organ_mod"], dtype=np.int64),
-                   np.array(d["P_horm"]) if "P_horm" in d else None)
+                   np.array(d["P_horm"]) if "P_horm" in d else None,
+                   np.array(d["organ_map"]) if "organ_map" in d else None)
 
 
 def _grow_blob(G: int, n_cells: int, rng) -> np.ndarray:
@@ -291,8 +370,12 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     shape has a job on the very first tick."""
     cfg = cfg or Config()
     G, C, H = cfg.grid, cfg.channels, cfg.hidden
-    mask = _grow_blob(G, cfg.start_cells, rng)
-    _punch_holes(mask, cfg.hole_frac, rng)
+    # With development ON this is a SEED, not a body: a couple of dozen cells that the
+    # tissue grows itself from. With it off it is the whole brain, as before.
+    n0 = cfg.seed_cells if cfg.develop else cfg.start_cells
+    mask = _grow_blob(G, n0, rng)
+    if not cfg.develop:
+        _punch_holes(mask, cfg.hole_frac, rng)
     type_map = np.zeros((G, G), dtype=np.int64)
     in_mask = np.zeros((G, G), dtype=bool)
     out_mask = np.zeros((G, G), dtype=bool)
@@ -319,9 +402,15 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     P_out = rng.normal(0.0, 0.5, (C, N_OUT))
     b_out = np.zeros(N_OUT)
     b_out[THRUST] += 0.5                                   # a nudge to get moving
+    for r in rules:                                        # the SEED PROGRAM's innate
+        r[-1]["b"][C + GROW] += cfg.grow_bias              # urges: grow, sense, act.
+        r[-1]["b"][C + BE_SENSE] += cfg.sense_bias         # Mutation edits these from
+        r[-1]["b"][C + BE_ACT] += cfg.act_bias             # the first generation on
     P_horm = rng.normal(0.0, 0.25, (N_HORMONE, C))
+    n_chem = max(1, int(min(cfg.chem_channels, C - 2)))
+    organ_map = rng.integers(1, cfg.organ_mods + 1, n_chem)
     return Genome(n_in, mask, type_map, rules, P_in, P_out, b_out, C, H,
-                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm)
+                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm, organ_map)
 
 
 # --- running a brain ----------------------------------------------------------------
@@ -345,7 +434,7 @@ if _NUMBA:
     def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
                   mod_ch, dW_last, elig_out, plastic, subticks,
                   chem0, chem1, chem_mix, chem_decay, chem_every, hgate,
-                  tick0):   # pragma: no cover
+                  tick0, morph):   # pragma: no cover
         """All `subticks` rounds as one kernel: scatter the alive rows into the padded
         buffer, gather each cell's 9-neighbour perception, push each TYPE's rows
         through its layer stack, then the residual tanh update with the hormone gate."""
@@ -360,7 +449,8 @@ if _NUMBA:
                     r = nbr[i, j]
                     for c in range(C):
                         perc[i, j * C + c] = padF[r, c]
-            delta = np.empty((n, C))
+            M = morph.shape[1]
+            delta = np.empty((n, C + M))
             li = 0
             for k in range(len(layer_cnt)):
                 rows = type_rows[k]
@@ -376,7 +466,7 @@ if _NUMBA:
                     else:
                         y = x @ Wts[last] + bs[last]
                     for ii in range(rows.size):
-                        for c in range(C):
+                        for c in range(C + M):
                             delta[rows[ii], c] = y[ii, c]
                 li += nl
             for i in range(n):
@@ -384,6 +474,8 @@ if _NUMBA:
                 gate *= hgate                              # the whole-sheet mode switch
                 for c in range(C):
                     st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + drive[i, c])
+                for m in range(M):                         # what the cell wants to DO
+                    morph[i, m] += delta[i, C + m]         # with itself, accumulated
             # CHEMISTRY: a slow pass in which the chem channels leak into their
             # neighbours and fade. This is the only layer with a spatial gradient.
             tick0 += 1
@@ -401,14 +493,19 @@ if _NUMBA:
         return st
 
 
-def build_listen(g: Genome, ys, xs, layout) -> np.ndarray:
+def build_listen(g: Genome, ys, xs, layout, in_mask=None, organ_mod=None) -> np.ndarray:
     """Row i = which sensor indices alive-cell i hears. MOD_ALL hears everything; a
     per-ray modality hears the ONE ray its COLUMN selects (retinotopy); a static
     modality hears its index block. Non-organs hear nothing. No organs at all -> all
-    cells hear all, so a brain is never struck deaf by mutation."""
+    cells hear all, so a brain is never struck deaf.
+
+    `in_mask`/`organ_mod` default to the genome's, but development passes the LIVING
+    ones — under morphogenesis the genome describes a seed, not a body."""
+    in_mask = g.in_mask if in_mask is None else in_mask
+    organ_mod = g.organ_mod if organ_mod is None else organ_mod
     n = len(ys)
     M = np.zeros((n, g.n_in))
-    organs = g.in_mask[ys, xs]
+    organs = in_mask[ys, xs]
     if not organs.any() or layout is None:
         M[organs if organs.any() else slice(None)] = 1.0
         return M
@@ -418,7 +515,7 @@ def build_listen(g: Genome, ys, xs, layout) -> np.ndarray:
     for i in range(n):
         if not organs[i]:
             continue
-        m = int(g.organ_mod[ys[i], xs[i]])
+        m = int(organ_mod[ys[i], xs[i]])
         if m in ray_mod:                                    # POSITION picks the ray
             r = int(round((int(xs[i]) - xmin) / span * (n_rays - 1)))
             idx = r * ray_ch + ray_mod[m]
@@ -447,20 +544,26 @@ class Phenotype:
         self._subtick = 0
         self.hormone = np.zeros(N_HORMONE)
         self.state = np.zeros((G, G, C))
-        ys, xs = np.nonzero(genome.mask)
-        self._ys, self._xs = ys, xs
+        # THE LIVING BODY. These start as copies of the genome's seed and are then
+        # changed by DEVELOPMENT. The genome itself is never touched during a life —
+        # that is what makes "only the genome crosses the boundary" true rather than
+        # aspirational, and what stops a phenotype quietly becoming the heredity.
+        self.mask = genome.mask.copy()
+        self.type_map = genome.type_map.copy()
+        self.in_mask = genome.in_mask.copy()
+        self.out_mask = genome.out_mask.copy()
+        self.organ_mod = genome.organ_mod.copy()
         self._padF = np.zeros(((G + 2) * (G + 2), C))
-        self._centre = (ys + 1) * (G + 2) + (xs + 1)
-        self._nbr = np.stack([(ys + 1 + dy) * (G + 2) + (xs + 1 + dx)
-                              for dy, dx in _OFFSETS], axis=1)
-        types = genome.type_map[ys, xs]
-        self._type_rows = [np.nonzero(types == k)[0] for k in range(genome.n_types)]
-        self._M = build_listen(genome, ys, xs, layout)
-        self._out_rows = np.nonzero(genome.out_mask[ys, xs])[0]
-        if len(self._out_rows) == 0:
-            self._out_rows = np.arange(len(ys))
+        # RESOURCE is metabolism, not signal, so it is NOT one of the cell's channels:
+        # an early version used a chemical channel and the rule simply flooded it —
+        # every cell wanted to divide and two had the means. A neuron does not write
+        # its own blood supply. Fed at the border, diffused, spent by division.
+        self.resource = np.zeros((G, G))
+        self.births = 0
+        self.deaths = 0
+        self.dev_ticks = 0
+        self.morph = np.zeros((1, N_MORPH))
         if _NUMBA:
-            self._nb_rows = _NbList(self._type_rows)
             Wts, bs = _NbList(), _NbList()
             for r in genome.rules:
                 for L in r:
@@ -468,13 +571,14 @@ class Phenotype:
                     bs.append(np.ascontiguousarray(L["b"]))
             self._nb_W, self._nb_b = Wts, bs
             self._nb_cnt = np.array([len(r) for r in genome.rules], dtype=np.int64)
+        self._reindex()
         # learning within one life
         self.dW = np.zeros((C, N_OUT))
         self._E = np.zeros((C, N_OUT))
         outs = [int(r[-1]["W"].shape[1]) for r in genome.rules]
-        self._dW_rule = [np.zeros((o, C)) for o in outs]
-        self._E_rule = [np.zeros((o, C)) for o in outs]
-        self._elig = [np.zeros((o, C)) for o in outs]
+        self._dW_rule = [np.zeros((o, C + N_MORPH)) for o in outs]
+        self._E_rule = [np.zeros((o, C + N_MORPH)) for o in outs]
+        self._elig = [np.zeros((o, C + N_MORPH)) for o in outs]
         if _NUMBA:
             self._nb_dW = _NbList(self._dW_rule)
             self._nb_elig = _NbList(self._elig)
@@ -483,6 +587,42 @@ class Phenotype:
         self.last_command = (0.0, 0.0, 0.0)
         self.record = False                # inspector only: keep every sub-tick frame
         self.trace: list = []
+
+    def _reindex(self) -> None:
+        """Rebuild everything that depends on WHICH cells are alive and where. Called
+        once at birth and once per development tick — O(alive), which is why growth is
+        rare: at one rebuild per world tick this would cost more than the thinking."""
+        G, C = self.genome.G, self.genome.C
+        ys, xs = np.nonzero(self.mask)
+        if len(ys) == 0:                                    # never let a body vanish
+            cy = G // 2
+            self.mask[cy, cy] = True
+            ys, xs = np.nonzero(self.mask)
+        self._ys, self._xs = ys, xs
+        self._centre = (ys + 1) * (G + 2) + (xs + 1)
+        self._nbr = np.stack([(ys + 1 + dy) * (G + 2) + (xs + 1 + dx)
+                              for dy, dx in _OFFSETS], axis=1)
+        types = self.type_map[ys, xs]
+        self._type_rows = [np.nonzero(types == k)[0]
+                           for k in range(self.genome.n_types)]
+        self._M = build_listen(self.genome, ys, xs, self.layout,
+                               self.in_mask, self.organ_mod)
+        self._out_rows = np.nonzero(self.out_mask[ys, xs])[0]
+        if len(self._out_rows) == 0:
+            self._out_rows = np.arange(len(ys))
+        self.morph = np.zeros((len(ys), N_MORPH))
+        if _NUMBA:
+            self._nb_rows = _NbList(self._type_rows)
+
+    def cells(self) -> int:
+        return int(self.mask.sum())
+
+    def organs(self) -> tuple[int, int]:
+        return (int((self.in_mask & self.mask).sum()),
+                int((self.out_mask & self.mask).sum()))
+
+    def types_used(self) -> int:
+        return int(len(np.unique(self.type_map[self.mask]))) if self.mask.any() else 0
 
     # --- the tick ------------------------------------------------------------------
     def act(self, sensors: np.ndarray, hormone=None) -> tuple[float, float, float]:
@@ -502,7 +642,8 @@ class Phenotype:
         n = len(self._ys)
         st = self.state[self._ys, self._xs]
         rp = 1 if self.cfg.rule_plastic else 0
-        if rp:
+        self.morph[:] = 0.0                    # fresh per thought: what the tissue
+        if rp:                                 # wants NOW, not what it once wanted
             for e in self._elig:
                 e[:] = 0.0
         if self.record:
@@ -518,7 +659,7 @@ class Phenotype:
                                1 if self.record else g.subticks,
                                self._chem0, self._chem1, self.cfg.chem_mix,
                                self.cfg.chem_decay, max(1, self.cfg.chem_every),
-                               hgate, self._subtick)
+                               hgate, self._subtick, self.morph)
                 self._subtick += 1 if self.record else g.subticks
                 if self.record:
                     self._snap(st)
@@ -526,12 +667,14 @@ class Phenotype:
             for _ in range(g.subticks):
                 self._padF[self._centre] = st
                 perc = self._padF[self._nbr].reshape(n, 9 * g.C)
-                delta = np.empty_like(st)
+                delta = np.empty((n, g.C + N_MORPH))
                 for k, rows in enumerate(self._type_rows):
                     if len(rows):
                         delta[rows] = (_apply_rule_plastic(perc[rows], g.rules[k],
                                                            self._dW_rule[k], self._elig[k])
                                        if rp else _apply_rule(perc[rows], g.rules[k]))
+                self.morph += delta[:, g.C:]                # the morphogenetic tail
+                delta = delta[:, :g.C]
                 gate = np.ones((n, 1))
                 if self._mod_ch >= 0:
                     gate = (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
@@ -552,7 +695,8 @@ class Phenotype:
                 nrm = g.subticks * max(1, len(self._type_rows[k]))
                 self._E_rule[k] *= self.cfg.plastic_elig
                 self._E_rule[k] += self._elig[k] / nrm
-        self.state[self._ys, self._xs] = st
+        self.morph /= max(1, g.subticks)       # a mean, so think-time does not decide
+        self.state[self._ys, self._xs] = st    # how loudly a cell asks to divide
         pooled = st[self._out_rows].mean(axis=0)
         eff = g.P_out + self.dW if self.cfg.plastic else g.P_out
         logits = pooled @ eff + g.b_out
@@ -568,6 +712,159 @@ class Phenotype:
             self._E[:, INTERACT] += pooled * (1.0 if interact else -1.0)
         self.last_command = (thrust, turn, interact)
         return thrust, turn, interact
+
+    # --- development ------------------------------------------------------------------
+    def develop(self, energy_frac: float = 1.0, embryo: bool = False) -> dict:
+        """A DEVELOPMENT TICK: read what each cell has been asking for and let the
+        tissue act on it. This is where the genome stops being a body and starts being
+        a program — nothing here places a cell, it only decides whether a cell's own
+        request is granted.
+
+        Three things do the deciding, and all three are needed:
+
+        RESOURCE, a chemical, fed in at the BORDER in proportion to how full the body
+        is and diffusing inward by the ordinary chemistry. A division spends it. So
+        growth is paid for out of what the agent actually ate, and the deep interior —
+        farthest from the supply — grows last. This is what gives the sheet a shape
+        instead of a disc.
+
+        POSITION, read from the same chemistry. A cell that decides to become a sensory
+        organ takes the modality its strongest local chemical maps to (`organ_map`).
+        Concentration decides fate: the French-flag model, and the reason an eye region
+        is something that can FORM rather than something we place.
+
+        ORDER, fixed and row-major, so a run reproduces exactly.
+
+        Returns what happened, for the HUD and the journal."""
+        g, cfg = self.genome, self.cfg
+        if not cfg.develop:
+            return {"born": 0, "died": 0}
+        ys, xs, morph = self._ys, self._xs, self.morph
+        chem0, chem1 = self._chem0, self._chem1
+        n_chem = max(0, chem1 - chem0)
+        self._feed_resource(energy_frac)
+        born = died = 0
+        alive = int(self.mask.sum())
+        # RATE LIMIT. At most this many cells may be born or die in one development
+        # tick, strongest request first. Without it the sheet is not a body but a
+        # boiling one: an early run turned over 13611 births and 11572 deaths in a
+        # single life and settled nothing. Tissue changes slowly — that is not a
+        # concession to stability, it is what makes a shape mean anything at all.
+        budget = max(1, min(int(alive * cfg.max_change_frac), cfg.max_born_per_dev))
+        die_budget = int(budget * cfg.die_ratio)
+        order_die = [i for i in range(len(ys)) if morph[i, DIE] > cfg.die_thresh]
+        order_die.sort(key=lambda i: (-float(morph[i, DIE]), i))
+        for i in order_die[:die_budget]:
+            if alive <= 4:
+                break
+            y, x = int(ys[i]), int(xs[i])
+            self.mask[y, x] = False
+            self.in_mask[y, x] = self.out_mask[y, x] = False
+            self.organ_mod[y, x] = 0
+            self.state[y, x, :] = 0.0
+            alive -= 1
+            died += 1
+        # FEASIBILITY FIRST, then rank. Ranking by urge alone and checking afterwards
+        # is why an early version grew nothing at all: the loudest cell was usually one
+        # buried in the middle with nowhere to put a daughter, it burned the whole
+        # budget failing, and the sheet never moved.
+        grow_plan = {}
+        for i in range(len(ys)):
+            y, x = int(ys[i]), int(xs[i])
+            if not self.mask[y, x] or morph[i, GROW] <= cfg.grow_thresh:
+                continue
+            if self.resource[y, x] < cfg.divide_cost:
+                continue
+            spot = self._free_spot(y, x, float(morph[i, DIR_Y]), float(morph[i, DIR_X]))
+            if spot is not None:
+                grow_plan[i] = spot
+        ranked = sorted(grow_plan, key=lambda i: (-float(morph[i, GROW]), i))[:budget]
+        grow_allow = set(ranked)
+        for i in range(len(ys)):
+            y, x = int(ys[i]), int(xs[i])
+            if not self.mask[y, x]:                       # died a moment ago
+                continue
+            want = morph[i]
+            # ORGAN FATE, re-read every development tick, so a cell can also stop being
+            # an organ when the chemistry around it changes
+            if want[BE_SENSE] > cfg.organ_thresh and not self.out_mask[y, x]:
+                self.in_mask[y, x] = True
+                if n_chem:
+                    j = int(np.argmax(np.abs(self.state[y, x, chem0:chem1])))
+                    self.organ_mod[y, x] = int(g.organ_map[j % len(g.organ_map)])
+            elif want[BE_SENSE] < -cfg.organ_thresh:
+                self.in_mask[y, x] = False
+                self.organ_mod[y, x] = 0
+            if want[BE_ACT] > cfg.organ_thresh and not self.in_mask[y, x]:
+                self.out_mask[y, x] = True
+            elif want[BE_ACT] < -cfg.organ_thresh:
+                self.out_mask[y, x] = False
+            # DIVISION, paid for in resource, rate-limited, bounded by the lattice
+            if i not in grow_allow or alive >= cfg.max_cells:
+                continue
+            spot = self._free_spot(y, x, float(want[DIR_Y]), float(want[DIR_X]))
+            if spot is None or self.resource[y, x] < cfg.divide_cost:
+                continue                                   # the plan went stale
+            ny, nx = spot
+            self.mask[ny, nx] = True
+            self.type_map[ny, nx] = self.type_map[y, x]     # a daughter of its mother
+            self.in_mask[ny, nx] = self.out_mask[ny, nx] = False
+            self.organ_mod[ny, nx] = 0
+            # the daughter inherits HALF the mother's state. That is also what makes
+            # MIGRATION free: divide toward, then apoptose behind, and the cell has
+            # moved with what it was holding.
+            self.state[ny, nx, :] = self.state[y, x, :] * 0.5
+            self.state[y, x, :] *= 0.5
+            self.resource[y, x] -= cfg.divide_cost
+            self.resource[ny, nx] = self.resource[y, x] * 0.5
+            self.resource[y, x] *= 0.5
+            alive += 1
+            born += 1
+        if born or died:
+            self._reindex()
+        self.births += born
+        self.deaths += died
+        self.dev_ticks += 1
+        return {"born": born, "died": died, "cells": alive, "embryo": embryo}
+
+    def _free_spot(self, y: int, x: int, wy: float, wx: float):
+        """Where a daughter can go: the four neighbours in the order the cell ASKED
+        for, first free one wins. A strict single direction meant a cell that wanted
+        to grow into an occupied neighbour simply did not divide, which made the whole
+        interior sterile; a preference with fallbacks keeps the request meaningful
+        while letting a crowded cell still find room."""
+        G = self.genome.G
+        dirs = sorted(((-1, 0), (1, 0), (0, -1), (0, 1)),
+                      key=lambda d: (-(d[0] * wy + d[1] * wx), d))
+        for dy, dx in dirs:
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < G and 0 <= nx < G and not self.mask[ny, nx]:
+                return ny, nx
+        return None
+
+    def _feed_resource(self, energy_frac: float) -> None:
+        """Supply reaches the tissue from OUTSIDE — cells with a free neighbour take it
+        in, in proportion to how full the body is — and then seeps inward and decays.
+        So the deep interior is always the last to be fed and the last to grow, which
+        is what stops a sheet from being a disc and gives development a geometry."""
+        cfg = self.cfg
+        ys, xs = self._ys, self._xs
+        G = self.genome.G
+        for i in range(len(ys)):
+            y, x = int(ys[i]), int(xs[i])
+            if any(not self.mask[y + dy, x + dx]
+                   for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+                   if 0 <= y + dy < G and 0 <= x + dx < G):
+                self.resource[y, x] += cfg.resource_gain * max(0.0, energy_frac)
+        for _ in range(cfg.resource_spread):               # seep inward
+            src = self.resource
+            acc = np.zeros(len(ys))
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                acc += src[np.clip(ys + dy, 0, G - 1), np.clip(xs + dx, 0, G - 1)]                     * self.mask[np.clip(ys + dy, 0, G - 1), np.clip(xs + dx, 0, G - 1)]
+            mix = cfg.resource_mix
+            self.resource[ys, xs] = (src[ys, xs] * (1 - mix) + acc / 4.0 * mix)
+        self.resource[ys, xs] *= (1.0 - cfg.resource_decay)
+        np.clip(self.resource, 0.0, cfg.resource_cap, out=self.resource)
 
     def _snap(self, st) -> None:
         full = np.zeros_like(self.state)
@@ -686,6 +983,9 @@ def mutate(genome, rng, cfg=None):
     _jitter(g.P_out, rng, cfg.weight_mut_prob, cfg.weight_mut)
     _jitter(g.b_out, rng, cfg.weight_mut_prob, cfg.weight_mut)
     _jitter(g.P_horm, rng, cfg.weight_mut_prob, cfg.weight_mut)
+    if rng.random() < cfg.organ_mod_prob:                   # re-read one chemical as a
+        j = int(rng.integers(len(g.organ_map)))             # different organ FATE
+        g.organ_map[j] = int(rng.integers(1, cfg.organ_mods + 1))
 
     if rng.random() < cfg.subtick_mut_prob:                 # heritable THINK TIME
         g.subticks = int(min(cfg.subticks_max, max(cfg.subticks_min,

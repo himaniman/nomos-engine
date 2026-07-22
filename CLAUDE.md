@@ -394,7 +394,17 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
     `corner` 1.00 vs the reflex policy's 0.23. NOT true: the mean brain is 0.42 vs the
     policy's 0.66, spread 0.18-0.68 on the weight seed alone, and real-world meals are
     still 1-3 per 2500 ticks vs the reflex's 8-15.
-  - Open: whether learning contributes now that reflexes exist; the world vs the ladder.
+  - RESULT 2 (the argument confirmed by its own mechanism, n=8, `--matrix` and
+    `--two-lives`): learning delta is **+0.14 with the arcs and -0.02 without**, against
+    +0.02 before reflexes existed. The line that explains it — meals per life, born
+    knowing vs born blank: `3 1 3 3 1 1 1 1` vs `3 0 0 0 0 0 0 0`. **A brain born blank
+    does not eat**, so there is no reward, so there is nothing to learn from. The
+    reflexes did not teach the tissue anything; they made the world teachable. What the
+    tissue learns is a MODULATION of its reflex — it pays only when the arc is there.
+  - Open: the LINEAGE and the LLM lab have never been run on a brain that could be
+    taught (lab.py's 8 generations optimised body size while learning ran on a dead
+    signal). Re-run both. Also: the ladder has run ahead of the world — 1-3 meals per
+    2500 ticks vs the reflex policy's 8-15.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

@@ -2123,3 +2123,86 @@ circler draws a closed loop.
 
 16 tests, suite 423.
 
+
+## 2026-07-24 (last) â€” learning contributes now, and it needed the reflexes to
+
+The question left open by the previous entry, answered at n = 8. Two experiments,
+because the first one turned out to be asking something slightly different from the
+claim, and noticing that was the useful part.
+
+**The claim, restated so it can fail.** Reflexes were not built to raise a score. They
+were built because learning contributed nothing while *what the agent does and whether
+it eats were uncorrelated* â€” it blundered into food, so what got reinforced was whatever
+it happened to be doing. If that diagnosis is right, then adding innate arcs should make
+LEARNING better, not merely make the agent better. If learning's contribution is
+unchanged, the arcs bought foraging and the correlation story was wrong.
+
+**First experiment (`--matrix`): two knobs, four arms.** One life per seed, and the
+learning delta measured twice â€” once with the arcs intact at exam time, once with them
+cut.
+
+```
+                              near  open  side  behind  corner  maze  patience | mean
+learning delta WITH arcs     +0.10 +0.24 +0.14  +0.25   +0.15  +0.02   +0.05   | +0.14
+learning delta WITHOUT arcs  -0.09 -0.15 +0.03  +0.19   -0.02  -0.02   +0.02   | -0.01
+```
+
+Against +0.02 before the reflexes existed. Positive on all seven probes with the arcs,
+and around zero with a wandering sign without them. So what the tissue learned is a
+MODULATION OF ITS REFLEX: it pays only when the reflex is there to be modulated, which
+is a good deal more interesting than a general improvement, and it is what you would
+expect of tissue that spent its life working with an arc.
+
+**But that is the exam-time question, not the life-time one**, and the claim was about
+the life. Cutting the arcs at exam time asks "is this learned delta useful with or
+without reflex support NOW". The argument is that arcs make the meals a life collects
+point at something, so learning has a consistent thing to reinforce â€” which can only be
+tested by living twice.
+
+**Second experiment (`--two-lives`).** Same weight seed, two whole lives: once with its
+innate arcs, once with `reflex_gain = 0` â€” a genome born knowing nothing â€” each life's
+learning delta measured by ablation inside its own world.
+
+```
+                              near  open  side  behind  corner  maze  patience | mean
+LIVED, born knowing           0.83  0.56  0.44   0.53    0.33   0.09    0.19   | 0.42
+LIVED, born blank             0.36  0.10  0.16   0.30    0.08   0.05    0.13   | 0.17
+learning delta, born knowing +0.10 +0.24 +0.14  +0.25   +0.15  +0.02   +0.05   | +0.14
+learning delta, born blank   -0.16  0.00 +0.03  +0.03   -0.03  -0.01   -0.02   | -0.02
+```
+
+And the single line that explains the whole table â€” meals per life, all eight brains:
+
+```
+brain          0    1    2    3    4    5    6    7
+born knowing   3    1    3    3    1    1    1    1
+born blank     3    0    0    0    0    0    0    0
+```
+
+**A brain born blank does not eat.** Seven of eight took zero meals in 2500 ticks, so
+there was no reward, so there was nothing to learn from, so the delta is -0.02 â€” the
+same "learning is not inert but not useful" that this whole thread started from. A brain
+born knowing eats, and its learning contributes +0.14.
+
+That is the argument confirmed end to end, and by the mechanism it named rather than by
+the outcome it hoped for. The reflexes did not teach the tissue anything. They made the
+world teachable.
+
+Note brain 0, the honest exception: it ate three meals either way and is the one brain
+whose learning delta barely differs between the arms. One data point, but it points the
+right way â€” where the meals arrived anyway, the arcs mattered less.
+
+**What is still not true.** The mean brain lives at 0.42 against the reflex policy's
+0.66. Real-world meals are 1-3 per 2500 ticks against the policy's 8-15, so scoring on
+the ladder is still running ahead of living in the world, and the probes are small
+arenas while the world is not. `maze` remains noise. And "learning contributes +0.14"
+is a claim about a profile mean at n = 8 with per-brain spread from -0.02 to +0.35;
+it is a direction, not a number to quote.
+
+The next thing worth doing is now obvious and was not before: put the LINEAGE and the
+LLM lab back on top of this. Both were measuring a brain that could not be taught â€”
+`cortex/lab.py`'s eight generations optimised body size while learning ran on a dead
+signal â€” and neither has been run since any of it worked.
+
+6 tests, suite 429.
+

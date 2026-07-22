@@ -244,6 +244,67 @@ def matrix(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
     return {"rows": rows, "with_arcs": with_arcs, "without_arcs": without}
 
 
+def two_lives(seeds=(0, 1, 2), ticks: int = 2500, probe_ticks: int = 300,
+              world: str = "real", quiet: bool = False) -> dict:
+    """Does having reflexes make a life WORTH LEARNING FROM?
+
+    This is the reflexes' own argument put properly, and it is not what `matrix` asks.
+    `matrix` cuts the arcs at EXAM time, so it measures whether a learned delta is
+    useful with or without reflex support when the exam runs. The claim is about the
+    LIFE: arcs make eating a consequence of behaving, so the meals a life collects
+    actually point at something, and learning has a consistent thing to reinforce. That
+    can only be tested by living twice.
+
+    So: the same weight seed lives once with its innate arcs and once with
+    `reflex_gain = 0` — a genome born knowing nothing — and each life's LEARNING DELTA
+    is measured by ablation inside its own world. If the arcs are doing what they were
+    built for, the delta is larger for the life that had them."""
+    wcfg = cradle_config() if world == "cradle" else WorldConfig()
+    rows = []
+    for s in seeds:
+        row = {"seed": s}
+        for arc_on in (True, False):
+            g = fresh_genome(seed=s)
+            if not arc_on:
+                from cortex import reflex
+                reflex.silence(g)
+                g.program.update({"reflex_gain": 0.0})
+            w = World(seed=0, cfg=wcfg)
+            mind = Mind(g)
+            mind.attach(w)
+            while w.agent.alive and w.tick < ticks:
+                mind.step(w)
+            kept = probes.run_suite(mind, ticks=probe_ticks)["profile"]
+            wiped = probes.run_suite(mind, ticks=probe_ticks, unlearn=True)["profile"]
+            key = "born_knowing" if arc_on else "born_blank"
+            row[key] = {"meals": int(sum(w.agent.ate)), "kept": kept, "wiped": wiped,
+                        "delta": {k: kept[k] - wiped[k] for k in kept}}
+        rows.append(row)
+        if not quiet:
+            a, b = row["born_knowing"], row["born_blank"]
+            print(f"\n  brain {s}:  with arcs {a['meals']} meals, "
+                  f"without {b['meals']} meals")
+            print(_row("  born knowing: lived", a["kept"]))
+            print(_row("  -> learning delta", a["delta"]))
+            print(_row("  born blank:   lived", b["kept"]))
+            print(_row("  -> learning delta", b["delta"]))
+            sys.stdout.flush()
+    keys = list(rows[0]["born_knowing"]["kept"])
+    out = {k: {q: float(np.mean([r[k][q][j] for r in rows])) for j in keys}
+           for k in ("born_knowing", "born_blank") for q in ("delta",)}
+    means = {k: {j: float(np.mean([r[k]["delta"][j] for r in rows])) for j in keys}
+             for k in ("born_knowing", "born_blank")}
+    lived = {k: {j: float(np.mean([r[k]["kept"][j] for r in rows])) for j in keys}
+             for k in ("born_knowing", "born_blank")}
+    if not quiet:
+        print()
+        print(_row(f"LIVED  born knowing (n={len(rows)})", lived["born_knowing"]))
+        print(_row(f"LIVED  born blank   (n={len(rows)})", lived["born_blank"]))
+        print(_row("learning delta, born knowing", means["born_knowing"]))
+        print(_row("learning delta, born blank", means["born_blank"]))
+    return {"rows": rows, "delta": means, "lived": lived}
+
+
 def _innate_count(mind) -> int:
     from cortex import reflex
     return reflex.count(mind.phenotype)
@@ -305,8 +366,19 @@ def main(argv=None) -> int:
     p.add_argument("--matrix", action="store_true",
                    help="learning x reflex, four arms: does learning contribute NOW, "
                         "and does it need the innate arcs to?")
+    p.add_argument("--two-lives", action="store_true",
+                   help="the reflexes' own argument, put properly: the same weight seed "
+                        "lives once born knowing and once born blank, and each life's "
+                        "learning delta is measured inside its own world")
     args = p.parse_args(argv)
     seeds = [int(s) for s in args.seeds.split(",")]
+    if args.two_lives:
+        print("  " + " " * 30 + "".join(f"{k[:7]:>8}" for k in
+                                        ("near", "open", "side", "behind", "corner",
+                                         "maze", "patience")) + f"{'mean':>9}")
+        two_lives(seeds=seeds, ticks=args.ticks, probe_ticks=args.probe_ticks,
+                  world=args.world)
+        return 0
     if args.matrix:
         print("  " + " " * 30 + "".join(f"{k[:7]:>8}" for k in
                                         ("near", "open", "side", "behind", "corner",

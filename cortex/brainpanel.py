@@ -37,7 +37,7 @@ MOD_COL = ((235, 235, 235), (250, 90, 90), (250, 150, 80), (245, 215, 90),
            (235, 110, 200), (120, 220, 200), (255, 180, 140))
 MOD_NAME = ("all", "hue+", "hue-", "sat", "light", "near", "solid",
             "smell", "touch", "inner")
-VIEWS = ("type", "activity", "hormone", "organs")
+VIEWS = ("type", "activity", "chemistry", "hormone", "organs")
 
 
 def _heat(W) -> np.ndarray:
@@ -96,6 +96,7 @@ class BrainPanel:
         y += 4
 
         y = self._draw_sheet(surf, x, y, pw)
+        y = self._draw_types(surf, x, y, pw)
         y = self._draw_command(surf, x, y, pw)
         y = self._draw_weights(surf, x, y, pw)
         line(f"view {VIEWS[self.view]}   V cycle   T watch it think"
@@ -116,6 +117,7 @@ class BrainPanel:
         img = np.zeros((h, w, 3))
         state = p.trace[self.trace_i] if (self.trace_on and p.trace) else p.state
         mode = VIEWS[self.view]
+        self._chem = g.channel_map(p.cfg)["chemical"]
         for yy, xx in zip(ys, xs):
             i, j = yy - y0, xx - x0
             cell = state[yy, xx]
@@ -125,6 +127,13 @@ class BrainPanel:
             elif mode == "activity":
                 a = min(1.0, float(np.abs(cell).mean()) * 2.5)
                 img[i, j] = np.array((28, 38, 58)) * (1 - a) + np.array((250, 240, 160)) * a
+            elif mode == "chemistry":             # the diffusing layer: three
+                c0, c1 = self._chem                # channels as RGB, so a gradient
+                ch = cell[c0:c1]                   # reads as a colour ramp. Scaled to
+                img[i, j] = [abs(float(ch[k])) if k < len(ch) else 0.0   # the FRAME's
+                             for k in range(3)]    # own range, or a saturated sheet is
+                                                   # a white rectangle telling you
+                                                   # nothing about where the plume is
             elif mode == "hormone":               # the channel that gates every rule
                 hv = float(np.tanh(cell[-1]))
                 img[i, j] = (np.array((250, 120, 90)) * max(0.0, hv)
@@ -137,6 +146,8 @@ class BrainPanel:
                     img[i, j] = (255, 255, 255)
                 else:
                     img[i, j] = (52, 54, 66)
+        if mode == "chemistry":                   # normalise the frame, then paint
+            img *= 255.0 / max(1e-6, float(img.max()))
         scale = max(1, min(pw // max(1, w), 240 // max(1, h)))
         sheet = pygame.surfarray.make_surface(
             np.transpose(img.clip(0, 255).astype(np.uint8), (1, 0, 2)))
@@ -167,6 +178,52 @@ class BrainPanel:
                     cx, y = x, y + 12
             y += 14
         return y + 2
+
+    # --- what kinds of cell there are ----------------------------------------------------
+    def _draw_types(self, surf, x, y, pw) -> int:
+        """One row per CELL TYPE — the different little perceptrons the tissue has
+        differentiated into. Beyond count and size, each row says what the type is
+        LIKE, read straight off its rule:
+
+          self   how much of its input weight is on its OWN state rather than the
+                 neighbours. A type that mostly listens to itself is a MEMORY cell —
+                 it holds rather than relays.
+          keep   how strongly its output feeds its own channels back. High keep with
+                 high self is a latch; low both is a reflex relay.
+
+        These are descriptions, not labels: nothing forces a memory type to exist, and
+        the point of showing the numbers is to see whether one appears."""
+        g, p = self.app.mind.genome, self.app.mind.phenotype
+        surf.blit(self.app.small.render(
+            "cell types   (self = listens to itself, keep = feeds itself back)",
+            True, DIM), (x, y))
+        y += 13
+        counts = np.bincount(g.type_map[g.mask], minlength=g.n_types)
+        C = g.C
+        for k, rule in enumerate(g.rules):
+            W0 = np.asarray(rule[0]["W"], dtype=np.float64)     # (H, 9C)
+            mass = np.abs(W0).sum()
+            self_mass = np.abs(W0[:, 4 * C:5 * C]).sum()        # slot 4 = the centre
+            selfness = float(self_mass / max(1e-9, mass) * 9.0)  # 1.0 = its fair share
+            # KEEP: linearise the loop own-state -> hidden -> own-output and compare the
+            # diagonal (channel c drives channel c) against the rest (channels mix).
+            # Above 1 the type PRESERVES what it holds; below 1 it transforms it.
+            Wl = np.asarray(rule[-1]["W"], dtype=np.float64)     # (C, H) after the stack
+            if Wl.shape[1] == W0.shape[0]:
+                A = np.abs(Wl @ W0[:, 4 * C:5 * C])             # (C, C)
+                d = float(np.mean(np.diag(A)))
+                off = float((A.sum() - np.trace(A)) / max(1, A.size - A.shape[0]))
+                keep = d / max(1e-9, off)
+            else:
+                keep = float("nan")
+            pygame.draw.rect(surf, TYPE_COL[k % len(TYPE_COL)],
+                             pygame.Rect(x, y + 1, 8, 8))
+            surf.blit(self.app.small.render(
+                f"{counts[k] if k < len(counts) else 0:>4} cells   d{len(rule)} "
+                f"w{int(rule[0]['W'].shape[0]):<3} self {selfness:4.2f}  keep {keep:5.2f}",
+                True, FG), (x + 12, y))
+            y += 12
+        return y + 4
 
     # --- what it is commanding ---------------------------------------------------------
     def _draw_command(self, surf, x, y, pw) -> int:

@@ -1486,3 +1486,67 @@ forage is the next arc (and per the design note, the levers are development, the
 signal layers, and the LLM writing the growth rule rather than rng nudging it).
 
 Suite 296 green.
+
+## 2026-07-22 (evening) — cortex: morphology, three signal layers, and an A/B that says no
+
+The user played, confirmed the world is playable from the SENSE PANEL ALONE (the
+completeness test passes), and put a human line in the table:
+
+```
+who       runs   ticks  meals  gained  cells   diet
+reflex       8   15038   18.5   286.5   2410   berr46 frui78 mush12 nigh12
+human        1   17276    9.0   106.0    930   berr5 frui2 mush1 nigh1
+random       8    7035    3.4    71.8   1580   berr7 frui15 mush5
+```
+
+Worth staring at: the twenty-line reflex FEEDS BETTER than the human (18.5 meals to
+9.0) while the human lives slightly longer on a third of the walking. Different
+strategies, not different skill — and both are now on the record for the brain to be
+read against.
+
+**Morphology: the square is gone.** The seed brain was a rectangle with organs on its
+perimeter, which is the worst possible starting shape — a rectangle has no morphology
+to select on, and its organs inherit its symmetry. Now the seed is a blob GROWN by
+accretion from one cell (every seed a different body), with interior LACUNAE punched
+through it so signal has something to route around, and organs placed
+morphologically: only some BORDER cells become senses (the rest are skin) and
+effectors sit in DEEP tissue, so a command is read from cells no sense touches
+directly. 340 cells, filling ~54% of its bounding box.
+
+**Three signal layers, as designed.** ELECTRIC is the 3x3 neighbourhood every
+sub-tick. CHEMICAL is three tail channels that diffuse into their neighbours and
+fade — the only carrier with a spatial GRADIENT, which is what a growing tissue will
+later read its position from and what an axon would grow along. HORMONAL is a global
+vector from the body (energy, poison, last reward) that reaches every cell whether or
+not it is an organ — a bloodstream, not a wire — and multiplies every rule's gain, so
+a starving brain is physically not the same computer as a fed one. Each is separately
+switchable, because a layer you cannot remove is a layer you can never justify.
+
+**The HUD gained the cell-type readout the user asked for**, and it says more than
+"there are five types": per type, cell count, depth, width, and two numbers read
+straight off its rule — `self` (how much of its input weight is on its OWN state
+rather than its neighbours) and `keep` (linearise own-state -> hidden -> own-output
+and compare the diagonal against the mixing). Above 1 on both is a type that HOLDS
+what it has: a memory cell. These are descriptions, not labels — nothing forces such
+a type to exist, and the point of the numbers is to see whether one appears. Plus a
+`chemistry` view (three channels as RGB, normalised per frame) so plumes are visible.
+
+**And the A/B, reported as it came out.** Five generations, two seeds, 5000-tick
+lives, all three layers versus electric only:
+
+```
+all three layers   fitness 26.0   meals 0.5   ticks 5000   H 1.17
+electric only      fitness 43.0   meals 1.5   ticks 5000   H 0.94
+```
+
+The control arm won. This is NOT evidence that the layers hurt — 0.5 meals against
+1.5 is one meal against three, from one brain seed and five random mutations, which
+is noise wearing a number's clothes. What it IS is evidence that **the experiment is
+underpowered and the layers are not yet paying for themselves**, and it goes in the
+journal now, before the temptation to re-run it until it agrees. The layers were
+argued for from biology and from what MORPHOGENESIS will need (a gradient to read
+position from); that argument is still standing and still unpaid. Settling it needs
+the probe suite from the design note — a skill profile per life instead of one noisy
+number — and more replicates than a laptop evening.
+
+Suite 304 green.

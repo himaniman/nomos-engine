@@ -58,12 +58,29 @@ class Mind:
             self.attach(w)
         if w.tick % self.think_every == 0:
             self.sensors = np.asarray(_sense(w, self.field))
-            self.command = self.phenotype.act(self.sensors)
+            self.command = self.phenotype.act(self.sensors, hormone=self.hormone(w))
             self.thoughts += 1
         before = w.agent.energy
         w.step(*self.command)
         self.last_reward = (w.agent.energy - before) / self.reward_scale
         self.phenotype.learn(self.last_reward)
+
+
+    def hormone(self, w: World) -> np.ndarray:
+        """What the BODY broadcasts to the whole sheet: how full it is, how poisoned,
+        and how the last moments went. Unlike the senses this reaches every cell
+        whether or not it is an organ — it is a bloodstream, not a wire — and its
+        first component also swings every rule's gain, so a starving brain is
+        physically not the same computer as a fed one.
+
+        Note this is NOT new information: hunger is already in interoception. The
+        difference is that a sense arrives at ONE organ and has to be carried, while a
+        hormone arrives everywhere at once and changes how everything computes. That
+        distinction is the whole point of having the layer."""
+        a = w.agent
+        return np.array([2.0 * a.energy / w.cfg.max_energy - 1.0,   # fed <-> starving
+                         min(1.0, a.poison / 30.0),
+                         max(-1.0, min(1.0, self.last_reward))])
 
 
 def _sense(w: World, field: ScentField):

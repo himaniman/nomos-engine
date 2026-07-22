@@ -28,18 +28,42 @@ def _pheno(g, cfg=None):
 
 # --- the seed brain -----------------------------------------------------------------
 
-def test_the_seed_is_wired_as_an_organism():
-    """Sense at the edge, act from the core: so signal must cross the tissue, and the
-    shape is doing a job on the very first tick rather than after some mutation."""
+def _border(mask, y, x):
+    G = mask.shape[0]
+    return any(not (0 <= y + dy < G and 0 <= x + dx < G and mask[y + dy, x + dx])
+               for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)))
+
+
+def test_the_seed_is_a_grown_shape_not_a_rectangle():
+    """A rectangle has no morphology to select on, and its organs would inherit its
+    symmetry. The seed is a blob grown by accretion, with lacunae punched through it."""
     g = _genome()
     ys, xs = np.nonzero(g.mask)
-    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
+    h = int(ys.max() - ys.min() + 1)
+    w = int(xs.max() - xs.min() + 1)
+    fill = g.cells() / (h * w)
+    assert fill < 0.85, f"the seed fills {fill:.0%} of its box — that is a rectangle"
+    holes = [(y, x) for y in range(int(ys.min()), int(ys.max()) + 1)
+             for x in range(int(xs.min()), int(xs.max()) + 1)
+             if not g.mask[y, x] and not _border(g.mask, y, x)]
+    assert holes, "no interior lacunae: signal has nothing to route around"
+    a = _genome(seed=1)
+    b = _genome(seed=2)
+    assert not np.array_equal(a.mask, b.mask), "every seed should grow a different body"
+
+
+def test_organs_are_placed_morphologically():
+    """Senses on the BORDER, commands read from DEEP tissue — so a signal has to cross
+    the sheet — and only SOME border cells are organs; the rest are skin."""
+    g = _genome()
     sens, eff = g.organs()
-    assert sens > 0 and eff == 1
-    for y, x in zip(*np.nonzero(g.in_mask & g.mask)):
-        assert y in (y0, y1) or x in (x0, x1), "a sensory organ off the perimeter"
-    ey, ex = np.argwhere(g.out_mask & g.mask)[0]
-    assert (y0 < ey < y1) and (x0 < ex < x1), "the effector should sit inside"
+    assert sens > 0 and eff > 0
+    border = [(int(y), int(x)) for y, x in np.argwhere(g.mask) if _border(g.mask, y, x)]
+    for y, x in np.argwhere(g.in_mask & g.mask):
+        assert _border(g.mask, y, x), "a sensory organ buried in the tissue"
+    for y, x in np.argwhere(g.out_mask & g.mask):
+        assert not _border(g.mask, y, x), "an effector exposed on the border"
+    assert sens < len(border), "every border cell became an organ — no skin at all"
 
 
 def test_the_lattice_is_wide_enough_for_the_eye():
@@ -66,8 +90,9 @@ def test_an_organs_column_picks_which_ray_it_hears():
     ys, xs = np.nonzero(g.mask)
     g.organ_mod[:] = 0
     g.in_mask[:] = False
-    left = (int(ys.min()), int(xs.min()))
-    right = (int(ys.min()), int(xs.max()))
+    order = np.argsort(xs)                              # real cells, leftmost/rightmost
+    left = (int(ys[order[0]]), int(xs[order[0]]))
+    right = (int(ys[order[-1]]), int(xs[order[-1]]))
     for cell in (left, right):
         g.in_mask[cell] = True
         g.organ_mod[cell] = 1                       # modality 1 = a per-ray channel
@@ -156,7 +181,8 @@ def test_a_frozen_brain_does_not_drift():
 # --- mutation -----------------------------------------------------------------------
 
 def test_mutation_keeps_the_brain_runnable_and_bounded():
-    cfg = B.Config(max_cells=200, max_types=4, max_layers=4, max_hidden=30)
+    cfg = B.Config(start_cells=90, max_cells=200, max_types=4, max_layers=4,
+                   max_hidden=30)
     g = _genome(cfg=cfg)
     rng = np.random.default_rng(8)
     v = rng.normal(0, 0.5, N_IN)
@@ -232,3 +258,119 @@ def test_energy_change_is_the_reward():
         mind.step(w)
         assert abs(mind.last_reward - (w.agent.energy - before) / mind.reward_scale) < 1e-12
     assert mind.last_reward < 0, "walking about should cost, and be felt as a cost"
+
+
+# --- the three signal layers ----------------------------------------------------------
+
+def _chem_slice(g, cfg):
+    return g.channel_map(cfg)["chemical"]
+
+
+def test_the_channel_map_partitions_every_channel():
+    g = _genome()
+    cfg = B.Config()
+    cm = g.channel_map(cfg)
+    covered = []
+    for lo, hi in cm.values():
+        covered += list(range(lo, hi))
+    assert sorted(covered) == list(range(g.C)), cm
+    assert cm["hormone"][1] - cm["hormone"][0] == 1
+
+
+def test_chemistry_spreads_and_electricity_does_not():
+    """The chemical channels are the only ones with a spatial GRADIENT: put a spike in
+    one cell and it should be smeared over the neighbourhood, while a spike in an
+    electric channel stays where it was put."""
+    cfg = B.Config(chem_mix=0.5, chem_every=1, chem_decay=0.0)
+    g = _genome(cfg=cfg)
+    for rule in g.rules:                              # a rule that outputs nothing, so
+        for L in rule:                                # only the physics moves anything
+            L["W"][:] = 0.0
+            L["b"][:] = 0.0
+    g.P_in[:] = 0.0
+    g.P_horm[:] = 0.0
+    c0, c1 = _chem_slice(g, cfg)
+    p = _pheno(g, cfg)
+    mid = len(p._ys) // 2
+    cy, cx = int(p._ys[mid]), int(p._xs[mid])
+    p.state[cy, cx, c0] = 1.0                         # a chemical spike...
+    p.state[cy, cx, 0] = 1.0                          # ...and an electric one
+    p.act(np.zeros(N_IN))
+    neigh = [(cy + dy, cx + dx) for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+             if g.mask[cy + dy, cx + dx]]
+    assert neigh, "need a neighbour to diffuse into"
+    spread = max(abs(float(p.state[ny, nx, c0])) for ny, nx in neigh)
+    stayed = max(abs(float(p.state[ny, nx, 0])) for ny, nx in neigh)
+    assert spread > 0.01, f"the chemical channel did not diffuse ({spread:.4f})"
+    assert stayed < spread / 5, f"the electric channel leaked ({stayed:.4f})"
+
+
+def test_chemistry_fades():
+    cfg = B.Config(chem_mix=0.0, chem_every=1, chem_decay=0.2)
+    g = _genome(cfg=cfg)
+    for rule in g.rules:
+        for L in rule:
+            L["W"][:] = 0.0
+            L["b"][:] = 0.0
+    g.P_in[:] = 0.0
+    g.P_horm[:] = 0.0
+    c0, _ = _chem_slice(g, cfg)
+    p = _pheno(g, cfg)
+    cy, cx = int(p._ys[0]), int(p._xs[0])
+    p.state[cy, cx, c0] = 1.0
+    p.act(np.zeros(N_IN))
+    assert abs(float(p.state[cy, cx, c0])) < 0.5, "a plume that never fades piles up"
+
+
+def test_the_hormone_reaches_cells_no_organ_can():
+    """A bloodstream, not a wire: it must arrive even at a brain with no organs at all
+    and no sensory input whatsoever."""
+    cfg = B.Config()
+    g = _genome(cfg=cfg)
+    g.in_mask[:] = False
+    g.P_in[:] = 0.0                                   # nothing can come in by sense
+    zero = np.zeros(N_IN)
+    calm = _pheno(g, cfg)
+    calm.act(zero, hormone=[0.0, 0.0, 0.0])
+    starving = _pheno(g, cfg)
+    starving.act(zero, hormone=[-1.0, 0.0, 0.0])
+    assert not np.allclose(calm.state, starving.state), "the hormone never arrived"
+
+
+def test_the_hormone_changes_what_the_same_senses_mean():
+    """The point of the layer: the same input in a different internal state is a
+    different computation, not merely a different input."""
+    cfg = B.Config()
+    g = _genome(cfg=cfg)
+    v = np.random.default_rng(12).normal(0, 0.5, N_IN)
+    fed, hungry = _pheno(g, cfg), _pheno(g, cfg)
+    a = [fed.act(v, hormone=[1.0, 0.0, 0.0]) for _ in range(3)][-1]
+    b = [hungry.act(v, hormone=[-1.0, 0.0, 0.0]) for _ in range(3)][-1]
+    assert a != b
+
+
+def test_each_layer_can_be_switched_off_for_the_ab():
+    """Every one of the three has to be removable on its own, or we cannot ever say
+    whether it was worth having."""
+    g = _genome()
+    v = np.random.default_rng(13).normal(0, 0.5, N_IN)
+    full = _pheno(g, B.Config()).act(v, hormone=[0.7, 0.1, 0.0])
+    no_chem = _pheno(g, B.Config(chem_channels=0)).act(v, hormone=[0.7, 0.1, 0.0])
+    no_horm = _pheno(g, B.Config(hormone=False)).act(v, hormone=[0.7, 0.1, 0.0])
+    no_local = _pheno(g, B.Config(neuromod=False)).act(v, hormone=[0.7, 0.1, 0.0])
+    assert full != no_chem and full != no_horm and full != no_local
+
+
+def test_the_body_talks_to_the_brain_through_the_hormone():
+    from cortex.agent import Mind
+    from cortex.world import Config as WCfg
+    g = fresh_genome(seed=0)
+    w = World(seed=2, cfg=WCfg())
+    mind = Mind(g, think_every=1)
+    mind.attach(w)
+    full = mind.hormone(w)
+    assert -1.0 <= full[0] <= 1.0 and full[1] == 0.0
+    w.agent.energy = 1.0                               # nearly dead
+    w.agent.poison = 30.0
+    starving = mind.hormone(w)
+    assert starving[0] < full[0] and starving[1] == 1.0

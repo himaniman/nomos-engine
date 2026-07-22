@@ -42,6 +42,9 @@ import numpy as np
 THRUST, TURN, INTERACT = 0, 1, 2
 N_OUT = 3
 
+# The BLOODSTREAM: what the body tells the whole sheet at once, no organ involved.
+# Energy first, because it is the one that has to swing the whole brain's mode.
+N_HORMONE = 3                    # energy, poison load, recent reward
 MOD_ALL = 0                      # an organ that hears the whole sensor vector
 _MIN_DEPTH = 2                   # a rule always has an input and an output layer
 _OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
@@ -62,17 +65,39 @@ class Config:
         self.grid = 64               # lattice side. 64 so an eye region CAN resolve
                                      # all 64 rays — retinotopy hands out ray slots by
                                      # column, so a narrower sheet would see double
-        self.channels = 12           # state channels per cell (last one = the hormone)
-        self.hidden = 24             # hidden width of a fresh rule
-        self.start = 9               # side of the seed block of living cells
-        self.subticks = 24           # relaxation rounds per world tick
+        self.channels = 14           # state channels per cell (see the channel map in
+                                     # `Genome.channel_map` — the tail is special)
+        self.hidden = 28             # hidden width of a fresh rule
+        # MORPHOLOGY. The seed is not a rectangle: it is a blob GROWN by accretion,
+        # with lacunae punched through it, so the tissue has an irregular border and
+        # interior gaps from birth. A square has no morphology to select on, and the
+        # organs would inherit its symmetry — which is the opposite of the point.
+        self.start_cells = 340       # living cells in the seed (many senses, big sheet)
+        self.hole_frac = 0.06        # of interior cells punched out as lacunae
+        self.organ_frac = 0.55       # of BORDER cells that become sensory organs
+        self.effector_frac = 0.04    # of DEEP cells that become effectors
+        self.subticks = 20           # relaxation rounds per world tick
         self.max_cells = 4096
         self.max_types = 6
         self.max_layers = 5
         self.max_hidden = 48
         self.min_hidden = 4
         self.organ_mods = 9          # 1..6 per-ray channels, 7 odour, 8 touch, 9 intero
-        self.neuromod = True
+        # THREE SIGNAL LAYERS, at three speeds (docs/cortex-design.md).
+        # 1 ELECTRIC: the 3x3 neighbourhood, every sub-tick. Fast, local, precise.
+        # 2 CHEMICAL: a few channels that DIFFUSE and DECAY. Slow, blurry, and the
+        #   only carrier with a spatial GRADIENT — which is what a growing tissue can
+        #   read its own position from, and what an axon would later grow along.
+        # 3 HORMONAL: a global vector from the BODY, reaching every cell at once
+        #   regardless of organs (a bloodstream, not a wire), and gating every rule —
+        #   so the same tissue computes differently when starving or poisoned.
+        self.chem_channels = 3       # how many of the tail channels diffuse
+        self.chem_mix = 0.35         # share of the neighbourhood average taken per pass
+        self.chem_decay = 0.04       # per pass, so a plume fades instead of piling up
+        self.chem_every = 2          # sub-ticks per diffusion pass (slower than thought)
+        self.hormone = True          # the global gate + bloodstream drive
+        self.hormone_gain = 0.6      # how hard it swings each cell's rule
+        self.neuromod = True         # the LOCAL hormone channel (per-cell gate)
         # within-life learning (see Phenotype.learn)
         self.plastic = True
         self.plastic_lr = 0.03
@@ -117,7 +142,8 @@ class Genome:
     """Shape + cell types + rule stacks + the sensor/motor projections."""
 
     def __init__(self, n_in, mask, type_map, rules, P_in, P_out, b_out,
-                 channels, hidden, subticks, in_mask, out_mask, organ_mod):
+                 channels, hidden, subticks, in_mask, out_mask, organ_mod,
+                 P_horm=None):
         self.n_in = int(n_in)
         self.n_out = N_OUT
         self.mask = mask.astype(bool)
@@ -131,6 +157,9 @@ class Genome:
         self.P_in = np.asarray(P_in, dtype=np.float64)      # (n_in, C) sensor -> drive
         self.P_out = np.asarray(P_out, dtype=np.float64)    # (C, N_OUT) pooled -> command
         self.b_out = np.asarray(b_out, dtype=np.float64)
+        # (N_HORMONE, C): the bloodstream's drive into every cell, organs or not
+        self.P_horm = (np.zeros((N_HORMONE, self.C)) if P_horm is None
+                       else np.asarray(P_horm, dtype=np.float64))
         self.subticks = int(subticks)
 
     @property
@@ -141,12 +170,22 @@ class Genome:
     def n_types(self) -> int:
         return len(self.rules)
 
+    def channel_map(self, cfg=None) -> dict:
+        """Which channels are what. The tail is special: the last is the LOCAL hormone
+        that gates a cell's own rule, and the few before it are CHEMICAL — they leak
+        into their neighbours and fade, so they carry gradients instead of values."""
+        cfg = cfg or Config()
+        chem = int(min(cfg.chem_channels, self.C - 2))
+        return {"electric": (0, self.C - 1 - chem),
+                "chemical": (self.C - 1 - chem, self.C - 1),
+                "hormone": (self.C - 1, self.C)}
+
     def copy(self) -> "Genome":
         return Genome(self.n_in, self.mask.copy(), self.type_map.copy(),
                       [_copy_rule(r) for r in self.rules], self.P_in.copy(),
                       self.P_out.copy(), self.b_out.copy(), self.C, self.H,
                       self.subticks, self.in_mask.copy(), self.out_mask.copy(),
-                      self.organ_mod.copy())
+                      self.organ_mod.copy(), self.P_horm.copy())
 
     # --- the numbers the HUD and the LLM read -------------------------------------
     def cells(self) -> int:
@@ -165,7 +204,7 @@ class Genome:
         return max((int(r[0]["W"].shape[0]) for r in self.rules), default=self.H)
 
     def params(self) -> int:
-        n = self.P_in.size + self.P_out.size + self.b_out.size
+        n = self.P_in.size + self.P_out.size + self.b_out.size + self.P_horm.size
         for r in self.rules:
             for L in r:
                 n += L["W"].size + L["b"].size
@@ -181,7 +220,7 @@ class Genome:
                 "rules": [[[L["W"].tolist(), L["b"].tolist()] for L in r]
                           for r in self.rules],
                 "P_in": self.P_in.tolist(), "P_out": self.P_out.tolist(),
-                "b_out": self.b_out.tolist()}
+                "b_out": self.b_out.tolist(), "P_horm": self.P_horm.tolist()}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Genome":
@@ -191,14 +230,58 @@ class Genome:
                    np.array(d["type_map"]), rules, d["P_in"], d["P_out"], d["b_out"],
                    int(d["C"]), int(d["H"]), int(d["subticks"]),
                    np.array(d["in_mask"], dtype=bool), np.array(d["out_mask"], dtype=bool),
-                   np.array(d["organ_mod"], dtype=np.int64))
+                   np.array(d["organ_mod"], dtype=np.int64),
+                   np.array(d["P_horm"]) if "P_horm" in d else None)
 
 
-def _start_mask(G: int, start: int) -> np.ndarray:
+def _grow_blob(G: int, n_cells: int, rng) -> np.ndarray:
+    """Grow an irregular blob by ACCRETION from one cell: repeatedly pick a living
+    cell and light up one of its free neighbours. The border comes out ragged and
+    every seed is a different shape, which is what gives morphology something to be
+    selected on — a rectangle has none, and its organs would inherit its symmetry."""
     m = np.zeros((G, G), dtype=bool)
-    off = (G - start) // 2
-    m[off:off + start, off:off + start] = True
+    c = G // 2
+    m[c, c] = True
+    frontier = [(c, c)]
+    n = 1
+    while n < n_cells and frontier:
+        i = int(rng.integers(len(frontier)))
+        y, x = frontier[i]
+        free = [(y + dy, x + dx) for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+                if 0 <= y + dy < G and 0 <= x + dx < G and not m[y + dy, x + dx]]
+        if not free:
+            frontier.pop(i)                      # fully surrounded: stop offering it
+            continue
+        ny, nx = free[int(rng.integers(len(free)))]
+        m[ny, nx] = True
+        frontier.append((ny, nx))
+        n += 1
     return m
+
+
+def _punch_holes(mask: np.ndarray, frac: float, rng) -> None:
+    """Kill some INTERIOR cells, so the sheet has gaps signal must route around. Only
+    cells whose four neighbours are all alive are eligible, so a hole never bites a
+    piece off the border."""
+    interior = [(int(y), int(x)) for y, x in np.argwhere(mask)
+                if all(mask[y + dy, x + dx]
+                       for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+                       if 0 <= y + dy < mask.shape[0] and 0 <= x + dx < mask.shape[1])]
+    for k in rng.permutation(len(interior))[:int(len(interior) * frac)]:
+        y, x = interior[int(k)]
+        mask[y, x] = False
+
+
+def _border_and_deep(mask: np.ndarray):
+    """Split the living cells into those touching the outside (where senses belong)
+    and those buried at least one layer in (where a command can be read from)."""
+    G = mask.shape[0]
+    border, deep = [], []
+    for y, x in np.argwhere(mask):
+        exposed = any(not (0 <= y + dy < G and 0 <= x + dx < G and mask[y + dy, x + dx])
+                      for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)))
+        (border if exposed else deep).append((int(y), int(x)))
+    return border, deep
 
 
 def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
@@ -208,18 +291,26 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     shape has a job on the very first tick."""
     cfg = cfg or Config()
     G, C, H = cfg.grid, cfg.channels, cfg.hidden
-    mask = _start_mask(G, cfg.start)
+    mask = _grow_blob(G, cfg.start_cells, rng)
+    _punch_holes(mask, cfg.hole_frac, rng)
     type_map = np.zeros((G, G), dtype=np.int64)
     in_mask = np.zeros((G, G), dtype=bool)
     out_mask = np.zeros((G, G), dtype=bool)
     organ_mod = np.zeros((G, G), dtype=np.int64)
-    ys, xs = np.nonzero(mask)
-    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
-    for y, x in zip(ys, xs):
-        if y in (y0, y1) or x in (x0, x1):
+    border, deep = _border_and_deep(mask)
+    # ORGANS ARE PLACED MORPHOLOGICALLY, not by a rule about a rectangle: only SOME
+    # border cells become senses (the rest are skin), and effectors sit in the DEEP
+    # tissue, so a command is read from cells no sense can reach directly.
+    for y, x in border:
+        if rng.random() < cfg.organ_frac:
             in_mask[y, x] = True
             organ_mod[y, x] = int(rng.integers(cfg.organ_mods + 1))
-    out_mask[(y0 + y1) // 2, (x0 + x1) // 2] = True
+    for y, x in deep:
+        if rng.random() < cfg.effector_frac:
+            out_mask[y, x] = True
+    if not out_mask.any():                       # a brain always has a voice
+        y, x = (deep or border)[int(rng.integers(len(deep or border)))]
+        out_mask[y, x] = True
     rules = [_fresh_rule(9 * C, H, C, _MIN_DEPTH, rng)]
     # Xavier on the sensor projection: 412 inputs summed into C channels would
     # saturate tanh instantly at N(0, 0.5) — the same regression that once broke NEAT
@@ -228,8 +319,9 @@ def random_genome(n_in: int, rng, cfg: Config | None = None) -> Genome:
     P_out = rng.normal(0.0, 0.5, (C, N_OUT))
     b_out = np.zeros(N_OUT)
     b_out[THRUST] += 0.5                                   # a nudge to get moving
+    P_horm = rng.normal(0.0, 0.25, (N_HORMONE, C))
     return Genome(n_in, mask, type_map, rules, P_in, P_out, b_out, C, H,
-                  cfg.subticks, in_mask, out_mask, organ_mod)
+                  cfg.subticks, in_mask, out_mask, organ_mod, P_horm)
 
 
 # --- running a brain ----------------------------------------------------------------
@@ -251,7 +343,9 @@ def _apply_rule_plastic(x, rule, dW_last, elig):
 if _NUMBA:
     @_njit(cache=True, nogil=True)
     def _relax_nb(st, drive, padF, centre, nbr, type_rows, Wts, bs, layer_cnt,
-                  mod_ch, dW_last, elig_out, plastic, subticks):   # pragma: no cover
+                  mod_ch, dW_last, elig_out, plastic, subticks,
+                  chem0, chem1, chem_mix, chem_decay, chem_every, hgate,
+                  tick0):   # pragma: no cover
         """All `subticks` rounds as one kernel: scatter the alive rows into the padded
         buffer, gather each cell's 9-neighbour perception, push each TYPE's rows
         through its layer stack, then the residual tanh update with the hormone gate."""
@@ -287,8 +381,23 @@ if _NUMBA:
                 li += nl
             for i in range(n):
                 gate = (1.0 + math.tanh(st[i, mod_ch])) if mod_ch >= 0 else 1.0
+                gate *= hgate                              # the whole-sheet mode switch
                 for c in range(C):
                     st[i, c] = np.tanh(st[i, c] + gate * delta[i, c] + drive[i, c])
+            # CHEMISTRY: a slow pass in which the chem channels leak into their
+            # neighbours and fade. This is the only layer with a spatial gradient.
+            tick0 += 1
+            if chem1 > chem0 and (tick0 % chem_every) == 0:
+                for i in range(n):
+                    for c in range(chem0, chem1):
+                        padF[centre[i], c] = st[i, c]
+                for i in range(n):
+                    for c in range(chem0, chem1):
+                        acc = 0.0
+                        for j in range(9):
+                            acc += padF[nbr[i, j], c]
+                        mixed = st[i, c] * (1.0 - chem_mix) + (acc / 9.0) * chem_mix
+                        st[i, c] = mixed * (1.0 - chem_decay)
         return st
 
 
@@ -331,6 +440,12 @@ class Phenotype:
         self.layout = layout
         G, C = genome.G, genome.C
         self._mod_ch = (C - 1) if cfg.neuromod else -1
+        cmap = genome.channel_map(cfg)
+        self._chem0, self._chem1 = cmap["chemical"]
+        if not cfg.chem_channels:
+            self._chem1 = self._chem0
+        self._subtick = 0
+        self.hormone = np.zeros(N_HORMONE)
         self.state = np.zeros((G, G, C))
         ys, xs = np.nonzero(genome.mask)
         self._ys, self._xs = ys, xs
@@ -370,9 +485,20 @@ class Phenotype:
         self.trace: list = []
 
     # --- the tick ------------------------------------------------------------------
-    def act(self, sensors: np.ndarray) -> tuple[float, float, float]:
+    def act(self, sensors: np.ndarray, hormone=None) -> tuple[float, float, float]:
+        """`hormone` is the BODY talking to the whole sheet at once — energy, poison
+        and the last reward. It reaches every cell regardless of organs (a bloodstream,
+        not a wire) and it swings every rule's gain, so a starving brain is not the
+        same computer as a fed one."""
         g = self.genome
+        if hormone is not None:
+            self.hormone = np.clip(np.asarray(hormone, dtype=np.float64), -1.0, 1.0)
         drive = np.ascontiguousarray((self._M * sensors) @ g.P_in)
+        if self.cfg.hormone:
+            drive = np.ascontiguousarray(drive + (self.hormone @ g.P_horm))
+        hgate = 1.0
+        if self.cfg.hormone:
+            hgate += self.cfg.hormone_gain * float(self.hormone[0])
         n = len(self._ys)
         st = self.state[self._ys, self._xs]
         rp = 1 if self.cfg.rule_plastic else 0
@@ -389,7 +515,11 @@ class Phenotype:
                 st = _relax_nb(st, drive, self._padF, self._centre, self._nbr,
                                self._nb_rows, self._nb_W, self._nb_b, self._nb_cnt,
                                self._mod_ch, self._nb_dW, self._nb_elig, rp,
-                               1 if self.record else g.subticks)
+                               1 if self.record else g.subticks,
+                               self._chem0, self._chem1, self.cfg.chem_mix,
+                               self.cfg.chem_decay, max(1, self.cfg.chem_every),
+                               hgate, self._subtick)
+                self._subtick += 1 if self.record else g.subticks
                 if self.record:
                     self._snap(st)
         else:
@@ -402,9 +532,19 @@ class Phenotype:
                         delta[rows] = (_apply_rule_plastic(perc[rows], g.rules[k],
                                                            self._dW_rule[k], self._elig[k])
                                        if rp else _apply_rule(perc[rows], g.rules[k]))
+                gate = np.ones((n, 1))
                 if self._mod_ch >= 0:
-                    delta = delta * (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
-                st = np.tanh(st + delta + drive)
+                    gate = (1.0 + np.tanh(st[:, self._mod_ch]))[:, None]
+                st = np.tanh(st + gate * hgate * delta + drive)
+                self._subtick += 1
+                if self._chem1 > self._chem0 and self._subtick % max(1, self.cfg.chem_every) == 0:
+                    self._padF[self._centre] = st           # diffuse + decay the
+                    hood = self._padF[self._nbr]            # chemical channels
+                    avg = hood[:, :, self._chem0:self._chem1].mean(axis=1)
+                    mix = self.cfg.chem_mix
+                    st[:, self._chem0:self._chem1] = (
+                        st[:, self._chem0:self._chem1] * (1.0 - mix) + avg * mix
+                    ) * (1.0 - self.cfg.chem_decay)
                 if self.record:
                     self._snap(st)
         if rp:
@@ -545,6 +685,7 @@ def mutate(genome, rng, cfg=None):
     _jitter(g.P_in, rng, cfg.weight_mut_prob, cfg.weight_mut)
     _jitter(g.P_out, rng, cfg.weight_mut_prob, cfg.weight_mut)
     _jitter(g.b_out, rng, cfg.weight_mut_prob, cfg.weight_mut)
+    _jitter(g.P_horm, rng, cfg.weight_mut_prob, cfg.weight_mut)
 
     if rng.random() < cfg.subtick_mut_prob:                 # heritable THINK TIME
         g.subticks = int(min(cfg.subticks_max, max(cfg.subticks_min,

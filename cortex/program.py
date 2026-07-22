@@ -144,10 +144,39 @@ FIELDS: dict[str, tuple] = {
     "plastic_lr":     (0.03, 0.0, 0.3, False,
                        "reward-modulated Hebbian rate on the motor read-out"),
     "rule_lr":        (0.006, 0.0, 0.1, False, "...and on each cell type's output layer"),
-    "plastic_elig":   (0.5, 0.0, 0.99, False,
+    # THE TWO TIME CONSTANTS OF LEARNING, and both defaults were wrong by one to two
+    # orders of magnitude — set for a dense-reward regime in a world that rewards about
+    # once every 300-800 ticks. At the old 0.5 the eligibility half-life was ONE THOUGHT,
+    # so credit reached ~5 ticks back; but a meal is the end of an APPROACH and the turns
+    # that aimed the agent happened tens of ticks earlier, so the actions that earned the
+    # reward were outside the trace entirely and the only thing ever credited was
+    # pressing E while already standing on the food. And at the old forget rate a delta
+    # kept 19-53% of itself between meals, so no lesson survived to meet the next one.
+    #
+    # Swept in the cradle and scored by ABLATION (same body, learning wiped vs kept), so
+    # growth could not take the credit — 2026-07-24, `python -m cortex.cradle --sweep`:
+    #     elig 0.5  forget 0.002    delta  0.00      (credit never reaches the cause)
+    #     elig 0.95 forget 0.0002   delta +0.12      (near +0.54, behind +0.24)
+    #     elig 0.98 forget 5e-05    delta -0.12      (credits everything, learns noise)
+    # An optimum, not a trend: credit has to survive as long as an approach and no longer.
+    "plastic_elig":   (0.95, 0.0, 0.99, False,
                        "how long an action stays creditable for a reward that arrives"
-                       " later. Poison is the case this exists for"),
-    "plastic_forget": (0.002, 0.0, 0.1, False, "what learning loses per tick"),
+                       " later, decayed once per THOUGHT. Too short and credit never"
+                       " reaches the behaviour that earned the meal; too long and every"
+                       " behaviour is credited for everything"),
+    "plastic_forget": (0.0002, 0.0, 0.1, False,
+                       "what learning loses per TICK. It has to be slow enough that a"
+                       " lesson survives the gap to the next meal"),
+    # Measured 2026-07-24: over 4000 ticks a brain receives ZERO positive reward events
+    # and 4000 negative ones — the metabolic drain, every tick, forever. So the
+    # three-factor rule was not failing to learn, it was faithfully learning
+    # "everything I do is bad", uniformly, with no positive example anywhere. A running
+    # baseline makes the PREDICTABLE part of the reward stream worth nothing to learn
+    # from, which is what leaves a meal as a signal instead of a rounding error.
+    "reward_baseline": (0.01, 0.0, 0.3, False,
+                        "how fast the running mean of reward is tracked and subtracted."
+                        " 0 turns it off, and then a constant drain teaches the brain to"
+                        " stop doing whatever it was doing"),
 }
 
 INT_FIELDS = {k for k, v in FIELDS.items() if v[3]}

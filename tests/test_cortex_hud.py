@@ -176,7 +176,10 @@ def test_the_track_is_recorded_and_fades_out_of_memory():
     for _ in range(TRAIL_EVERY * 12):
         app.frame(keys)
     assert 8 <= len(app.trail) <= TRAIL_LEN
+    # keep it alive: this is a claim about the TRACK's memory, and a brain that starves
+    # part way through would only be testing how long a fresh brain lasts
     for _ in range(TRAIL_EVERY * (TRAIL_LEN + 40)):
+        app.world.agent.energy = app.world.cfg.max_energy
         app.frame(keys)
     assert len(app.trail) == TRAIL_LEN, "the track has to forget its oldest end"
     pygame.quit()

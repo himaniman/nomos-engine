@@ -47,7 +47,9 @@ class Mind:
         self.field: ScentField | None = None
         self.command = (0.0, 0.0, 0.0)
         self.thoughts = 0
-        self.last_reward = 0.0
+        self.last_reward = 0.0     # what the brain learns from: SURPRISE, not energy
+        self.last_delta = 0.0      # ...and the raw change, for the HUD and the journal
+        self.reward_mean = 0.0
         self.last_dev = {"born": 0, "died": 0}
         self.sensors: np.ndarray | None = None
 
@@ -66,9 +68,44 @@ class Mind:
             self.thoughts += 1
         before = w.agent.energy
         w.step(*self.command)
-        self.last_reward = (w.agent.energy - before) / self.reward_scale
+        self._upkeep(w)
+        # the reward is measured across the WHOLE tick, upkeep included, so a brain
+        # feels the cost of its own tissue rather than having it charged behind its
+        # back. Development comes after learning because a development tick re-points
+        # the axons, which resets their eligibility.
+        self._reward(w.agent.energy - before)
         self.phenotype.learn(self.last_reward)
         self._develop(w)
+
+    def _upkeep(self, w: World) -> None:
+        """What the brain costs to keep, every tick. Cheaper while an embryo — a
+        discount on growth, never an exemption from it; see `_develop`."""
+        c = self.phenotype.cfg
+        rate = c.cell_cost * (c.embryo_cost_frac if w.tick < c.embryo_ticks else 1.0)
+        w.agent.energy -= rate * self.phenotype.cells()
+
+    def _reward(self, delta: float) -> float:
+        """Reward is SURPRISE about energy, not energy.
+
+        Measured, and it is the reason nothing was learning: over 4000 ticks a brain
+        receives zero positive reward events and four thousand negative ones. Living
+        costs energy every tick whatever you do, so a raw delta is a signal that is
+        negative always. The three-factor rule was working perfectly and faithfully
+        teaching the tissue that everything it does is bad — a one-sided gradient with
+        no positive example to point at.
+
+        Subtracting a running mean makes the PREDICTABLE part of the stream worth
+        nothing to learn from. The drain becomes zero, and a meal — which the mean
+        cannot track, because it is a spike — stays a signal. This is the standard
+        actor-critic baseline and it is three lines."""
+        self.last_delta = delta / self.reward_scale
+        mix = float(self.cfg.reward_baseline)
+        if mix > 0.0:
+            self.reward_mean += mix * (self.last_delta - self.reward_mean)
+            self.last_reward = self.last_delta - self.reward_mean
+        else:
+            self.last_reward = self.last_delta
+        return self.last_reward
 
     def _develop(self, w: World) -> None:
         """Growth on its own slow clock, and paid for.
@@ -96,8 +133,6 @@ class Mind:
         if w.tick % every == 0:
             self.last_dev = self.phenotype.develop(
                 energy_frac=max(0.0, w.agent.energy / w.cfg.max_energy), embryo=embryo)
-        rate = c.cell_cost * (c.embryo_cost_frac if embryo else 1.0)
-        w.agent.energy -= rate * self.phenotype.cells()
 
 
     def hormone(self, w: World) -> np.ndarray:

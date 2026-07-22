@@ -1899,3 +1899,117 @@ Each lab iteration writes that screenshot plus a probe strip into the run direct
 rebuilds a contact sheet as they arrive, so a run can be watched while it runs.
 
 40 new tests, suite 392.
+
+## 2026-07-24 (later) â€” the brain was never being taught, and the exam was throwing away what it learned
+
+The user's read: "we are not letting the brain learn â€” you do not even need an LLM for
+this." Correct, and the measurements went further than expected. Four findings, each of
+which invalidated part of the previous session's picture.
+
+**1. The reward stream is one-sided.** Count the feedback rather than the score. Over a
+life of 4000 ticks:
+
+```
+brain    ticks  meals   r>0    r<0   sum r+    |dW|
+0         4000      0     0   4000    0.000   0.0346
+1         4000      0     0   4000    0.000   0.0440
+2         4000      0     0   4000    0.000   0.0269
+reflex    4000   8-15
+```
+
+Zero positive reward events out of four thousand. Living costs energy every tick and the
+agent never eats, so the three-factor rule was never failing â€” it was working perfectly
+and faithfully teaching the tissue that **everything it does is bad**, uniformly, with
+no positive example anywhere to point at. `|dW|` is not zero, which is the tell: the
+machinery ran, on a signal that only ever said "stop".
+
+Fix: reward is SURPRISE about energy, not energy. A running mean subtracted
+(`reward_baseline`, the standard actor-critic trick) makes the predictable drain worth
+nothing to learn from and leaves a meal â€” a spike the mean cannot track â€” as the only
+thing that moves anything. Three lines.
+
+**2. The cradle, and why it had to come before reflexes.** The user's other idea was to
+put the brain somewhere it only has to walk forward to eat, and their better one was to
+give it innate reflexes â€” hardwired but retunable. Both are right, but there is an order
+argument: you cannot tell a broken learner from a starved one by looking at what it
+learned, and a reflex would score well while hiding an inert learner forever. So
+`cortex/cradle.py`: a small world thick with food and no poison, a bench and not a
+benchmark, with exactly one question â€” *given reward that actually arrives, does
+within-life learning contribute anything?*
+
+Asking it needed care, because a brain both GROWS and LEARNS during a life and "it got
+better" cannot be attributed to either. The ablation splits them: one snapshot, two
+copies at the same exams, one with the within-life weight deltas zeroed and everything
+else identical â€” same body, same cell states, same wiring. The difference is learning
+with growth held fixed. (Axon weights are deliberately not reset; a wire is topology
+that was grown, not a delta that was learned, and cutting the wiring is a different
+question.)
+
+**3. The exam had been throwing the learning away â€” every probe ever run.** The first
+cradle run returned a delta of exactly 0.00 on all seven probes. Exactly zero is not a
+result, it is a symptom, and it was:
+
+```python
+eff = g.P_out + self.dW if self.cfg.plastic else g.P_out
+```
+
+`cfg.plastic` was gating two different things â€” "go on learning" and "use what you
+learned" â€” and `probes.snapshot` turns plasticity off for an exam, as it must. So every
+probe ever run examined a brain with its whole life's learning discarded, while
+`docs/cortex-design.md` says in as many words that the exam is of *the developed,
+TRAINED mind*. The same held for the per-type rule deltas. One flag doing two jobs, and
+the wrong job won.
+
+**4. And the two time constants of learning were wrong by one to two orders of
+magnitude.** With the exam fixed, the delta became measurable and was still ~0. The
+arithmetic says why, and it is not subtle:
+
+```
+plastic_elig 0.5, decayed once per THOUGHT  -> half-life 1.0 ticks
+                                                10 ticks back: weight 0.001
+plastic_forget 0.002, per TICK              -> over 2500 ticks: 0.007 of it left
+measured gap between meals                  -> 312 to 833 ticks
+```
+
+A meal is the END of an approach; the turns that aimed the agent happened tens of ticks
+earlier. The actions that earned the reward were outside the eligibility trace
+**entirely** â€” the only thing ever credited was pressing E while already standing on the
+food. And a delta kept 19-53% of itself between meals, so no lesson survived to meet the
+next one. Both defaults were set for a dense-reward regime; this world rewards once in
+several hundred ticks.
+
+Swept in the cradle, scored by ablation so growth could not take the credit:
+
+```
+elig 0.5   forget 0.002    delta  0.00     credit never reaches the cause
+elig 0.95  forget 0.0002   delta +0.12     near +0.54, behind +0.24
+elig 0.98  forget 5e-05    delta -0.12     credits everything, learns noise
+```
+
+An optimum rather than a trend: credit has to survive as long as an approach and no
+longer. New defaults are the middle row.
+
+**Where that leaves it, stated more carefully than the sweep suggests.** Re-run at n=3
+with the new defaults and the upkeep folded into the reward, the per-brain deltas are
+-0.00, +0.07, -0.01 â€” mean +0.02, which is noise. But individual probes swing by up to
+0.9 either way. So two separate things are now true and only one of them is good:
+
+> Learning is **not inert** â€” wiping it changes behaviour substantially. Learning is
+> **not yet useful** â€” the mean contribution is zero and its sign varies by brain.
+
+Which is a much sharper diagnosis than "it does not learn", and it points somewhere
+specific. The credit now reaches the behaviour; the problem is that the behaviour and
+the meals are **uncorrelated**. The agent bumps into food incidentally, so what gets
+reinforced is whatever it happened to be doing, and a gradient over noise is noise.
+
+That is the real argument for the user's innate reflexes, and a better one than "it
+would raise the score": an innate approach makes eating a CONSEQUENCE of a behaviour,
+which is the precondition for reinforcing that behaviour at all. Reflexes do not replace
+learning here â€” they manufacture the correlation learning needs. And with the ablation
+harness built, "the tissue improved on its reflexes" can now be told apart from "the
+tissue rode its reflexes", which was the thing to be afraid of.
+
+Also this session, from reading a failing test rather than the code: the brain's own
+upkeep was charged AFTER the reward was measured, so a brain never felt the cost of its
+own tissue. Upkeep is now inside the tick's ledger.
+

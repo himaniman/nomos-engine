@@ -257,7 +257,8 @@ def test_the_brain_only_ever_sees_the_sensor_vector():
     assert p.act(mind.sensors) == _pheno(g).act(mind.sensors)
 
 
-def test_energy_change_is_the_reward():
+def test_energy_change_is_what_reward_is_made_of():
+    """`last_delta` is the body's ledger: energy in, energy out, every tick."""
     g = fresh_genome(seed=0)
     w = World(seed=2, cfg=WorldConfig())
     mind = Mind(g, think_every=1)
@@ -265,8 +266,28 @@ def test_energy_change_is_the_reward():
     for _ in range(30):
         before = w.agent.energy
         mind.step(w)
-        assert abs(mind.last_reward - (w.agent.energy - before) / mind.reward_scale) < 1e-12
-    assert mind.last_reward < 0, "walking about should cost, and be felt as a cost"
+        assert abs(mind.last_delta - (w.agent.energy - before) / mind.reward_scale) < 1e-12
+    assert mind.last_delta < 0, "walking about should cost, and be felt as a cost"
+
+
+def test_but_reward_is_the_SURPRISE_in_it():
+    """...and `last_reward` is what the brain learns from, which is not the same thing.
+
+    Measured 2026-07-24: over 4000 ticks a brain receives zero positive reward events
+    and four thousand negative ones, because living costs energy every tick whatever
+    you do. Learning from the raw ledger means learning 'everything I do is bad',
+    uniformly and forever, with no positive example anywhere. Subtracting a running
+    mean leaves only what was not already expected."""
+    g = fresh_genome(seed=0)
+    g.program.update({"reward_baseline": 0.05})
+    w = World(seed=2, cfg=WorldConfig())
+    mind = Mind(g, think_every=1)
+    mind.attach(w)
+    for _ in range(300):
+        mind.step(w)
+    assert mind.last_delta < 0                      # the body is still paying...
+    assert abs(mind.last_reward) < abs(mind.last_delta), \
+        "a steady, predictable drain must stop being news"
 
 
 # --- the three signal layers ----------------------------------------------------------

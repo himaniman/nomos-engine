@@ -97,11 +97,19 @@ class BrainDriver:
     def __init__(self, phenotype: B.Phenotype):
         self.p = phenotype
         self.last = None
+        self.mean = 0.0
 
     def __call__(self, vec, w):
         e = w.agent.energy
         reward = 0.0 if self.last is None else (e - self.last) / 12.0
         self.last = e
+        # the same baseline the live loop learns under (see agent.Mind._reward) — a
+        # learning probe measuring adaptation under a DIFFERENT rule than the life
+        # would be measuring something nothing ever experiences
+        mix = float(getattr(self.p.cfg, "reward_baseline", 0.0))
+        if mix > 0.0:
+            self.mean += mix * (reward - self.mean)
+            reward -= self.mean
         cmd = self.p.act(vec, hormone=np.array(
             [2.0 * e / w.cfg.max_energy - 1.0, min(1.0, w.agent.poison / 30.0),
              max(-1.0, min(1.0, reward))]))
@@ -306,10 +314,20 @@ PROBES = BASIC
 
 # --- running the suite ----------------------------------------------------------------
 
-def snapshot(mind, learning: bool = False) -> B.Phenotype:
+def snapshot(mind, learning: bool = False, unlearn: bool = False) -> B.Phenotype:
     """A deep copy of the brain as it stands: grown body, cell states, resource, and
     everything learned. Plasticity is OFF unless this is the learning probe, because an
-    exam that teaches is not an exam."""
+    exam that teaches is not an exam.
+
+    `unlearn` throws away the within-life weight deltas and keeps everything else — the
+    same body, the same cell states, the same wiring. That makes an ABLATION: sit both
+    copies at the same exam and the difference is what learning contributed, with growth
+    held fixed. Without it "the brain improved during its life" cannot be told apart
+    from "the brain grew during its life", because both happen at once.
+
+    Axon weights are deliberately NOT reset. A wire is topology that was grown, not a
+    delta that was learned; cutting the wiring is a different ablation and answers a
+    different question."""
     cfg = B.Config(**vars(mind.phenotype.cfg))
     cfg.plastic = cfg.rule_plastic = bool(learning)
     cfg.develop = False                                   # a body does not grow mid-exam
@@ -320,8 +338,11 @@ def snapshot(mind, learning: bool = False) -> B.Phenotype:
     p.organ_mod, p.resource = src.organ_mod.copy(), src.resource.copy()
     p._reindex()
     p.state = src.state.copy()
-    p.dW = src.dW.copy()
-    p._dW_rule = [d.copy() for d in src._dW_rule]
+    p.dW = np.zeros_like(src.dW) if unlearn else src.dW.copy()
+    p._dW_rule = [(np.zeros_like(d) if unlearn else d.copy()) for d in src._dW_rule]
+    p.learned = bool(src.learned) and not unlearn
+    p.axon_cells = [list(a) for a in src.axon_cells]
+    p._rewire()
     if B._NUMBA:
         p._nb_dW = B._NbList(p._dW_rule)
     return p
@@ -332,10 +353,10 @@ def suite_for(which: str = "basic"):
 
 
 def run_suite(mind, ticks: int = TICKS, learning: bool = False,
-              which: str = "basic") -> dict:
+              which: str = "basic", unlearn: bool = False) -> dict:
     """The whole exam for a BRAIN. Each probe gets its OWN fresh copy, so nothing one
     does can reach the next — the order they run in cannot matter."""
-    return _suite(lambda: BrainDriver(snapshot(mind, learning)), ticks, which)
+    return _suite(lambda: BrainDriver(snapshot(mind, learning, unlearn)), ticks, which)
 
 
 def run_suite_policy(policy, layout, ticks: int = TICKS, which: str = "basic") -> dict:

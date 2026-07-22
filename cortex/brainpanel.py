@@ -524,8 +524,13 @@ class BrainPanel:
                                              int(bw * max(0.0, min(1.0, v))), 9))
             surf.blit(self.app.small.render(f"{v:+.2f}", True, FG), (bx + bw + 6, y))
             y += 12
+        # BOTH numbers, because they are different things and the difference is the
+        # point: dE is what the body gained, reward is what the brain LEARNS from —
+        # dE minus what it had come to expect. Living costs energy every tick, so the
+        # raw delta is negative always and teaches only "stop doing that".
         surf.blit(self.app.small.render(
-            f"reward {mind.last_reward:+.3f}    learned |dW| {p.plastic_norm():.3f}",
+            f"dE {mind.last_delta:+.3f}  reward {mind.last_reward:+.3f}"
+            f"    learned |dW| {p.plastic_norm():.3f}",
             True, (170, 190, 220)), (x, y))
         return y + 16
 

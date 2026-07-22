@@ -211,3 +211,73 @@ def test_innate_urges_moved_out_of_the_weights():
     for r in g.rules:
         assert r[-1]["b"][C + B.GROW] == pytest.approx(0.0)
         assert r[-1]["b"][C + B.SPROUT] == pytest.approx(0.0)
+
+
+# --- learning: what the brain is taught, and whether it may use it -------------------
+
+def test_the_exam_applies_what_the_life_learned():
+    """The bug this pins down made every probe ever run meaningless as a measure of
+    learning. `cfg.plastic` gated BOTH 'go on learning' and 'use what was learned', and
+    `probes.snapshot` turns plasticity off for an exam — so the exam threw the life's
+    learning away, while docs/cortex-design.md says the exam is of the TRAINED mind."""
+    from cortex import probes
+    g = _genome(0)
+    mind = Mind(g)
+    p = mind.phenotype
+    p.dW[:] = 0.5                                   # something was learned
+    p.learned = True
+    frozen = probes.snapshot(mind, learning=False)
+    assert not frozen.cfg.plastic                   # it does not go on learning...
+    assert np.allclose(frozen.dW, 0.5)              # ...but it keeps what it learned
+    wiped = probes.snapshot(mind, learning=False, unlearn=True)
+    assert np.allclose(wiped.dW, 0.0)
+    # a sheet holding NOTHING pools to zero and the read-out cannot differ whatever the
+    # weights are, so give both copies the same non-empty state to read from
+    sensors = np.ones(g.n_in) * 0.4
+    for p2 in (frozen, wiped):
+        p2.state[p2._ys, p2._xs] = 0.3
+    assert frozen.act(sensors) != wiped.act(sensors), \
+        "wiping what was learned changed nothing — the exam is not using it"
+
+
+def test_unlearn_keeps_the_body_and_drops_only_the_deltas():
+    """The ablation has to isolate LEARNING from GROWTH, or 'it got better during its
+    life' cannot be attributed to either."""
+    from cortex import probes
+    mind = Mind(fresh_genome(seed=0))
+    w = World(seed=0, cfg=WorldConfig())
+    mind.attach(w)
+    for _ in range(300):
+        mind.step(w)
+    src = mind.phenotype
+    wiped = probes.snapshot(mind, unlearn=True)
+    assert np.array_equal(wiped.mask, src.mask)
+    assert np.array_equal(wiped.state, src.state)
+    assert len(wiped.axon_cells) == len(src.axon_cells)   # wiring is not a delta
+    assert np.allclose(wiped.dW, 0.0)
+    assert all(np.allclose(d, 0.0) for d in wiped._dW_rule)
+
+
+def test_reward_is_surprise_not_energy():
+    """Measured: over 4000 ticks a brain gets zero positive reward events and four
+    thousand negative ones, because living costs energy every tick. A raw delta is a
+    signal that is negative always, and the three-factor rule faithfully learns
+    'everything I do is bad'."""
+    mind = Mind(fresh_genome(seed=0))
+    mind.genome.program.update({"reward_baseline": 0.1})
+    mind.cfg = mind.phenotype.cfg = B.Config().merged(mind.genome.program)
+    for _ in range(200):
+        mind._reward(-1.2)                     # a steady, wholly predictable drain
+    assert mind.last_delta < 0                 # the body really is losing energy...
+    assert abs(mind.last_reward) < 0.01        # ...and the brain has stopped caring
+    spike = mind._reward(60.0)                 # a meal, which the mean cannot track
+    assert spike > 1.0
+
+
+def test_the_baseline_can_be_switched_off():
+    mind = Mind(fresh_genome(seed=0))
+    mind.genome.program.update({"reward_baseline": 0.0})
+    mind.cfg = mind.phenotype.cfg = B.Config().merged(mind.genome.program)
+    for _ in range(50):
+        mind._reward(-1.2)
+    assert mind.last_reward == pytest.approx(mind.last_delta)

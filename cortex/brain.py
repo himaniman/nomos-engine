@@ -634,6 +634,9 @@ class Phenotype:
         if _NUMBA:
             self._nb_dW = _NbList(self._dW_rule)
             self._nb_elig = _NbList(self._elig)
+        self.learned = False       # has a reward ever moved a rule delta? Kept so an
+                                   # exam can APPLY what a life learned while not going
+                                   # on learning during the exam itself
         self.last_input = None
         self.last_logits = np.zeros(N_OUT)
         self.last_command = (0.0, 0.0, 0.0)
@@ -714,7 +717,10 @@ class Phenotype:
             hgate += self.cfg.hormone_gain * float(self.hormone[0])
         n = len(self._ys)
         st = self.state[self._ys, self._xs]
-        rp = 1 if self.cfg.rule_plastic else 0
+        # ...and the same for the per-type rule deltas: apply them whenever they EXIST,
+        # not only while learning is switched on. `learned` is set the moment a reward
+        # moves anything, so a fresh brain still takes the cheap non-plastic path.
+        rp = 1 if (self.cfg.rule_plastic or self.learned) else 0
         self.morph[:] = 0.0                    # fresh per thought: what the tissue
         if rp:                                 # wants NOW, not what it once wanted
             for e in self._elig:
@@ -774,7 +780,14 @@ class Phenotype:
         self.morph /= max(1, g.subticks)       # a mean, so think-time does not decide
         self.state[self._ys, self._xs] = st    # how loudly a cell asks to divide
         pooled = self._pool(st)
-        eff = g.P_out + self.dW if self.cfg.plastic else g.P_out
+        # ALWAYS apply what was learned. `cfg.plastic` says whether the brain goes on
+        # learning; it must not also decide whether the brain gets to USE what it
+        # learned. It did, and since `probes.snapshot` turns plasticity off for an exam,
+        # every probe ever run examined a brain with its whole life's learning thrown
+        # away — while docs/cortex-design.md says in as many words that the exam is of
+        # the developed, TRAINED mind. `dW` is zero until something is learnt, so this
+        # costs nothing when there is nothing to apply.
+        eff = g.P_out + self.dW
         logits = pooled @ eff + g.b_out
         self.last_input, self.last_logits = sensors, logits
         # the three commands, in exactly the range World.step expects. `thrust_rest` is
@@ -1088,6 +1101,7 @@ class Phenotype:
                     self._dW_rule[k] += c.rule_lr * reward * self._E_rule[k]
                     np.clip(self._dW_rule[k], -c.rule_clip, c.rule_clip,
                             out=self._dW_rule[k])
+                    self.learned = True
 
     def axon_learn(self, reward: float) -> None:
         """Reward-gated Hebb on the wires, then forget a little. Same three-factor idea

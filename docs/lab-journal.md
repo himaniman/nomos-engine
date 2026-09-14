@@ -2439,3 +2439,81 @@ the first version accepted a child in fourteen of fifteen generations while the
 parent's score went nowhere — the best of fifteen on four maps is the luckiest of
 fifteen, the same winner's curse the old brain showed under a population. The sparse /
 rich arms are re-running with it. 21 new tests this session, suite 460.
+
+## 2026-09-14 (last) — the ladder Goodharted, the LLM beat rng on the holdout, and the map grew to fit its world
+
+Three closing measurements, each the answer to a question the day had left open.
+
+**1. The exam, used as a fitness, was gamed within forty generations.** The found rule
+(gradient on the teacher) was handed to the (1+31)-ES on the ladder to see whether the
+GAME could improve what the TEACHER found. On the ladder it could: 0.88 -> 0.927, with
+`patience` 0.18 -> 0.49 and every foraging rung still at 1.00. In the open world the
+tuned rule eats 2.1 meals a life and dies at 5765 ticks (the rule it started from: 24.6
+meals, 15228 ticks).
+
+```
+rule                          ladder   patience    open world (16): meals  ticks  immortal
+found by gradient (teacher)   0.88     0.18        24.6   15228   6/16
+...then tuned by ES on ladder 0.927    0.49         2.1    5765   0/16
+```
+
+The ES found the one thing the ladder rewards that the world punishes — sitting still —
+and bought patience marks with the foraging the small arenas do not test at length.
+`docs/cortex-design.md` says the ladder is an OBSERVER, not a curriculum, and the
+lineage code refused to let the exam select for exactly this reason; here is the
+measurement that says why. It also retroactively explains the ES-on-the-ladder runs
+from random weights: a plateau at the reflex's level on an objective that was never
+the point. The rule that lives in the world was taught by a teacher and selected by
+nothing; anything that selects on the atlas from now on selects on LIVES.
+
+**2. The LLM writes the map's growth program (`cortex/atlas_lab.py`).** Same loop as
+`cortex/lab.py`, on a brain that works: DeepSeek writes the twelve atlas knobs, every
+candidate lives the same eight worlds for 8000 ticks (exact score, no re-measuring),
+the reflex's meals on those worlds are the bar in the prompt, `--proposer rng` is the
+control. Ten iterations each:
+
+```
+                           train (worlds 0-7)          HOLDOUT (worlds 8-15)
+program                    fitness  meals               fitness  meals   ticks   radius
+default                     326     15.1                 298     14.0    7274    12
+LLM best (iteration 4)      417     21.0                 391     19.2    7391    17
+rng best (iteration 1)      472     21.9                 321     15.6    7765    12
+```
+
+On the training worlds rng "won" — with one lucky jitter at its first try. On worlds
+neither had seen, the LLM's program is +37% meals over the default and rng's is +11%.
+The model's edits were SYSTEMATIC and monotone across iterations — a bigger map
+(12 -> 17), slower value decay, more exploration, a lower smell floor, faster thinking —
+with one overshoot (radius 18, iteration 5) that it walked back; rng's win was a draw.
+This is the forage lab's result again (the sight champion generalised, the random walk
+overfit), which is what a lab that measures on a holdout is for.
+
+**3. Genome x world, first numbers.** `cortex/atlas_lineage.py` with the confirmation
+step (children screened on four rotating worlds, the finalist re-lived against the
+parent on all eight), one program in two economies:
+
+```
+world    gens  accepted  parent fitness       radius        other moves
+sparse    23      3       121 -> 210 (+74%)   12 -> 9       thing_gain 1 -> 1.16, leak up
+rich      17      7       579 -> 935 (+61%)   12 -> 12      decay 0.06 -> 0.077, thing_gain -> 1.5,
+                                                            leak 0.12 -> 0.056, smell_floor -> 0.43
+```
+
+Where food is scarce the map SHRANK — memory nobody can afford — and where it is
+everywhere it stayed, with the wave tuned shorter (the nearest thing is always near)
+and walls trusted less. The direction matches the radius sweep of the morning (in a
+sparse world r20 starves on its own upkeep; in a rich one it eats most) and the LLM's
+default-world programme (17, generalised). It is a modest divergence, 9 against 12, on
+one seed each; it is also the first time in this project that a heritable size settled
+at a different value in a different world for a reason the economy explains.
+
+And the acceptance counts are the real news about the lineage: three of twenty-three
+and seven of seventeen, against fourteen of fifteen before confirmation. A lineage that
+mostly says no and is right when it says yes is what selection is supposed to look
+like.
+
+**Where the atlas stands, end of day.** Ladder 0.86-0.88 (reflex 0.66). Open world, 16
+seeds: 25-31 meals against the reflex's 21.9, at the same lifetime, paying for its map.
+The rule can be written or learned. The program can be evolved or written by a model.
+It learns not to eat the purple one. It is watchable. The old sheet (`cortex/brain.py`)
+stays as reference. Suite 465.

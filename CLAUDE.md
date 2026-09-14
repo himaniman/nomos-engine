@@ -432,8 +432,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   max + mean; ReLU 12; value + 2 hidden; 711 weights); `exact()` builds the weights
   that ARE the wave (ladder 0.86, teacher loss 0); (1+31)-ES on the ladder plateaus at
   reflex level ~0.65 (walls ignored); `Teacher` = imitate the wave on random maps
-  (smooth, ms per eval). `cortex/atlas_lineage.py`: the atlas GENOME (12 named
-  scalars) + a parallel (1+15) lineage on rotating worlds, `--world sparse|rich`.
+  (smooth, ms per eval); GRADIENT on the teacher (torch, `--train`, extra
+  `train`) FINDS the wave from random maps: ladder 0.88, corner/maze 1.00, open world
+  24.6 meals = the hand rule. ES-tuning that rule ON THE LADDER Goodharts it (patience
+  0.49, but 2.1 meals in the world): the ladder is an observer, select on LIVES.
+  `cortex/atlas_lineage.py`: the atlas GENOME (12 named scalars) + parallel (1+15)
+  lineage, children screened on 4 rotating worlds, finalist CONFIRMED vs parent on all
+  8 (without it 14/15 accepts = winner's curse); `--world sparse|rich`: sparse
+  shrank the map 12->9, rich kept 12 (+74% / +61% fitness). Appetite: a hue
+  perceptron over a 16-bump population code, taught by interoception (poison rising
+  after a meal), bias innate; one burn -> refuses the nightcap (`--poison` exam);
+  nightcaps eaten 12->5 over 16 lives. `cortex/atlas_lab.py`: DeepSeek writes the 12
+  knobs, exact scoring on 8 fixed worlds; on the HOLDOUT the LLM's program +37% meals
+  vs rng's lucky +11%. HUD: `python -m cortex.app --atlas`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

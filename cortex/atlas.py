@@ -86,7 +86,11 @@ class Config:
         self.frontier = 0.12        # source strength of an unseen cell next to a seen
                                     # free one — exploration. Small, so anything real
                                     # (a smell, a seen morsel) always wins
-        self.smell_gain = 1.0       # source strength of a painted smell
+        self.smell_gain = 1.0       # source strength of a painted smell...
+        self.smell_floor = 0.35     # ...and the least a faint one is painted at.
+                                    # Swept over 16 worlds: 0 -> 27.4 meals, 0.35 ->
+                                    # 32.2, 1.0 -> 18.8 (chases every far smell to the
+                                    # map edge instead of exploring what is near)
         self.thing_gain = 1.0       # ...and of a seen bright non-solid thing
         self.bright_min = 0.6       # what counts as a THING: brighter than any floor
                                     # or leaf (0.58), i.e. the innate appetite is "go
@@ -114,14 +118,21 @@ class Atlas:
     command at the centre. Pure function of its state and inputs; determinism as
     everywhere else here."""
 
-    def __init__(self, cfg: Config | None = None, wcfg: WorldConfig | None = None):
+    def __init__(self, cfg: Config | None = None, wcfg: WorldConfig | None = None,
+                 rule=None):
         self.cfg = cfg or Config()
         self.wcfg = wcfg or WorldConfig()
         self.layout = layout(self.wcfg.n_rays)
         R = self.cfg.radius
         self.R = R
         self.side = 2 * R + 1
-        self.state = np.zeros((N_CH, self.side, self.side))
+        # THE RULE. None is the hand-written wave (`_wave`); anything else is an object
+        # with `hidden` extra channels of its own and `step(state, src, passable,
+        # passes)` that writes VALUE — cortex/wave.py grows one out of a per-cell
+        # perceptron and asks whether evolution can find the wave on its own
+        self.rule = rule
+        hidden = int(getattr(rule, "hidden", 0))
+        self.state = np.zeros((N_CH + hidden, self.side, self.side))
         self.cell = None            # the agent's integer cell the map is centred on
         self.thoughts = 0
         self.last_command = (0.0, 0.0, 0.0)
@@ -235,7 +246,12 @@ class Atlas:
             sy = int(round(oy + dy / norm * d)) + R
             sx = int(round(ox + dx / norm * d)) + R
             sy, sx = max(0, min(S - 1, sy)), max(0, min(S - 1, sx))
-            st[SCENT, sy, sx] = max(st[SCENT, sy, sx], amp * self.cfg.smell_gain)
+            # painted no fainter than `smell_floor`: how far it is has already been
+            # said by WHERE it is painted, and the wave discounts that distance itself.
+            # (Painted at `amp` alone, a smell sixteen cells off was worth 0.09 and
+            # lost to the 0.12 of an unexplored cell beside the body.)
+            st[SCENT, sy, sx] = max(st[SCENT, sy, sx],
+                                    self.cfg.smell_gain * max(amp, self.cfg.smell_floor))
 
     # --- the rule: a wave through what is not solid ---------------------------------
     def _sources(self) -> np.ndarray:
@@ -307,10 +323,18 @@ class Atlas:
             k = int(np.argmin(d))
             if d[k] <= c.eat_dist + 0.5:
                 near_thing = (ys[k] - 2, xs[k] - 2, d[k])
-        # which neighbour does the wave say to step to?
+        # which neighbour does the wave say to step to? Ties — and a wave with no
+        # diagonal discount has whole rows of them — go to the neighbour that needs
+        # the least turning, so a tie is never an excuse to veer
         vals = np.array([V[R + dy, R + dx] * passable[R + dy, R + dx] for dy, dx in _NBRS])
-        k = int(np.argmax(vals))
-        self.last_target = _NBRS[k] if vals[k] > 1e-4 else None
+        top = float(vals.max())
+        if top > 1e-4:
+            tied = [i for i in range(len(_NBRS)) if vals[i] >= top * (1.0 - 1e-3)]
+            k = min(tied, key=lambda i: abs(
+                (math.atan2(*_NBRS[i]) - heading + math.pi) % (2 * math.pi) - math.pi))
+            self.last_target = _NBRS[k]
+        else:
+            self.last_target = None
         if near_thing is not None or (amps.max() > c.smell_here and self.last_target):
             # EAT: face it, creep, press. Same "approach slowly" the reflex found. Face
             # the thing if one is seen, else the way the wave points — a smell this
@@ -350,7 +374,10 @@ class Atlas:
         self._paint(vec, y, x, heading)
         src = self._sources()
         self.sources = src
-        self._wave(src, c.subticks)
+        if self.rule is None:
+            self._wave(src, c.subticks)
+        else:
+            self.rule.step(self.state, src, self._passable(), c.subticks)
         self.thoughts += 1
         self.last_command = self._read(heading, vec)
         return self.last_command
@@ -360,8 +387,9 @@ class AtlasMind:
     """The atlas wired into a life, on the same terms as `agent.Mind`: it thinks every
     `think_every` ticks, holds the command in between, and pays for its cells."""
 
-    def __init__(self, cfg: Config | None = None, wcfg: WorldConfig | None = None):
-        self.atlas = Atlas(cfg, wcfg)
+    def __init__(self, cfg: Config | None = None, wcfg: WorldConfig | None = None,
+                 rule=None):
+        self.atlas = Atlas(cfg, wcfg, rule)
         self.cfg = self.atlas.cfg
         self.field: ScentField | None = None
         self.command = (0.0, 0.0, 0.0)
@@ -385,24 +413,25 @@ class Driver:
     """The atlas at a probe (`probes._run` calls `driver(vec, w)`). It reads the pose
     off the world — that is its proprioception, the one sense the vector lacks."""
 
-    def __init__(self, cfg: Config | None = None):
+    def __init__(self, cfg: Config | None = None, rule=None):
         self.atlas = None
         self.cfg = cfg
+        self.rule = rule
 
     def __call__(self, vec, w):
         if self.atlas is None:
-            self.atlas = Atlas(self.cfg, w.cfg)
+            self.atlas = Atlas(self.cfg, w.cfg, self.rule)
         a = w.agent
         return self.atlas.act(vec, a.y, a.x, a.heading)
 
 
 def live(seed: int = 0, max_ticks: int = 20000, cfg: Config | None = None,
          wcfg: WorldConfig | None = None, frames: list | None = None,
-         every: int = 12) -> tuple[World, AtlasMind]:
+         every: int = 12, rule=None) -> tuple[World, AtlasMind]:
     """One life, headless. A pure function of (cfg, seed, limits). With `frames` a
     list, an image of world + map is appended every `every` ticks."""
     w = World(seed=seed, cfg=wcfg or WorldConfig())
-    mind = AtlasMind(cfg, w.cfg)
+    mind = AtlasMind(cfg, w.cfg, rule)
     mind.attach(w)
     while w.agent.alive and w.tick < max_ticks:
         mind.step(w)
@@ -485,20 +514,21 @@ def _seeds(s: str) -> list[int]:
 
 
 def _one_life(args) -> dict:
-    seed, ticks, cfg_d = args
+    seed, ticks, cfg_d, rule = args
     from cortex.world import FOOD_ENERGY
-    w, mind = live(seed, ticks, Config(**cfg_d))
+    w, mind = live(seed, ticks, Config(**cfg_d), rule=rule)
     gained = float(sum(n * FOOD_ENERGY[k] for k, n in enumerate(w.agent.ate)))
     return {"seed": seed, "ticks": w.tick, "meals": int(sum(w.agent.ate)),
             "gained": gained, "walked": float(w.distance), "ate": list(w.agent.ate),
             "alive": bool(w.agent.alive)}
 
 
-def lives(seeds, ticks: int = 20000, cfg: Config | None = None, jobs: int = 1) -> list[dict]:
+def lives(seeds, ticks: int = 20000, cfg: Config | None = None, jobs: int = 1,
+          rule=None) -> list[dict]:
     """Whole lives over many worlds, in parallel when asked. Each is a pure function of
-    (cfg, seed, ticks), so the order they run in cannot matter."""
+    (cfg, seed, ticks, rule), so the order they run in cannot matter."""
     cfg_d = (cfg or Config()).to_dict()
-    args = [(int(s), int(ticks), cfg_d) for s in seeds]
+    args = [(int(s), int(ticks), cfg_d, rule) for s in seeds]
     if jobs > 1 and len(args) > 1:
         from multiprocessing import Pool
         with Pool(min(jobs, len(args))) as pool:

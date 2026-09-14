@@ -50,6 +50,7 @@ TOUCH_CH = 2        # pressure, hue of what is touched
 INTERO = 8          # energy, speed, turn, sin(head), cos(head), age, poison, bias
 
 _DIRS = ((-1, 0), (1, 0), (0, -1), (0, 1))          # N, S, W, E — fixed BFS order
+WAYPOINT = 6.0      # when the walk bends, the smell points at the path this far out
 
 
 def sensor_size(n_rays: int) -> int:
@@ -189,6 +190,7 @@ class ScentField:
         self._key = None
         self.dist: dict[tuple[int, int], float] = {}
         self.first: dict[tuple[int, int], int] = {}
+        self.parent: dict[tuple[int, int], tuple[int, int]] = {}
 
     def update(self, w: World) -> None:
         ay, ax = int(round(w.agent.y)), int(round(w.agent.x))
@@ -199,11 +201,12 @@ class ScentField:
         R = self.radius
         dist = {(ay, ax): 0.0}
         first = {(ay, ax): -1}
+        parent = {}
         queue = deque()
         for k, (dy, dx) in enumerate(_DIRS):
             n = (ay + dy, ax + dx)
             if not SOLID[w.tiles.material(*n)]:
-                dist[n], first[n] = 1.0, k
+                dist[n], first[n], parent[n] = 1.0, k, (ay, ax)
                 queue.append(n)
         while queue:
             qy, qx = queue.popleft()
@@ -221,17 +224,36 @@ class ScentField:
                 d = base + cost
                 if d > R:
                     continue
-                dist[n], first[n] = d, tag
+                dist[n], first[n], parent[n] = d, tag, (qy, qx)
                 queue.append(n)
-        self.dist, self.first = dist, first
+        self.dist, self.first, self.parent = dist, first, parent
+
+    def waypoint(self, cell: tuple[int, int], ahead: float) -> tuple[int, int]:
+        """The cell on the shortest walkable path to `cell` that is about `ahead`
+        steps out from the agent — what to steer at when the straight line is not the
+        way. Walks the BFS parents back from the target."""
+        p = cell
+        while p in self.parent and self.dist.get(p, 0.0) > ahead:
+            p = self.parent[p]
+        return p
 
 
 def _smell(w: World, field: ScentField, out: np.ndarray, off: int) -> None:
+    """Each odorant: how strong, and the egocentric direction of the WALK to it.
+
+    The direction is a bearing, not a compass point. The first version reported the
+    first cardinal step of the BFS, which is right far away in a corridor and wrong
+    almost everywhere else: for a morsel two rows down and sixteen columns over the
+    tag said SOUTH, because a south-first path is as short as an east-first one and the
+    search happened to grow that tree first. A nose that says "south" for something
+    that is east is a nose you cannot paint a map from. So: if the walk is about as
+    long as the straight line, the bearing IS the straight line (there is nothing worth
+    walking round); if the walk is longer, the bearing is to the point on the walk a
+    few cells out — the way round, as a direction."""
     c, a = w.cfg, w.agent
     field.update(w)
-    bins = np.zeros((N_ODOUR, len(_DIRS)))
     total = np.zeros(N_ODOUR)
-    fine = np.zeros((N_ODOUR, 2))                        # sub-cell direction, close in
+    vec = np.zeros((N_ODOUR, 2))                          # summed world-frame bearings
     for s in w.nearby_food(a.y, a.x, field.radius):
         cell = (int(round(s.y)), int(round(s.x)))
         d = field.dist.get(cell)
@@ -240,30 +262,28 @@ def _smell(w: World, field: ScentField, out: np.ndarray, off: int) -> None:
         amp = 1.0 / (1.0 + (d / c.smell_sharp) ** 2)
         mix = FOOD_ODOUR[s.kind] * amp
         total += mix
-        # The first-step tag is one of four cardinal directions, which is the right
-        # answer far away and a useless one up close: within a cell or two it makes the
-        # agent ORBIT its dinner, forever told to go "east" when east is 40 degrees off.
-        # So blend in the TRUE bearing as the morsel gets near. This is not cheating —
-        # at that range the shortest walkable path IS the straight line.
         dy, dx = s.y - a.y, s.x - a.x
-        near = math.hypot(dy, dx)
-        blend = max(0.0, min(1.0, (2.5 - near) / 1.5))
-        if blend > 0.0 and near > 1e-9:
-            fine += np.outer(mix * blend, (dy / near, dx / near))
-        k = field.first.get(cell, -1)
-        if k >= 0 and blend < 1.0:
-            bins[:, k] += mix * (1.0 - blend)
+        straight = math.hypot(dy, dx)
+        if straight < 1e-9:
+            continue
+        if d > 1.15 * straight + 0.5 and straight > 2.5:
+            wy, wx = field.waypoint(cell, WAYPOINT)      # the way round
+            dy, dx = wy - a.y, wx - a.x
+            norm = math.hypot(dy, dx)
+            if norm < 1e-9:
+                continue
+            dy, dx = dy / norm, dx / norm
+        else:
+            dy, dx = dy / straight, dx / straight        # the straight line IS the walk
+        vec += np.outer(mix, (dy, dx))
     sh, ch = math.sin(a.heading), math.cos(a.heading)
     for j in range(N_ODOUR):
-        fwd = fine[j, 0] * sh + fine[j, 1] * ch          # heading unit = (sin, cos)
-        lat = fine[j, 0] * ch - fine[j, 1] * sh          # its right-hand normal
-        for k, (uy, ux) in enumerate(_DIRS):
-            fwd += bins[j, k] * (uy * sh + ux * ch)
-            lat += bins[j, k] * (uy * ch - ux * sh)
         norm = max(1e-9, total[j])
+        fwd = (vec[j, 0] * sh + vec[j, 1] * ch) / norm   # heading unit = (sin, cos)
+        lat = (vec[j, 0] * ch - vec[j, 1] * sh) / norm   # its right-hand normal
         out[off + j * ODOUR_CH + 0] = min(1.0, total[j])
-        out[off + j * ODOUR_CH + 1] = fwd / norm
-        out[off + j * ODOUR_CH + 2] = lat / norm
+        out[off + j * ODOUR_CH + 1] = fwd
+        out[off + j * ODOUR_CH + 2] = lat
 
 
 # --- touch and interoception --------------------------------------------------------

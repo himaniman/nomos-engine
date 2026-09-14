@@ -2206,3 +2206,137 @@ signal â€” and neither has been run since any of it worked.
 
 6 tests, suite 429.
 
+
+## 2026-09-14 — cortex-atlas: why the brain stopped growing, and the sheet as a map
+
+New branch `cortex-atlas`, after a long pause. The user's read on coming back: "we
+over-complicated the brain from the previous iteration and did not adapt the rest to it,
+so it fell apart; the earlier things probably worked because the perceptrons did all the
+work while the cellular automaton was never really doing its share." The measurements
+below say the same thing, and point at what to do about it.
+
+**Diagnosis, in three numbers that were not on the record.**
+
+1. *Selection is deaf.* Take brain 2 (one of the three foragers from 2026-07-24), live
+   it 6000 ticks on eight worlds, and separately live eight of its children on world 0:
+
+   ```
+   same genome, 8 worlds:    fitness 214  9  70  8 174 102 100  92   sd 67
+   8 children, world 0:      fitness 110 114 32 148 160 212 120 128  sd 48
+   parent on world 0: 214    mean child - parent: -86  (8 of 8 worse)
+   ```
+
+   The spread of ONE genome across worlds is larger than the spread between its
+   children, and every child is worse than its parent on the same map. A (1+1) lineage
+   living one life per generation cannot hear an improvement through that, and the
+   mutation operator — thirty thousand weights jittered at once — mostly breaks things.
+   The lineage code had already been fixed four times for exactly these symptoms (paired
+   comparison, rotating worlds, stepping mutation); the symptoms were the substrate's.
+
+2. *The tissue did not compute; the arcs did.* Everything that foraged went through the
+   innate tracts, nose organs -> effectors, which BYPASS the sheet. With the arcs the
+   mean brain scored 0.42 against the reflex policy's 0.66 (journal, 2026-07-24): the
+   sheet's own contribution was negative. A random per-type perceptron over a 3x3
+   neighbourhood with tanh is a random recurrent medium, and nothing selected it into a
+   signal path, because (1).
+
+3. *The I/O had no spatial meaning.* A 1D retina was painted onto the sheet by column, a
+   command was read as a mean over effector cells, and in between the 2D lattice was used
+   as a slow, noisy MLP. The one thing a cellular automaton is actually GOOD at — local
+   rules producing global SPATIAL structure: wavefronts, distance fields, gradients — was
+   never asked of it. In that arrangement a perceptron beats a CA, which is the opposite
+   of the thesis.
+
+(And a control, run in the background on 8 cores while the rest was built: the old brain
+under a (1+15) population instead of (1+1). Twelve generations, a child "accepted" in
+eleven of them — and the accepted parent's score on the NEXT pair of worlds fell back to
+50-150 every time. That is the winner's curse, not adaptation: the best of fifteen on two
+maps is the luckiest of fifteen. More selection pressure does not rescue this substrate.)
+
+**The fix: the sheet IS a map (`cortex/atlas.py`).** The lattice is an allocentric map
+of the agent's surroundings, agent at the centre, scrolled under it as it walks (the
+sense of its own motion is the one extra sense it gets: proprioception). Every sense
+paints WHERE IT REFERS TO — a ray paints "solid" at the cell it hit and "free" along the
+cells it crossed; a seen morsel paints a bright thing at its cell, with its hue; a smell
+paints a source out along the walkable bearing it reports, at the distance its intensity
+implies; touch paints solid one cell out. Nothing is labelled: a cell holds solidity,
+freeness, hue, brightness. Evidence fades slowly, so the map is a MEMORY.
+
+The rule is one local update, run six times per thought, and it is the whole
+computation: a value wave spreads from every source through cells that are not solid,
+losing 6% per cell of travel. That is Bellman / brushfire / BFS done by cells that look
+only at their eight neighbours — the thing [Pathfinding NCA (Earle et al. 2023)](https://arxiv.org/abs/2301.06820)
+shows a neural CA can learn. The command is read at ONE cell, the centre: which
+neighbour holds the most value is which way to step; turn toward it, walk, press
+INTERACT when a thing is within reach or a smell says it is under the nose. Two things
+fall out for free that the old brain never had: EXPLORATION (unknown cells bordering
+known-free ones are faint sources, so with nothing to smell it walks toward what it has
+not seen), and a kind of PATIENCE (no source, no wave, no movement).
+
+Three lessons from making it play:
+
+* *A wall must leak.* Seed 4 spawned in a room with a door; with walls as absolute
+  barriers the wave from the smell outside never reached the centre, the agent stood
+  still and starved. A solid cell now passes 12% of the wave, and the read-out presses
+  INTERACT when the wave leads it INTO a solid — which opens a door, chips rubble, and
+  does nothing to stone. Which hues open is the door experiment, and a per-hue leak is
+  where it will live.
+* *A far smell must not be faint.* Painted at its intensity, a smell sixteen cells off
+  was worth 0.09 and lost to the 0.12 of an unexplored cell beside the body: the agent
+  went sightseeing with dinner in its nose. A painted smell is now floored at 0.35; how
+  far it is has already been said by WHERE it is painted. Swept over 16 worlds: floor 0
+  -> 27.4 meals, 0.35 -> 32.2, 1.0 -> 18.8 (chases every far smell to the map's edge).
+* *The nose was reporting compass points.* The smell's direction was the first cardinal
+  step of the BFS, which for a morsel two rows down and sixteen columns over says SOUTH,
+  because a south-first path is as short as an east-first one and the search grew that
+  tree first. A reflex can live with that; a map cannot be painted from it. The bearing
+  is now continuous: the straight line when the walk is about as long as the straight
+  line, else the bearing to the point on the walk six cells out. Same information, less
+  quantised, and it lifted the REFLEX too — 14.2 -> 21.9 meals over 16 worlds — which is
+  the right kind of improvement: it is a sensor, and every player gets it.
+
+**Results, 16 worlds, 20000-tick cap, the new nose for everyone.**
+
+```
+                                  ticks   meals   gained  immortal
+random walk                        6499     2.9     59      -
+reflex policy (no brain, no cost) 14515    21.9    376     6/16
+atlas r=12, paying 625 cells      14230    30.2    598     7/16
+atlas r=12, map free              16466    31.1    611    10/16
+atlas r=9 / r=16, paying          15467 / 13304   27.3 / 29.6   8/16 / 7/16
+
+probe ladder     near  open  side  behind  corner  maze  patience | mean
+reflex           1.00  1.00  1.00   1.00    0.23   0.23    0.14   | 0.66
+atlas            1.00  1.00  1.00   1.00    1.00   1.00    0.05   | 0.86
+best cortex brain (07-24)                                          0.68
+```
+
+`corner` and `maze` — the two rungs the reflex fails, where the straight line is not the
+walk — go to 1.00, because the wave routes around what the map knows. `patience` is
+the honest miss: an explorer does not stand still in an empty room, it goes to look at
+the corners, and the arena is bigger than its memory so it never runs out of corners.
+Whether that is a fault is an economic question, not a scoring one.
+
+**The size of the brain is an economic question, measured.** Radius swept under upkeep
+(the same 1.5e-5 per cell per tick a cortex brain cell pays), 16 worlds, before the nose
+change: r6 12.6 meals, r9 20.1, r12 28.1, r16 20.2, r24 17.9. An optimum, because a map
+bigger than the walk between meals is memory nobody reads, paid for every tick, and r24
+pays more for its map than for walking. This is the first "genome x world" number the
+playground has produced — the right radius depends on how far apart the food is — and
+radius is the obvious first gene for a lineage.
+
+**Stage 2, started: can the rule be FOUND? (`cortex/wave.py`).** The hand rule settles
+that a CA with the right local rule out-forages the reflex; it does not settle whether
+such a rule can be grown. So: the same map, but the wave replaced by a per-cell
+perceptron — fixed perception (each channel's 3x3, its neighbourhood max and mean, the
+way an NCA fixes Sobel), one ReLU layer of 12, outputs the cell's value and two hidden
+channels of its own; 711 weights. `wave.exact()` builds the weights that ARE the wave
+(`V = relu(max(src, k*max8 V) - 2*solid)` is two hidden units), so the target is known to
+be in the space: it scores 0.86 on the ladder, identical to the hand rule. Then a
+(1+31)-ES over the weights, fitness = the ladder (exact, so no re-measuring), 12 cores.
+From random weights: gen 0 = 0.11, gen 1 = 0.55 (near/side/behind at 1.00 — a rule
+that lets the read-out follow a local source is one lucky jitter away). Running.
+
+`python -m cortex.atlas --probes | --seeds 0-15 --jobs 16 | --gif ...` (world and map
+side by side: walls grey where the rays put them, the wave in blue, sources yellow, the
+chosen step green). 9 tests.

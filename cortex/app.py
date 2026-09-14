@@ -92,7 +92,9 @@ class App:
         # back mid-life and compare like for like.
         self.mind = mind
         self.auto = mind is not None
-        self.brain_panel = BrainPanel(self) if mind is not None else None
+        self.brain_panel = None
+        if mind is not None:        # a mind may bring its own column (the atlas does)
+            self.brain_panel = mind.panel(self) if hasattr(mind, "panel") else BrainPanel(self)
         if mind is not None:
             mind.attach(self.world)
         self.view = int(view) | 1                 # odd, so the agent sits dead centre
@@ -444,6 +446,9 @@ def main(argv=None) -> None:
     p.add_argument("--blind", action="store_true", help="start in senses-only mode")
     p.add_argument("--player", default="human", help="name for the session log")
     p.add_argument("--brain", action="store_true", help="let a fresh brain play")
+    p.add_argument("--atlas", action="store_true",
+                   help="let the ATLAS play — the map brain (cortex/atlas.py)")
+    p.add_argument("--radius", type=int, default=12, help="the atlas's map radius")
     p.add_argument("--brain-seed", type=int, default=0, help="which fresh brain")
     p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
     p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
@@ -476,6 +481,12 @@ def main(argv=None) -> None:
             args.player = f"brain-{args.brain_seed}"
             if args.no_reflex:
                 args.player += "-noreflex"
+    if args.atlas:
+        from cortex.atlas import AtlasMind
+        from cortex.atlas import Config as AtlasConfig
+        mind = AtlasMind(AtlasConfig(radius=args.radius))
+        if args.player == "human":
+            args.player = f"atlas-r{args.radius}"
     app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None),
               mind=mind)
     if args.probe:
@@ -536,7 +547,7 @@ def main(argv=None) -> None:
                     app.brain_panel.slower()             # sub-tick animation rate
                 elif ev.key == pygame.K_RIGHTBRACKET and app.brain_panel is not None:
                     app.brain_panel.faster()
-                elif ev.key == pygame.K_t and app.mind is not None:
+                elif ev.key == pygame.K_t and app.mind is not None                         and hasattr(app.mind, "phenotype"):
                     bp = app.brain_panel
                     bp.trace_on = not bp.trace_on    # watch a thought cross the sheet
                     bp.trace_i = 0

@@ -67,6 +67,9 @@ nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
                   the model), scored on the game, leaderboard in the prompt;
                   `python -m nomos.brain_lab` (mirrors scientist.py)
 nomos/__main__.py CLI `python -m nomos run`
+cortex/atlas.py   THE SHEET AS A MAP (branch `cortex-atlas`): a CA that plans by
+                  wave; wave.py = the rule as a perceptron (+ teacher, ES);
+                  atlas_lineage.py = the atlas genome + parallel lineage
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -405,6 +408,32 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
     taught (lab.py's 8 generations optimised body size while learning ran on a dead
     signal). Re-run both. Also: the ladder has run ahead of the world — 1-3 meals per
     2500 ticks vs the reflex policy's 8-15.
+- Done (cortex-atlas — the sheet as a MAP, branch `cortex-atlas`, 2026-09-14): the
+  diagnosis of why the cortex brain stopped growing, measured — selection was deaf
+  (one genome's fitness sd across worlds 67 > sd across its children 48, 8/8 children
+  worse than the parent), the tissue did not compute (the reflex arcs bypassed it),
+  and the I/O had no spatial meaning (a 1D retina by column, a mean over effectors:
+  the 2D CA used as a bad MLP). A (1+15) population control did not rescue it
+  (winner's curse, no trend). The fix is `cortex/atlas.py`: the lattice IS an
+  allocentric map around the agent, scrolled under it; every sense paints where it
+  refers to (rays -> solid/free cells, seen morsels -> bright things with hue, smell ->
+  a source along its bearing, touch -> solid); ONE local rule, a value wave (Bellman /
+  BFS by 8-neighbour cells) through non-solid cells; the command read at the centre
+  cell. Exploration (frontier cells are faint sources), memory (evidence fades),
+  doors (a solid cell leaks 12% of the wave; led into a solid -> INTERACT) fall out.
+  16 worlds, 20000 ticks: atlas r=12 paying 625 cells 30.2 meals / 14230 ticks /
+  7 immortal vs reflex 21.9 / 14515 / 6 (random 2.9); ladder 0.86 vs reflex 0.66
+  (`corner`, `maze` 1.00). Brain size is economic: radius swept under upkeep peaks at
+  r12 in the default world; in a RICH world r20 eats most, in a SPARSE one r20 starves
+  on its own upkeep. Sensor fix that helped everyone: the smell reports a continuous
+  bearing (waypoint on the walk), not the BFS's first cardinal step (reflex 14.2 ->
+  21.9 meals). Probes now score the geodesic walk closed, not the crow's flight.
+  `cortex/wave.py`: the rule as a per-cell perceptron (fixed perception: 3x3 raw +
+  max + mean; ReLU 12; value + 2 hidden; 711 weights); `exact()` builds the weights
+  that ARE the wave (ladder 0.86, teacher loss 0); (1+31)-ES on the ladder plateaus at
+  reflex level ~0.65 (walls ignored); `Teacher` = imitate the wave on random maps
+  (smooth, ms per eval). `cortex/atlas_lineage.py`: the atlas GENOME (12 named
+  scalars) + a parallel (1+15) lineage on rotating worlds, `--world sparse|rich`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

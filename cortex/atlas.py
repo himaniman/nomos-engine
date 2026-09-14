@@ -398,6 +398,9 @@ class AtlasMind:
     def attach(self, w: World) -> None:
         self.field = ScentField(w.cfg.smell_radius)
 
+    def panel(self, app):
+        return Panel(app)
+
     def step(self, w: World) -> None:
         if self.field is None:
             self.attach(w)
@@ -502,6 +505,64 @@ def save_gif(frames: list, path: str, fps: int = 12) -> None:
     ims = [Image.fromarray(f) for f in frames]
     ims[0].save(path, save_all=True, append_images=ims[1:], duration=int(1000 / fps),
                 loop=0)
+
+
+class Panel:
+    """The atlas's column in the live HUD (`python -m cortex.app --atlas`): the map,
+    drawn as the agent holds it, plus the numbers that say what it is doing. Same slot
+    the cortex brain's panel takes; the keys that mean nothing here are no-ops."""
+
+    trace_on = False
+    trace_i = 0
+    picked = None
+
+    def __init__(self, app):
+        self.app = app
+
+    def cycle_view(self) -> str:
+        return "map"
+
+    def slower(self) -> None:
+        pass
+
+    def faster(self) -> None:
+        pass
+
+    def advance_trace(self) -> None:
+        pass
+
+    def click(self, pos) -> bool:
+        return False
+
+    def draw(self, surf, x: int) -> None:
+        import pygame
+        from cortex.brainpanel import BRAIN_W
+        at = self.app.mind.atlas
+        font = self.app.font
+        pw = BRAIN_W - 28
+        scale = max(1, pw // at.side)
+        img = map_image(at, scale)
+        pic = pygame.surfarray.make_surface(np.transpose(img, (1, 0, 2)))
+        y = 14
+        surf.blit(font.render(f"ATLAS  r{at.R}  {at.cells()} cells  thought {at.thoughts}",
+                              True, (210, 210, 220)), (x + 14, y))
+        y += 22
+        surf.blit(pic, (x + 14, y))
+        pygame.draw.rect(surf, (40, 42, 52), pygame.Rect(x + 14, y, img.shape[1], img.shape[0]), 1)
+        y += img.shape[0] + 10
+        t, tr, act = at.last_command
+        lines = [f"command  thrust {t:.2f}  turn {tr:+.2f}  {'E' if act else '-'}",
+                 f"step     {at.last_target}",
+                 f"value at centre {at.state[VALUE][at.R, at.R]:.3f}   max {at.state[VALUE].max():.3f}",
+                 f"known free {int((at.state[FREE] > 0.5).sum())}   solid "
+                 f"{int((at.state[SOLID] > 0.5).sum())}   things {int((at.state[THING] > 0.5).sum())}",
+                 f"scent sources {int((at.state[SCENT] > 0.01).sum())}",
+                 "",
+                 "blue = the wave, grey = solid, yellow = smell,",
+                 "coloured = a seen thing, green = the chosen step"]
+        for ln in lines:
+            surf.blit(font.render(ln, True, (170, 170, 185)), (x + 14, y))
+            y += 18
 
 
 # --- the command line ------------------------------------------------------------------

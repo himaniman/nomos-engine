@@ -15,6 +15,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 llm = ["openai>=1.30", "python-dotenv>=1.0"]
+# cortex/wave.py --train only: the wave rule found by gradient (CPU wheel is enough:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch)
+train = ["torch>=2.0"]
 
 [tool.setuptools]
 packages = ["nomos"]

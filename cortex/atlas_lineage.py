@@ -10,8 +10,11 @@ ranges, the same shape as `cortex/program.py`, small enough to read and to hand 
 model. The radius is the one that matters most: it is the horizon of both memory and
 planning, and every cell of it is paid for every tick.
 
-The lineage is (1 + lambda) with lambda in the teens, evaluated IN PARALLEL over a few
-rotating worlds, and the child is judged against its parent re-lived on the same worlds.
+The lineage is (1 + lambda) with lambda in the teens, evaluated IN PARALLEL: the
+children are SCREENED on a rotating handful of worlds and the finalist is CONFIRMED
+against the parent on all of them, both re-lived — because the best of fifteen on four
+maps is usually the luckiest of fifteen, and without the confirmation the lineage
+accepted a child almost every generation while going nowhere.
 That is what the old cortex lineage could not do: one life per generation, serial, and
 a fitness whose spread across worlds was wider than the spread across children
 (journal, 2026-09-14). With the atlas a life costs ten seconds and sixteen fit on the
@@ -166,21 +169,29 @@ def run(generations: int = 30, lam: int = 15, seeds=tuple(range(8)), per_gen: in
         for gen in range(1, generations + 1):
             t0 = time.time()
             turn = worlds_for(seeds, gen, per_gen)
+            rest = [sd for sd in seeds if sd not in turn]
             kids = [parent.mutate(rng) for _ in range(lam)]
-            scores = evaluate(pool, [parent] + kids, turn, ticks, world)
-            bar = scores[0]
-            i = 1 + int(np.argmax([s["fitness"] for s in scores[1:]]))
-            kept = scores[i]["fitness"] > bar["fitness"]
+            # SCREEN the children on this turn's worlds...
+            scores = evaluate(pool, kids, turn, ticks, world)
+            i = int(np.argmax([s["fitness"] for s in scores]))
+            # ...then CONFIRM the finalist against the parent on ALL the worlds. The
+            # best of fifteen on four maps is, more often than not, the luckiest of
+            # fifteen: the first version accepted a child in eleven generations of
+            # twelve and the parent's score never trended anywhere (the same winner's
+            # curse the old cortex lineage showed under a population). A finalist has
+            # to win on maps it was not picked on.
+            fin, bar = evaluate(pool, [kids[i], parent], list(turn) + rest, ticks, world)
+            kept = fin["fitness"] > bar["fitness"]
             if kept:
-                changed = kids[i - 1].diff(parent)
-                parent = kids[i - 1]
+                changed = kids[i].diff(parent)
+                parent = kids[i]
             history.append({"gen": gen, "worlds": turn, "parent": bar,
-                            "best_child": scores[i], "kept": kept,
+                            "best_child": fin, "screen": scores[i], "kept": kept,
                             "program": parent.to_dict()})
-            log(f"gen {gen:>3}  worlds {turn}  parent {bar['fitness']:>6.1f}"
-                f" ({bar['meals']:.1f} meals, {bar['ticks']:.0f} t)  best child"
-                f" {scores[i]['fitness']:>6.1f} ({scores[i]['meals']:.1f})  kids mean"
-                f" {np.mean([s['fitness'] for s in scores[1:]]):>6.1f}"
+            log(f"gen {gen:>3}  screen {turn}  parent {bar['fitness']:>6.1f}"
+                f" ({bar['meals']:.1f} meals, {bar['ticks']:.0f} t)  finalist"
+                f" {fin['fitness']:>6.1f} ({fin['meals']:.1f}; screened {scores[i]['fitness']:.0f})"
+                f"  kids mean {np.mean([s['fitness'] for s in scores]):>6.1f}"
                 f"  {'KEPT ' + _fmt_diff(changed) if kept else 'rejected'}"
                 f"  {time.time() - t0:.0f}s")
             if save:

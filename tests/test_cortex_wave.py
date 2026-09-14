@@ -63,3 +63,13 @@ def test_program_config_runs_a_life():
     cfg = L.Program({"radius": 5, "subticks": 2}).config()
     w, mind = A.live(1, 120, cfg)
     assert mind.atlas.side == 11 and w.tick == 120
+
+
+def test_training_lowers_the_loss():
+    pytest = __import__("pytest")
+    pytest.importorskip("torch")
+    t = W.Teacher(n_maps=6, seed=9)
+    before = t.loss(W.NeuralRule(seed=0))
+    res = W.train(steps=60, n_maps=6, passes=8, seed=0, lr=1e-2, log=lambda s: None)
+    assert t.loss(res["rule"]) < before          # on maps it never trained on
+    assert res["rule"].n_params == W.NeuralRule().n_params

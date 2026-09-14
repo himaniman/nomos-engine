@@ -216,6 +216,70 @@ def teach(generations: int = 400, lam: int = 32, sigma: float = 0.05, seed: int 
     return {"rule": parent, "loss": best, "history": history}
 
 
+def train(steps: int = 1500, lr: float = 3e-3, seed: int = 0, width: int = 12,
+          hidden: int = 2, n_maps: int = 32, passes: int = 14, log=print,
+          start: np.ndarray | None = None) -> dict:
+    """The same teacher, by GRADIENT: the rule unrolled for `passes` on a batch of random
+    maps, mean squared error against the wave, Adam. This is Earle et al.'s recipe and
+    it is what a (1 + lambda) over the weights could not do in 300 generations (loss
+    0.08 -> 0.021, while the exact rule sits at 0). Torch is used for this one function
+    and nothing else; the rule it returns is the same numpy object as before, so what
+    the game sees is identical.
+
+    A fresh batch of maps every step, so the rule cannot memorise its teacher."""
+    import torch
+    torch.manual_seed(seed)
+    r = NeuralRule(start, width, hidden, seed=seed)
+    W1 = torch.tensor(r.W1, requires_grad=True)
+    b1 = torch.tensor(r.b1, requires_grad=True)
+    W2 = torch.tensor(r.W2, requires_grad=True)
+    b2 = torch.tensor(r.b2, requires_grad=True)
+    opt = torch.optim.Adam([W1, b1, W2, b2], lr=lr)
+    n_in = r.n_in
+    offs = [(dy, dx) for dy, dx in _NB]
+    others = [k for k, o in enumerate(_NB) if o != (0, 0)]
+
+    def perceive(chans):                                  # (n, C, S, S) -> (n, S, S, F)
+        n, C, S, _ = chans.shape
+        pad = torch.nn.functional.pad(chans, (1, 1, 1, 1))
+        raw = torch.stack([pad[:, :, 1 + dy:1 + dy + S, 1 + dx:1 + dx + S]
+                           for dy, dx in offs], dim=0)      # (9, n, C, S, S)
+        nb = raw[others]
+        return torch.cat([raw.permute(1, 3, 4, 2, 0).reshape(n, S, S, C * 9),
+                          nb.max(dim=0).values.permute(0, 2, 3, 1),
+                          nb.mean(dim=0).permute(0, 2, 3, 1)], dim=3)
+
+    history = []
+    for step in range(1, steps + 1):
+        src_np, sol_np = random_maps(n_maps, 25, seed * 100003 + step)
+        target = torch.tensor(target_wave(src_np, sol_np, passes))
+        src, sol = torch.tensor(src_np), torch.tensor(sol_np)
+        n, S = src.shape[0], src.shape[1]
+        V = torch.zeros(n, S, S, dtype=torch.float64)
+        H = torch.zeros(n, hidden, S, S, dtype=torch.float64)
+        loss = 0.0
+        for k in range(passes):
+            chans = torch.cat([src[:, None], sol[:, None], V[:, None], H], dim=1)
+            h = torch.relu(perceive(chans) @ W1 + b1)
+            out = h @ W2 + b2
+            V = torch.clamp(out[..., 0], 0.0, 2.0)
+            if hidden:
+                H = torch.tanh(out[..., 1:]).permute(0, 3, 1, 2)
+            if k >= passes - 4:                            # the last passes must agree
+                loss = loss + torch.mean((V - target) ** 2)
+        loss = loss / 4
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        history.append(float(loss.detach()))
+        if step % 100 == 0 or step == 1:
+            log(f"train {step:>5}  loss {history[-1]:.5f}")
+    theta = np.concatenate([W1.detach().numpy().ravel(), b1.detach().numpy(),
+                            W2.detach().numpy().ravel(), b2.detach().numpy()])
+    rule = NeuralRule(theta, width, hidden)
+    return {"rule": rule, "loss": history[-1], "history": history}
+
+
 # --- fitness --------------------------------------------------------------------------
 
 def ladder(theta, width: int, hidden: int, ticks: int = 600, cfg_d: dict | None = None) -> dict:
@@ -284,6 +348,8 @@ def main(argv=None) -> int:
     p.add_argument("--evolve", action="store_true")
     p.add_argument("--teach", type=int, default=0,
                    help="first imitate the wave on random maps for this many generations")
+    p.add_argument("--train", type=int, default=0,
+                   help="...or by gradient (torch) for this many steps")
     p.add_argument("--generations", type=int, default=60)
     p.add_argument("--lam", type=int, default=31)
     p.add_argument("--sigma", type=float, default=0.05)
@@ -308,6 +374,12 @@ def main(argv=None) -> int:
         rule = res["rule"]
         np.save(os.path.join(args.out, "taught.npy"), rule.theta)
         print(f"taught rule: loss {res['loss']:.5f} -> {args.out}/taught.npy")
+    if args.train:
+        os.makedirs(args.out, exist_ok=True)
+        res = train(args.train, seed=args.seed, width=args.width, hidden=args.hidden)
+        rule = res["rule"]
+        np.save(os.path.join(args.out, "trained.npy"), rule.theta)
+        print(f"trained rule: loss {res['loss']:.5f} -> {args.out}/trained.npy")
     if args.exact:
         rule = exact(width=args.width, hidden=args.hidden)
     elif args.load:

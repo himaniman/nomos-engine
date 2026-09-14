@@ -124,6 +124,98 @@ def exact(decay: float = 0.06, width: int = 12, hidden: int = 2) -> NeuralRule:
     return r
 
 
+# --- the teacher: imitate the wave on random maps ----------------------------------------
+
+def random_maps(n: int, side: int = 25, seed: int = 0):
+    """Small random worlds for the teacher: a few solid blobs and walls, a few sources.
+    Returns (src, solid) stacks of shape (n, side, side)."""
+    rng = np.random.default_rng(seed)
+    src = np.zeros((n, side, side))
+    solid = np.zeros((n, side, side))
+    for i in range(n):
+        for _ in range(rng.integers(1, 4)):                 # walls with gaps
+            if rng.random() < 0.5:
+                x = rng.integers(2, side - 2)
+                solid[i, :, x] = 1.0
+                for g in rng.integers(1, side - 1, size=rng.integers(1, 3)):
+                    solid[i, g, x] = 0.0
+            else:
+                y = rng.integers(2, side - 2)
+                solid[i, y, :] = 1.0
+                for g in rng.integers(1, side - 1, size=rng.integers(1, 3)):
+                    solid[i, y, g] = 0.0
+        for _ in range(rng.integers(0, 4)):                 # blobs
+            y, x = rng.integers(1, side - 1, size=2)
+            r = rng.integers(1, 3)
+            solid[i, max(0, y - r):y + r, max(0, x - r):x + r] = 1.0
+        for _ in range(rng.integers(1, 3)):                 # sources
+            y, x = rng.integers(0, side, size=2)
+            src[i, y, x] = rng.uniform(0.3, 1.0)
+        src[i] *= 1.0 - solid[i]
+    return src, solid
+
+
+def target_wave(src: np.ndarray, solid: np.ndarray, passes: int, decay: float = 0.06):
+    """What the hand rule computes, batched: V = max(src, k * max8 V) * (1 - solid)."""
+    n, S, _ = src.shape
+    V = np.zeros_like(src)
+    k = 1.0 - decay
+    pad = np.zeros((n, S + 2, S + 2))
+    for _ in range(passes):
+        pad[:, 1:-1, 1:-1] = V
+        best = np.zeros_like(V)
+        for dy, dx in _NB:
+            if (dy, dx) != (0, 0):
+                np.maximum(best, pad[:, 1 + dy:1 + dy + S, 1 + dx:1 + dx + S], out=best)
+        V = np.maximum(src, k * best) * (1.0 - solid)
+    return V
+
+
+class Teacher:
+    """The imitation objective: run the rule from a blank map for `passes` and compare
+    its value field with the wave's, on a fixed set of random maps. Smooth where the
+    ladder is a staircase, and a thousand times cheaper."""
+
+    def __init__(self, n_maps: int = 24, side: int = 25, passes: int = 14, seed: int = 0,
+                 decay: float = 0.06):
+        self.src, self.solid = random_maps(n_maps, side, seed)
+        self.passes = passes
+        self.target = target_wave(self.src, self.solid, passes, decay)
+
+    def loss(self, rule: NeuralRule) -> float:
+        n, S, _ = self.src.shape
+        err = 0.0
+        for i in range(n):
+            state = np.zeros((A.N_CH + rule.hidden, S, S))
+            rule.step(state, self.src[i], 1.0 - self.solid[i], self.passes)
+            err += float(np.mean((state[A.VALUE] - self.target[i]) ** 2))
+        return err / n
+
+
+def teach(generations: int = 400, lam: int = 32, sigma: float = 0.05, seed: int = 0,
+          width: int = 12, hidden: int = 2, log=print, start: np.ndarray | None = None,
+          sigma_min: float = 0.003) -> dict:
+    """(1 + lambda) on the teacher's loss. Serial: one evaluation is a millisecond."""
+    rng = np.random.default_rng(seed)
+    teacher = Teacher(seed=seed)
+    parent = NeuralRule(start, width, hidden, seed=seed)
+    best = teacher.loss(parent)
+    history = [best]
+    log(f"teach   0  loss {best:.5f}")
+    for gen in range(1, generations + 1):
+        kids = [parent.theta + rng.normal(0.0, sigma, parent.n_params) for _ in range(lam)]
+        losses = [teacher.loss(NeuralRule(k, width, hidden)) for k in kids]
+        i = int(np.argmin(losses))
+        kept = losses[i] < best
+        if kept:
+            parent, best = NeuralRule(kids[i], width, hidden), losses[i]
+        sigma = min(0.5, max(sigma_min, sigma * (1.3 if kept else 0.93)))
+        history.append(best)
+        if gen % 20 == 0 or kept and gen < 20:
+            log(f"teach {gen:>3}  loss {best:.5f}  sigma {sigma:.4f}")
+    return {"rule": parent, "loss": best, "history": history}
+
+
 # --- fitness --------------------------------------------------------------------------
 
 def ladder(theta, width: int, hidden: int, ticks: int = 600, cfg_d: dict | None = None) -> dict:
@@ -144,7 +236,7 @@ def _fit(args):
 def evolve(generations: int = 60, lam: int = 31, sigma: float = 0.05, seed: int = 0,
            width: int = 12, hidden: int = 2, ticks: int = 600, jobs: int = 16,
            start: np.ndarray | None = None, out_dir: str = "out/cortex/wave",
-           log=print, cfg_d: dict | None = None) -> dict:
+           log=print, cfg_d: dict | None = None, sigma_min: float = 0.02) -> dict:
     """(1 + lambda) over the rule's weights, scored on the ladder. Rechenberg's 1/5 rule
     on sigma. The parent is never re-measured because the fitness is exact."""
     from multiprocessing import Pool
@@ -167,7 +259,9 @@ def evolve(generations: int = 60, lam: int = 31, sigma: float = 0.05, seed: int 
             if kept:
                 parent, best = NeuralRule(kids[i], width, hidden), scores[i]
                 np.save(os.path.join(out_dir, "best.npy"), parent.theta)
-            sigma = min(0.5, max(0.002, sigma * (1.3 if kept else 0.93)))
+            # the 1/5 rule, floored: forty rejections in a row used to shrink sigma to
+            # 0.007, at which point the search could only ever polish what it had
+            sigma = min(0.5, max(sigma_min, sigma * (1.3 if kept else 0.93)))
             history.append(best["mean"])
             log(f"gen {gen:>3}  fit {best['mean']:.3f}  {_row(best)}  sigma {sigma:.4f}"
                 f"  {'KEPT' if kept else '    '}  kids max {scores[i]['mean']:.3f}"
@@ -188,6 +282,8 @@ def _row(p: dict) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Find the wave: evolve a per-cell perceptron.")
     p.add_argument("--evolve", action="store_true")
+    p.add_argument("--teach", type=int, default=0,
+                   help="first imitate the wave on random maps for this many generations")
     p.add_argument("--generations", type=int, default=60)
     p.add_argument("--lam", type=int, default=31)
     p.add_argument("--sigma", type=float, default=0.05)
@@ -206,6 +302,12 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
 
     rule = None
+    if args.teach:
+        os.makedirs(args.out, exist_ok=True)
+        res = teach(args.teach, seed=args.seed, width=args.width, hidden=args.hidden)
+        rule = res["rule"]
+        np.save(os.path.join(args.out, "taught.npy"), rule.theta)
+        print(f"taught rule: loss {res['loss']:.5f} -> {args.out}/taught.npy")
     if args.exact:
         rule = exact(width=args.width, hidden=args.hidden)
     elif args.load:

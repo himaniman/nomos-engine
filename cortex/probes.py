@@ -131,15 +131,43 @@ class PolicyDriver:
 
 
 def _reach(w, spot, path, ticks) -> tuple[float, dict]:
-    """Scored on CLOSING THE DISTANCE, not only on the meal. A brain that walks to its
-    food and fails to press is doing most of the job, and a suite that cannot see the
-    difference between that and standing still teaches us nothing."""
-    d0 = math.hypot(spot.y - ARENA // 2, spot.x - 6.0)
-    best = min((math.hypot(spot.y - y, spot.x - x) for y, x in path), default=d0)
+    """Scored on CLOSING THE WALK, not only on the meal. A brain that walks to its food
+    and fails to press is doing most of the job, and a suite that cannot see the
+    difference between that and standing still teaches us nothing.
+
+    The distance closed is GEODESIC — the walk, not the crow's flight. Measured as the
+    straight line, `corner` had a valley in it: pushing into the wall four cells from
+    the food scored 0.27 while walking toward the gap, further from the food as the
+    crow flies, scored less, so a search that could only take small steps could never
+    get from the one to the other (journal, 2026-09-14). Scoring the walk makes the
+    approach to the gap the progress it is."""
+    from cortex.senses import ScentField
+    field = _geodesic(w, spot)
+    d0 = _walk(field, ARENA // 2, 6.0, spot)
+    best = min((_walk(field, y, x, spot) for y, x in path), default=d0)
     closed = max(0.0, min(1.0, (d0 - best) / max(1e-9, d0 - w.cfg.eat_reach)))
     ate = 0.0 if spot.ready else 1.0
     return 0.35 * closed + 0.65 * ate, {"closed": round(closed, 2), "ate": int(ate),
                                         "nearest": round(best, 1)}
+
+
+def _geodesic(w, spot):
+    """Walkable distance from every arena cell to the food: a scent field with the
+    food standing where the agent usually does."""
+    from cortex.senses import ScentField
+    field = ScentField(radius=2 * ARENA)
+    saved = (w.agent.y, w.agent.x)
+    w.agent.y, w.agent.x = spot.y, spot.x
+    field.update(w)
+    w.agent.y, w.agent.x = saved
+    return field
+
+
+def _walk(field, y, x, spot) -> float:
+    d = field.dist.get((int(round(y)), int(round(x))))
+    if d is None:                                 # off the field: as the crow flies
+        return math.hypot(spot.y - y, spot.x - x) + 2 * ARENA
+    return max(d, math.hypot(spot.y - y, spot.x - x)) if d < 2.0 else d
 
 
 # --- the probes ---------------------------------------------------------------------

@@ -56,10 +56,12 @@ from nomos.llm import LLMError, make_client
 # stagger aces is not measuring the skill it is named for — the arena is small enough
 # that wandering finds the food. `corner` is the honest terrain probe of the two.
 BASELINES = {
+    # re-measured 2026-09-14 after the probes started scoring the geodesic walk closed
+    # (not the crow's flight) and the nose started reporting a bearing
     "reflex": {"near": 1.00, "open": 1.00, "side": 1.00, "behind": 1.00,
-               "corner": 0.23, "maze": 0.23, "patience": 0.17, "mean": 0.66},
-    "random": {"near": 0.35, "open": 0.23, "side": 0.32, "behind": 0.35,
-               "corner": 0.24, "maze": 1.00, "patience": 0.00, "mean": 0.36},
+               "corner": 0.23, "maze": 0.22, "patience": 0.17, "mean": 0.66},
+    "random": {"near": 0.35, "open": 0.16, "side": 0.33, "behind": 0.34,
+               "corner": 0.23, "maze": 1.00, "patience": 0.00, "mean": 0.35},
 }
 
 SPEC = """\

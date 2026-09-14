@@ -2340,3 +2340,102 @@ that lets the read-out follow a local source is one lucky jitter away). Running.
 `python -m cortex.atlas --probes | --seeds 0-15 --jobs 16 | --gif ...` (world and map
 side by side: walls grey where the rays put them, the wave in blue, sources yellow, the
 chosen step green). 9 tests.
+
+## 2026-09-14 (later) — the rule is FOUND, not written; and the atlas learns what not to eat
+
+Two results in the same session, both on the atlas, both of the kind the old brain never
+produced.
+
+**1. The wave can be found (`cortex/wave.py`).** The claim to settle: the local rule that
+makes the map plan is not something a person has to write. Three searches for it, all
+over the same 711 weights of a per-cell perceptron (fixed perception — each channel's
+3x3, neighbourhood max and mean; ReLU 12; value + 2 hidden channels), all starting from
+random weights:
+
+```
+search                                          ladder    corner  maze   open-world (16 worlds)
+(1+31)-ES on the LADDER, 34 gens                 0.64      0.20    0.14   —
+(1+32)-ES on the TEACHER (MSE vs wave), 300 gens 0.66      0.22    0.10   —
+GRADIENT on the teacher, 3000 steps (Adam)       0.88      1.00    1.00   24.6 meals / 15228 t / 6 immortal
+hand-written wave                                0.86      1.00    1.00   25.6 / 13986 / 5
+built target `exact()` (the wave as weights)     0.86      1.00    1.00   —
+reflex policy                                    0.66      0.23    0.22   21.9 / 14515 / 6
+```
+
+The teacher is imitation of the wave on random maps (walls with gaps, blobs, a couple of
+sources), a fresh batch every step, scored on the last four of fourteen passes — the
+game is never in the loop. The gradient-trained rule then plays the game as well as the
+rule that was written for it: every foraging rung at 1.00, and in the open world the
+same meals per life as the hand rule. **The rule was learned from what a wave IS, and
+it transferred to what a wave is FOR.** That is Earle et al.'s Pathfinding NCA result,
+reproduced on this playground's own map and then made to eat.
+
+The two failures are as informative. Evolution over the weights plateaus at exactly the
+reflex's level — the four smell-following rungs at 1.00, the two terrain rungs at
+nothing — whether the objective is the game or the teacher's smooth MSE. On the game
+there is a valley: pushing into the wall four cells from the food scored more than
+walking toward the gap, so the probes now score the geodesic WALK closed rather than
+the crow's flight, and it still plateaued (sigma had also collapsed to 0.007 under the
+1/5 rule; it is floored at 0.02 now). On the teacher the ES got the loss from 0.080 to
+0.021 in 300 generations while the exact rule sits at 0.000 and gradient reaches 0.003
+in a few minutes. A (1+lambda) with isotropic Gaussian steps over seven hundred
+coupled weights is the wrong tool; that is a statement about the optimiser, not about
+the CA, and it is the same lesson the old brain taught at thirty thousand weights.
+Torch is a `train` extra used by this one function; the rule it returns is the same
+numpy object the game runs.
+
+An ES fine-tune of the found rule ON THE GAME is running (`--load trained.npy
+--evolve`); if the game can improve a rule the teacher found, that is the two-stage
+loop — taught, then selected — and if it cannot, the teacher was enough.
+
+**2. Appetite: the atlas learns not to eat the purple one.** Poison in this world is a
+nightcap that smells exactly like a berry and differs only in hue, so the only way to
+learn it is to eat one and feel the burn — interoception's poison channel rising after
+a meal. The atlas now has ONE learned thing: an appetite perceptron over hue, a
+population code of sixteen bumps round the colour circle (colour-tuned cells) plus a
+fixed innate bias of "anything bright is dinner". A seen thing's pull is its brightness
+times its appetite; a thing within reach with appetite under 0.5 is REFUSED — no press,
+the cell is marked bad, and every source within two cells of a bad mark (the smell that
+led there included) is hushed and the wave there zeroed, so the agent leaves instead of
+standing over the one thing it will not eat. The verdict on a meal is +1 after sixty
+ticks with no burn, -1 the tick the poison rises; one Hebbian step on the bumps, the
+bias untouched, weights clipped so the brain stays teachable.
+
+Three things had to be found out on the way, each by a measurement that came out wrong:
+
+* A perceptron over plain (cos, sin) of hue CANNOT do the job — the nightcap (288 deg)
+  sits between the berry (349) and the mushroom (222) on the circle, so no half-plane
+  keeps both foods and drops the poison; it learned to hate mushrooms instead
+  (appetite 0.00, they are worth 32). Hence the population code.
+* With the bias learnable it saturated at +4 after a dozen good meals and outvoted any
+  burn. The bias is the innate prior; it is not taught.
+* Eight bumps of ~30 degrees overlapped enough that one berry after a burn forgave the
+  nightcap (0.14 -> 0.56). Sixteen bumps at ~20 degrees share almost nothing.
+* And the press on smell alone would eat a refused thing that had drifted out of view:
+  a remembered bad mark within reach now blocks the press, sight or no sight.
+
+The exam is `python -m cortex.atlas --poison`: the poison arena twice with the same
+brain, a nightcap dead ahead and a berry off to the side, the map wiped between visits
+and only the appetite carried over:
+
+```
+                first visit           second visit
+learning        berry 1  nightcap 1   berry 1  nightcap 0     (appetite: nightcap 0.14, berry 1.00)
+no learning     berry 1  nightcap 1   berry 1  nightcap 1
+```
+
+One burn is enough. In the open world over 16 lives: nightcaps eaten 12 -> 5, meals
+26.8 -> 25.6, lifetime 13196 -> 13986 ticks. It eats slightly less and lives slightly
+longer, which is what refusing dinner should do; and it is the first within-life
+learning in this project whose effect is visible in the count of a specific behaviour
+rather than in a probe mean.
+
+**Also this session.** The atlas plays in the live HUD (`python -m cortex.app --atlas`,
+map column on the right: walls grey where the rays put them, the wave in blue, smell
+yellow, a seen thing in its own hue, a bad mark magenta, the chosen step green).
+`cortex/atlas_lineage.py` got a CONFIRMATION step: children are screened on four
+rotating worlds and the finalist is re-lived against the parent on all eight, because
+the first version accepted a child in fourteen of fifteen generations while the
+parent's score went nowhere — the best of fifteen on four maps is the luckiest of
+fifteen, the same winner's curse the old brain showed under a population. The sparse /
+rich arms are re-running with it. 21 new tests this session, suite 460.

@@ -285,7 +285,10 @@ def test_growing_tissue_is_never_free(tmp_path):
     for frac in (0.0, 1.0):
         g = fg(seed=0)
         g.program.update({"embryo_ticks": 5000, "embryo_cost_frac": frac})
-        w = World(seed=0, cfg=WorldConfig())
+        # a world with NOTHING to eat, so the drop is upkeep and walking alone (with
+        # the better nose of 2026-09-14 this brain found a meal inside 600 ticks)
+        w = World(seed=0, cfg=WorldConfig(food_per_chunk=0, larder_doors=0,
+                                          tree_spots=0, cave_spots=0))
         mind = Mind(g)
         mind.attach(w)
         before = w.agent.energy

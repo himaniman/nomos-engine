@@ -57,9 +57,17 @@ from cortex.world import N_ODOUR, World
 from cortex.world import Config as WorldConfig
 
 # --- the channels a map cell holds ---------------------------------------------------
-SOLID, FREE, THING, HUE_C, HUE_S, BRIGHT, SCENT, VALUE = range(8)
-N_CH = 8
-CH_NAMES = ("solid", "free", "thing", "hue_c", "hue_s", "bright", "scent", "value")
+SOLID, FREE, THING, HUE_C, HUE_S, BRIGHT, SCENT, VALUE, BAD = range(9)
+N_CH = 9
+CH_NAMES = ("solid", "free", "thing", "hue_c", "hue_s", "bright", "scent", "value", "bad")
+
+# the hue population code: N_HUE preferred hues round the circle, tuning width kappa
+N_HUE = 16
+HUE_KAPPA = 12.0          # ~20 degrees half-width: berry (349) and nightcap (288) share
+                          # almost nothing; at 8 bumps of 30 degrees they did, and one
+                          # berry after a burn undid the lesson
+_HUE_MU = np.arange(N_HUE) * 2 * math.pi / N_HUE
+_HUE_COS, _HUE_SIN = np.cos(_HUE_MU), np.sin(_HUE_MU)
 
 # the eight neighbours, and how far each is (a diagonal step costs sqrt 2)
 _NBRS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy, dx) != (0, 0)]
@@ -107,6 +115,20 @@ class Config:
         self.slow_angle = 1.0       # radians of error above which the body slows
         self.cell_cost = 0.000015   # energy per map cell per tick — same tariff as a
                                     # cortex brain cell, so a bigger map has to pay
+        # APPETITE: the one thing this brain LEARNS within a life. A seen thing's pull,
+        # and whether it is eaten when reached, is a tiny perceptron over its HUE —
+        # innately "anything bright is dinner", corrected by what eating it did to the
+        # body (interoception: the poison channel rising after a meal). Nothing else
+        # can tell a nightcap from a berry: they smell identical by design.
+        self.appetite_lr = 3.0      # how hard one meal's verdict moves the weights:
+                                    # one burn is enough to refuse that hue next time
+        self.appetite_clip = 6.0    # ...and how far they can go, so a brain stays
+                                    # teachable after twenty meals of the same kind
+        self.appetite_delay = 60    # ticks after a meal to wait for the verdict
+        self.bad_radius = 2         # a refused or regretted thing suppresses every
+                                    # source this close to it (including the smell that
+                                    # led there), so the agent LEAVES instead of standing
+                                    # over the one thing it will not eat
         self.__dict__.update(kw)
 
     def to_dict(self) -> dict:
@@ -143,9 +165,50 @@ class Atlas:
         self._t = np.arange(0.5, self.wcfg.ray_reach, 0.5)      # samples along a ray
         # source hues, remembered so a strip can be drawn
         self.sources = np.zeros((self.side, self.side))
+        # the appetite perceptron over a POPULATION CODE of hue (eight bumps round the
+        # colour circle, like colour-tuned cells) plus a bias: born liking everything.
+        # A perceptron over plain (cos, sin) cannot do the job — the nightcap's hue sits
+        # BETWEEN the berry's and the mushroom's on the circle, so no half-plane keeps
+        # the two foods and drops the poison; measured, it learned to hate mushrooms.
+        self.appetite_w = np.zeros(N_HUE + 1)
+        self.appetite_w[-1] = 2.0
+        self.last_thing = None      # (dy, dx, features) of the thing within reach
+        self.meals = 0              # verdicts learned from, for the HUD
 
     def cells(self) -> int:
         return self.side * self.side
+
+    # --- appetite: a perceptron over hue, taught by the body -------------------------
+    @staticmethod
+    def _feat(hue_c, hue_s) -> np.ndarray:
+        """The population code: bump k fires as exp(kappa (cos(hue - mu_k) - 1)), and
+        cos(hue - mu) = cos hue cos mu + sin hue sin mu, so it needs no angle. Last
+        entry is the bias. Works on arrays (trailing axis = features)."""
+        hc, hs = np.asarray(hue_c, dtype=np.float64), np.asarray(hue_s, dtype=np.float64)
+        cosd = hc[..., None] * _HUE_COS + hs[..., None] * _HUE_SIN
+        bumps = np.exp(HUE_KAPPA * (cosd - 1.0))
+        return np.concatenate([bumps, np.ones(bumps.shape[:-1] + (1,))], axis=-1)
+
+    def appetite(self, hue_c, hue_s):
+        """0..1: how much a thing of this hue is wanted. Works on arrays too."""
+        z = self._feat(hue_c, hue_s) @ self.appetite_w
+        return 1.0 / (1.0 + np.exp(-z))
+
+    def learn(self, feat: np.ndarray, reward: float) -> None:
+        """The verdict on a meal: +1 it was food, -1 it burned. One Hebbian step, the
+        weights clipped so the brain stays teachable."""
+        c = self.cfg
+        step = c.appetite_lr * float(reward) * feat
+        step[-1] = 0.0                  # the bias is the innate prior; it is not taught
+        self.appetite_w += step
+        np.clip(self.appetite_w, -c.appetite_clip, c.appetite_clip, out=self.appetite_w)
+        self.meals += 1
+
+    def regret(self, dy: int, dx: int) -> None:
+        """Remember a bad thing WHERE it is, so the sources around it go quiet."""
+        y, x = self.R + dy, self.R + dx
+        if 0 <= y < self.side and 0 <= x < self.side:
+            self.state[BAD, y, x] = 1.0
 
     # --- the pose: proprioception ----------------------------------------------------
     def _scroll(self, y: float, x: float) -> None:
@@ -256,7 +319,8 @@ class Atlas:
     # --- the rule: a wave through what is not solid ---------------------------------
     def _sources(self) -> np.ndarray:
         st, c = self.state, self.cfg
-        src = st[SCENT] + c.thing_gain * st[THING]
+        want = self.appetite(st[HUE_C], st[HUE_S])
+        src = st[SCENT] + c.thing_gain * st[THING] * want
         if c.frontier > 0.0:
             # FRONTIER: unknown cells that touch a known-free one. Walking to them is
             # how the map grows; it is exploration without a random number.
@@ -266,6 +330,18 @@ class Atlas:
             for dy, dx in _NBRS:
                 nb |= np.roll(known_free, (dy, dx), axis=(0, 1))
             src = src + c.frontier * (unknown & nb)
+        if st[BAD].max() > 0.05:
+            # a remembered bad thing silences every source near it: the smell that led
+            # here is a lie this brain has learned not to follow, for a while
+            hush = st[BAD].copy()
+            for _ in range(int(c.bad_radius)):
+                grown = hush.copy()
+                for dy, dx in _NBRS:
+                    np.maximum(grown, np.roll(hush, (dy, dx), axis=(0, 1)), out=grown)
+                hush = grown
+            hush = np.clip(hush, 0.0, 1.0)
+            src = src * (1.0 - hush)
+            st[VALUE] *= 1.0 - hush         # and the wave already there, at once
         return src
 
     def _passable(self) -> np.ndarray:
@@ -316,13 +392,24 @@ class Atlas:
         olo, ohi = self.layout["slices"]["odour"]
         amps = vec[olo:ohi:ODOUR_CH]
         near_thing = None
+        # a remembered bad thing within reach counts as refused even when it is out of
+        # view: the press eats whatever is nearest, sight or no sight
+        refused = bool(st[BAD, R - 2:R + 3, R - 2:R + 3].max() > 0.3)
+        self.last_thing = None
         win = st[THING, R - 2:R + 3, R - 2:R + 3]
         if win.max() > 0.5:
             ys, xs = np.nonzero(win > 0.5)
             d = np.hypot(ys - 2, xs - 2)
             k = int(np.argmin(d))
             if d[k] <= c.eat_dist + 0.5:
-                near_thing = (ys[k] - 2, xs[k] - 2, d[k])
+                dy, dx = int(ys[k] - 2), int(xs[k] - 2)
+                hc, hs = st[HUE_C, R + dy, R + dx], st[HUE_S, R + dy, R + dx]
+                if self.appetite(hc, hs) >= 0.5:
+                    near_thing = (dy, dx, d[k])
+                    self.last_thing = (dy, dx, self._feat(hc, hs))
+                else:
+                    refused = True
+                    self.regret(dy, dx)             # not eating THAT: note it and go
         # which neighbour does the wave say to step to? Ties — and a wave with no
         # diagonal discount has whole rows of them — go to the neighbour that needs
         # the least turning, so a tie is never an excuse to veer
@@ -335,7 +422,10 @@ class Atlas:
             self.last_target = _NBRS[k]
         else:
             self.last_target = None
-        if near_thing is not None or (amps.max() > c.smell_here and self.last_target):
+        if near_thing is not None or (amps.max() > c.smell_here and self.last_target
+                                      and not refused):
+            # (never press on smell alone with a REFUSED thing in reach: the press
+            # eats whatever is nearest, and that would be the thing just refused)
             # EAT: face it, creep, press. Same "approach slowly" the reflex found. Face
             # the thing if one is seen, else the way the wave points — a smell this
             # strong is a source painted a cell or two out, at its true bearing. (The
@@ -371,6 +461,7 @@ class Atlas:
         self.state[SOLID] *= f
         self.state[FREE] *= f
         self.state[THING] *= f
+        self.state[BAD] *= f
         self._paint(vec, y, x, heading)
         src = self._sources()
         self.sources = src
@@ -394,6 +485,8 @@ class AtlasMind:
         self.field: ScentField | None = None
         self.command = (0.0, 0.0, 0.0)
         self.sensors = None
+        self._eaten = 0
+        self._pending: list = []    # [tick eaten, features, (dy, dx) then, y, x then]
 
     def attach(self, w: World) -> None:
         self.field = ScentField(w.cfg.smell_radius)
@@ -408,8 +501,38 @@ class AtlasMind:
         if w.tick % self.cfg.think_every == 0:
             self.sensors = sense(w, self.field)
             self.command = self.atlas.act(self.sensors, a.y, a.x, a.heading)
+        poison_before = a.poison
         w.step(*self.command)
         a.energy -= self.cfg.cell_cost * self.atlas.cells()
+        self._digest(w, poison_before)
+
+    def _digest(self, w: World, poison_before: float) -> None:
+        """Learning from what a meal did. The body knows it swallowed something (the
+        deed) and, a little later, whether it burns (the poison channel of
+        interoception rising). Those two facts, and the hue of what was within reach
+        when it was eaten, are all the appetite perceptron is ever told."""
+        a = w.agent
+        if w.deeds["eat"] > self._eaten:
+            self._eaten = w.deeds["eat"]
+            lt = self.atlas.last_thing
+            if lt is not None:
+                self._pending.append([w.tick, lt[2], (lt[0], lt[1]), a.y, a.x])
+        if not self._pending:
+            return
+        burned = a.poison > poison_before + 1e-9
+        keep = []
+        for m in self._pending:
+            if burned:
+                self.atlas.learn(m[1], -1.0)
+                # and remember WHERE: the thing is gone, but its patch and its smell
+                # are not, and the same kind may regrow there
+                self.atlas.regret(int(round(m[3] - a.y)) + m[2][0],
+                                  int(round(m[4] - a.x)) + m[2][1])
+            elif w.tick - m[0] >= self.cfg.appetite_delay:
+                self.atlas.learn(m[1], +1.0)
+            else:
+                keep.append(m)
+        self._pending = keep
 
 
 class Driver:
@@ -443,6 +566,33 @@ def live(seed: int = 0, max_ticks: int = 20000, cfg: Config | None = None,
     return w, mind
 
 
+# --- the lesson: the one exam that needs a life before it ---------------------------------
+
+def poison_lesson(cfg: Config | None = None, ticks: int = 900, rule=None) -> list[dict]:
+    """The poison arena TWICE with the same brain — a nightcap dead ahead, a berry off to
+    the side, identical smell, different hue. The first time it has never been burned.
+    The second time the map is wiped and the arena fresh, and all it carries over is
+    its appetite. `bad` is whether it ate the nightcap; the lesson is the second row."""
+    from cortex import probes
+    at = None
+    out = []
+    for _ in range(2):
+        w, sp = probes.build("poison")
+        if at is None:
+            at = Atlas(cfg, w.cfg, rule)
+        else:
+            at.state[:] = 0.0                   # a fresh arena: forget the map...
+            at.cell = None                      # ...keep what the body taught
+        mind = AtlasMind(cfg, w.cfg, rule)
+        mind.atlas = at
+        mind.attach(w)
+        while w.agent.alive and w.tick < ticks:
+            mind.step(w)
+        out.append({"good": int(not sp["food"].ready), "bad": int(not sp["poison"].ready),
+                    "verdicts": at.meals})
+    return out
+
+
 # --- watchable -------------------------------------------------------------------------
 
 def map_image(atlas: Atlas, scale: int = 4) -> np.ndarray:
@@ -463,6 +613,9 @@ def map_image(atlas: Atlas, scale: int = 4) -> np.ndarray:
     ys, xs = np.nonzero(st[SCENT] > 0.01)
     for y, x in zip(ys, xs):
         img[y, x] = np.array([1.0, 0.9, 0.2]) * min(1.0, 0.4 + st[SCENT, y, x])
+    ys, xs = np.nonzero(st[BAD] > 0.3)
+    for y, x in zip(ys, xs):
+        img[y, x] = [0.9, 0.1, 0.6]
     if atlas.last_target is not None:
         dy, dx = atlas.last_target
         img[atlas.R + dy, atlas.R + dx] = [0.2, 1.0, 0.3]
@@ -556,7 +709,9 @@ class Panel:
                  f"value at centre {at.state[VALUE][at.R, at.R]:.3f}   max {at.state[VALUE].max():.3f}",
                  f"known free {int((at.state[FREE] > 0.5).sum())}   solid "
                  f"{int((at.state[SOLID] > 0.5).sum())}   things {int((at.state[THING] > 0.5).sum())}",
-                 f"scent sources {int((at.state[SCENT] > 0.01).sum())}",
+                 f"scent sources {int((at.state[SCENT] > 0.01).sum())}   bad "
+                 f"{int((at.state[BAD] > 0.3).sum())}",
+                 f"appetite w {np.round(at.appetite_w, 2)}  verdicts {at.meals}",
                  "",
                  "blue = the wave, grey = solid, yellow = smell,",
                  "coloured = a seen thing, green = the chosen step"]
@@ -612,6 +767,8 @@ def table(rows: list[dict], who: str = "atlas") -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="The atlas: a map brain that plans by wave.")
     p.add_argument("--probes", action="store_true", help="sit the probe ladder")
+    p.add_argument("--poison", action="store_true",
+                   help="the lesson: the poison arena twice with the same brain")
     p.add_argument("--probe-ticks", type=int, default=900)
     p.add_argument("--seeds", default="", help="open-world lives, e.g. 0-7")
     p.add_argument("--ticks", type=int, default=20000)
@@ -632,6 +789,11 @@ def main(argv=None) -> int:
         if args.strip:
             probes.render(out, args.strip)
             print(f"strip -> {args.strip}")
+    if args.poison:
+        first, second = poison_lesson(cfg)
+        print(f"poison lesson  first visit: berry {first['good']} nightcap {first['bad']}"
+              f"   second visit: berry {second['good']} nightcap {second['bad']}"
+              f"   (verdicts {second['verdicts']})")
     if args.seeds:
         from cortex.session import record
         seeds = _seeds(args.seeds)

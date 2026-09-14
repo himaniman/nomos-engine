@@ -120,3 +120,28 @@ def test_frame_has_world_and_map_side_by_side():
     S = mind.atlas.side * 2
     assert img.shape == (S, 2 * S + 4, 3)
     assert img.dtype == np.uint8
+
+
+# --- learning ----------------------------------------------------------------------
+
+def test_one_burn_teaches_the_hue():
+    at = A.Atlas(A.Config(radius=6))
+    import math
+    from cortex.world import BERRY, FOOD_HSV, NIGHTCAP
+    def hue(kind):
+        h = FOOD_HSV[kind][0] * 2 * math.pi
+        return math.cos(h), math.sin(h)
+    assert at.appetite(*hue(NIGHTCAP)) > 0.5 and at.appetite(*hue(BERRY)) > 0.5
+    at.learn(at._feat(*hue(NIGHTCAP)), -1.0)
+    assert at.appetite(*hue(NIGHTCAP)) < 0.5, "one burn must be enough"
+    assert at.appetite(*hue(BERRY)) > 0.5, "...and must not spoil the berry"
+    at.learn(at._feat(*hue(BERRY)), +1.0)
+    assert at.appetite(*hue(NIGHTCAP)) < 0.5, "a good berry must not forgive the nightcap"
+
+
+def test_the_poison_lesson_is_learned():
+    first, second = A.poison_lesson(ticks=900)
+    assert first["bad"] == 1, "never burned, it eats the purple one"
+    assert second["good"] == 1 and second["bad"] == 0, second
+    naive = A.poison_lesson(A.Config(appetite_lr=0.0), ticks=900)
+    assert naive[1]["bad"] == 1, "without learning the second visit repeats the first"

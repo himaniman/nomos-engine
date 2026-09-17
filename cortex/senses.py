@@ -205,8 +205,13 @@ class ScentField:
         queue = deque()
         for k, (dy, dx) in enumerate(_DIRS):
             n = (ay + dy, ax + dx)
-            if not SOLID[w.tiles.material(*n)]:
-                dist[n], first[n], parent[n] = 1.0, k, (ay, ax)
+            # the same cost rule as every later ring: a door or a rubble pile beside
+            # the body seeps scent as it does from five cells off. (It used to be
+            # skipped here, so the smell of a larder VANISHED on the last step to its
+            # door — the step where pressing it is the whole question.)
+            cost = _passing(w.tiles.material(*n))
+            if cost is not None:
+                dist[n], first[n], parent[n] = cost, k, (ay, ax)
                 queue.append(n)
         while queue:
             qy, qx = queue.popleft()
@@ -232,10 +237,18 @@ class ScentField:
         """The cell on the shortest walkable path to `cell` that is about `ahead`
         steps out from the agent — what to steer at when the straight line is not the
         way. Walks the BFS parents back from the target."""
-        p = cell
-        while p in self.parent and self.dist.get(p, 0.0) > ahead:
+        # the FIRST cell out along the walk that is at least `ahead` away — not the
+        # last one within it. With a door costing 7 and `ahead` 6, "the last within"
+        # could never be the door itself, only the cell before it; standing in that
+        # cell the bearing degenerated to a sub-cell offset and flipped up and down
+        # along the wall while the door sat one step to the right (the door probe,
+        # 2026-09-17)
+        p, chosen = cell, cell
+        while p in self.parent:
+            if self.dist.get(p, 0.0) >= ahead:
+                chosen = p
             p = self.parent[p]
-        return p
+        return chosen
 
 
 def _smell(w: World, field: ScentField, out: np.ndarray, off: int) -> None:

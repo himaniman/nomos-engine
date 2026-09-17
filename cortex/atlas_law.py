@@ -30,8 +30,8 @@ The contract a law lives by — the harness's side:
     sourceless, a way round the outside of the map; the outer one is held at zero
     after every step, so the engine's torus never lets a wave wrap from one edge of
     the map to the other.
-  * Config.decay and Config.leak are NOT applied: they are the law's business now.
-    (The read-out still discounts a solid neighbour by Config.leak.)
+  * Config.decay is NOT applied: the discount is the law's business now. The leak
+    arrives as the `leak` channel; a law may use it or write its own.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ from nomos.dsl import NomosError, parse_program, walk_names
 from nomos.engine import World
 
 # what the harness paints each thought, in the atlas's own channels
-INPUTS = ("source", "solid", "free", "thing", "bright", "scent", "bad", "here")
+INPUTS = ("source", "solid", "free", "thing", "bright", "scent", "bad", "here", "leak")
 _INPUT_CH = {"solid": A.SOLID, "free": A.FREE, "thing": A.THING, "bright": A.BRIGHT,
              "scent": A.SCENT, "bad": A.BAD}
 OUTPUT = "value"
@@ -108,6 +108,11 @@ class LawRule:
                     st[name][sl, sl] = src
                 elif name == "here":
                     st[name][PAD + S // 2, PAD + S // 2] = 1.0
+                elif name == "leak":
+                    sol = np.clip(state[A.SOLID], 0.0, 1.0)
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        lk = np.where(sol > 1e-6, 1.0 - (1.0 - passable) / np.maximum(sol, 1e-6), 1.0)
+                    st[name][sl, sl] = np.clip(lk, 0.0, 1.0)
                 else:
                     st[name][sl, sl] = np.clip(state[_INPUT_CH[name]], 0.0, 1.0)
         st[OUTPUT][:] = 0.0

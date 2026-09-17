@@ -19,7 +19,7 @@ def _random_state(rng, S):
 def test_reference_law_is_the_wave():
     rule = LAW.load()
     assert rule.extra == []
-    at = A.Atlas()
+    at = A.Atlas(A.Config(linger=0.0))
     rng = np.random.default_rng(0)
     S = at.side
     for _ in range(10):
@@ -128,7 +128,7 @@ def test_hand_linger_is_the_ghost_law():
     laws/atlas_ghost.nomos, pass for pass."""
     rule = LAW.load("laws/atlas_ghost.nomos")
     assert rule.extra == ["ghost"]
-    at = A.Atlas(A.Config(linger=0.99))
+    at = A.Atlas(A.Config(linger=0.99, leak=0.12, leak_lr=0.0))
     rng = np.random.default_rng(3)
     S = at.side
     for _ in range(6):
@@ -144,3 +144,29 @@ def test_hand_linger_is_the_ghost_law():
         assert np.abs(st[A.N_CH] - at.state[A.GHOST]).max() < 1e-5
     # and a live ghost is a live ghost: after the sources go, it fades, not stops
     assert at.state[A.GHOST].max() > 0
+
+
+def test_law_sees_the_learned_leak():
+    """Under a per-hue leak the reference law is still the hand wave: the harness
+    hands it the leak map the body taught."""
+    import math
+    from cortex.senses import HSV
+    from cortex.tiles import DOOR, STONE
+    rule = LAW.load()
+    at = A.Atlas(A.Config(linger=0.0, leak=0.5, leak_lr=1.0))
+    door = at._feat(math.cos(HSV[DOOR][0] * 2 * math.pi), math.sin(HSV[DOOR][0] * 2 * math.pi))
+    stone = at._feat(math.cos(HSV[STONE][0] * 2 * math.pi), math.sin(HSV[STONE][0] * 2 * math.pi))
+    at.learn_leak(door, 1.0)
+    at.learn_leak(stone, -1.0)
+    rng = np.random.default_rng(5)
+    S = at.side
+    solid, src, _ = _random_state(rng, S)
+    at.state[A.SOLID] = solid
+    hues = rng.choice([HSV[DOOR][0], HSV[STONE][0]], size=(S, S)) * 2 * math.pi
+    at.state[A.HUE_C], at.state[A.HUE_S] = np.cos(hues), np.sin(hues)
+    lk = at.leak_map()
+    assert lk.min() < 0.3 < 0.6 < lk.max()
+    st = at.state.copy()
+    at._wave(src, 6)
+    rule.step(st, src, at._passable(), 6)
+    assert np.abs(st[A.VALUE] - at.state[A.VALUE]).max() < 1e-5

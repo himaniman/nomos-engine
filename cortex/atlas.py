@@ -96,6 +96,14 @@ class Config:
                                     # free one — exploration. Small, so anything real
                                     # (a smell, a seen morsel) always wins
         self.smell_gain = 1.0       # source strength of a painted smell...
+        self.smell_reach = 99.0     # ...and the furthest out it is painted (the map's
+                                    # edge if larger). The world's nose points at a
+                                    # WAYPOINT at most 6 cells out when the walk
+                                    # bends; painting the source at the walk's full
+                                    # length along that bearing puts it past the
+                                    # turn — beside a door it landed 11 cells along
+                                    # the wall and the agent ran past the door both
+                                    # ways for ever (the door probe, 2026-09-17)
         self.smell_floor = 0.35     # ...and the least a faint one is painted at.
                                     # Swept over 16 worlds: 0 -> 27.4 meals, 0.35 ->
                                     # 32.2, 1.0 -> 18.8 (chases every far smell to the
@@ -104,13 +112,17 @@ class Config:
         self.bright_min = 0.6       # what counts as a THING: brighter than any floor
                                     # or leaf (0.58), i.e. the innate appetite is "go
                                     # for the bright stuff" — hue is left for learning
-        self.leak = 0.12            # how much of the wave gets THROUGH a solid cell.
-                                    # Zero and a room with a door is a coffin; this is
-                                    # the innate guess that a wall might open, and the
+        self.leak = 0.5             # how much of the wave gets THROUGH a solid cell —
+                                    # the INNATE guess that a wall might open; the
                                     # read-out presses INTERACT on a solid it is led
-                                    # into. Which hues actually open is the door
-                                    # experiment, and a per-hue leak is where it lives
-        self.linger = 0.0           # COMMITMENT: a painted source keeps this much of
+                                    # into. 0.12 for months, and at 0.12 the horizon
+                                    # ring round the map (a walk of ~2R cells,
+                                    # 0.94^26 = 0.2) beats leaking through ANY wall,
+                                    # so no door was ever pressed; 0.5 is CURIOUS —
+                                    # the door probe 0.08 -> 1.00, doors opened in
+                                    # the wild 0 -> ~1.5 a life — and the per-hue
+                                    # learning below is what pays for the curiosity
+        self.linger = 0.99          # COMMITMENT: a painted source keeps this much of
                                     # itself per wave pass after the paint moves on
                                     # (0 = the plain wave). Found as a LAW first
                                     # (`laws/atlas_ghost.nomos`, 2026-09-17): the
@@ -121,6 +133,16 @@ class Config:
                                     # A lingering source holds the first target.
                                     # 0.99: 16 worlds 14.6 -> 20.2 meals. Where the
                                     # agent stands the ghost is erased (nothing there)
+        self.leak_lr = 1.0          # THE DOOR EXPERIMENT: with this > 0 the leak is
+                                    # PER HUE — a perceptron over the hue population
+                                    # code, bias = logit(leak) (the innate guess that
+                                    # any wall might open), taught by the body: a press
+                                    # that opens a door or chips rubble is +1 for that
+                                    # hue, a press that does nothing ("nothing to do
+                                    # here") is -1. Then a door is worth going through
+                                    # and stone is not, without either ever being named
+        self.leak_clip = 6.0
+        self.press_angle = 0.35     # heading error below which a solid is pressed on
         self.eat_dist = 1.2         # map distance at which to try INTERACT
         self.smell_here = 0.85      # ...or a smell this strong (same bar as the reflex)
         self.turn_gain = 3.0        # how hard a heading error is steered against
@@ -186,6 +208,11 @@ class Atlas:
         self.appetite_w[-1] = 2.0
         self.last_thing = None      # (dy, dx, features) of the thing within reach
         self.meals = 0              # verdicts learned from, for the HUD
+        # the leak perceptron: born believing every solid leaks `leak`
+        self.leak_w = np.zeros(N_HUE + 1)
+        self.leak_w[-1] = math.log(self.cfg.leak / (1.0 - self.cfg.leak))
+        self.last_press = None      # (dy, dx, features) of the solid being pressed on
+        self.presses = 0            # verdicts on presses learned from
 
     def cells(self) -> int:
         return self.side * self.side
@@ -215,6 +242,30 @@ class Atlas:
         self.appetite_w += step
         np.clip(self.appetite_w, -c.appetite_clip, c.appetite_clip, out=self.appetite_w)
         self.meals += 1
+
+    def leak_map(self) -> np.ndarray:
+        """0..1 per cell: how much wave the solid there would let through, by its hue.
+        Cells never seen (no hue) get the innate leak: the bumps all fire ~0."""
+        z = self._feat(self.state[HUE_C], self.state[HUE_S]) @ self.leak_w
+        return 1.0 / (1.0 + np.exp(-z))
+
+    def learn_leak(self, feat: np.ndarray, reward: float) -> None:
+        """The verdict on a press: +1 something gave, -1 nothing did."""
+        c = self.cfg
+        step = c.leak_lr * float(reward) * feat
+        step[-1] = 0.0
+        self.leak_w += step
+        np.clip(self.leak_w, -c.leak_clip, c.leak_clip, out=self.leak_w)
+        self.presses += 1
+
+    def gave(self, dy: int, dx: int, still: float) -> None:
+        """A pressed cell yielded: it is `still` as solid as it was (0 for a door
+        that opened, a fraction for rubble that was only chipped)."""
+        y, x = self.R + dy, self.R + dx
+        if 0 <= y < self.side and 0 <= x < self.side:
+            self.state[SOLID, y, x] *= still
+            if still == 0.0:
+                self.state[FREE, y, x] = 1.0
 
     def regret(self, dy: int, dx: int) -> None:
         """Remember a bad thing WHERE it is, so the sources around it go quiet."""
@@ -317,7 +368,7 @@ class Atlas:
             if norm < 1e-6:
                 continue
             d = self.wcfg.smell_sharp * math.sqrt(max(0.0, 1.0 / amp - 1.0))
-            d = max(1.0, min(float(R - 1), d))
+            d = max(1.0, min(float(R - 1), self.cfg.smell_reach, d))
             sy = int(round(oy + dy / norm * d)) + R
             sx = int(round(ox + dx / norm * d)) + R
             sy, sx = max(0, min(S - 1, sy)), max(0, min(S - 1, sx))
@@ -374,6 +425,8 @@ class Atlas:
         when solid — a wall is a cost, not an absolute, so a door can be worth a try
         and a sealed room is not a death sentence."""
         sol = np.clip(self.state[SOLID], 0.0, 1.0)
+        if self.cfg.leak_lr > 0.0:
+            return 1.0 - sol * (1.0 - self.leak_map())
         return 1.0 - sol * (1.0 - self.cfg.leak)
 
     def _wave(self, src: np.ndarray, passes: int) -> None:
@@ -423,6 +476,7 @@ class Atlas:
         # view: the press eats whatever is nearest, sight or no sight
         refused = bool(st[BAD, R - 2:R + 3, R - 2:R + 3].max() > 0.3)
         self.last_thing = None
+        self.last_press = None
         win = st[THING, R - 2:R + 3, R - 2:R + 3]
         if win.max() > 0.5:
             ys, xs = np.nonzero(win > 0.5)
@@ -440,7 +494,12 @@ class Atlas:
         # which neighbour does the wave say to step to? Ties — and a wave with no
         # diagonal discount has whole rows of them — go to the neighbour that needs
         # the least turning, so a tie is never an excuse to veer
-        vals = np.array([V[R + dy, R + dx] * passable[R + dy, R + dx] for dy, dx in _NBRS])
+        # the wave has already charged a solid neighbour its leak (V there is leak x
+        # the best of ITS neighbours); charging it again here made "led into a solid"
+        # a branch that never ran — 1.4% of a value loses to any free cell — so no door
+        # was ever pressed and the leak could not be taught. Measured 2026-09-17: 0
+        # door presses in 24000 ticks over three worlds
+        vals = np.array([V[R + dy, R + dx] for dy, dx in _NBRS])
         top = float(vals.max())
         if top > 1e-4:
             tied = [i for i in range(len(_NBRS)) if vals[i] >= top * (1.0 - 1e-3)]
@@ -475,8 +534,17 @@ class Atlas:
         if st[SOLID, R + dy, R + dx] > 0.5:
             # led INTO a solid: the wave says the way is through. Face it, lean on it,
             # and use the one verb — which opens a door, chips rubble, shoves a block,
-            # and does nothing at all to stone (that is what the hue is for, later)
-            return (0.5 if abs(err) < c.slow_angle else 0.0), turn, 1.0
+            # and does nothing at all to stone — which is what the hue is for: the
+            # body's verdict on this press teaches the leak of this hue
+            # ...and only pressed when FACING it: the verb acts on the cell ahead of
+            # the nose, and a press thrown while still turning lands on the stone
+            # beside the door and blames the door's hue for it (measured: learning
+            # drove the door's leak DOWN, 0.5 -> 0.36, and cost 2.4 meals a life)
+            facing = abs(err) < c.press_angle
+            if facing:
+                self.last_press = (dy, dx, self._feat(st[HUE_C, R + dy, R + dx],
+                                                      st[HUE_S, R + dy, R + dx]))
+            return (0.5 if abs(err) < c.slow_angle else 0.0), turn, (1.0 if facing else 0.0)
         return thrust, turn, 0.0
 
     # --- one thought -----------------------------------------------------------------
@@ -529,9 +597,22 @@ class AtlasMind:
             self.sensors = sense(w, self.field)
             self.command = self.atlas.act(self.sensors, a.y, a.x, a.heading)
         poison_before = a.poison
+        gave = w.deeds["door"] + w.deeds["break"] + w.deeds["push"]
+        doors, idle = w.deeds["door"], w.deeds["idle"]
         w.step(*self.command)
         a.energy -= self.cfg.cell_cost * self.atlas.cells()
         self._digest(w, poison_before)
+        press = self.atlas.last_press
+        if press is not None and self.cfg.leak_lr > 0.0 and self.command[2] > 0.0:
+            if w.deeds["door"] + w.deeds["break"] + w.deeds["push"] > gave:
+                self.atlas.learn_leak(press[2], +1.0)
+                # and the map learns the cell gave: a door is open, rubble is less.
+                # Left solid until a ray happened to look, the next press landed on
+                # bare ground, "nothing to do here", and the -1 went to the hue of
+                # the thing that had just yielded (rubble and door share a bump)
+                self.atlas.gave(press[0], press[1], 0.0 if w.deeds["door"] > doors else 0.6)
+            elif w.deeds["idle"] > idle:
+                self.atlas.learn_leak(press[2], -1.0)
 
     def _digest(self, w: World, poison_before: float) -> None:
         """Learning from what a meal did. The body knows it swallowed something (the

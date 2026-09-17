@@ -462,6 +462,22 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   found that cliff: ~4.5 meals). rng's train win was again luck on holdout.
   USER RULE (2026-09-17): do not spend the external LLM without asking; a local model
   is coming — use `--proposer rng|files`.
+- Done (the door experiment, 2026-09-17): `Config.leak_lr` makes the leak PER HUE (a
+  perceptron over the hue population code, bias = logit(leak), taught by the body: a
+  press that opens/chips/shoves = +1 for that hue, "nothing to do here" = -1; laws get
+  it as the `leak` input). Four blockers had to fall before any door was ever pressed:
+  the read-out charged the leak twice (fixed: world 9 5->13 alone); the scent BFS
+  skipped solids on its first ring (smell died beside the door); the waypoint was "last
+  cell within 6" so it could never be a door costing 7 (now "first cell at least 6
+  out"); and at leak 0.12 the horizon ring round the map beats leaking through ANY
+  wall (innate leak must be CURIOUS: 0.5). Plus: press only when facing
+  (`press_angle`), and the map learns a cell gave (`Atlas.gave`). RESULT: door probe
+  0.08 -> 1.00, doors opened in the wild 0 -> ~1.5/life, learner halves idle presses
+  and moves hues the right way; meals at n=16 are noise (SE ~2.5) — read DEEDS and
+  probes. New defaults linger 0.99 / leak 0.5 / leak_lr 1.0; headline 16x20000: 42.6
+  meals vs 32.6 (old leak) vs 25.6 (plain). Genome x world with 3 seeds: sparse
+  radius 9/11/11, rich 12/12/13. Worlds are deterministic-chaotic: one verdict can
+  swing one world by 40 meals.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

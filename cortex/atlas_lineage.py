@@ -53,8 +53,9 @@ FIELDS: dict[str, tuple] = {
     "smell_floor": (0.35, 0.0, 1.0, False,
                     "the least a faint smell is painted at"),
     "thing_gain":  (1.0, 0.0, 2.0, False, "pull of a seen bright thing"),
-    "leak":        (0.12, 0.0, 0.6, False, "how much wave a solid cell lets through"),
-    "linger":      (0.0, 0.0, 0.998, False,
+    "leak":        (0.5, 0.0, 0.9, False,
+                    "how much wave a solid cell lets through, innately (the hue learns)"),
+    "linger":      (0.99, 0.0, 0.998, False,
                     "commitment: what a painted source keeps of itself per wave pass"
                     " after the paint moves on (0 = none)"),
     "subticks":    (6, 1, 16, True, "wave passes per thought"),

@@ -3,7 +3,8 @@
 #     V = max(source, best neighbour * (1 - decay)^distance) * passable
 #
 # with decay 0.06 (0.94 per orthogonal step, 0.94^sqrt2 = 0.916214 per diagonal)
-# and a solid cell letting 12% of the wave through (passable = 1 - 0.88 * solid).
+# and a solid cell letting `leak` of the wave through — the harness's per-cell
+# leak, innate then taught per hue by what pressing on it did.
 # max8 also contains the four orthogonal neighbours, but they are discounted
 # more there than under max4, so the max of the two is exactly the eight-way
 # wave with a diagonal that costs sqrt 2. The harness paints source and solid
@@ -15,4 +16,4 @@ channel value
 
 rule wave:
   when 1
-  set value = max(source, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)
+  set value = max(source, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

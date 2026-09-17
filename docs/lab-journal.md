@@ -2639,3 +2639,99 @@ scenes on the sheet) and never opens a door (`door: 0`, six idle presses). The w
 door worth pressing when a frontier is free next to it. This is the door experiment the
 `leak` comment in `Config` has been promising — a per-hue leak the body teaches, the way
 appetite is taught by poison — and it is the next trap, not a law of the wave.
+
+## 2026-09-17 (later) — the door experiment: four things that had to be true before a door could be learned
+
+The `leak` comment in `Config` had promised for months that "which hues actually open is
+the door experiment, and a per-hue leak is where it lives". Built today: `Config.leak_lr`
+turns the leak into a perceptron over the hue population code (the appetite's twin —
+bias = logit(leak), the innate guess that any wall might open), taught by the body: a
+press that opens a door, chips rubble or shoves a block is +1 for the hue pressed on,
+a press that does nothing ("nothing to do here") is -1. `laws/*.nomos` receive it as
+the `leak` input channel, so the reference law is still the hand wave under any leak.
+
+Then the measurement said the learner had learned NOTHING in 24000 ticks over three
+worlds: zero presses on solids ever. Four separate reasons, found in order, each one
+hiding the next:
+
+1. **The read-out charged the leak twice.** The wave already multiplies a solid cell's
+   value by its leak; the read-out multiplied the solid neighbour by it again, so a
+   door held 1.4% of a value and lost to any free cell. "Led into a solid" was a
+   branch that never ran. Dropping the second charge: world 9 went 5 -> 13 meals
+   before anything else was touched.
+2. **The smell died on the last step.** The scent BFS skipped solids on its first
+   ring and charged them through `_passing` on every later ring, so a larder's smell
+   was 0.129 a cell from the door and exactly 0 beside it — the step where pressing
+   is the whole question. One cost rule for every ring.
+3. **The nose could not point at a door.** The bearing is to the walk's waypoint,
+   "the last cell within 6 steps"; a door costs 7, so the waypoint was always the cell
+   BEFORE the door, and standing in that cell the bearing degenerated to a sub-cell
+   offset and flipped up and down along the wall (the door probe: `nearest` 13 for
+   ever, the agent pacing the wall past the door both ways). Now "the first cell out
+   at least 6 away" — beside a door, the door.
+4. **The horizon beats every wall at leak 0.12.** The padded ring round the map is a
+   free way round; on a radius-12 map that walk is ~26 cells, 0.94^26 = 0.2, more
+   than 0.12 through the wall — so the wave routed round the outside of the map rather
+   than through ANY door, always. Innate leak must be CURIOUS: 0.3 solves the door
+   probe (0.08 -> 1.00, opened and ate), 0.5 with the horizon; rubble (smell cost
+   higher) needs 0.7 or learning.
+
+And two more once presses happened at all: the verb acts on the cell the nose faces,
+and a press thrown while still turning landed on the stone beside the door and blamed
+the door's hue — learning drove the door's leak DOWN (0.5 -> 0.36); now a solid is
+pressed only when faced (`press_angle`). And a cell that has just yielded stayed solid
+on the map until a ray happened to look, so the next press hit bare ground and the
+-1 went to the hue of the thing that had just given (rubble and door share a bump of
+the population code): the body now tells the map the cell gave (`Atlas.gave`).
+
+**Numbers**, 16 worlds x 8000 ticks, all with linger 0.99 (the meal means differ by
+less than their noise — per-world sd ~10, so SE ~2.5 — the DEEDS are the result):
+
+```
+innate leak  learning   meals  immortal  doors/life  breaks/life  idle presses/life
+0.12         off         19.2   14/16       0.0         1.1           54
+0.12         on          18.3   12/16       0.1         5.7           41
+0.5          off         22.5   16/16       1.6         1.4          127
+0.5          on          21.8   15/16       1.8        22.9           72     door hue 0.50 -> 0.57, stone -> 0.23
+0.7          off         18.4   14/16       0.8         3.4          233
+0.7          on          17.0   13/16       1.1        28.2           58     door 0.73, stone 0.29
+```
+
+At 0.12 no door is ever opened, whatever the learner. A curious prior opens doors
+(0 -> ~1.5 a life) at the price of pressing on stone (127 idle presses a life); the
+learner halves that price (127 -> 72, 233 -> 58) and moves the hues the right way, and
+costs no meals. Doors are simply not where this world's meals are: ~1.5 doors a life
+against ~20 meals. The mechanism works — probe 1.00, hues taught, presses cut — and the
+economy does not reward it yet. New defaults: `linger 0.99, leak 0.5, leak_lr 1.0`
+(and the genome's defaults with them); ladder 0.87, `door` 1.00, `rubble` 0.01
+(needs the learner, which the probes bypass).
+
+**Caveat on the noise.** Sixteen worlds tell 14.6 from 20.2 apart (the ghost) and do
+not tell 19 from 22 apart. Anything under ~5 meals at n=16 is a shrug; deeds and
+probes are the honest read-out for a mechanism like this one.
+
+**Genome x world, three seeds each** (the background lineages from this morning, on the
+code as it was at 19:16 — one pool per run, so the day's edits never reached them):
+
+```
+world    seed  gens  kept   fitness            radius
+sparse    0     25    3     121 -> 210 (+73%)   12 -> 9
+sparse    1     25    3     121 -> 244 (+101%)  12 -> 11
+sparse    2     25    6     121 -> 236 (+95%)   12 -> 11
+rich      0     25    7     579 -> 935 (+62%)   12 -> 12
+rich      1     20+   5     579 -> 947 (+64%)   12 -> 12   (still running)
+rich      2     25    4     579 -> 899 (+55%)   12 -> 13
+```
+
+Sparse never keeps 12, rich never goes below it: 9/11/11 against 12/12/13. A small,
+consistent split — the map shrinks where food is scarce and holds where it is not —
+and three seeds is what turns "9 vs 12" from an anecdote into a direction. The
+acceptance rate stayed where confirmation put it (3-7 of 25).
+
+**Headline, 16 worlds x 20000 ticks, new defaults** (linger 0.99, leak 0.5, learner on):
+42.6 meals / 16708 ticks / 9 immortal, against 32.6 / 15576 / 8 for linger with the old
+0.12 leak on the same code (morning: 37.8; the plain wave: 25.6). World 9 — the room
+world — 5 -> 30. World 1 fell 47 -> 5, and it did so on ONE learned verdict (stone
+0.5 -> 0.21, then a different route, then a different life): the world is
+deterministic and chaotic, and one world's swing of 40 is 2.5 on a mean of sixteen.
+The paired difference is +10 with an SE of 6. Suite 490.

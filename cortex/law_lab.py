@@ -40,8 +40,7 @@ the world around a foraging agent, written as a law in the nomos DSL below. The 
 sits at the centre cell; the map scrolls under it as it walks. Every sense paints where
 it refers to. One local rule — yours — turns what is painted into a `value` field, and
 the agent steps toward the brightest of the eight neighbours of its own cell (ties go
-to the least turn; a neighbour that is solid counts for 12% of its value; if nothing
-anywhere is above zero it stands still). When it is led INTO a solid cell it presses
+to the least turn; if nothing anywhere is above zero it stands still). When it is led INTO a solid cell it presses
 INTERACT, which opens doors and chips rubble. When food is within reach it eats.
 
 The world: open terrain with walls, caves, doors and rubble. Food kinds: berry 12
@@ -69,6 +68,8 @@ them is pointless), all in [0, 1] except source, agent at the centre cell:
   scent    the painted smell alone
   bad      a remembered refusal (poison eaten here, or a thing refused)
   here     1 at the centre cell: where the agent is on its own map
+  leak     how much wave the solid in a cell lets through: an innate guess, then
+           taught per hue by what pressing on it did (a door opens, stone does not)
 OUTPUT: `value`, clipped to [0, 4]. Reference law (generation 0), the Bellman wave:
 
 ```nomos

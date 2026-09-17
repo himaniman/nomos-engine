@@ -25,6 +25,7 @@ in front) · TAB blind mode · SPACE pause · P screenshot · H help · ESC/Q qu
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import colorsys
 import math
 import os
@@ -449,6 +450,8 @@ def main(argv=None) -> None:
     p.add_argument("--atlas", action="store_true",
                    help="let the ATLAS play — the map brain (cortex/atlas.py)")
     p.add_argument("--radius", type=int, default=12, help="the atlas's map radius")
+    p.add_argument("--law", default="",
+                   help="run the atlas on a nomos LAW (laws/atlas_*.nomos) instead of the hand wave")
     p.add_argument("--brain-seed", type=int, default=0, help="which fresh brain")
     p.add_argument("--load-brain", default="", help="a saved genome (json) to play")
     p.add_argument("--think-every", type=int, default=2, help="world ticks per thought")
@@ -484,9 +487,13 @@ def main(argv=None) -> None:
     if args.atlas:
         from cortex.atlas import AtlasMind
         from cortex.atlas import Config as AtlasConfig
-        mind = AtlasMind(AtlasConfig(radius=args.radius))
+        rule = None
+        if args.law:
+            from cortex.atlas_law import load
+            rule = load(args.law)
+        mind = AtlasMind(AtlasConfig(radius=args.radius), rule=rule)
         if args.player == "human":
-            args.player = f"atlas-r{args.radius}"
+            args.player = f"atlas-r{args.radius}" + (f"-{Path(args.law).stem}" if args.law else "")
     app = App(seed=args.seed, view=args.view, cell=args.cell, size=(args.size or None),
               mind=mind)
     if args.probe:

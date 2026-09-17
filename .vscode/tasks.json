@@ -36,6 +36,88 @@
       "problemMatcher": []
     },
     {
+      // ---- the atlas (branch cortex-atlas). Tasks run WITHOUT the debugger, which
+      // matters for anything with a multiprocessing pool (debugpy slows workers) ----
+      "label": "atlas: watch it play",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.app", "--atlas", "--seed", "7", "--view", "65", "--cell", "11"],
+      "problemMatcher": []
+    },
+    {
+      "label": "atlas: watch it play on a law (pick)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.app", "--atlas", "--law", "${input:law}",
+               "--seed", "7", "--view", "65", "--cell", "11"],
+      "problemMatcher": []
+    },
+    {
+      "label": "atlas: probe ladder",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.atlas", "--probes"],
+      "problemMatcher": []
+    },
+    {
+      // 16 worlds x 8000 ticks in parallel — the number that means something
+      "label": "atlas: lives 0-15 (8000 ticks, 8 jobs)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.atlas", "--seeds", "0-15", "--ticks", "8000", "--jobs", "8"],
+      "problemMatcher": []
+    },
+    {
+      "label": "atlas: GIF of one life (pick the seed)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.atlas", "--seeds", "${input:seed}", "--ticks", "8000",
+               "--gif", "out/cortex/atlas/seed${input:seed}.gif"],
+      "problemMatcher": []
+    },
+    {
+      // a law you are editing, on the ladder and on 8 lives
+      "label": "atlas law: ladder + lives (pick)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.atlas_law", "${input:law}", "--ladder", "--lives", "0-7",
+               "--ticks", "8000", "--jobs", "8"],
+      "problemMatcher": []
+    },
+    {
+      "label": "law lab: my law through the lab (files, no API)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.law_lab", "--proposer", "files", "--laws", "${input:law}",
+               "--holdout", "8-15", "--jobs", "8"],
+      "problemMatcher": []
+    },
+    {
+      "label": "law lab: rng control",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.law_lab", "--proposer", "rng", "--iterations", "10",
+               "--holdout", "8-15", "--jobs", "8"],
+      "problemMatcher": []
+    },
+    {
+      "label": "atlas lineage: evolve (pick the world)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "cortex.atlas_lineage", "--world", "${input:world}",
+               "--brain-seed", "${input:seed}", "--generations", "25", "--jobs", "8"],
+      "problemMatcher": []
+    },
+    {
+      "label": "atlas: tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/test_cortex_atlas.py", "tests/test_atlas_law.py",
+               "tests/test_cortex_doors.py", "tests/test_cortex_law_lab.py", "-q"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
       // build a standalone Windows exe -> dist/vivarium.exe (run the install task first).
       // --windowed = no console window; --onefile = a single portable exe;
       // --collect-submodules vivarium picks up the lazily-imported genome_io too.
@@ -49,6 +131,29 @@
                "${workspaceFolder}/aqua/app.py"],
       "group": "build",
       "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "law",
+      "type": "pickString",
+      "description": "which law?",
+      "options": ["laws/atlas_wave.nomos", "laws/atlas_ghost.nomos", "laws/atlas_habit.nomos",
+                  "laws/atlas_ghost_habit.nomos", "laws/atlas_halfscent.nomos"],
+      "default": "laws/atlas_ghost.nomos"
+    },
+    {
+      "id": "world",
+      "type": "pickString",
+      "description": "which world economy?",
+      "options": ["default", "sparse", "rich"],
+      "default": "default"
+    },
+    {
+      "id": "seed",
+      "type": "promptString",
+      "description": "seed",
+      "default": "0"
     }
   ]
 }

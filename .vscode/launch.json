@@ -451,6 +451,200 @@
       "justMyCode": true
     },
     {
+      // ================= THE ATLAS (branch cortex-atlas) =================
+      // *** WATCH THE ATLAS PLAY ***  The map brain: the lattice is a map around the
+      // agent (right column), senses paint where they refer to, a value wave plans
+      // the walk. R = the track, - and = world speed, ESC quit.
+      "name": "atlas: WATCH it play (hand wave)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--atlas", "--seed", "7", "--view", "65", "--cell", "11"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the same atlas driven by a nomos LAW instead of the numpy wave. Swap --law
+      // for laws/atlas_wave.nomos (the plain wave), laws/atlas_habit.nomos, or a law
+      // the lab wrote (out/cortex/law_lab/<run>/best.nomos). Seed 7 is the world
+      // where the plain wave paced a wall for ever and the ghost law eats 19.
+      "name": "atlas: WATCH it play on a LAW (ghost)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--atlas", "--law", "laws/atlas_ghost.nomos", "--seed", "7",
+               "--view", "65", "--cell", "11"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // world 9: rooms behind doors — the door experiment's world
+      "name": "atlas: WATCH world 9 (doors)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--atlas", "--seed", "9", "--view", "65", "--cell", "11"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // watch the atlas sit a probe: door / rubble / corner / maze / poison / patience
+      "name": "atlas: WATCH it in a probe arena (door)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.app",
+      "args": ["--atlas", "--probe", "door", "--view", "33", "--cell", "16", "--no-log"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the probe LADDER (an observer, never a fitness) + the strip out/cortex/atlas/probes.png
+      "name": "atlas: PROBES (ladder)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas",
+      "args": ["--probes"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // open-world LIVES, 8 worlds in parallel, plus a GIF of the first
+      "name": "atlas: LIVES 0-7 (+ GIF of seed 0)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas",
+      "args": ["--seeds", "0-7", "--ticks", "8000", "--jobs", "8",
+               "--gif", "out/cortex/atlas/seed0.gif"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the poison LESSON: the same brain in the poison arena twice; one burn and it refuses the nightcap
+      "name": "atlas: the poison lesson",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas",
+      "args": ["--poison"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // a LAW on the ladder and on lives (the rule as a nomos law, cortex/atlas_law.py)
+      "name": "atlas LAW: ladder + lives 0-7",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas_law",
+      "args": ["laws/atlas_ghost.nomos", "--ladder", "--lives", "0-7", "--ticks", "8000",
+               "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // *** THE LAW LAB ***  A model rewrites the atlas's RULE as a nomos law; every
+      // candidate lives the same 8 worlds, finalists re-lived on the holdout.
+      // --proposer files = YOUR laws through the same loop (no API); rng = the control;
+      // llm = the model (needs a key or a local model in .env — ask before spending).
+      // Output: out/cortex/law_lab/<timestamp>/journal.md, best.nomos, lawNN.nomos
+      "name": "law lab: my laws (files, no API)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.law_lab",
+      "args": ["--proposer", "files", "--laws", "laws/atlas_ghost.nomos",
+               "laws/atlas_habit.nomos", "--holdout", "8-15", "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "law lab: rng control",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.law_lab",
+      "args": ["--proposer", "rng", "--iterations", "10", "--holdout", "8-15", "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "law lab: LLM writes the law (spends the API)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.law_lab",
+      "args": ["--iterations", "10", "--holdout", "8-15", "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // the knob lab: the model (or rng) writes the 13 named scalars of the atlas genome
+      "name": "atlas lab: rng control (knobs)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas_lab",
+      "args": ["--proposer", "rng", "--iterations", "10", "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // EVOLVE the atlas genome: (1+15), children screened on 4 rotating worlds, the
+      // finalist confirmed against the parent on all 8. --world sparse | rich | default.
+      // Logs: out/cortex/atlas_lineage/<world>-s<seed>.log
+      "name": "atlas LINEAGE: evolve the genome (default world)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.atlas_lineage",
+      "args": ["--world", "default", "--brain-seed", "0", "--generations", "25", "--jobs", "8"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      // FIND the wave: gradient on the teacher (needs the `train` extra: torch)
+      "name": "atlas WAVE: find the rule by gradient",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cortex.wave",
+      "args": ["--train"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
+      "name": "atlas: tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/test_cortex_atlas.py", "tests/test_atlas_law.py",
+               "tests/test_cortex_doors.py", "tests/test_cortex_law_lab.py", "-q"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "justMyCode": true
+    },
+    {
       "name": "cortex: tests",
       "type": "debugpy",
       "request": "launch",

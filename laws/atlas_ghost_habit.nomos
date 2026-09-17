@@ -1,0 +1,22 @@
+# Commitment and habituation together: sources linger (atlas_ghost) and a
+# place that keeps smelling of food it never yields goes quiet (atlas_habit).
+
+channel source
+channel scent
+channel solid
+channel here
+channel value
+channel ghost: init 0
+channel habit: init 0
+
+rule bore:
+  when 1
+  set habit = 0.998 * habit + scent
+
+rule linger:
+  when 1
+  set ghost = max(source - scent * min(1, 0.01 * habit), 0.99 * ghost) * (1 - here) * (1 - max8(here))
+
+rule wave:
+  when 1
+  set value = max(ghost, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)

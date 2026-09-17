@@ -57,9 +57,10 @@ from cortex.world import N_ODOUR, World
 from cortex.world import Config as WorldConfig
 
 # --- the channels a map cell holds ---------------------------------------------------
-SOLID, FREE, THING, HUE_C, HUE_S, BRIGHT, SCENT, VALUE, BAD = range(9)
-N_CH = 9
-CH_NAMES = ("solid", "free", "thing", "hue_c", "hue_s", "bright", "scent", "value", "bad")
+SOLID, FREE, THING, HUE_C, HUE_S, BRIGHT, SCENT, VALUE, BAD, GHOST = range(10)
+N_CH = 10
+CH_NAMES = ("solid", "free", "thing", "hue_c", "hue_s", "bright", "scent", "value", "bad",
+            "ghost")
 
 # the hue population code: N_HUE preferred hues round the circle, tuning width kappa
 N_HUE = 16
@@ -109,6 +110,17 @@ class Config:
                                     # read-out presses INTERACT on a solid it is led
                                     # into. Which hues actually open is the door
                                     # experiment, and a per-hue leak is where it lives
+        self.linger = 0.0           # COMMITMENT: a painted source keeps this much of
+                                    # itself per wave pass after the paint moves on
+                                    # (0 = the plain wave). Found as a LAW first
+                                    # (`laws/atlas_ghost.nomos`, 2026-09-17): the
+                                    # smell of food behind a wall is painted where the
+                                    # geodesic bearing points, and that bearing flips
+                                    # between the two ways round as the agent steps
+                                    # each way — a reactive limit cycle at the sensor.
+                                    # A lingering source holds the first target.
+                                    # 0.99: 16 worlds 14.6 -> 20.2 meals. Where the
+                                    # agent stands the ghost is erased (nothing there)
         self.eat_dist = 1.2         # map distance at which to try INTERACT
         self.smell_here = 0.85      # ...or a smell this strong (same bar as the reflex)
         self.turn_gain = 3.0        # how hard a heading error is steered against
@@ -342,7 +354,20 @@ class Atlas:
             hush = np.clip(hush, 0.0, 1.0)
             src = src * (1.0 - hush)
             st[VALUE] *= 1.0 - hush         # and the wave already there, at once
+            st[GHOST] *= 1.0 - hush
         return src
+
+    def _linger(self, src: np.ndarray) -> np.ndarray:
+        """One pass of commitment: the wave's source is the ghost of every source
+        painted lately, erased under the agent and its ring (it is standing there:
+        there is nothing). Returns the ghost as it was — snapshot semantics, the same
+        pass order as `laws/atlas_ghost.nomos`, so the two are one rule."""
+        R, c = self.R, self.cfg
+        old = self.state[GHOST].copy()
+        g = np.maximum(src, c.linger * old)
+        g[R - 1:R + 2, R - 1:R + 2] = 0.0
+        self.state[GHOST] = g
+        return old
 
     def _passable(self) -> np.ndarray:
         """How much of a wave a cell lets through: all of it when free, `leak` of it
@@ -367,6 +392,8 @@ class Atlas:
         V = np.zeros((S + 2, S + 2))
         V[1:-1, 1:-1] = st[VALUE]
         for _ in range(passes):
+            if c.linger > 0.0:
+                source[1:-1, 1:-1] = self._linger(src)
             best = np.zeros_like(V)
             for (dy, dx), d in zip(_NBRS, _NBR_DIST):
                 shifted = np.roll(V, (dy, dx), axis=(0, 1)) * (1.0 - c.decay) ** d

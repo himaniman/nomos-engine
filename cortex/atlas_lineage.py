@@ -54,6 +54,9 @@ FIELDS: dict[str, tuple] = {
                     "the least a faint smell is painted at"),
     "thing_gain":  (1.0, 0.0, 2.0, False, "pull of a seen bright thing"),
     "leak":        (0.12, 0.0, 0.6, False, "how much wave a solid cell lets through"),
+    "linger":      (0.0, 0.0, 0.998, False,
+                    "commitment: what a painted source keeps of itself per wave pass"
+                    " after the paint moves on (0 = none)"),
     "subticks":    (6, 1, 16, True, "wave passes per thought"),
     "think_every": (3, 1, 8, True, "world ticks per thought"),
     "smell_here":  (0.85, 0.5, 1.0, False, "a smell this strong is under the nose"),

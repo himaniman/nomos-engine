@@ -1,0 +1,18 @@
+# The atlas's value wave, as a law of nature. Transcribed from Atlas._wave:
+#
+#     V = max(source, best neighbour * (1 - decay)^distance) * passable
+#
+# with decay 0.06 (0.94 per orthogonal step, 0.94^sqrt2 = 0.916214 per diagonal)
+# and a solid cell letting 12% of the wave through (passable = 1 - 0.88 * solid).
+# max8 also contains the four orthogonal neighbours, but they are discounted
+# more there than under max4, so the max of the two is exactly the eight-way
+# wave with a diagonal that costs sqrt 2. The harness paints source and solid
+# each thought, steps this `subticks` times, and reads value at the centre.
+
+channel source
+channel solid
+channel value
+
+rule wave:
+  when 1
+  set value = max(source, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)

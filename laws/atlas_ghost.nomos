@@ -1,0 +1,23 @@
+# Sources linger: a commitment law. The smell of a thing behind a wall is
+# painted where the world's geodesic bearing points, and that bearing flips
+# between the two ways round as the agent takes a step each way (seen on world
+# 7: eleven frames out of twelve on the same spot, the source hopping left and
+# right of it). Here a painted source keeps ~94% of itself per thought after
+# the paint moves on, so the wave still holds the place it was first told and
+# the nearer of the two stays the target. Where the agent stands there is
+# nothing: `here` and its ring erase the ghost (an eaten morsel leaves no
+# ghost to circle).
+
+channel source
+channel solid
+channel here
+channel value
+channel ghost: init 0
+
+rule linger:
+  when 1
+  set ghost = max(source, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+
+rule wave:
+  when 1
+  set value = max(ghost, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)

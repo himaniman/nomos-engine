@@ -1,0 +1,21 @@
+# Habituation: a smell that has been smelled from the same place for a long
+# time is a smell the agent is not reaching. Each cell integrates the scent
+# painted on it (`habit`, ~1% lost per thought), and the scent's share of the
+# source is cut by 1% per unit of habit: a source pursued for ~200 ticks in
+# vain goes quiet and the frontier takes over. A real source is reached long
+# before that. The map scrolls the habit with the world, so it is the PLACE
+# that grows boring, not the smell in general.
+
+channel source
+channel scent
+channel solid
+channel value
+channel habit: init 0
+
+rule bore:
+  when 1
+  set habit = 0.998 * habit + scent
+
+rule wave:
+  when 1
+  set value = max(source - scent * min(1, 0.01 * habit), max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)

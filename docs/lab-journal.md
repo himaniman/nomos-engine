@@ -2517,3 +2517,117 @@ seeds: 25-31 meals against the reflex's 21.9, at the same lifetime, paying for i
 The rule can be written or learned. The program can be evolved or written by a model.
 It learns not to eat the purple one. It is watchable. The old sheet (`cortex/brain.py`)
 stays as reference. Suite 465.
+
+## 2026-09-17 — the rule as a law of nature, and the law finds what the wave lacked
+
+**The third form of the rule.** `cortex/atlas.py` hard-codes the wave in numpy;
+`cortex/wave.py` found it as a perceptron; `cortex/atlas_law.py` runs it as a `.nomos`
+LAW — the project's own DSL, the language the scientist writes physics in and the brain
+lab wrote snake brains in. The map's lattice is a nomos `World`: each thought the harness
+paints the senses into read-only channels (`source solid free thing bright scent bad
+here`), steps the world `subticks` times, reads `value` back; every other channel the law
+declares is its own hidden state, kept between thoughts and scrolled with the map. Two
+rings of padding — the horizon (free, sourceless) and an outer ring forced to zero after
+every step — keep the engine's torus from wrapping a wave across the map.
+`laws/atlas_wave.nomos` is the wave transcribed in one line:
+
+```
+set value = max(source, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - 0.88 * solid)
+```
+
+(the max of a von-Neumann and a Moore max with different discounts IS the eight-way wave
+with a diagonal that costs sqrt 2). It reproduces `Atlas._wave` to 1e-6 (test), the
+ladder 0.87 vs 0.86, and 8 worlds x 8000 ticks 15.1 meals / 7311 ticks against the
+default program's 15.1 / 7274. ~1.5x slower than numpy. A rule the model can WRITE, not
+knobs of one, validated by the engine's own parser.
+
+**The lab (`cortex/law_lab.py`)**: same loop as `atlas_lab`, but the proposal is the whole
+law; a law that fails to load goes back with the parser's error; `--proposer rng` jitters
+the best law's constants (structure frozen); `--proposer files` runs a physicist's own
+laws through the same loop and holdout. Three generations of DeepSeek before the user
+asked to stop spending the API (a local model is coming): it forgot to declare an input
+channel two proposals out of two (the harness now declares inputs a law reads), built a
+fear field from `bad` (no change: nightcaps are 0.1 a life), then multiplied the wave by
+1.2 on unknown cells — 0.94 x 1.2 > 1, the wave EXPLODES to the clip and the agent runs
+into the unknown for ever: 4.2 meals. The rng control found the same cliff by accident
+(every jitter that put a factor above 1 scored 4.5) and its "best" (walls leaking 45%,
+18.9 meals on train) was exactly the reference on the holdout, 14.0 = 14.0 — the third
+time in this project that rng's win was luck.
+
+**Where the meals come from.** Ablation with the default program, 8 worlds x 8000:
+
+```
+                          meals   immortal   per world
+smell + frontier (default) 15.1     5/8      [5, 33, 31, 14, 13, 7, 17, 1]
+frontier only              14.4     7/8      [17, 6, 10, 19, 18, 26, 7, 12]
+smell only                  5.5     3/8      [22, 0, 10, 0, 6, 2, 4, 0]
+neither                     0.0     0/8
+```
+
+Exploration feeds this agent; the smell adds NOTHING on average — it doubles the take on
+worlds 1-2 and costs worlds 0, 5, 7 two thirds of theirs. World 7 on a contact sheet:
+eleven frames out of twelve the agent stands on the same spot above a wall with the food
+in the room beneath, walking (920 cells in 4776 ticks) and going nowhere, while the
+painted smell hops from the right of it to the lower left and back. The world's smell
+bearing is the geodesic waypoint; from a spot between two ways round a wall it flips as
+the agent takes a step each way. The forage brain's reactive limit cycle, now at the
+level of the sensor.
+
+**Four laws against it**, lived through the lab (8 train worlds, holdout 8-15):
+
+```
+law                                    train meals  immortal   holdout meals
+reference (Bellman)                       15.1        5/8         14.0
+atlas_ghost — sources LINGER              22.9        8/8         17.5
+atlas_habit — a place goes boring         17.5        6/8
+atlas_ghost_habit — both                  22.2        6/8
+atlas_halfscent — control, smell x 0.5    16.5        8/8
+```
+
+`atlas_ghost`: a `ghost` channel keeps 99% of a painted source per pass after the paint
+moves on (~94% per thought, half-life ~35 ticks), erased in the 3x3 under the agent
+(`here`: it is standing there, there is nothing); the wave runs from the ghost. Per world
+on train: [29, 35, 22, 15, 15, 21, 17, 29] — the three trap worlds went 5 -> 29, 7 -> 21,
+1 -> 29 and none is under 15. The hypothesis was confirmed by its own mechanism: the
+worlds it fixed are the worlds the smell was trapping. On world 7 the agent now crosses
+twelve different scenes in 4800 ticks and eats 19. Sweep and ablation on all 16 worlds:
+
+```
+                              meals   immortal
+reference                      14.6    11/16
+ghost 0.98                     18.2    14/16
+ghost 0.99                     20.2    14/16      (+38%)
+ghost 0.995                    16.4    15/16
+ghost 0.99, NO erasure         13.5     9/16      worse than none
+```
+
+The erasure is load-bearing: without it the ghost of an eaten morsel keeps the agent
+circling the spot, as the law's own comment predicted. The ladder does not see any of
+this (0.87 either way): it is an observer of skills the open world does not test at
+length, again.
+
+**Back into the engine.** `Config.linger` (default 0, the plain wave) is the same rule in
+numpy, pass for pass (test: 1e-6 against the law — snapshot semantics bit once: the hand
+version read the ghost it had just written), and `linger` is the thirteenth gene of the
+atlas genome, so a lineage can find commitment on its own. The engine gave the DSL a rule;
+the DSL gave it back a better one.
+
+The headline bench, 16 worlds x 20000 ticks, the hand wave either way:
+
+```
+                          meals   ticks   immortal   per world
+plain wave                 25.6   13986     5/16     [5, 81, 50, 22, 14, 7, 36, 1, 21, 1, 4, 13, 31, 57, 21, 46]
+linger 0.99                37.8   17274    11/16     [77, 57, 48, 38, 19, 24, 35, 48, 21, 5, 5, 43, 25, 63, 52, 45]
+reflex (2026-09-14)        21.9   14515     6/16
+```
+
++48% meals, a quarter longer lives, two worlds under ten meals instead of five. Worlds
+9 and 10 stay at 5 for both — a trap of another kind, the next one to look at.
+
+**Method notes.** Four sanity anchors carried the day: the reference law's numbers
+matched the journal's to the decimal before anything new was tried; every hypothesis
+had a control (`halfscent` for "is it just less smell?", `no erasure` for "is the erase
+doing anything?"); train and holdout were kept apart; and the ladder was consulted only
+as an observer (it saw nothing). `multiprocessing` on Windows cannot spawn workers from
+a `python -` stdin script — a bench run that way computed nothing for half an hour; run
+pools from a file. Suite 478.

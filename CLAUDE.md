@@ -69,7 +69,9 @@ nomos/brain_lab.py LLM writes the brain RULES across runs (mutation operator =
 nomos/__main__.py CLI `python -m nomos run`
 cortex/atlas.py   THE SHEET AS A MAP (branch `cortex-atlas`): a CA that plans by
                   wave; wave.py = the rule as a perceptron (+ teacher, ES);
-                  atlas_lineage.py = the atlas genome + parallel lineage
+                  atlas_lineage.py = the atlas genome + parallel lineage;
+                  atlas_law.py = the rule as a NOMOS LAW (laws/atlas_*.nomos),
+                  law_lab.py = the LLM/rng/files loop that rewrites that law
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -445,6 +447,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   nightcaps eaten 12->5 over 16 lives. `cortex/atlas_lab.py`: DeepSeek writes the 12
   knobs, exact scoring on 8 fixed worlds; on the HOLDOUT the LLM's program +37% meals
   vs rng's lucky +11%. HUD: `python -m cortex.app --atlas`.
+- Done (the rule as a law, 2026-09-17): `cortex/atlas_law.py` runs the atlas's rule
+  as a `.nomos` law on a nomos `World` (inputs painted each thought, `value` read back,
+  extra channels = hidden state scrolled with the map, 2-ring padding kills the torus
+  wrap). `laws/atlas_wave.nomos` = the wave, exact to 1e-6. `cortex/law_lab.py` = the
+  LLM writes the LAW (rng jitter / `--proposer files` for Claude-in-session laws;
+  `--holdout`). FINDINGS: (1) meals come from EXPLORATION — frontier-only 14.4 vs
+  default 15.1, smell-only 5.5; the smell is a trap on a third of worlds (geodesic
+  bearing flips between two ways round a wall: a reactive limit cycle at the sensor).
+  (2) `laws/atlas_ghost.nomos` — sources LINGER (99%/pass, erased under `here`) —
+  16 worlds 14.6 -> 20.2 meals, holdout +25%, fixes exactly the trap worlds; without
+  the erasure it is worse than nothing. Ported back as `Config.linger` (default 0)
+  + gene `linger`. (3) Any factor > 1 on the wave explodes it (DeepSeek and rng both
+  found that cliff: ~4.5 meals). rng's train win was again luck on holdout.
+  USER RULE (2026-09-17): do not spend the external LLM without asking; a local model
+  is coming — use `--proposer rng|files`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

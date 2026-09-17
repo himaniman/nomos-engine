@@ -2734,4 +2734,4 @@ acceptance rate stayed where confirmation put it (3-7 of 25).
 world — 5 -> 30. World 1 fell 47 -> 5, and it did so on ONE learned verdict (stone
 0.5 -> 0.21, then a different route, then a different life): the world is
 deterministic and chaotic, and one world's swing of 40 is 2.5 on a mean of sixteen.
-The paired difference is +10 with an SE of 6. Suite 490.
+The paired difference is +10 with an SE of 6. Suite 484.

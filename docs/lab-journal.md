@@ -2631,3 +2631,11 @@ doing anything?"); train and holdout were kept apart; and the ladder was consult
 as an observer (it saw nothing). `multiprocessing` on Windows cannot spawn workers from
 a `python -` stdin script — a bench run that way computed nothing for half an hour; run
 pools from a file. Suite 478.
+
+**World 9, looked at.** Not a smell trap: a labyrinth of walled rooms with the food
+inside them. The agent walks the corridors (1443 cells in 6280 ticks, twelve different
+scenes on the sheet) and never opens a door (`door: 0`, six idle presses). The wave leaks
+12% through any solid, which is enough to route round a wall and not enough to make a
+door worth pressing when a frontier is free next to it. This is the door experiment the
+`leak` comment in `Config` has been promising — a per-hue leak the body teaches, the way
+appetite is taught by poison — and it is the next trap, not a law of the wave.

@@ -244,6 +244,22 @@ def png_bytes(img: np.ndarray) -> bytes:
 
 # --- small helpers -----------------------------------------------------------------------
 
+def overwritten(text: str) -> list[str]:
+    """Channels a law `set`s more than once. Every set reads the snapshot and the
+    last matching one wins, so all but the last line are thrown away — the model's most
+    common silent mistake."""
+    try:
+        prog = LAW.LawRule(text).program
+    except Exception:
+        return []
+    count: dict[str, int] = {}
+    for r in prog.rules:
+        for a in r.actions:
+            if a[0] == "set":
+                count[a[1]] = count.get(a[1], 0) + 1
+    return [f"`{c}` is set {n} times" for c, n in count.items() if n > 1]
+
+
 def diagnose(text: str, side: int = 25, thoughts: int = 6, passes: int = 6) -> str:
     """How a law's value field looks on an open test map with ONE source five cells
     east of the agent — a cheap mirror for the model, which cannot see its field: is it
@@ -435,7 +451,10 @@ class NightLab:
         return [i for i in self.s["islands"] if not i.get("given")]
 
     def champion(self) -> dict | None:
-        b = [i for i in self.born() if i["train"]]
+        """The model's best structure by train — None until one of them eats at least
+        half as well as the ghost (a zero-meal law is not worth a look or a GIF)."""
+        bar = 0.5 * self.island(1)["train"]["fitness"] if len(self.s["islands"]) > 1 else 0
+        b = [i for i in self.born() if i["train"] and i["train"]["fitness"] >= bar]
         return max(b, key=lambda i: i["train"]["fitness"]) if b else None
 
     def ranked(self, islands=None) -> list[dict]:
@@ -610,13 +629,15 @@ class NightLab:
 
     def design_messages(self, deep: bool) -> list[dict]:
         born = self.ranked(self.born())
-        best = born[0] if born else self.island(1)
+        allr = self.ranked()
+        best = allr[0]
         second = ""
-        if len(born) > 1:
-            second = (f"\nRUNNER-UP (#{born[1]['id']}):\n```nomos\n{born[1]['best']}\n```\n")
-        elif born:
-            second = (f"\nTHE BEST HAND LAW (#1, the ghost):\n```nomos\n"
-                      f"{self.island(1)['best']}\n```\n")
+        runner = next((i for i in allr[1:] if not i.get("given")), None) \
+            if best.get("given") else next((i for i in allr[1:]), None)
+        if runner is not None and runner["train"]["meals"] > 0:
+            label = "hand-written" if runner.get("given") else "yours, tuned"
+            second = (f"\nRUNNER-UP (#{runner['id']}, {label}):\n```nomos\n"
+                      f"{runner['best']}\n```\n")
         per = best["train"]["per_seed"]
         weak = [f"world {s} ({m})" for s, m in zip(self.train, per) if m < 5]
         starving = (f"\nWorlds where the best law starves (meals < 5): {', '.join(weak)}.\n"
@@ -628,7 +649,8 @@ class NightLab:
             n_hold=len(self.holdout), board=self.board(),
             feedback=("\nYOUR LAST PROPOSAL: " + self.s["feedback"] + "\n")
             if self.s["feedback"] else "",
-            best_name=f"#{best['id']}, tuned" if not best.get("given") else "#1, the ghost",
+            best_name=f"#{best['id']}, yours, tuned" if not best.get("given")
+            else f"#{best['id']}, hand-written",
             best_law=best["best"].strip(), second=second, starving=starving,
             novelty=("\n" + novelty + "\n") if novelty else "",
             deep=" (this is a DEEP turn: think it through, aim for a bold mechanism)"
@@ -666,8 +688,14 @@ class NightLab:
                         LAW.check(law)
                         d = diagnose(law)
                         if attempt < 2 and "healthy" not in d:
+                            ow = overwritten(law)
                             err = (f"it loads, but it cannot steer — {d}. The agent would "
                                    "not move toward anything (see KNOWN CLIFFS)")
+                            if ow:
+                                err += (". Likely cause: " + ", ".join(ow) + " — only the "
+                                        "LAST set of a channel counts, the earlier lines are "
+                                        "thrown away. Give each stage its own channel and "
+                                        "rule, or fold them into ONE expression")
                         else:
                             out.update(reply=reply, law=law, seconds=time.time() - t0)
                             return out

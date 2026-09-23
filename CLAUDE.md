@@ -71,7 +71,10 @@ cortex/atlas.py   THE SHEET AS A MAP (branch `cortex-atlas`): a CA that plans by
                   wave; wave.py = the rule as a perceptron (+ teacher, ES);
                   atlas_lineage.py = the atlas genome + parallel lineage;
                   atlas_law.py = the rule as a NOMOS LAW (laws/atlas_*.nomos),
-                  law_lab.py = the LLM/rng/files loop that rewrites that law
+                  law_lab.py = the LLM/rng/files loop that rewrites that law;
+                  night_lab.py = hours-long unattended loop for a SLOW LOCAL model:
+                  model designs structure + keeps a THEORY + OBSERVES a track PNG,
+                  rng tunes constants, control arm, train/holdout/FINAL worlds
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -478,6 +481,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   meals vs 32.6 (old leak) vs 25.6 (plain). Genome x world with 3 seeds: sparse
   radius 9/11/11, rich 12/12/13. Worlds are deterministic-chaotic: one verdict can
   swing one world by 40 meals.
+- Done (a LOCAL model + the night lab, 2026-09-23): `.env` now points `nomos/llm.py`
+  at the user's llama.cpp box (`http://llm.pgs.dom:8080/v1`, `qwen3.6-35b-a3b`, see
+  `C:\gitlocal\phil-architecture\docs\llm.md`; ONE CPU slot shared with Open WebUI —
+  `client.busy()` waits for other users). `chat(thinking=...)` toggles Qwen thinking per
+  call (~60 s/turn off, ~10-13 min on); `client.last` = reasoning, tokens, seconds;
+  `llm.embed()` = bge-m3 on :8081. The WaveSpeed lines are commented out in `.env`.
+  DSL: `min`/`max` are variadic now (every model writes `max(a, b, c)`).
+  `cortex/night_lab.py` is the loop built for it (journal 2026-09-23): the model
+  designs STRUCTURE (a design turn, every 6th with thinking), rewrites a <=150-word
+  THEORY carried instead of chat history, and OBSERVES a PNG of the champion's worst
+  life with the track drawn (vision; accurate on the first try); rng tunes constants;
+  a control arm tunes the ghost with the same budget; a law's value field is
+  `diagnose()`d on a one-source test map and bounced if flat/saturated/aimless; twins
+  (same structure, or same meals on every world) are caught. Probe finding: (1+1)
+  tuning OVERFITS the training worlds badly (holdout 23.1 as written -> 16.9 after 13
+  accepts), hence `--margin 0.02` and 32 FINAL worlds nobody sees until the end.
+  Run: `python -m cortex.night_lab --hours 6 --dir out/cortex/night/<name>` (same
+  command again = resume). First 6-hour night: `out/cortex/night/2026-09-23/`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

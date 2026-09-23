@@ -106,3 +106,20 @@ def test_activity_measures_change():
     assert world.step() == 0.0                  # empty world: nothing changes
     world.state["alive"][5, 4:7] = 1.0
     assert world.step() > 0.0                   # blinker flips cells
+
+
+def test_min_max_are_variadic():
+    law = """
+channel a: init posx()
+channel m
+channel n
+rule r:
+  when 1
+  set m = max(a, 0.3, 0.6, 1 - a)
+  set n = min(a, 0.3, 1 - a)
+"""
+    w = World(parse_program(law), 8, 0)
+    a = w.state["a"].copy()
+    w.step()
+    assert np.allclose(w.state["m"], np.maximum(np.maximum(a, 0.6), 1 - a))
+    assert np.allclose(w.state["n"], np.minimum(np.minimum(a, 0.3), 1 - a))

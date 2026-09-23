@@ -184,6 +184,12 @@ def evaluate(expr: tuple, state: dict[str, np.ndarray], ctx: EvalCtx):
             raise NomosError(f"unknown function {fn!r}")
         arity, impl = BUILTINS[fn]
         args = [evaluate(a, state, ctx) for a in expr[2]]
+        if fn in ("min", "max") and len(args) > 2:
+            # variadic: max(a, b, c) = max(max(a, b), c) — what every model writes
+            out = impl(ctx, args[0], args[1])
+            for a in args[2:]:
+                out = impl(ctx, out, a)
+            return out
         if len(args) != arity:
             raise NomosError(f"{fn}() takes {arity} argument(s), got {len(args)}")
         return impl(ctx, *args)

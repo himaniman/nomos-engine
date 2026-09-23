@@ -2735,3 +2735,62 @@ world — 5 -> 30. World 1 fell 47 -> 5, and it did so on ONE learned verdict (s
 0.5 -> 0.21, then a different route, then a different life): the world is
 deterministic and chaotic, and one world's swing of 40 is 2.5 on a mean of sixteen.
 The paired difference is +10 with an SE of 6. Suite 484.
+
+## 2026-09-23 — a local model, and a lab built for its speed
+
+The user brought up a local model on their own hardware (llama.cpp, Qwen3.6-35B-A3B
+Q8 on a 20-vCPU VM, `http://llm.pgs.dom:8080/v1`; infra notes in
+`phil-architecture/docs/llm.md`). No API bill, so the labs can finally run for hours —
+but it is a CPU box with one slot, shared with the user's chat UI. Measured first, on
+the law lab's own first turn (~1.5k prompt tokens):
+
+```
+thinking off   40-95 s a turn (prompt ~53 tok/s cold, ~all of it prefix-cached after;
+               generation ~9.7 tok/s). 1 law of 4 loaded before the prompt named the
+               syntax traps (`let`, `if/then/else`, `pass`), 2 of 3 after.
+thinking on    ~10-13 min a turn (5.5k hidden tokens). Loads; the idea was timid.
+a law lived    16 worlds x 8000 ticks in ~16 s on this machine.
+vision         a 600-px PNG + question in ~7-40 s.  embeddings (bge-m3) 0.8 s.
+```
+
+So the MODEL is the scarce resource and the simulator is nearly free: one idea is
+worth dozens of evaluations. That, and two old lessons (the snake's best brain was an
+LLM architecture with evolved constants; rng's law-lab win was luck on holdout), shaped
+`cortex/night_lab.py`: the model designs STRUCTURE, rng tunes CONSTANTS of each
+structure between the model's turns, a CONTROL arm tunes the hand-written ghost with the
+same number of evaluations, and the model keeps a short THEORY (carried in every prompt
+instead of a chat history it could not afford) and now and then OBSERVES — it is shown
+the champion's worst life as a picture, track drawn from cyan to red, and asked what the
+agent does wrong.
+
+**The probe (25 min, 4 design turns) taught five things before the night:**
+
+1. The model writes explanations INTO the law (a 250-s turn of comments). "One comment
+   line per rule, under 70 lines" halved the turn.
+2. Its first law summed neighbour terms and blew the wave up — the known cliff — and a
+   later one was FLAT. It cannot see its field, so now it gets a mirror: `diagnose()`
+   lives the law on a 25x25 open map with one source and reports max/mean/at-the-cap and
+   whether the best neighbour points at the source; an unhealthy law is sent back like
+   a parse error, inside the same turn.
+3. It chains `set` lines on one channel as if they ran in order (they read the snapshot;
+   the last one wins), so its new channel changed nothing: a law with the ghost's meals
+   on every world, to the digit. Caught now as a BEHAVIOURAL twin, and the trap is in
+   the prompt. `max(a, b, c)` failed three repairs running — `min`/`max` are variadic in
+   the DSL now.
+4. **Tuning overfits.** The model's third structure scored holdout 23.1 as written
+   (ghost 16.4); thirteen accepted jitters later it was train 21.7, holdout 16.9. The
+   tuned ghost (the control) went 19.6 -> 23.4 on train and 16.4 -> 16.2 on holdout.
+   Sixteen chaotic worlds are a small target for 1+1 jitter. Hence a 2% acceptance
+   margin, 20 training worlds, and a third set — 32 FINAL worlds that neither selection
+   nor the model (who sees holdout numbers in its prompt) ever touches — lived once at
+   the end by the finalists, including the holdout champions AS WRITTEN.
+5. The observer is good. Shown a life that starved in the bottom-left corner it said:
+   "it enters a small area ... begins pacing in tight circles ... starves ... needs a
+   mechanism to detect when it is trapped and prioritise unvisited cells" — which is
+   exactly what the picture shows. With the design system prompt it answered with a law
+   instead; it has its own short system prompt now and is given the law it watches.
+
+**The night** (`out/cortex/night/2026-09-23/`): 6 hours, train 0-19, holdout 20-35,
+final 36-67, 8000 ticks, tune 5 evaluations per new structure then round-robin over the
+best three, a deep (thinking) turn every 6th design turn, theory every 6, observer every
+8 (or on a new champion). Results below once it is done.

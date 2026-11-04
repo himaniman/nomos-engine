@@ -1722,3 +1722,111 @@ rule wave:
 ```
 
 > 19:49 model job `deep` started
+
+---
+
+## Turn 19 (DEEP) -> island #22
+
+**Hypothesis:** #13's futility could never fire: work = 0.68*work + 0.03*aim settles near 0.09, far below the 0.9 threshold. That is why the slot-born agent pressed a thin wall for its whole life. I am replacing the threshold with a per-cell integral, `tried`. It counts attention spent on a solid face (being aimed into it, or living beside it), forgets slowly, spreads a little along the wall and disappears when the cell opens. It acts in two ways. (1) It multiplies the face's LEAK in the wave by exp(-tried), so the wave from food behind a wall that was tried and did not give stops pinning the agent there, and the open exit wins. (2) The face's own pull becomes tried*exp(-tried), a per-face timer: commitment
+
+Prediction 33.5, got **32.0** meals, fitness 646, per world [45, 41, 41, 28, 32, 42, 29, 45, 35, 49, 0, 36, 17, 35, 44, 31, 20, 31, 0, 39]; model 72.1 s, repairs 0; vocabulary twin of #13, #20, #18, #16, #7, #15
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Tried walls go opaque: attention spent on a solid face (aimed at, or lived beside) is
+# integrated per cell; the face's leak and its pull rise, then INVERT, and spread along the wall.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel thin
+channel tried
+channel probe
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Thin wall: known free on one side and not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Tried: per-face spent attention (aimed into, or lived beside), spreads along the wall, slowly forgiven, gone when the cell opens.
+rule calc_tried:
+  when 1
+  set tried = min(6, max(0.9995 * tried + solid * (0.04 * aim * (1.5 - leak) + 0.004 * max8(here)), 0.6 * max4(tried) * solid)) * where(solid > 0.1, 1, 0)
+
+# Wall-face source: faint curiosity that dies with trying, plus a commitment tried*exp(-tried) that peaks, then inverts.
+rule calc_probe:
+  when 1
+  set probe = solid * thin * leak * (1 - bad) * (0.058 * clamp(1 - 1.4 * trail, 0, 0.56) * exp(0 - tried) + 0.8 * tried * exp(0 - tried))
+
+# Bellman wave; a tried face lets less wave through (leak * exp(-tried)), so food behind it stops pinning the agent.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.319 - leak * exp(0 - tried))) * (1 - 0.9 * bad)
+```
+
+> 19:54 model job `observe` started
+
+---
+
+## Observer: #13 on world 118
+
+![](observe/obs03_island13_world118.png)
+
+`{'meals': 0, 'ticks': 3999, 'alive': False, 'distance': 464.8, 'cells_visited': 31, 'last500_box': '4x4', 'doors': 0, 'breaks': 14, 'idle_presses': 16, 'nightcaps': 0}`
+
+The agent is born in a tiny sealed pocket under the big rock mass, a cell or two wide and about four cells tall, with the brown rubble patch on its west side, and it never leaves: the whole 4000-tick track (464 cells walked, only 31 distinct cells, last 500 ticks inside a 4x4 box) is a tight shuttle up and down that pocket until it starves at the north end. It does work at the walls (14 breaks, 16 idle presses), but the effort is scattered: it chips one face, turns, chips another, and no face is ever pushed all the way through, so it opens no doors. Open ground and growing food lie only one or two cells beyond the south and east walls, and none of that ever reaches the wave. Inside the pocket there is nothing to smell or see, so its only sources are its own wall faces, and those keep handing the lead to one another. The fix I would make first is the futility rule. Right now it marks a face as spent rock as soon as its work saturates, even when that face is visibly chipping. It should mark a face spent only when pressing it gave nothing. A face that yields should keep its work and stay the committed source until it opens, which gets the agent through one thin wall instead of rotatin
+
+### Holdout checkpoint at 7.16 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #22  train 32.0 meals  holdout  -    (tuned 1x) | #13's futility could never fire: work = 0.68*work + 0.03*aim settles near 0.09, far below the 0.9 threshold. T
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #15  train 30.9 meals  holdout  -    (tuned 5x) | Two changes on new axes. First, a frontier mark is weighted by how much is still unknown behind it (the unknow
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 101x: train 29.7 meals, holdout 24.6
+```
+
+> 20:12 model job `design` started

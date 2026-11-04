@@ -1591,3 +1591,139 @@ NOISE: within ~2 meals — seen-memory (#21), habituation (#25: 27.5), door cont
 UNTRIED: other knowledge priors (rock interiors, room closure), source worth by certainty, poison.
 
 > 17:35 model job `deep` started
+
+---
+
+## Turn 24 (DEEP) -> island #27
+
+**Hypothesis:** Map completion (#23, best train 29.6) guesses only the one unknown cell that continues a wall line, so a wall seen for ten cells is predicted for one more and the plan still runs into its hidden continuation, and corners and rock bodies are not predicted at all. Making completion RECURSIVE (guesses count as wall for the next guess, so a line extends several cells with fading confidence) and filling unknown cells hemmed in by wall on four or more of eight sides predicts the hidden geometry further, so fewer false frontiers call and fewer plans aim through rock.
+
+Prediction 30.0, got **27.4** meals, fitness 553, per world [52, 21, 21, 36, 39, 28, 24, 34, 31, 23, 19, 26, 22, 46, 20, 34, 0, 33, 7, 31]; model 10.1 s, repairs 0; vocabulary twin of #23, #26, #24, #25, #17, #22
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel wallish
+channel guess
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# what is wall, seen or guessed: guesses feed the next guess, so a wall line is extended several cells into the unknown
+rule known_or_guessed:
+  when 1
+  set wallish = max(solid, guess)
+
+# map completion, recursive: continue straight wall lines, and fill unknown cells hemmed in by wall on most sides (rock interiors)
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(wallish, 1, 0) * shift(wallish, -1, 0), shift(wallish, 0, 1) * shift(wallish, 0, -1), 0.6 * shift(wallish, 1, 0) * shift(wallish, 2, 0), 0.6 * shift(wallish, -1, 0) * shift(wallish, -2, 0), 0.6 * shift(wallish, 0, 1) * shift(wallish, 0, 2), 0.6 * shift(wallish, 0, -1) * shift(wallish, 0, -2), clamp(sum8(wallish) / 4 - 0.9, 0, 1))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 6.42 h
+
+```
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #27  train 27.4 meals  holdout  -    (tuned 0x) | Map completion (#23, best train 29.6) guesses only the one unknown cell that continues a wall line, so a wall 
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #25  train 27.5 meals  holdout  -    (tuned 5x) | On the trap worlds the agent paces one small area for thousands of ticks because nothing there ever becomes le
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 126x: train 28.4 meals, holdout 26.3
+```
+
+> evaluation failed (TypeError: math.atan2() argument after * must be an iterable, not NoneType); pool rebuilt
+
+> 17:52 model job `design` started
+
+---
+
+## Turn 25 -> island #28
+
+**Hypothesis:** Wiping the plan every thought collapsed foraging (#16: 12.8), but that change also cut the wave's range to five cells, so it never tested the real question: how fast should the plan follow the world? EXPRESS LANES let the wave also jump two cells straight per pass, gated by the cell it jumps over (its leak, guessed wall and knowledge price), so the steady state is the same plan but news (a morsel seen, a meal gone, a door opened) crosses the map twice as fast; if the stale plateau is useful commitment, this will cost meals, if it is lag, it will pay.
+
+Prediction 29.0, got **26.7** meals, fitness 522, per world [30, 33, 24, 28, 37, 29, 24, 38, 32, 38, 29, 24, 27, 32, 25, 31, 0, 5, 14, 34]; model 8.1 s, repairs 0; vocabulary twin of #23, #24, #27, #25, #17, #22
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel gate
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# how much of the wave a cell lets through (walls by their leak, guessed walls by half, unknown ground at a price)
+rule passable:
+  when 1
+  set gate = (1 - solid * (1 - leak)) * (1 - 0.5 * guess) * (1 - 0.08 * (1 - free))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# EXPRESS LANES: besides the one-cell steps, the wave also jumps two cells straight, gated by the cell it jumps over,
+# so news (a new morsel, a door opened, a meal gone) crosses the map twice as fast and the plan tracks the present
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave), 0.8836 * shift(wave, 2, 0) * shift(gate, 1, 0), 0.8836 * shift(wave, -2, 0) * shift(gate, -1, 0), 0.8836 * shift(wave, 0, 2) * shift(gate, 0, 1), 0.8836 * shift(wave, 0, -2) * shift(gate, 0, -1))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

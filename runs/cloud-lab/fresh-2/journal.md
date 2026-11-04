@@ -744,3 +744,90 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 41x: train 27.2 meals, holdout 25.4
 ```
+
+> 15:55 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** Late in life every law stalls in a spent patch, because nothing in the map remembers which way the agent was travelling. So the efference copy (`aim`) is now streamed radially outward, one cell per step, by copying from the neighbour nearest the agent. Where it reaches the rim of the map it builds a slowly fading HEADING band, and that band is a faint source. When food, smell and frontier run out, the agent keeps migrating in a straight line into unvisited ground where food has grown back, instead of tangling or pressing rock. A second local term, DOOR CONTRAST, makes a wall face a source when its leak is higher than the leak of the solid around it. Once a rock's hue is learned to be dead, a
+
+Prediction 34.5, got **22.9** meals, fitness 444, per world [28, 24, 5, 29, 26, 13, 16, 25, 9, 43, 11, 34, 17, 23, 32, 22, 35, 32, 19, 16]; model 174.2 s, repairs 0
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Heading carrot: the aim is streamed radially out to the map's rim, where it builds a
+# persistent HEADING band that is a faint source; plus door contrast on wall faces.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel sl
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel stream
+channel heading
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity, and each solid's leak (for door contrast).
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+  set sl = solid * leak
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1.197, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Stream: the aim travels radially outward one cell per step (copied from the neighbour nearest the agent).
+rule calc_stream:
+  when 1
+  set stream = max(aim, argmax8(0 - (posx() - 0.5) * (posx() - 0.5) - (posy() - 0.5) * (posy() - 0.5), stream)) * (1 - here)
+
+# Heading: where the stream reaches the rim it accumulates; slow fade, bounded.
+rule calc_heading:
+  when 1
+  set heading = min(1, 0.997 * heading + 0.03 * stream * where(max(abs(posx() - 0.5), abs(posy() - 0.5)) > 0.36, 1, 0))
+
+# Work: effort spent on a solid face; grows while it is aimed at, fades slowly, bounded.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid)
+
+# Sources: seen morsels, senses spent by the trail, and the heading carrot on the rim ahead.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail), 0.1 * heading * (1 - trail) * (1 - solid) * where(max(abs(posx() - 0.5), abs(posy() - 0.5)) > 0.36, 1, 0)) * (1.029 - bad) / (1 + 0.8336 * confinement)
+
+# Wall faces: faint probe, committed work, and DOOR CONTRAST (leak above the wall around it).
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * (1 - bad) * (leak * (0.06 * clamp(1 - 1.214 * trail, 0, 1) + 0.3 * work) + 0.3 * clamp(leak - sum8(sl) / (0.001 + confinement), 0, 1))
+
+# Bellman wave over all sources; remembered poison blocks passage like solid.
+rule wave:
+  when 0.9718
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```

@@ -545,3 +545,202 @@ rule wave:
 > evaluation failed (NomosError: line 50: expected ')', got '.713'); pool rebuilt
 
 > 15:10 model job `design` started
+
+---
+
+## Turn 7 -> island #10
+
+**Hypothesis:** A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every wall face gets a rank: how close something worth having lies BEHIND it — the axis untried so far, choosing the face nearest the most promising unknown instead of whichever face the trail left last. A decaying envelope (fmax) makes faces compete over ~20 cells, and only the dominant face that borders walked ground accumulates KEEP (losers bleed it), so in a sealed slot the agent digs ONE face — the one facing the food — instead of splitting its pressing between two. In open ground the hold never fires (no spent trail beside faces), so foraging stays as in #7/#8.
+
+Prediction 31.5, got **22.6** meals, fitness 454, per world [29, 19, 27, 20, 31, 19, 21, 30, 22, 32, 19, 18, 15, 11, 31, 25, 15, 28, 19, 21]; model 76.1 s, repairs 0
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# X-ray: a second wave that ignores walls ranks every wall face by how close promise (food,
+# smell, frontier) lies BEHIND it; the best face in its neighbourhood is held and dug.
+
+channel source
+channel solid
+channel free
+channel thing
+channel bright
+channel scent
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel xray
+channel injection
+channel facepot
+channel fmax
+channel keep
+channel probe
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# X-ray wave: promise spread straight through rock and unknown, discounted, never through poison.
+rule calc_xray:
+  when 1
+  set xray = max(source, scent, thing * bright, 0.9 * max4(xray), 0.873 * max8(xray)) * (1 - 0.9 * bad)
+
+# Seen morsels inject fully; other sources fade where the agent went; nooks count less.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (1.03 - bad) / (1 + 0.83 * confinement)
+
+# Face potential: a wall face beside known-free ground, ranked by the promise behind it (+tiny tie-break).
+rule calc_face:
+  when 1
+  set facepot = solid * max4(free) * leak * (1 - bad) * (0.02 + xray + 0.002 * posy() + 0.001 * posx())
+
+# Envelope of face potential: the strongest face within reach casts a slowly decaying shadow.
+rule calc_fmax:
+  when 1
+  set fmax = max(facepot, 0.97 * max8(fmax))
+
+# Hold: a face that dominates its neighbourhood AND borders walked ground accumulates commitment.
+rule hold:
+  when 1
+  set keep = min(1, 0.996 * keep + 0.04 * where(facepot > 0, where(facepot >= fmax - 0.000001, 1, 0), 0) * where(max8(trail) > 0.3, 1, 0) - 0.02 * where(facepot < fmax - 0.000001, keep, 0))
+
+# Wall faces: faint sources worn by the trail, plus the held share for the winning face.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0.2, 1) + 0.3 * keep)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```
+
+> 15:15 model job `observe` started
+
+---
+
+## Observer: #8 on world 108
+
+![](observe/obs01_island8_world108.png)
+
+`{'meals': 26, 'ticks': 8000, 'alive': True, 'distance': 1673.6, 'cells_visited': 1204, 'last500_box': '38x26', 'doors': 0, 'breaks': 0, 'idle_presses': 115, 'nightcaps': 0}`
+
+The agent makes one long, purposeful migration from its start in the top-right corner diagonally down to the bottom-left, eating steadily along a narrow corridor of the map, with one tight curl in the centre where it circles a few times before moving on. Late in life (the red part) it stops travelling and wanders tangled back and forth inside one small patch near the bottom-left. It eats only a little there while the whole left half, the top and the right side, all full of growing food, are never visited. It never opens a single walled room (doors 0) even though many of the outlined rooms it passes hold food, and it spends 115 presses pushing on rock that does not give, so its late tangle looks like a hunt for wall faces rather than for food. The one mechanism I would fix first is the lock bonus on wall faces in the probe rule: a wall face the agent has already pressed and that did not give should wear down to nothing under the trail, and should not gain extra brightness from the lock, so lock only strengthens real food and the agent leaves a worked-out patch for the unvisited open ground.
+
+> 15:32 model job `design` started
+
+---
+
+## Turn 8 -> island #11
+
+**Hypothesis:** #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILITY. While the agent is aimed into a solid cell, slow evidence builds up there that the stone does not give. That evidence spreads along the connected stone, and it switches off both the faint probe and the committed work, so the agent gives up that rock face and tries other faces, doors among them. A second change is a faint BEACON on the lattice rim, strongest where the WAKE (the walked trail spread outward with a distance discount) is weakest. When the local map is spent, the field then points out of the tangled patch, toward unvisited land, instead of going flat.
+
+Prediction 30.5, got **31.7** meals, fitness 631, per world [16, 29, 48, 37, 25, 35, 10, 35, 36, 30, 31, 34, 31, 37, 35, 36, 33, 29, 26, 41]; model 76.2 s, repairs 0
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Futility + horizon beacon: pressing rock that never gives turns into a spreading GIVE-UP
+# along that stone; when the map is spent, a faint beacon on the horizon pulls AWAY from the wake.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel wake
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel futile
+channel beacon
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Wake: distance-discounted nearness to anything walked (high behind the agent, low far ahead).
+rule calc_wake:
+  when 1
+  set wake = max(trail, 0.94 * max8(wake))
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) / (1 + 0.8336 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Work: short-term commitment to the face being pressed.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid)
+
+# Futility: slow evidence that this stone does not give; spreads along connected solid, fades very slowly.
+rule give_up:
+  when 1
+  set futile = solid * min(1, max(0.9995 * futile + 0.004 * aim, 0.7 * max8(futile)))
+
+# Wall faces: faint sources plus committed work, both switched off as futility builds.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0, 1) + 0.3 * work) * clamp(1.5 - 2 * futile, 0, 1)
+
+# Horizon beacon: faint far sources on the lattice rim, strongest where the wake is weakest.
+rule calc_beacon:
+  when 1
+  set beacon = where(max(abs(posx() - 0.5), abs(posy() - 0.5)) > 0.42, 1, 0) * (1 - solid) * 0.12 * clamp(1 - wake, 0, 1)
+
+# Bellman wave over all sources; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, beacon, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 2.85 h
+
+```
+  #8   train 33.5 meals  holdout 24.9  (tuned 5x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 5x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #11  train 31.7 meals  holdout  -    (tuned 0x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #10  train 30.9 meals  holdout  -    (tuned 5x) | A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every w
+  #6   train 28.5 meals  holdout 25.8  (tuned 5x) | When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent s
+  #3   train 26.9 meals  holdout 22.3  (tuned 5x) | Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls
+  #4   train 23.6 meals  holdout 21.6  (tuned 5x) | Every frontier mark is painted at the same 0.12 now, so a one-cell sliver of unknown pulls as hard as the mout
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 41x: train 27.2 meals, holdout 25.4
+```

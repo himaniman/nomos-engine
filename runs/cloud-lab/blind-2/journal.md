@@ -1476,3 +1476,90 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, max(free, seen)))) * (1 - solid * (1.028 - leak))
 ```
+
+> 19:08 model job `deep` started
+
+---
+
+## Turn 19 (DEEP) -> island #22
+
+**Hypothesis:** In open or symmetric ground many frontier marks are worth exactly the same, the agent's choice among them is settled by tiny differences that change as it moves, and a deterministic tie-break can lock it into rocking between equal options (the classic reactive limit cycle). Each map cell now draws one random preference when it first scrolls into view and keeps it while in view, multiplying its frontier weight: a fixed, world-anchored symmetry breaker, so among equal unknowns the agent consistently prefers the same one and commits without any memory of its own.
+
+Prediction 31.0, got **26.9** meals, fitness 530, per world [32, 25, 36, 31, 26, 33, 17, 30, 32, 28, 28, 16, 24, 29, 42, 27, 22, 32, 0, 29]; model 20.1 s, repairs 0; vocabulary twin of #20, #19, #5, #4, #15, #12
+
+value on the test map: max 0.07, mean 0.05, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel pref
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# every cell draws ONE random preference when it scrolls into view and keeps it: a fixed,
+# consistent tie-breaker among otherwise equal frontier marks (no flicker)
+rule pref:
+  when pref == 0
+  set pref = uniform(0.6, 1)
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4275 + 1.5 * vast) * pref)) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 19:25 model job `design` started
+
+### Holdout checkpoint at 6.62 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 6x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 6x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #20  train 29.9 meals  holdout  -    (tuned 5x) | Dropping raw `thing` (#19) cost ~4 meals, so the full-strength pull of every SEEN morsel is load-bearing (and 
+  #14  train 30.2 meals  holdout  -    (tuned 5x) | The body turns only ~20 degrees per thought, so a U-turn costs about nine thoughts of standing and swinging, y
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 103x: train 28.3 meals, holdout 27.1
+```

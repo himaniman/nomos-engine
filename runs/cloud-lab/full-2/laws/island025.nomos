@@ -1,0 +1,79 @@
+# Axis: parsimony — which parts of the champion actually carry the meals. Every mechanism added on top of #21 lost (anisotropy #22 32.2, food-only memory #23 31.9, target lock #24 29.7), and #21 itself is a stack of eight mechanisms of which only the course clearly moved the mean. This law keeps only three — the unit long course weighting a roominess frontier, and lingering sources — over the plain leaky wave, and drops confinement, frustration, thin-wall leak, doors and the unknown pull. My prediction is that it eats close to #21 on most worlds and loses only on the mechanism-specific ones (the pocket 110, the room town 117), so the stack is insurance for a few worlds, not a source of mean.
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel value
+channel ghost: init 0
+channel unk
+channel room
+channel front
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel unitx
+channel unity
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel injection
+
+# the LONG COURSE as a unit direction at the agent's cell, broadcast over the map
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+rule unit_x:
+  when 1
+  set unitx = here * coursex / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule unit_y:
+  when 1
+  set unity = here * coursey / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(unitx, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - unitx, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(unity, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - unity, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+
+# the frontier, weighed by how much unknown lies beyond it
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+# sources linger, erased where the agent stands
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+
+# nothing else: no confinement, no frustration, no thin walls, no doors
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + ahead, 0, 2)) * (1 - bad)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

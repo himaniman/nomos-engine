@@ -1768,3 +1768,116 @@ rule wave:
   when 1
   set value = max(0.5 * claim * (1 - age) * (1 - bad), max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad))
 ```
+
+### Holdout checkpoint at 7.78 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 4x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 6x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 8x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #14  train 28.0 meals  holdout 28.8  (tuned 5x) | The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 105x: train 28.5 meals, holdout 27.0
+```
+
+> 19:27 model job `deep` started
+
+---
+
+## Turn 19 (DEEP) -> island #22
+
+**Hypothesis:** Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LINGERS after the sense moves on and is wiped only where the agent stands or got burned, so a bearing that flips round a wall no longer flips the target; the agent keeps going to the side it first chose. WEAR: a solid face the wave leads the agent into (it is the best neighbour of the agent's cell) builds a press ledger while it stays solid. The ledger spreads along the connected rock and takes leak away from it, so a stone face that never gives stops pulling the wave through itself and the frontier elsewhere wins. Doors still open on the first presses. This targets #18's pacing and pre
+
+Prediction 29.5, got **28.0** meals, fitness 578, per world [37, 32, 32, 25, 37, 24, 23, 32, 35, 37, 26, 29, 30, 20, 3, 26, 0, 43, 24, 45]; model 132.2 s, repairs 0
+
+value on the test map: max 0.98, mean 0.40, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel injection
+channel step
+channel rim
+channel beyond
+channel ghost
+channel nb
+channel worn
+channel dull
+channel lk
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+# ghost: food evidence lingers after the sense moves on; wiped under the agent and where it burned
+rule linger:
+  when 1
+  set ghost = where((max8(here) > 0.5) or (here > 0.5) or (bad > 0.5), 0, max(where(frontier > 0.5, 0, source), 0.99 * ghost))
+rule best:
+  when 1
+  set nb = max8(value)
+# press ledger: a solid face that is the agent's best neighbour wears; heals when it opens, else fades slowly
+rule wear:
+  when 1
+  set worn = where(solid < 0.2, 0, min(1, 0.9995 * worn + where((max8(here) > 0.5) and (value >= argmax8(here, nb) - 0.000001), 0.01, 0)))
+rule dullness:
+  when 1
+  set dull = where(solid > 0.3, max(worn, 0.85 * max8(dull)), 0)
+rule effleak:
+  when 1
+  set lk = leak * (1 - dull)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * lk, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source, 0.8 * ghost)) / (1 + 0.5618 * sum8(solid)), 0.12 * beyond * (0.3635 + 1.576 * openness)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), exp(1.4142 * log(0.0001 + step)) * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - lk)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - lk)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - lk)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - lk)))) * (1 - solid * (1.396 - lk)) * (0.981 - 0.8642 * bad)
+```
+
+### Holdout checkpoint at 8.29 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 6x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #22  train 28.0 meals  holdout  -    (tuned 4x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 8x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 111x: train 28.5 meals, holdout 27.0
+```
+
+> 19:56 model job `design` started

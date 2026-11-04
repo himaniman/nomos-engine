@@ -1063,3 +1063,135 @@ One mechanism: make the wave leak through a wall cell in proportion to how unlik
 ```
 
 > 15:36 model job `design` started
+
+---
+
+## Turn 16 -> island #19
+
+**Hypothesis:** In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave leaks through every wall cell alike, so the nearest rock is pressed as often as the door. The harness already teaches the leak per hue (a door that opens raises it, rock that does nothing lowers it); a DOORNESS contrast amplifies a wall cell's leak by how much it exceeds the mean leak of the solid cells around it, so a door or rubble tile in a rock wall becomes the one bright exit, while the knowledge-priced wave (#18, best untuned) is kept.
+
+Prediction 28.0, got **24.8** meals, fitness 477, per world [24, 25, 27, 25, 34, 21, 4, 33, 36, 18, 18, 29, 39, 29, 28, 36, 0, 42, 2, 25]; model 8.1 s, repairs 0; vocabulary twin of #15, #18, #8, #13, #12, #9
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel door
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a wall cell that gives more than the walls around it stands out: contrast of its taught leak against its solid neighbours' mean
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# unknown ground costs extra; walls pass the wave by their CONTRASTED leak, so doors outshine the rock around them
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 15:51 model job `design` started
+
+---
+
+## Turn 17 -> island #20
+
+**Hypothesis:** Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the best untuned score (27.7, holdout 29.0); the body (radius 0.45) also pays for walls it walks beside, scraping, sliding and clipping corners, which the wave ignores (the tuner drove the diagonal discount of #4 down to 0.75, a hint that cutting corners near walls costs). Adding a CLEARANCE cost (each step discounted by the number of solid cells around it) makes plans keep to open floor and the middles of corridors, so walks get faster and fewer end in a slide or a press.
+
+Prediction 28.0, got **23.2** meals, fitness 472, per world [48, 28, 23, 20, 17, 17, 14, 32, 29, 31, 23, 29, 21, 25, 24, 25, 0, 28, 5, 26]; model 12.1 s, repairs 0; vocabulary twin of #18, #13, #12, #9, #7, #4
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# a step costs more on unknown ground (may be wall) and beside walls (the body scrapes and slides there)
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * (1 - 0.02 * sum8(solid)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 15:54 model job `theory` started
+
+---
+
+## Theory (after 18 design turns)
+
+CORE (keep): persistent max-wave; sum8 confinement on sources (replacing it by dead-end/doorway geometry: 16.7, #14); darkness-weighted frontier (#3, 26.7/holdout 27.3); footprint trail on the read-out (#4, holdout 30.0).
+BEST NEW: step cost by KNOWLEDGE — unknown ground discounted extra (#18: 27.7 untuned, holdout 29.0, best). Plans over seen floor beat plans through guessed floor.
+HURTS: breaking the wave's persistence (fresh per-thought plan, #16: 12.8 — the stale plateau is useful commitment); momentum boost on the read-out (#17: 13.7); harmonic averaging (#10: 14.2); persistent extra pulls (ghost food 21.5, compass 21.4, larder 24.6, breach 23.2); clearance cost beside walls (#20: 23.2 raw).
+NEUTRAL (within ~2 meals noise): permanent walls 25.6, stone memory 23.9->25.9, door contrast 24.8->27.1 (world 16 still 0), aroma 25.9.
+Lesson: the read-out and the wave's dynamics are fragile; change what a step COSTS or what a source IS WORTH, not how values move. Untried: appetite/poison, smell-specific pricing.
+
+### Holdout checkpoint at 4.79 h
+
+```
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 2x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 8x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #15  train 25.9 meals  holdout  -    (tuned 5x) | The observer saw the agent end its life looping in one spot with 100 idle presses and 0 doors, called by food 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 92x: train 27.3 meals, holdout 25.4
+```
+
+> 16:08 model job `design` started

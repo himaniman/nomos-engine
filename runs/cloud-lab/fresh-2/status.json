@@ -1,19 +1,19 @@
 {
- "now": "2026-11-04T20:13:53",
- "elapsed_h": 7.423,
+ "now": "2026-11-04T20:45:47",
+ "elapsed_h": 7.955,
  "hours": 12.0,
- "doing": "evaluating turn 20",
- "design_turns": 21,
- "islands": 23,
+ "doing": "control arm: tuning",
+ "design_turns": 22,
+ "islands": 25,
  "evals": {
-  "llm": 126,
-  "control": 106,
-  "holdout": 12
+  "llm": 135,
+  "control": 112,
+  "holdout": 13
  },
  "champion": {
-  "id": 13,
-  "train_meals": 32.65,
-  "holdout_meals": 26.875
+  "id": 23,
+  "train_meals": 34.75,
+  "holdout_meals": 29.9375
  },
  "control": {
   "train_meals": 29.7,

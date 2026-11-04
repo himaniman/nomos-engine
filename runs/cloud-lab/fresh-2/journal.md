@@ -1830,3 +1830,186 @@ The agent is born in a tiny sealed pocket under the big rock mass, a cell or two
 ```
 
 > 20:12 model job `design` started
+
+---
+
+## Turn 20 -> island #23
+
+**Hypothesis:** Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent shuttles between faces. A world-anchored random GRAIN (drawn once per cell as it scrolls into view, then fixed to that place) ranks the faces, and a discounted winner-take-all CREST field gives a steady, trail-proof pull to only the locally best face (thin, leaky as the body taught it, not poisoned). The agent keeps pressing one face until it opens or its taught leak drops below the next one, which turns scattered chipping into one tunnel and should rescue worlds 110/118 without touching open-ground foraging (0.05 stays below the 0.12 frontier).
+
+Prediction 34.0, got **34.8** meals, fitness 702, per world [45, 31, 32, 26, 32, 43, 29, 30, 39, 47, 31, 36, 37, 39, 42, 37, 24, 31, 25, 39]; model 74.1 s, repairs 0; vocabulary twin of #13, #20, #18, #16
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Grain: a world-anchored random rank on every cell (scrolls with the map, never redrawn),
+# so equal wall faces stop tying: one face per neighbourhood wins and keeps winning.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+# Grain: drawn once for a cell when it scrolls into view, then fixed to that place.
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Thin wall: known free on one side and not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+# Face score: thin, leaky (taught: doors high, stone low), not poisoned, ranked by grain.
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+# Crest: the best face score within reach, discounted with distance (winner-take-all field).
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+# Work: effort on a solid face; grows while aimed at, fades.
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+# Probes: trail-faded faint faces + work, and a steady pull to the local WINNER face only.
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 7.70 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 3x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #22  train 32.0 meals  holdout  -    (tuned 5x) | #13's futility could never fire: work = 0.68*work + 0.03*aim settles near 0.09, far below the 0.9 threshold. T
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 109x: train 29.7 meals, holdout 24.6
+```
+
+> 20:36 model job `design` started
+
+---
+
+## Turn 21 -> island #24
+
+**Hypothesis:** This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. Every press winds the clock of the face the agent is pressing, and the clock fades only slowly. A wound face becomes a source that grows with its clock and is not damped by the wall, so the agent finishes the face it started instead of chipping a different one each time. Once the clock passes the deadline the face goes dark: no value, no wave through it, until it is slowly forgiven. A sealed-pocket agent should then push one face through, or give up on it within about 60 ticks and move to the next, never splitting its effort.
+
+Prediction 35.5, got **32.8** meals, fitness 668, per world [45, 31, 24, 26, 32, 43, 29, 30, 39, 47, 24, 36, 37, 39, 42, 37, 24, 31, 0, 39]; model 68.1 s, repairs 0; vocabulary twin of #23
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Deadline: a hard per-face timer. Pressing a face winds its clock; a wound face pulls
+# harder (commit to ONE face), and a face whose clock runs out goes dark until forgiven.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel timer
+channel pull
+# Grain: a fixed random rank per place, so equal faces stop tying.
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells, slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Thin wall: free on one side, not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: the neighbour of the agent the decision heads into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+# Clock: wound while pressed, forgotten slowly, capped past the deadline (1), wiped when the face gives.
+rule clock:
+  when 1
+  set timer = solid * min(1.2, 0.9995 * timer + 0.008 * aim * solid)
+# Commitment pull: a wound face (clock below deadline) is a source that grows with the clock.
+rule calc_pull:
+  when 1
+  set pull = solid * where(face > 0, 1, 0) * where(timer < 1, 0.5 * timer, 0)
+# Faint probes on thin faces, a steady pull to the local winner face.
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * 0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave; commitment bypasses the wall's damping; an expired face is dark.
+rule wave:
+  when 1
+  set value = where(timer >= 1, 0, max(pull, max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)))
+```

@@ -1,0 +1,46 @@
+# On the trap worlds the agent paces one small area for thousands of ticks because nothing there ever becomes less attractive for longer than the footprint trail lasts (a few thoughts). A slow HABITUATION field piles up wherever the agent dwells and fades over hundreds of ticks, and walking across over-familiar ground costs extra in the wave (a step cost, the kind of change that has paid: #18, #23), so plans out of a paced area get relatively cheaper than plans that cross it again, while ordinary foraging, which keeps moving, is barely touched.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel habit
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# habituation: time spent on a cell piles up slowly and fades over hundreds of ticks
+rule dwell:
+  when 1
+  set habit = min(1, 0.9995 * habit + 0.01 * here)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# walking over over-familiar ground costs extra: plans route out of the area the agent has been pacing
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * (1 - 0.15 * habit) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

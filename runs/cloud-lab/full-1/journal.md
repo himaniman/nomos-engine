@@ -1385,3 +1385,135 @@ The pull that brings it back is the pocket itself: all values are local and shor
 One mechanism: a slow HABITUATION field that accumulates wherever the agent spends time (much slower to fade than the trail) and dims the value there, so after a few hundred ticks in one small area everything familiar is dark and the only bright cells left are beyond the doors it has opened.
 
 > 16:50 model job `design` started
+
+---
+
+## Turn 21 -> island #24
+
+**Hypothesis:** The smell is painted at a waypoint straight out along the walkable bearing, so whenever the route bends the waypoint lands inside rock, and the wave then leads the agent into that wall to press (world 16: 106 idle presses, world 2: 100). Moving a smell painted on a solid cell to its open (and not guessed-wall) neighbours puts the target beside the wall on the walkable side, so the nose leads along walls toward the gap instead of into them; map completion and knowledge pricing (#23, best) are kept.
+
+Prediction 30.0, got **25.6** meals, fitness 503, per world [26, 33, 24, 42, 16, 27, 4, 32, 35, 20, 39, 32, 28, 14, 36, 36, 0, 35, 15, 18]; model 38.1 s, repairs 0; vocabulary twin of #23, #13, #17, #22, #20, #18
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel nose
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# a smell painted INSIDE a wall is moved off it: its open neighbours carry it instead, so the nose leads beside the wall, not into it
+rule unwall:
+  when 1
+  set nose = max(scent * (1 - solid), 0.9 * (1 - solid) * (1 - guess) * max8(scent * solid))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source) * (1 - solid), nose, thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 17:03 model job `design` started
+
+---
+
+## Turn 22 -> island #25
+
+**Hypothesis:** On the trap worlds the agent paces one small area for thousands of ticks because nothing there ever becomes less attractive for longer than the footprint trail lasts (a few thoughts). A slow HABITUATION field piles up wherever the agent dwells and fades over hundreds of ticks, and walking across over-familiar ground costs extra in the wave (a step cost, the kind of change that has paid: #18, #23), so plans out of a paced area get relatively cheaper than plans that cross it again, while ordinary foraging, which keeps moving, is barely touched.
+
+Prediction 29.5, got **27.5** meals, fitness 550, per world [32, 32, 33, 27, 28, 22, 3, 37, 30, 26, 28, 40, 25, 22, 28, 42, 0, 37, 28, 30]; model 14.1 s, repairs 0; vocabulary twin of #23, #24, #17, #15, #22, #20
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel habit
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# habituation: time spent on a cell piles up slowly and fades over hundreds of ticks
+rule dwell:
+  when 1
+  set habit = min(1, 0.9995 * habit + 0.01 * here)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# walking over over-familiar ground costs extra: plans route out of the area the agent has been pacing
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * (1 - 0.15 * habit) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 5.89 h
+
+```
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #25  train 27.5 meals  holdout  -    (tuned 0x) | On the trap worlds the agent paces one small area for thousands of ticks because nothing there ever becomes le
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 116x: train 27.3 meals, holdout 25.4
+```

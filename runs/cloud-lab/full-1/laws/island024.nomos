@@ -1,0 +1,45 @@
+# The smell is painted at a waypoint straight out along the walkable bearing, so whenever the route bends the waypoint lands inside rock, and the wave then leads the agent into that wall to press (world 16: 106 idle presses, world 2: 100). Moving a smell painted on a solid cell to its open (and not guessed-wall) neighbours puts the target beside the wall on the walkable side, so the nose leads along walls toward the gap instead of into them; map completion and knowledge pricing (#23, best) are kept.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel nose
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# a smell painted INSIDE a wall is moved off it: its open neighbours carry it instead, so the nose leads beside the wall, not into it
+rule unwall:
+  when 1
+  set nose = max(scent * (1 - solid), 0.9 * (1 - solid) * (1 - guess) * max8(scent * solid))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source) * (1 - solid), nose, thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

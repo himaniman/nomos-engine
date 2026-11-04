@@ -2275,3 +2275,105 @@ UNTRIED: a dig value capped BELOW any food source, so food always outbids a wall
 ```
 
 > 21:37 model job `deep` started
+
+---
+
+## Turn 24 (DEEP) -> island #27
+
+**Hypothesis:** Two changes aimed at the start-chamber trap. First, confinement now penalizes dead ends and pockets but not passages (a cell with solid on two opposite sides and open on the other two), so a frontier at the mouth of a corridor is no longer divided down below the wall faces next to the agent. Second, digging becomes a GATE instead of a bid: a walkable wave (food and frontier spreading only through non-solid cells) is broadcast from the agent's cell as `need`, and dig sources inject only when that wave does not reach the agent. While any food or exit can be walked to, no wall face competes with it, which removes the idle laps, the 51 presses, and the death at a rock with food beside it. Diggin
+
+Prediction 30.5, got **25.8** meals, fitness 510, per world [24, 30, 33, 32, 15, 32, 26, 30, 36, 21, 28, 37, 23, 18, 37, 28, 0, 28, 17, 20]; model 98.2 s, repairs 0
+
+value on the test map: max 0.98, mean 0.43, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel passage
+channel confinement
+channel fsrc
+channel explore
+channel need
+channel rim
+channel beyond
+channel injection
+channel step
+channel stepd
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+# openness spreads only through non-solid cells: a wall no longer lends its far side's promise
+rule spread:
+  when 1
+  set openness = (0.7539 * avg8(unknown) + 0.45 * avg8(openness)) * (1 - solid)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+# a passage: solid on two opposite sides, open on the other two (a corridor or doorway, not a pocket)
+rule corridor:
+  when 1
+  set passage = max(min(shift(solid, 1, 0), shift(solid, -1, 0)) * (1 - max(shift(solid, 0, 1), shift(solid, 0, -1))), min(shift(solid, 0, 1), shift(solid, 0, -1)) * (1 - max(shift(solid, 1, 0), shift(solid, -1, 0))))
+# confinement punishes dead ends and pockets, never the way out
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid) * (1 - passage)
+rule food:
+  when 1
+  set fsrc = where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement) * (1 - bad)
+# the walkable wave: food and frontier spread through known-passable cells only, no digging
+rule walkable:
+  when 1
+  set explore = max(fsrc, 0.94 * max4(explore), 0.916214 * max8(explore)) * (1 - solid)
+# need to dig: broadcast from the agent, 1 when no walkable wave reaches where it stands
+rule starved:
+  when 1
+  set need = max(here * clamp(1 - 40 * explore, 0, 1), 0.9 * max8(need))
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# a dig is only a source when walking leads nowhere: it gates, it never outbids
+rule inject:
+  when 1
+  set injection = max(fsrc, 0.15 * beyond * (0.4534 + 1.576 * openness) * need * (1 - bad))
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad)
+```
+
+### Holdout checkpoint at 10.36 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 7x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 136x: train 28.5 meals, holdout 27.0
+```
+
+> 22:09 model job `design` started

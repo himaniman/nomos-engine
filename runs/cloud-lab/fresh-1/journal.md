@@ -1380,3 +1380,86 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 78x: train 28.5 meals, holdout 27.0
 ```
+
+> 17:30 model job `design` started
+
+---
+
+## Turn 15 -> island #18
+
+**Hypothesis:** Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I ATE, which attracts. A meal site is detected when a morsel seen within two cells last thought is gone now; it is stored with a slow fade and a regrowth clock (`ripe`) that restarts on eating or on finding the site empty, and a ripe site injects a mid-strength source (above the frontier, below a seen morsel), so the agent returns to nooks where food respawns instead of wandering off to the bare frontier.
+
+Prediction 29.5, got **28.6** meals, fitness 584, per world [34, 26, 25, 35, 22, 28, 42, 37, 32, 33, 29, 28, 25, 37, 13, 40, 0, 36, 20, 31]; model 78.1 s, repairs 0
+
+value on the test map: max 0.98, mean 0.40, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel prevthing
+channel site
+channel larder
+channel ripe
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# a meal: a morsel seen within two cells of the agent last thought is gone now
+rule eaten:
+  when 1
+  set site = where((prevthing > 0.5) and (thing < 0.1) and (abs(posx() - 0.5) < 0.09) and (abs(posy() - 0.5) < 0.09), 1, 0)
+rule remember:
+  when 1
+  set prevthing = thing
+# the larder: meal sites, fading slowly (they scroll with the map)
+rule store:
+  when 1
+  set larder = min(1, max(site, 0.9995 * larder))
+# regrowth clock: restarts on a meal or when the site is found empty, then ripens
+rule clock:
+  when 1
+  set ripe = where((site > 0.5) or ((larder > 0.1) and (thing < 0.1) and (abs(posx() - 0.5) < 0.09) and (abs(posy() - 0.5) < 0.09)), 0, min(1, ripe + 0.003))
+# #17's injection plus a ripe larder: above the frontier, below a seen morsel; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), 0.12 * beyond * (0.3635 + 1.576 * openness), 0.3 * larder * ripe) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad)
+```

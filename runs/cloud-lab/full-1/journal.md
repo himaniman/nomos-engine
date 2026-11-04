@@ -850,3 +850,82 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+> 14:45 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** The persistent max-wave never forgets fast enough: when a morsel is eaten or a smell waypoint moves, its old peak leaves a flat plateau that decays only as fast as it spreads, so for several thoughts every neighbour ties and the gradients of the real current sources are hidden under it (the agent walks blind straight ahead after each meal). A FRESH plan wiped on the first pass of every thought (a life clock gives the phase) and rebuilt from what is sensed now is added to a scaled-down persistent wave that keeps the long view, so the near decision always follows live evidence while the far guidance survives.
+
+Prediction 27.5, got **12.8** meals, fitness 258, per world [15, 13, 12, 10, 13, 8, 18, 18, 15, 3, 17, 13, 12, 15, 17, 16, 0, 19, 3, 18]; model 50.1 s, repairs 0; vocabulary twin of #13, #12, #9, #7, #4, #15
+
+value on the test map: max 0.39, mean 0.07, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel clock
+channel injection
+channel fresh
+channel wave
+channel trail
+
+rule tick:
+  when 1
+  set clock = max(clock, max8(clock)) + 1
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# a plan rebuilt from scratch every thought (wiped on its first pass): only what is sensed NOW, out to ~5 cells
+rule replan:
+  when 1
+  set fresh = where(clock % 6 < 0.5, 0, max(injection, max(0.94 * max4(fresh), 0.916214 * max8(fresh))) * (1 - solid * (1 - leak)))
+
+# the persistent wave keeps the long view (and its stale plateaus)
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+# read the fresh near plan, with the long view added underneath as a guide where nothing is near
+rule read:
+  when 1
+  set value = (fresh + 0.3 * wave) * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 3.70 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 7x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #15  train 25.9 meals  holdout  -    (tuned 5x) | The observer saw the agent end its life looping in one spot with 100 idle presses and 0 doors, called by food 
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #12  train 25.6 meals  holdout  -    (tuned 5x) | The map forgets a wall at the same rate as everything else, so a wall seen a few hundred ticks ago becomes hal
+  #8   train 24.6 meals  holdout  -    (tuned 5x) | Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 72x: train 27.3 meals, holdout 25.4
+```
+
+> 15:02 model job `deep` started

@@ -1,0 +1,41 @@
+# The observer saw the agent end its life looping in one spot with 100 idle presses and 0 doors, called by food inside walled rooms: the wave leaks through the nearest wall cell, so it is led into the same stone again and again. A STONE memory builds up on wall cells the body keeps leaning on that stay solid (and clears where a cell turns out free), and the wave's leak through a wall is scaled by (1 - stone), so a pressed-and-failed cell stops carrying the wave, the route "through" slides along the room's boundary to the door, or the call fades and the agent leaves to forage elsewhere.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel stone
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a wall the body has leaned on and that is still a wall is stone: contact builds it up, it fades slowly
+rule scorn:
+  when 1
+  set stone = min(1, 0.9995 * stone + 0.05 * max8(here) * solid) * (1 - free)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# the wave leaks only through walls not yet found to be stone, so the way "through" moves along the wall to its door
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak * (1 - stone)))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

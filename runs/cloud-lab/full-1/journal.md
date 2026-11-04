@@ -694,3 +694,159 @@ rule read:
 ```
 
 > 14:14 model job `design` started
+
+---
+
+## Turn 11 -> island #14
+
+**Hypothesis:** Confinement (a count of solid neighbours) cannot tell a dead-end nook, where a source is a trap, from a doorway or corridor mouth, where the frontier opens onto a whole new room; it suppresses both. Reading the map's GEOMETRY with shifted walls separates them: a dead end (three or four sides walled) suppresses sources, a passage (walled on one opposite pair, open on the other) multiplies frontier marks at and beside it, so the agent leaves rooms through their doors instead of combing their corners.
+
+Prediction 27.0, got **16.7** meals, fitness 337, per world [24, 14, 12, 15, 24, 16, 17, 21, 21, 21, 19, 12, 14, 11, 11, 24, 0, 18, 19, 21]; model 54.1 s, repairs 0
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel gate
+channel dead
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a passage: walled on one opposite pair, open on the other (a doorway or corridor mouth)
+rule passage:
+  when 1
+  set gate = max(shift(solid, 1, 0) * shift(solid, -1, 0) * (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)), shift(solid, 0, 1) * shift(solid, 0, -1) * (1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)))
+
+# a dead end: three or four of the four sides walled
+rule cul_de_sac:
+  when 1
+  set dead = clamp(sum4(solid) - 2, 0, 2)
+
+# geometry instead of a solid count: dead ends are suppressed, passages to the unknown are promoted
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source) / (1 + 0.5 * dead), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 + 2.0 * max(gate, max8(gate))) / (1 + 2.0 * dead))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 14:17 model job `theory` started
+
+---
+
+## Theory (after 12 design turns)
+
+HELPS: (a) the max-wave itself — relaxation/harmonic averaging collapsed to 14.2 (#10); (b) sum8 confinement on ALL sources — replacing it by dead-end/doorway geometry fell to 16.7 (#14), so sources near any wall mislead; (c) darkness-weighted frontier (#3, best train 26.7, holdout 27.3); (d) footprint trail on the read-out (#4, best holdout 30.0).
+HURTS: anything that persists or pulls far. Lingering food ghost 21.5 (#13), far compass 21.4 (#11), two discounts 21.6 (#5), random regional whim 24.4 (#6), larder 24.6 (#8), breach 23.2 (#7). Stale targets and far bias waste walking; the reactive local wave re-plans each thought and wins.
+NEUTRAL: permanent walls 25.6 (#12), aroma-modulated frontier 25.9 (#9).
+Train differences under ~2 meals are noise (SE ~2, worlds swing 0-40).
+UNTRIED: the read-out (tie-breaking, lookahead), what kills a plateau after eating, appetite/poison handling, faster forgetting. World 16 starves all.
+
+> 14:18 model job `observe` started
+
+---
+
+## Observer: #3 on world 2
+
+![](observe/obs01_island3_world2.png)
+
+`{'meals': 18, 'ticks': 8000, 'alive': True, 'distance': 1765.5, 'cells_visited': 956, 'last500_box': '13x13', 'doors': 0, 'breaks': 0, 'idle_presses': 100, 'nightcaps': 1}`
+
+Early in life the agent ranges widely and eats steadily (most meals lie along the long cyan path), but in the late part it gets stuck in one spot at the lower left, looping in tight circles inside a 13x13 box for its last stretch with no meals there.
+Many of the remaining food dots sit inside small walled rooms (the outlined squares), and the agent opened 0 doors while making 100 idle presses, so it is being called by food it can smell or see behind walls and keeps pressing stone instead of finding the room's door.
+The loops look like the wave leaking through the nearest wall toward the smelled food: the agent is led into the same stone, presses, slides off, circles back, and repeats.
+A fix: remember the wall cells it has pressed without result (solid cells next to `here` that stay solid) and stop letting the wave leak through those cells for a long while, so the path through the wall moves to other cells of the room's boundary until it reaches the door, or the agent gives up and leaves.
+
+### Holdout checkpoint at 3.17 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 7x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #12  train 25.6 meals  holdout  -    (tuned 5x) | The map forgets a wall at the same rate as everything else, so a wall seen a few hundred ticks ago becomes hal
+  #8   train 24.6 meals  holdout  -    (tuned 5x) | Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as
+  #13  train 24.6 meals  holdout  -    (tuned 5x) | The smell is repainted from scratch every thought at a waypoint whose bearing flips between the two ways round
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 63x: train 27.3 meals, holdout 25.4
+```
+
+> 14:29 model job `design` started
+
+---
+
+## Turn 12 -> island #15
+
+**Hypothesis:** The observer saw the agent end its life looping in one spot with 100 idle presses and 0 doors, called by food inside walled rooms: the wave leaks through the nearest wall cell, so it is led into the same stone again and again. A STONE memory builds up on wall cells the body keeps leaning on that stay solid (and clears where a cell turns out free), and the wave's leak through a wall is scaled by (1 - stone), so a pressed-and-failed cell stops carrying the wave, the route "through" slides along the room's boundary to the door, or the call fades and the agent leaves to forage elsewhere.
+
+Prediction 27.5, got **23.9** meals, fitness 480, per world [29, 27, 21, 34, 39, 19, 4, 29, 26, 24, 21, 32, 20, 30, 21, 30, 0, 24, 29, 20]; model 8.1 s, repairs 0; vocabulary twin of #8, #13, #12, #9, #7, #4
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel stone
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a wall the body has leaned on and that is still a wall is stone: contact builds it up, it fades slowly
+rule scorn:
+  when 1
+  set stone = min(1, 0.9995 * stone + 0.05 * max8(here) * solid) * (1 - free)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# the wave leaks only through walls not yet found to be stone, so the way "through" moves along the wall to its door
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak * (1 - stone)))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

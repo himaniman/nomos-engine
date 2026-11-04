@@ -1005,3 +1005,98 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.4 * back)
 ```
+
+### Holdout checkpoint at 4.32 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 5x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #16  train 28.1 meals  holdout  -    (tuned 3x) | Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radi
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #14  train 25.7 meals  holdout  -    (tuned 5x) | The theory's strongest negative result is that a FASTER wave (#8) cost 6 meals, which suggests the lag of a sl
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 70x: train 28.2 meals, holdout 26.6
+```
+
+> 16:00 model job `deep` started
+
+---
+
+## Turn 14 (DEEP) -> island #17
+
+**Hypothesis:** Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from behind stone, a wall pressed for nothing — looks the same from the inside: the body stays within a few cells for a long time. The law counts its own visits (a slowly fading per-cell tally under the agent); when the visit density around the agent is high a FRUSTRATION level rises, floods the map and fades over ~100 thoughts, and while it lasts smell-only lures are muted (seen morsels never are), so the frontier and sight carry the agent away from the trap and it comes back to smell only once it is elsewhere. This is self-monitoring rather than per-lure boredom (#6), and it leaves norm
+
+Prediction 30.5, got **30.5** meals, fitness 558, per world [37, 20, 23, 33, 21, 46, 31, 32, 23, 23, 31, 23, 35, 28, 27, 39, 38, 31, 37, 32]; model 140.1 s, repairs 0; vocabulary twin of #15, #16
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Noticing you are stuck. Every trap seen so far (two-way smell bearings, a smell
+# behind stone, a wall pressed for nothing, a pinch) looks the same from inside:
+# the body stays in a few cells for a long time. Visits pile up where the agent
+# stands; when the visit density around it is high, a FRUSTRATION level rises,
+# floods the map and fades slowly, and while it lasts smell-only lures are muted
+# (seen morsels are not), so frontier and sight carry the agent out of the trap.
+# Base: #15 (appetite, aversion, ballistic, doors, body-honest diagonals).
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully; smell-only lures are muted by frustration.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
+```

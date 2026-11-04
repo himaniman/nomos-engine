@@ -1937,3 +1937,174 @@ rule wave:
 ```
 
 > 20:45 model job `design` started
+
+---
+
+## Turn 25 -> island #27
+
+**Hypothesis:** The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs the neighbourhood, the sweep away from the agent's own past (#10, best train 34.7) leaves it. Foraging animals switch between exactly these two modes, intensive search after a find and extensive search between finds. Here both run on the ARS law: the blurred past path discounts frontier near where the agent has been, but only to the extent no recent meal (`ars`) says the neighbourhood is worth combing.
+
+Prediction 33.0, got **25.6** meals, fitness 511, per world [28, 6, 9, 8, 30, 24, 22, 35, 33, 32, 34, 40, 14, 26, 33, 27, 26, 24, 30, 31]; model 38.1 s, repairs 0; vocabulary twin of #25, #16, #18
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel trail
+channel been
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+# EXTENSIVE search between meals: a fading trail of the walked path, blurred wide; frontier near
+# the agent's own past counts less unless a recent meal (ars) says to comb the neighbourhood
+rule trail:
+  when 1
+  set trail = max(here, 0.998 * trail)
+
+rule been:
+  when 1
+  set been = 0.2 * trail + 0.8 * avg8(been)
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4611 + 1.5 * vast) * (0.8222 + 2 * ars * exp(0 - far / 4)) * (1 - min(1, 3 * been) * (1 - min(1, ars))))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 8.23 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 4x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 129x: train 28.3 meals, holdout 27.1
+```
+
+> 21:04 model job `design` started
+
+---
+
+## Turn 26 -> island #28
+
+**Hypothesis:** The random-search tuner, run independently on two different laws (the control and #25), drove the diagonal discount from 0.916 down to ~0.70-0.76, below two orthogonal steps (0.884), so it keeps saying the same thing: value should not travel diagonally. Read as structure, that is a Manhattan wave: value spreads only through the four orthogonal neighbours, so the field takes the grid's own geometry (walls, doorways, corridors are axis-aligned), corner-cutting through a wall's diagonal gap gets no value, and the agent's diagonal steps are only those two straight steps would justify. On the best-train law (#10, the sweep), with the max8 term removed.
+
+Prediction 34.0, got **27.0** meals, fitness 549, per world [32, 34, 43, 28, 23, 37, 30, 34, 30, 32, 0, 40, 26, 10, 40, 27, 32, 33, 0, 9]; model 16.1 s, repairs 0; vocabulary twin of #26, #10, #7, #24, #20, #19
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel been
+channel injection
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the path walked, slowly fading; scrolls with the map
+rule trail:
+  when 1
+  set trail = max(here, 0.998 * trail)
+
+# a wide blur of the path: how much of the agent's own past lies around a cell
+rule been:
+  when 1
+  set been = 0.2 * trail + 0.8 * avg8(been)
+
+# frontier on the side the agent came from counts less: the sweep goes on away from its past
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, (0.4275 + 1.5 * vast) * (1 - min(1, 3 * been)))) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+# a MANHATTAN wave: value travels only orthogonally, so a diagonal neighbour is worth what two
+# straight steps are; the plan is in the grid's own geometry (walls and doors are axis-aligned)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```

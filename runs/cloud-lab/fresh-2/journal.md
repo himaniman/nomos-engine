@@ -1261,3 +1261,108 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 69x: train 27.2 meals, holdout 25.4
 ```
+
+> 18:03 model job `deep` started
+
+> evaluation failed (NomosError: line 33: expected ')', got '.556'); pool rebuilt
+
+---
+
+## Turn 14 (DEEP) -> island #17
+
+**Hypothesis:** The 115 presses on rock and the stall in a spent patch come from two things: one wave mixes walking and breaking through, and a fully known map has no sources at all. So I split the plan in two. A WALK wave never enters solid. A DIG wave leaks through solid by the taught `leak`, and it only counts through an `urge` read at the agent: urge is high when the best walkable neighbour is poor, so the agent presses a wall only when walking offers little. The map's outer rings also become a faint source (the world goes on past the edge, faded by the trail), so a spent map still pulls the agent outward instead of letting it stand still or pace.
+
+Prediction 30.5, got **28.1** meals, fitness 571, per world [33, 28, 43, 30, 25, 29, 21, 21, 20, 42, 0, 17, 37, 37, 40, 32, 42, 29, 0, 35]; model 116.2 s, repairs 0
+
+value on the test map: max 0.61, mean 0.32, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Two plans, one choice: a WALK wave that never enters solid, a DIG wave that leaks through
+# it, and digging only counts as much as walking is poor. The map's rim is a faint source:
+# the world goes on past the edge, so a spent map still has somewhere to go.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel rim
+channel face
+channel walk
+channel dig
+channel wa
+channel urge
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walked:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * clamp(0.83 - bad, 0, 1) / (1 + 0.83 * confinement)
+
+# Beyond the map: a faint source on the outer rings, where the agent has not been.
+rule calc_rim:
+  when 1
+  set rim = 0.02 * clamp(10 * (max(abs(posx() - 0.5), abs(posy() - 0.5)) - 0.36), 0, 1) * (1 - solid) * clamp(1 - trail, 0, 1)
+
+# Wall faces next to known-free ground: faint dig targets, worn down by the trail.
+rule calc_face:
+  when 1
+  set face = solid * max4(free) * leak * (1 - bad) * 0.06 * clamp(1 - 1.4 * trail, 0, 1)
+
+# Walk plan: Bellman wave that solid blocks completely.
+rule walk_wave:
+  when 1
+  set walk = max(injection, rim, 0.94 * max4(walk), 0.916214 * max8(walk)) * (1 - solid) * (1 - 0.9 * bad)
+
+# Dig plan: the same sources plus wall faces, leaking through solid by the taught leak.
+rule dig_wave:
+  when 1
+  set dig = max(injection, face, 0.94 * max4(dig), 0.916214 * max8(dig)) * clamp(1 - solid * (1.3 - leak), 0, 1) * (1 - 0.9 * bad)
+
+# What walking offers the agent: its best walkable neighbour, held at the centre cell.
+rule calc_wa:
+  when 1
+  set wa = here * max8(walk)
+
+# Urge to dig, read beside the agent: high only when the walk plan is poor.
+rule calc_urge:
+  when 1
+  set urge = clamp(1 - 12 * max(wa, max8(wa)), 0, 1)
+
+# The choice: walk unless digging beats it after the urge discount.
+rule decide:
+  when 1
+  set value = max(walk, 0.5 * urge * dig)
+```
+
+### Holdout checkpoint at 5.50 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #15  train 30.9 meals  holdout  -    (tuned 5x) | Two changes on new axes. First, a frontier mark is weighted by how much is still unknown behind it (the unknow
+  #10  train 30.9 meals  holdout  -    (tuned 5x) | A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every w
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 78x: train 27.2 meals, holdout 25.4
+```

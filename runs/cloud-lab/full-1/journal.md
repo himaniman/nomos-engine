@@ -2407,3 +2407,97 @@ rule read:
 ```
 
 > 21:07 model job `design` started
+
+---
+
+## Turn 35 -> island #38
+
+**Hypothesis:** The night measured the plan's update speed twice and both faster plans lost: wiping it each thought 12.8 (#16), express lanes 26.7 vs 29.6 (#28). If the trend is real, a SLOWER plan should pay: here a cell also keeps 97% of its own last value each pass, so when a target vanishes or the smell waypoint jumps, the old plan fades more slowly than a new one spreads and the agent finishes the move it started (commitment), on the best honest structure (#32).
+
+Prediction 30.0, got **28.4** meals, fitness 567, per world [33, 34, 29, 28, 19, 23, 30, 40, 29, 14, 32, 32, 38, 36, 25, 28, 0, 34, 37, 28]; model 10.1 s, repairs 0; vocabulary twin of #37, #35, #33, #32, #34, #31
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel open
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# the other half of map completion: an unknown cell that continues a line of open floor is probably floor
+rule open_floor:
+  when 1
+  set open = (1 - free) * (1 - solid) * (1 - guess) * max(shift(free, 1, 0) * shift(free, -1, 0), shift(free, 0, 1) * shift(free, 0, -1), 0.6 * shift(free, 1, 0) * shift(free, 2, 0), 0.6 * shift(free, -1, 0) * shift(free, -2, 0), 0.6 * shift(free, 0, 1) * shift(free, 0, 2), 0.6 * shift(free, 0, -1) * shift(free, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# a cell also keeps most of its OWN last value (old plans fade slower than they spread: commitment); priced by knowledge: unknown ground costs unless predicted floor, guessed wall passes half, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - max(free, open))) * max(0.94 * max4(wave), 0.916214 * max8(wave), 0.97 * wave)) * (1 - solid * (1 - door)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 21:10 model job `theory` started
+
+---
+
+## Theory (after 36 design turns)
+
+BEST HONEST LAW: #32 (30.5 untuned, holdout 30.5): persistent multiplicative wave + confinement + darkness-weighted frontier + footprint trail + map completion (guessed walls and guessed floor) + unknown ground priced + walls passed by door contrast. Every piece is load-bearing: without darkness/trail 24.6 (#29), without door contrast 26.7 (#36), without guessed floor 27.1 (#30 raw).
+KNOWLEDGE BELONGS IN STEP PRICES, NOT IN SOURCE WORTH: pricing paid three times (#18, #23, #32); boosting frontier by predicted floor collapsed (22.1, #33); new sources hurt (leaves 18.3).
+SMALL PRICE REFINEMENTS DO NOT PAY: remembered floor 27.4 (#34), unknown priced by depth 25.4 (#37), recursive completion 27.4, trail as a step cost 28.8 (holdout 30.8, neutral).
+PLAN SPEED: faster loses (wipe 12.8, express 26.7), slower is no better (self-persistence 28.4, #38): the plain wave's speed is about right.
+Tuning overfits (#30: 31.4 train -> 27.2 holdout; control 30.7 -> 24.2).
+OPEN: world 16 pocket starves all.
+
+> 21:11 model job `observe` started
+
+---
+
+## Observer: #30 on world 18
+
+![](observe/obs05_island30_world18.png)
+
+`{'meals': 17, 'ticks': 8000, 'alive': True, 'distance': 1854.4, 'cells_visited': 990, 'last500_box': '36x46', 'doors': 0, 'breaks': 0, 'idle_presses': 45, 'nightcaps': 1}`
+
+On world 18 the agent stays alive all 8000 ticks and covers a lot of ground (990 cells), but eats only 17 times: it shuttles up and down the same long north-south corridor through the middle of the map several times (the cyan and red tracks overlap there) and ends in a tangle of loops in the rooms on the right, where it eats once.
+Much of the remaining food sits inside small walled rooms (the outlined squares, many with a dot inside, especially on the left and lower left), and the agent opened 0 doors with 45 idle presses, so it walks past enclosed food again and again without getting in.
+The repeated corridor runs look like the plan re-choosing between the two halves of the map as the map forgets one of them, so the trip back is made from scratch each time instead of to a remembered target.
+One mechanism: treat a closed room that the map has seen whole (a rectangle of wall with unknown or food inside) as a door search target, a weak source on its wall cells that fades per cell after each press, so the agent walks round a room's boundary pressing until the door gives instead of passing it by.
+
+> 21:25 model job `design` started

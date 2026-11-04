@@ -1002,3 +1002,207 @@ Hurts: any non-max exploration physics — harmonic mean field #14 18.9, fast-de
 Untried: why open worlds plateau at ~28 — speed/turning, what eats time between meals.
 
 > 16:22 model job `design` started
+
+---
+
+## Turn 12 -> island #15
+
+**Hypothesis:** Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 25 cells and forgets what scrolls off, so a frontier-greedy walker keeps turning back toward nearby cracks and re-sweeps the same blocks (the observer's room-perimeter loops). This law keeps a LONG COURSE — a heading vector averaged over hundreds of ticks, stored at the agent's own cell and gathered back from the ring after each scroll — and, only while exploring (nothing worth 0.3 in play), boosts neighbours that keep that course and damps those that turn back, a Lévy-like straight sweep across new ground; once food is in play the plan alone decides. The substrate is #13's minus its 
+
+Prediction 28.5, got **33.4** meals, fitness 656, per world [28, 27, 37, 27, 31, 34, 33, 41, 31, 32, 33, 46, 30, 41, 29, 31, 39, 32, 32, 34]; model 98.2 s, repairs 0; vocabulary twin of #13, #9
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel align
+channel plan
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+# the agent's LONG COURSE, a vector kept at the agent's own cell: gathered back from the ring after
+# the map scrolls (sum8), slowly averaged with the step just taken (away from the freshest cell left)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+# each neighbour of the agent: how well stepping onto it keeps the long course
+rule alignment:
+  when 1
+  set align = shift(here, 1, 0) * shift(coursex, 1, 0) - shift(here, -1, 0) * shift(coursex, -1, 0) + shift(here, 0, 1) * shift(coursey, 0, 1) - shift(here, 0, -1) * shift(coursey, 0, -1) + 0.7 * (shift(here, 1, 1) * (shift(coursex, 1, 1) + shift(coursey, 1, 1)) - shift(here, -1, -1) * (shift(coursex, -1, -1) + shift(coursey, -1, -1)) + shift(here, 1, -1) * (shift(coursex, 1, -1) - shift(coursey, 1, -1)) + shift(here, -1, 1) * (shift(coursey, -1, 1) - shift(coursex, -1, 1)))
+
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+rule wave:
+  when 1
+  set plan = max(injection, max(0.94 * max4(plan), 0.916214 * max8(plan))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+# EXPLORING (nothing worth 0.3 in play): hold the long course, so the walk sweeps far instead of
+# turning back for every nearby crack; with food in play the plan alone decides
+rule steer:
+  when 1
+  set value = plan * (1 + 0.5 * clamp(align, -1, 1) * (plan < 0.3))
+```
+
+### Holdout checkpoint at 3.86 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 6x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #15  train 33.4 meals  holdout 33.0  (tuned 1x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #11  train 28.2 meals  holdout 25.5  (tuned 6x) | The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times
+  #10  train 27.9 meals  holdout 28.2  (tuned 5x) | Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over k
+  #13  train 29.3 meals  holdout  -    (tuned 5x) | A synthesis test of the two mechanisms that each fixed a hard world without breaking another: heading momentum
+  #12  train 26.9 meals  holdout  -    (tuned 5x) | Bold axis: AREA-RESTRICTED SEARCH, the classic optimal-foraging rule. Food in this world is clumped by habitat
+  #5   train 26.6 meals  holdout 28.7  (tuned 5x) | 70% of food spots are renewable and regrow ~1200 ticks after being eaten, but every law so far forgets a spot 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 64x: train 29.8 meals, holdout 25.1
+```
+
+> 16:56 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on the STEP, only when nothing worth 0.3 is in play. Question: is the gain from holding a heading step by step, or from choosing far GOALS along a course? Here the same long-course vector is broadcast over the map (signed parts carried outward by max8) and weights the frontier SOURCES by where they lie along it — frontier ahead up to 2x, behind down to 0 — while the step read-out is the plain wave again. If the goal-level course matches #15, the mechanism is "sweep in one direction at large scale"; if it falls back toward 28, the step-level hold (not turning back) is what pays.
+
+Prediction 31.0, got **33.0** meals, fitness 655, per world [29, 35, 42, 41, 34, 37, 27, 31, 31, 28, 7, 30, 32, 43, 41, 29, 36, 43, 35, 30]; model 54.1 s, repairs 0
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+# the LONG COURSE at the agent's cell, gathered back after each scroll (as #15)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+# BROADCAST the course over the whole map (signed parts carried by max, 3% loss per cell)
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(coursex, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - coursex, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(coursey, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - coursey, 0), 0.97 * max8(beamyn))
+# how far a cell lies along the course, as seen from the agent (cosine x course strength)
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# the course chooses the GOAL, not the step: frontier ahead along the course worth up to 2x, behind down to 0
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + 2 * ahead, 0, 2), 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+```

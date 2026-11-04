@@ -336,3 +336,155 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free)) * (1 - 0.3 * trail)) * (1 - solid * (1.028 - leak))
 ```
+
+> 14:21 model job `design` started
+
+---
+
+## Turn 5 -> island #8
+
+**Hypothesis:** In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is indifferent between two routes to a meal even if one of them opens new ground; between two near-equal targets it can rock. Here food (morsels + smell) and exploration (frontier + frustrated wall faces) run as two separate discounted waves and the read-out ADDS them, so among routes to food the one that also explores wins, ties break toward new ground, and with no food in sight the agent just explores as before.
+
+Prediction 31.0, got **26.6** meals, fitness 523, per world [17, 36, 32, 38, 27, 40, 31, 27, 17, 32, 23, 31, 4, 37, 35, 32, 21, 1, 21, 31]; model 56.1 s, repairs 0; vocabulary twin of #5, #4, #7, #6
+
+value on the test map: max 0.04, mean 0.03, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel food
+channel explore
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+# unexplored space around a cell
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time under the agent, broadcast as frustration
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# FOOD wave: seen morsels and smell only, confinement-suppressed, trusting known ground
+rule food:
+  when 1
+  set food = max(where(thing + scent > 0, max(thing, 1.358 * source), 0) / (1 + 0.4454 * confinement), max(0.94 * max4(food), 0.916214 * max8(food)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+
+# EXPLORE wave: frontier weighted by the unknown behind it, plus wall faces when frustrated
+rule explore:
+  when 1
+  set explore = max(where(thing + scent > 0, 0, source * (0.4275 + 1.5 * vast)) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak, max(0.94 * max4(explore), 0.916214 * max8(explore)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+
+# goals ADD instead of competing: the way to food that also opens new ground wins
+rule value:
+  when 1
+  set value = food + 0.5 * explore
+```
+
+> 14:25 model job `theory` started
+
+---
+
+## Theory (after 6 design turns)
+
+Exploration is the main food source, and how the frontier is weighted matters most. Helps: weighting frontier marks by the unknown behind them (#3, +4.9 train, but holdout only 21.9, so partly luck); turning wall faces into targets when the agent dwells (#4, holdout 27.5, the best honest number; it lifted a 0-meal world to 32); making the wave dearer through unknown cells (#5, +3.2 train, holdout 26.7). Hurts: giving the smell a lingering memory (#6, -3 raw: it commits to the smell and loses the rich worlds, though no world starved); splitting food and exploration into two waves and adding them (#8, -5: goals must compete, not blend). Neutral: momentum via a trail penalty (#7, about equal, all 20 immortal). Holdout gaps of 1-2 meals are noise; worlds range 0-48. Untried: food clusters, revisiting regrowing spots, poison avoidance, distance-adaptive discount, door-specific planning.
+
+### Holdout checkpoint at 1.69 h
+
+```
+  #5   train 31.6 meals  holdout 26.7  (tuned 5x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #3   train 27.1 meals  holdout 21.9  (tuned 5x) | Meals come mostly from exploration, but every frontier mark is worth the same 0.12, so a crack between two wal
+  #4   train 27.9 meals  holdout 27.5  (tuned 5x) | An agent that finds nothing worth walking to stands still or rocks between two cells and starves (worlds where
+  #6   train 27.2 meals  holdout  -    (tuned 5x) | The smell is painted along the world's geodesic bearing, which flips between the two ways round a wall as the 
+  #8   train 26.6 meals  holdout  -    (tuned 1x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 26x: train 28.2 meals, holdout 25.6
+```
+
+> 14:40 model job `design` started
+
+---
+
+## Turn 6 -> island #9
+
+**Hypothesis:** The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways round a wall, so as a target it traps the agent; yet the ablation says smell doubles the take on some worlds. Here smell stops being a target (only a weak direct pull is left) and becomes a COMPASS: a wall-blind halo around its painted spot multiplies the frontier marks that lie its way, so the agent always walks to real, reachable unknown ground, but chooses the unknown in the direction of the food.
+
+Prediction 32.0, got **30.9** meals, fitness 615, per world [17, 26, 41, 29, 31, 30, 22, 34, 34, 33, 33, 39, 16, 35, 35, 35, 35, 33, 23, 37]; model 16.1 s, repairs 0; vocabulary twin of #5, #4, #7, #6, #8
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel compass
+channel injection
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the smell as a broad halo around its painted spot, ignoring walls (a direction, not a place)
+rule compass:
+  when 1
+  set compass = max(scent, 0.85 * max8(compass))
+
+# smell no longer pulls on its own: it brightens the frontier that lies its way
+rule inject:
+  when 1
+  set injection = max(max(thing, where(thing > 0, 1.358 * source, 0), 0.3 * scent, where(thing + scent > 0, 0, source * (0.4275 + 1.5 * vast) * (1 + 3 * compass))) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```

@@ -929,3 +929,137 @@ rule read:
 ```
 
 > 15:02 model job `deep` started
+
+---
+
+## Turn 14 (DEEP) -> island #17
+
+**Hypothesis:** The agent is slow (world 2: 0.22 cells per tick) because the brightest neighbour changes direction often and every turn costs thrust; and wiping the persistent wave (#16, 12.8) showed that holding a course is worth a lot. A MOMENTUM read-out marks the neighbour of the agent that lies straight ahead (opposite the freshest footprint, found with shifted trail and here fields) and boosts it a little, so the agent keeps its heading unless the plan clearly prefers a turn, walking straighter and faster between targets; the plan wave itself is unchanged.
+
+Prediction 27.0, got **13.7** meals, fitness 273, per world [13, 20, 16, 17, 3, 15, 14, 17, 10, 2, 19, 16, 15, 21, 13, 18, 0, 15, 12, 17]; model 46.1 s, repairs 0; vocabulary twin of #13, #12, #9, #7, #4, #16
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel ahead
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# momentum: a neighbour of the agent is AHEAD by how fresh the footprint is on the opposite side of the agent
+rule heading:
+  when 1
+  set ahead = shift(here, 1, 0) * shift(trail, 2, 0) + shift(here, -1, 0) * shift(trail, -2, 0) + shift(here, 0, 1) * shift(trail, 0, 2) + shift(here, 0, -1) * shift(trail, 0, -2) + shift(here, 1, 1) * shift(trail, 2, 2) + shift(here, -1, -1) * shift(trail, -2, -2) + shift(here, 1, -1) * shift(trail, 2, -2) + shift(here, -1, 1) * shift(trail, -2, 2)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+# read the plan dimmed on footprints and boosted straight ahead: keep the heading unless the plan clearly says turn
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail) * (1 + 0.15 * ahead)
+```
+
+> 15:18 model job `design` started
+
+---
+
+## Turn 15 -> island #18
+
+**Hypothesis:** The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight through unknown ground as if it were open floor, and the agent is led into walls and dead ends it could not see. Making the step cost depend on KNOWLEDGE (an extra discount for each unknown cell crossed, none on known-free floor) makes the plan prefer routes over ground it has seen, and it weighs a target behind unexplored terrain as the gamble it is, without adding any new source or changing the read-out.
+
+Prediction 27.0, got **27.7** meals, fitness 558, per world [34, 26, 21, 37, 40, 26, 26, 31, 34, 29, 30, 28, 22, 32, 29, 29, 0, 37, 5, 38]; model 40.1 s, repairs 0; vocabulary twin of #13, #12, #9, #7, #4, #17
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# a step costs more where the ground is not known to be free: a plan through unknown land may hit a wall
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 15:23 model job `observe` started
+
+---
+
+## Observer: #18 on world 16
+
+![](observe/obs02_island18_world16.png)
+
+`{'meals': 0, 'ticks': 3679, 'alive': False, 'distance': 614.7, 'cells_visited': 58, 'last500_box': '4x12', 'doors': 1, 'breaks': 5, 'idle_presses': 21, 'nightcaps': 0}`
+
+The agent is born in the same small two-corridor pocket as before and again spends its whole life there: it walks more than the earlier champion (615 cells of distance vs 284) but only ever over the same ~58 cells, sweeping from end to end until it starves at the far end of the upper corridor.
+The pocket's only ways out are the brown door/rubble tiles at its ends and below it, and it opened just one door and broke five things while making 21 idle presses, so most of its pressing lands on rock rather than on those tiles.
+Food is a few cells away in the neighbouring rooms, but behind solid walls the wave sees only an even leak through every wall cell, so nothing makes a door tile stand out from the rock around it, and once a press fails the agent swings back to the other end.
+One mechanism: make the wave leak through a wall cell in proportion to how unlike the surrounding rock it is (the taught per-hue `leak` contrasted against its neighbours' leak, e.g. leak minus the mean leak of the wall cells around it), so door and rubble tiles become the bright exits of a sealed pocket and the agent presses them rather than the rock.
+
+### Holdout checkpoint at 4.23 h
+
+```
+  #18  train 27.7 meals  holdout 29.0  (tuned 1x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 8x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #15  train 25.9 meals  holdout  -    (tuned 5x) | The observer saw the agent end its life looping in one spot with 100 idle presses and 0 doors, called by food 
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #12  train 25.6 meals  holdout  -    (tuned 5x) | The map forgets a wall at the same rate as everything else, so a wall seen a few hundred ticks ago becomes hal
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 82x: train 27.3 meals, holdout 25.4
+```
+
+> 15:36 model job `design` started

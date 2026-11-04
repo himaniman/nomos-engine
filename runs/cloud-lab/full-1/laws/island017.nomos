@@ -1,0 +1,41 @@
+# The agent is slow (world 2: 0.22 cells per tick) because the brightest neighbour changes direction often and every turn costs thrust; and wiping the persistent wave (#16, 12.8) showed that holding a course is worth a lot. A MOMENTUM read-out marks the neighbour of the agent that lies straight ahead (opposite the freshest footprint, found with shifted trail and here fields) and boosts it a little, so the agent keeps its heading unless the plan clearly prefers a turn, walking straighter and faster between targets; the plan wave itself is unchanged.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel ahead
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# momentum: a neighbour of the agent is AHEAD by how fresh the footprint is on the opposite side of the agent
+rule heading:
+  when 1
+  set ahead = shift(here, 1, 0) * shift(trail, 2, 0) + shift(here, -1, 0) * shift(trail, -2, 0) + shift(here, 0, 1) * shift(trail, 0, 2) + shift(here, 0, -1) * shift(trail, 0, -2) + shift(here, 1, 1) * shift(trail, 2, 2) + shift(here, -1, -1) * shift(trail, -2, -2) + shift(here, 1, -1) * shift(trail, 2, -2) + shift(here, -1, 1) * shift(trail, -2, 2)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+# read the plan dimmed on footprints and boosted straight ahead: keep the heading unless the plan clearly says turn
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail) * (1 + 0.15 * ahead)

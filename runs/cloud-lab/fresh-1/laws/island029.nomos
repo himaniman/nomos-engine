@@ -1,0 +1,67 @@
+# Replace every competing claim/clock/habituation mechanism with a LEXICOGRAPHIC value: three source tiers injected at separated magnitudes into one priced wave — food (seen morsels, smell) on top, frontier in the middle, digging (a face with unknown behind it) a hundredfold below, so a dig can only win where no food or frontier wave reaches the agent at all (a sealed room). On world 16 the corridor frontier then always outbids the chamber's faces, which stops the laps and idle presses, and confinement now suppresses only food, so a corridor's mouth no longer counts as a dead end. Poison burns its neighbourhood too, not just its own cell.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel rim
+channel beyond
+channel food
+channel explore
+channel dig
+channel injection
+channel step
+channel stepd
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+rule spread:
+  when 1
+  set openness = 0.75 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.15) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# tier 1: food, hemmed-in sources count less
+rule tier_food:
+  when 1
+  set food = where(frontier > 0, 0, max(thing, source)) / (1 + 0.56 * confinement)
+# tier 2: the frontier, weighted by how much unknown lies behind it, barely confined
+rule tier_explore:
+  when 1
+  set explore = 0.5 * frontier * source * (0.4 + 2 * openness) / (1 + 0.1 * confinement)
+# tier 3: a dig, a hundredfold below the faintest frontier: only a sealed agent digs
+rule tier_dig:
+  when 1
+  set dig = 0.002 * beyond * (0.4 + 1.5 * openness)
+# poison burns its own cell and its neighbours
+rule inject:
+  when 1
+  set injection = max(food, explore, dig) * (1 - max(bad, 0.5 * max8(bad)))
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.01 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# priced wave, diagonals blocked by solid corners, solids pass only their leak
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

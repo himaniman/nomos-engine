@@ -2377,3 +2377,173 @@ rule wave:
 ```
 
 > 22:09 model job `design` started
+
+---
+
+## Turn 25 -> island #28
+
+**Hypothesis:** The agent wastes its life on stone because the leak is taught per HUE, so one stubborn face keeps leaking the wave (and the dig bonus) no matter how often it was pressed. A per-FACE habituation, TRIED, rises only on the solid cell that is the brightest neighbour of the agent (the face it is being led into) and fades slowly; it multiplies that cell's leak toward zero, so a face that will not give stops carrying the wave and the wave reroutes round by the corridor, while a door opens before it saturates. The dig term is also capped below any food source, so a seen morsel always outbids a wall.
+
+Prediction 30.5, got **25.6** meals, fitness 508, per world [38, 35, 25, 31, 15, 21, 19, 36, 29, 29, 28, 32, 32, 33, 29, 8, 0, 35, 2, 36]; model 56.1 s, repairs 0; vocabulary twin of #17, #23, #21, #26, #7
+
+value on the test map: max 0.98, mean 0.43, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel tried
+channel lk
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# per-face habituation: rises while the agent is led into THIS solid cell, fades slowly otherwise
+rule press:
+  when 1
+  set tried = where((solid > 0.3) and (max8(here) > 0.5) and (value >= argmax8(here, max8(value)) - 0.000001), min(1, tried + 0.02), 0.997 * tried)
+# the leak this face still earns: the hue's guess, worn down by pressing that did nothing
+rule leaky:
+  when 1
+  set lk = leak * (1 - tried)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * lk, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# food and frontier as #17; the dig term capped below any food source
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), min(0.1, 0.12 * beyond * (0.3635 + 1.576 * openness))) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave with every leak replaced by the per-face worn leak
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - max(shift(lk, -1, 0), shift(lk, 0, -1)))), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - max(shift(lk, 1, 0), shift(lk, 0, -1)))), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - max(shift(lk, -1, 0), shift(lk, 0, 1)))), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - max(shift(lk, 1, 0), shift(lk, 0, 1)))))) * (1 - solid * (1.396 - lk)) * (0.981 - 0.8642 * bad)
+```
+
+### Holdout checkpoint at 10.90 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 7x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 142x: train 28.5 meals, holdout 27.0
+```
+
+> 22:33 model job `design` started
+
+---
+
+## Turn 26 -> island #29
+
+**Hypothesis:** Replace every competing claim/clock/habituation mechanism with a LEXICOGRAPHIC value: three source tiers injected at separated magnitudes into one priced wave — food (seen morsels, smell) on top, frontier in the middle, digging (a face with unknown behind it) a hundredfold below, so a dig can only win where no food or frontier wave reaches the agent at all (a sealed room). On world 16 the corridor frontier then always outbids the chamber's faces, which stops the laps and idle presses, and confinement now suppresses only food, so a corridor's mouth no longer counts as a dead end. Poison burns its neighbourhood too, not just its own cell.
+
+Prediction 29.5, got **23.8** meals, fitness 452, per world [43, 21, 26, 17, 13, 26, 5, 22, 30, 22, 36, 39, 20, 23, 22, 33, 0, 34, 22, 22]; model 72.1 s, repairs 0; vocabulary twin of #17, #25, #6
+
+value on the test map: max 1.00, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel rim
+channel beyond
+channel food
+channel explore
+channel dig
+channel injection
+channel step
+channel stepd
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+rule spread:
+  when 1
+  set openness = 0.75 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.15) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# tier 1: food, hemmed-in sources count less
+rule tier_food:
+  when 1
+  set food = where(frontier > 0, 0, max(thing, source)) / (1 + 0.56 * confinement)
+# tier 2: the frontier, weighted by how much unknown lies behind it, barely confined
+rule tier_explore:
+  when 1
+  set explore = 0.5 * frontier * source * (0.4 + 2 * openness) / (1 + 0.1 * confinement)
+# tier 3: a dig, a hundredfold below the faintest frontier: only a sealed agent digs
+rule tier_dig:
+  when 1
+  set dig = 0.002 * beyond * (0.4 + 1.5 * openness)
+# poison burns its own cell and its neighbours
+rule inject:
+  when 1
+  set injection = max(food, explore, dig) * (1 - max(bad, 0.5 * max8(bad)))
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.01 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# priced wave, diagonals blocked by solid corners, solids pass only their leak
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+```

@@ -2263,3 +2263,64 @@ rule read:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 169x: train 30.7 meals, holdout 24.2
 ```
+
+> 20:30 model job `design` started
+
+---
+
+## Turn 33 -> island #36
+
+**Hypothesis:** The best honest law (#32: 30.5 train, 30.5 holdout) carries door contrast, which gave the best holdout once on an older base (#19) but made world 16 worse (182 idle presses, 0 doors) and is the piece that depends on taught per-hue leaks. Removing it, so walls pass simply their taught leak while ground is priced by knowledge (unknown, guessed wall, guessed floor), tests whether the night's structure is the knowledge pricing alone; if it eats as much it is the simpler and safer law for unseen worlds.
+
+Prediction 30.0, got **26.7** meals, fitness 529, per world [15, 31, 30, 43, 18, 25, 28, 40, 38, 10, 21, 40, 31, 17, 25, 37, 0, 28, 18, 39]; model 10.1 s, repairs 0; vocabulary twin of #23, #28, #24, #35, #33, #32
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel open
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# the other half of map completion: an unknown cell that continues a line of open floor is probably floor
+rule open_floor:
+  when 1
+  set open = (1 - free) * (1 - solid) * (1 - guess) * max(shift(free, 1, 0) * shift(free, -1, 0), shift(free, 0, 1) * shift(free, 0, -1), 0.6 * shift(free, 1, 0) * shift(free, 2, 0), 0.6 * shift(free, -1, 0) * shift(free, -2, 0), 0.6 * shift(free, 0, 1) * shift(free, 0, 2), 0.6 * shift(free, 0, -1) * shift(free, 0, -2))
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs unless predicted floor, guessed wall passes half, a seen wall passes its taught leak
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - max(free, open))) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 20:47 model job `deep` started

@@ -314,6 +314,25 @@ def digest(text: str) -> str:
     return hashlib.sha1(text.encode()).hexdigest()[:12]
 
 
+_NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
+_DSL_WORDS = {"channel", "rule", "when", "set", "add", "init"}
+
+
+def law_names(text: str) -> set[str]:
+    """The identifiers a law's rules use — channels and builtins, no numbers."""
+    out = set()
+    for line in text.splitlines():
+        line = _COMMENT.sub("", line).strip()
+        if line.startswith(("channel", "rule")):
+            continue
+        out |= set(_NAME.findall(line)) - _DSL_WORDS
+    return out
+
+
+def jaccard(a: set, b: set) -> float:
+    return len(a & b) / len(a | b) if a | b else 1.0
+
+
 _PRED = re.compile(r"PREDICTION\s*[:=]\s*~?\s*([0-9]+(?:\.[0-9]+)?)", re.I)
 _HYP = re.compile(r"HYPOTHESIS\s*[:=]\s*(.+?)(?:\n\s*PREDICTION|```|$)", re.I | re.S)
 
@@ -351,8 +370,11 @@ class NightLab:
                  jobs: int = 16, tune: int = 5, deep_every: int = 5, theory_every: int = 6,
                  observe_every: int = 8, holdout_every: float = 30.0, seed: int = 0,
                  use_embed: bool = True, grace: float = 25.0, final=(),
-                 margin: float = 0.02):
+                 margin: float = 0.02, control_law: str = "laws/atlas_ghost.nomos",
+                 anchors=(), pace: bool = False):
         self.client, self.run = client, run
+        self.pace = pace
+        self.control_law, self.anchors = control_law, list(anchors)
         self.hours, self.train, self.holdout = hours, list(train), list(holdout)
         # FINAL worlds: lived only once, at the end, by a handful of finalists. The model
         # sees holdout numbers, so holdout is weakly selected on; these nobody ever sees
@@ -484,10 +506,10 @@ class NightLab:
         c = self.s["control"]
         if c:
             h = c.get("holdout")
-            lines.append(f"  CONTROL: the ghost law, constants tuned by random search "
+            lines.append(f"  CONTROL: #1's law, constants tuned by random search "
                          f"{c['evals']}x: train {c['train']['meals']:.1f} meals, holdout "
                          f"{h['meals']:.1f}" if h else
-                         f"  CONTROL: the ghost law tuned {c['evals']}x: train "
+                         f"  CONTROL: #1's law tuned {c['evals']}x: train "
                          f"{c['train']['meals']:.1f} meals")
         return "\n".join(lines)
 
@@ -500,9 +522,12 @@ class NightLab:
                  f"{self.holdout} | {self.ticks} ticks/life | tune {self.tune} | deep "
                  f"every {self.deep_every} | theory every {self.theory_every} | observe "
                  f"every {self.observe_every}\n")
-        for iid, (path, hyp) in enumerate((
-                (LAW.REFERENCE, "the reference Bellman wave"),
-                ("laws/atlas_ghost.nomos", "sources linger (ghost), erased under the agent"))):
+        # #0 the reference wave, #1 the CONTROL's law (the bar a model structure must
+        # beat with the same tuning budget), then any extra hand-written anchors
+        anchors = [(LAW.REFERENCE, "the reference Bellman wave"),
+                   (self.control_law, self._anchor_hyp(self.control_law))]
+        anchors += [(p, self._anchor_hyp(p)) for p in self.anchors]
+        for iid, (path, hyp) in enumerate(anchors):
             text = Path(path).read_text(encoding="utf-8")
             self.doing = f"anchor {path}"
             self.heartbeat()
@@ -519,6 +544,22 @@ class NightLab:
         self.s["control"] = {"best": g["best"], "train": g["train"], "holdout": g["holdout"],
                              "evals": 0, "accepted": 0}
         self.save()
+
+    def _name1(self) -> str:
+        """Short name of anchor #1, the control's law (the ghost, unless overridden)."""
+        stem = Path(self.control_law).stem
+        return stem[len("atlas_"):] if stem.startswith("atlas_") else stem
+
+    @staticmethod
+    def _anchor_hyp(path: str) -> str:
+        if Path(path).name == "atlas_ghost.nomos":
+            return "sources linger (ghost), erased under the agent"
+        head = []
+        for line in Path(path).read_text(encoding="utf-8").lstrip().splitlines():
+            if not line.startswith("#"):
+                break
+            head.append(line.lstrip("# ").strip())
+        return " ".join(head)[:240] or Path(path).stem
 
     # --- the machine's side: tuning ------------------------------------------------------
     def _child(self, text: str) -> str:
@@ -732,7 +773,11 @@ class NightLab:
     def observe_job(self):
         best = self.champion() or self.island(1)
         per = best["train"]["per_seed"]
-        k = int(np.argmin(per))
+        # ROTATE over the champion's three worst lives: night 1 showed the model one
+        # frozen life on world 16 four times and it spent ~15 turns on that one world
+        seen = sum(1 for o in self.s["observations"] if o["island"] == best["id"])
+        worst = [int(i) for i in np.argsort(per, kind="stable")[:3]]
+        k = worst[seen % len(worst)]
         seed, text = self.train[k], best["best"]
         name = f"#{best['id']}"
         n = len(self.s["observations"])
@@ -767,6 +812,10 @@ class NightLab:
         if self.s["since_observe"] >= self.observe_every or (
                 new_champ and self.s["since_observe"] >= self.observe_every // 2):
             return self.observe_job()
+        if self.pace and any(i["tune_left"] > 0 for i in self.born()):
+            # a FAST model (an agent answering in a minute) would out-run the tuner:
+            # the next idea waits until the last one has had its tuning budget
+            return None
         deep = self.deep_every > 0 and self.s["design_turns"] % self.deep_every == \
             self.deep_every - 1
         return self.design_job(deep)
@@ -908,7 +957,7 @@ class NightLab:
     def novelty(self, isl: dict, hyp: str) -> str:
         self.s["novelty"] = ""
         if not self.use_embed:
-            return ""
+            return self.novelty_by_names(isl)
         try:
             v = np.asarray(embed([hyp])[0], dtype=np.float64)
         except LLMError:
@@ -927,6 +976,29 @@ class NightLab:
                                  f"(similarity {sim:.2f}). Try a different mechanism.")
         return f"; nearest idea #{best['id']} sim {sim:.2f}" if best is not None else ""
 
+    def novelty_by_names(self, isl: dict) -> str:
+        """Novelty without an embedding model: the law's own vocabulary (channel and
+        builtin names its rules use, numbers dropped) against every earlier island's.
+        Variations on one idea keep their helper channels and their operators; a new
+        mechanism brings new ones. Several near ones in a row = the search is stuck."""
+        mine = law_names(isl["law"])
+        near = []
+        for o in self.born():
+            s = jaccard(mine, law_names(o["law"]))
+            if s >= 0.8:
+                near.append((s, o["id"]))
+        if not near:
+            isl["nearest"] = None
+            return ""
+        near.sort(reverse=True)
+        isl["nearest"] = [near[0][1], round(near[0][0], 3)]
+        ids = ", ".join(f"#{i}" for _, i in near[:6])
+        self.s["novelty"] = (
+            f"NOTE: your last law uses almost the same channels and operators as {ids} "
+            f"({len(near)} earlier laws). That is a variation, not a new mechanism — "
+            "the next one should move along a different axis.")
+        return f"; vocabulary twin of {ids}"
+
     # --- the loop ------------------------------------------------------------------------
     def loop(self) -> None:
         self.seed_islands()
@@ -936,8 +1008,10 @@ class NightLab:
             now = self.elapsed()
             if job is None and now < deadline:
                 job = self.next_job()
-                job.start()
-                self.log(f"\n> {dt.datetime.now():%H:%M} model job `{job.kind}` started\n")
+                if job is not None:
+                    job.start()
+                    self.log(f"\n> {dt.datetime.now():%H:%M} model job `{job.kind}` "
+                             "started\n")
             if job is not None and not job.is_alive():
                 self.handle(job)
                 job = None
@@ -983,8 +1057,8 @@ class NightLab:
         by_hold = sorted([i for i in born if i.get("holdout")],
                          key=lambda i: -i["holdout"]["fitness"])
         cands = [("reference wave (#0)", self.island(0)["best"]),
-                 ("ghost, hand-written (#1)", self.island(1)["best"]),
-                 (f"CONTROL: ghost tuned {self.s['control']['evals']}x",
+                 (f"{self._name1()}, hand-written (#1)", self.island(1)["best"]),
+                 (f"CONTROL: #1 tuned {self.s['control']['evals']}x",
                   self.s["control"]["best"])]
         seen = set()
         for i in by_hold[:3] + born[:2]:
@@ -1027,8 +1101,8 @@ class NightLab:
             return f"{name:<34} {tr['meals']:5.1f}  {tr['immortal']:>2}/{len(self.train)}   {h}"
         lines = [f"{'':<34} train  immortal   holdout  immortal",
                  row("reference wave (#0)", g0["train"], g0["holdout"]),
-                 row("ghost, hand-written (#1)", g1["train"], g1["holdout"]),
-                 row(f"CONTROL: ghost tuned {c['evals']}x", c["train"], c.get("holdout"))]
+                 row(f"{self._name1()}, hand-written (#1)", g1["train"], g1["holdout"]),
+                 row(f"CONTROL: #1 tuned {c['evals']}x", c["train"], c.get("holdout"))]
         for i in born[:5]:
             lines.append(row(f"#{i['id']} (turn {i['turn']}, tuned {i['evals']}x)",
                              i["train"], i.get("holdout")))
@@ -1142,7 +1216,14 @@ def main(argv=None) -> int:
                    help="a tuned child must beat its parent by this fraction")
     p.add_argument("--ticks", type=int, default=8000)
     p.add_argument("--world", choices=sorted(L.WORLDS), default="default")
-    p.add_argument("--jobs", type=int, default=20)
+    p.add_argument("--jobs", type=int, default=20, help="0 = one per CPU")
+    p.add_argument("--control-law", default="laws/atlas_ghost.nomos",
+                   help="anchor #1: the law the control arm tunes, the bar to beat")
+    p.add_argument("--anchor", action="append", default=[],
+                   help="extra hand-written anchors (#2, #3, ...), repeatable")
+    p.add_argument("--agent", action="store_true",
+                   help="the model is an agent answering files in <dir>/mailbox "
+                        "(python -m cortex.mailbox next <dir>/mailbox); implies --no-embed")
     p.add_argument("--tune", type=int, default=5)
     p.add_argument("--deep-every", type=int, default=5)
     p.add_argument("--theory-every", type=int, default=6)
@@ -1156,8 +1237,14 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
     run = Path(args.dir or f"out/cortex/night/{dt.datetime.now():%Y%m%d-%H%M%S}")
     run.mkdir(parents=True, exist_ok=True)
+    if args.jobs <= 0:
+        import os
+        args.jobs = os.cpu_count() or 2
     if args.mock:
         client = NightMock(args.seed)
+    elif args.agent:
+        from cortex.mailbox import MailboxClient
+        client = MailboxClient(run / "mailbox")
     else:
         try:
             client = make_client()
@@ -1167,8 +1254,10 @@ def main(argv=None) -> int:
     lab = NightLab(client, run, args.hours, A._seeds(args.train), A._seeds(args.holdout),
                    args.ticks, args.world, args.jobs, args.tune, args.deep_every,
                    args.theory_every, args.observe_every, args.holdout_every, args.seed,
-                   use_embed=not (args.no_embed or args.mock), grace=args.grace,
-                   final=A._seeds(args.final) if args.final else (), margin=args.margin)
+                   use_embed=not (args.no_embed or args.mock or args.agent),
+                   grace=args.grace, final=A._seeds(args.final) if args.final else (),
+                   margin=args.margin, control_law=args.control_law, anchors=args.anchor,
+                   pace=args.agent)
     if lab.s["done"]:
         print(f"{run} is finished — see summary.md")
         return 0

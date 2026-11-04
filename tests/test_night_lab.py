@@ -57,3 +57,59 @@ def test_track_image_draws_a_life():
     img = N.track_image(life, max_px=200)
     assert img.ndim == 3 and img.shape[2] == 3 and img.shape[0] >= 40
     assert life["stats"]["ticks"] == 120
+
+
+def test_vocabulary_novelty_ignores_numbers():
+    a = N.law_names(LAW)
+    assert a == N.law_names(LAW.replace("0.94", "0.5"))
+    assert "max8" in a and "value" in a and "when" not in a
+    b = N.law_names(LAW.replace("max8(value)", "max8(value) * (1 - trail)"))
+    assert N.jaccard(a, b) < 1.0
+
+
+def test_mailbox_round_trip(tmp_path):
+    import threading
+    from cortex import mailbox as M
+    box = tmp_path / "mailbox"
+    (box).mkdir()
+    (box / "0000.request.md").write_text("old", encoding="utf-8")   # a dead run's question
+    client = M.MailboxClient(box, timeout=20, poll=0.05)
+    assert (box / "0000.stale").exists() and M.pending(box) == []
+
+    def answer():
+        while not M.pending(box):
+            pass
+        n = M.pending(box)[0]
+        (box / f"{n:04d}.reply.md").write_text("HYPOTHESIS: hi", encoding="utf-8")
+    t = threading.Thread(target=answer, daemon=True)
+    t.start()
+    png = "data:image/png;base64,iVBORw0KGgo="
+    reply = client.chat([{"role": "system", "content": "SYS"},
+                         {"role": "user", "content": [{"type": "text", "text": "look"},
+                                                      {"type": "image_url",
+                                                       "image_url": {"url": png}}]}],
+                        max_tokens=100)
+    assert reply == "HYPOTHESIS: hi"
+    req = (box / "0001.request.md").read_text(encoding="utf-8")
+    assert "system-" in req and "0001.png" in req and (box / "0001.png").exists()
+    assert M.pending(box) == []
+
+
+def test_a_short_night_with_a_mock_model_and_extra_anchor(tmp_path):
+    lab = N.NightLab(N.NightMock(), tmp_path, hours=0.004, train=(0,), holdout=(1,),
+                     ticks=200, jobs=1, tune=1, use_embed=False, grace=0.1,
+                     control_law="laws/atlas_confine.nomos",
+                     anchors=["laws/atlas_ghost.nomos"])
+    lab.loop()
+    s = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
+    given = [i for i in s["islands"] if i.get("given")]
+    assert len(given) == 3 and "Confinement" in given[1]["hypothesis"]
+    assert s["control"]["evals"] >= 0 and s["done"]
+
+
+def test_mailbox_names_the_kind_of_request():
+    from cortex import mailbox as M
+    assert M.kind_of(N.DESIGN_TURN).startswith("DESIGN")
+    assert M.kind_of(N.THEORY_TURN).startswith("THEORY")
+    assert M.kind_of(N.OBSERVE_TURN).startswith("OBSERVE")
+    assert M.kind_of(N.DESIGN_TURN + "\nThat law was sent back: x").startswith("REPAIR")

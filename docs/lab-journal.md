@@ -2872,3 +2872,38 @@ The night validated the design split (model = structure, rng = constants, contro
 to keep both honest) and left a concrete continuation: port the confinement mechanism
 back into `cortex/atlas.py` like `linger` before it, and seed night 2 from the
 champion rather than the ghost.
+
+## 2026-11-04 — the champion replicates as a law; a lab whose model is the session's agent
+
+**Replication on 128 fresh worlds** (seeds 100-227, 8000 ticks, `cortex.atlas_law --lives`,
+same harness for all three laws; no seed here was ever seen by selection or by a model):
+
+```
+reference wave   17.2 meals  immortal  98/128
+ghost            20.2 meals  immortal 104/128
+confine (#35)    22.4 meals  immortal 108/128
+```
+
+Night 1's champion holds as a LAW: +2.2 over the ghost and +5.2 over the wave on worlds
+nobody selected on — the same ordering as the 32 FINAL worlds (24.5 / 17.1 tuned control /
+18.8). What did not replicate on 2026-09-24 was the PORT (`Config.conf_pen` in
+`cortex/atlas.py`, where it sits next to linger, the frontier and the bad-thing veto);
+the mechanism inside the bare wave law is real. It is now `laws/atlas_confine.nomos` and
+the bar for the next run.
+
+**The model is the agent.** `cortex/mailbox.py` + `night_lab --agent`: the lab writes each
+question (design, repair, observe with its PNG, theory) to a file and waits; the agent of a
+Claude Code session answers into a file. Everything else — tuning, the control arm,
+holdout, sealed FINAL worlds — is unchanged. Recipe and rules: `docs/cloud-lab.md`. Three
+night-1 lessons are built in: the observer ROTATES over the champion's three worst lives
+(night 1 showed one frozen life on world 16 four times); novelty without an embedding
+model = Jaccard over the law's vocabulary (channel + builtin names), >= 0.8 to an earlier
+island is called a variation; `--control-law` makes confine anchor #1, so the control arm
+tunes the best known structure and a win means beating IT. New with a fast model: PACING —
+the next design waits until the last idea had its tuning budget, otherwise a model that
+answers in a minute out-runs a tuner that needs ~2 min per evaluation on 4 vCPU.
+
+A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went through
+every path: a design that became an island and was tuned, an observe turn on its PNG, a
+theory, a design answer without a law sent back as REPAIR, an unanswered request
+abandoned after the grace period, FINAL table and summary written.

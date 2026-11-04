@@ -74,7 +74,9 @@ cortex/atlas.py   THE SHEET AS A MAP (branch `cortex-atlas`): a CA that plans by
                   law_lab.py = the LLM/rng/files loop that rewrites that law;
                   night_lab.py = hours-long unattended loop for a SLOW LOCAL model:
                   model designs structure + keeps a THEORY + OBSERVES a track PNG,
-                  rng tunes constants, control arm, train/holdout/FINAL worlds
+                  rng tunes constants, control arm, train/holdout/FINAL worlds;
+                  --agent + mailbox.py = the session's own agent is the model
+                  (docs/cloud-lab.md)
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -511,6 +513,13 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   0.3 looked like +10 meals on seeds 0-15 and DID NOT REPLICATE on 16-31 (32.6 ->
   31.2); over 32 worlds +4.4 with SE ~5 = a shrug, a textbook winner's curse on
   chaotic worlds. Default stays 0.0 — available to the lineage and the next night.
+  As a LAW it does replicate (2026-11-04, 128 fresh worlds): confine 22.4 / ghost 20.2
+  / wave 17.2 — now `laws/atlas_confine.nomos`, the bar for the next run.
+- Done (cloud lab, 2026-11-04, branch `cloud-night`): `night_lab --agent` +
+  `cortex/mailbox.py` — the lab's model is the coding agent of a Claude Code (cloud)
+  session answering files, no API. Recipe + rules: `docs/cloud-lab.md`. Observer
+  rotates over the 3 worst lives, vocabulary novelty (no embeddings), `--control-law`
+  / `--anchor`, pacing for a fast model. Runs live in TRACKED `runs/cloud-lab/<date>/`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

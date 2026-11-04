@@ -1463,3 +1463,99 @@ rule wave:
   when 1
   set value = max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad)
 ```
+
+### Holdout checkpoint at 6.18 h
+
+```
+  #18  train 28.6 meals  holdout 27.8  (tuned 2x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 5x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #16  train 28.8 meals  holdout 32.6  (tuned 5x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 8x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #14  train 28.0 meals  holdout 28.8  (tuned 5x) | The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls
+  #15  train 27.5 meals  holdout  -    (tuned 5x) | A LEXICOGRAPHIC two-tier wave. Tier 1 is #6's priced, confined wave, but it passes a solid only once that hue 
+  #11  train 26.9 meals  holdout 30.1  (tuned 6x) | Keep #6's priced, confined wave, and add a TRAPPED gate plus an escape-and-commit wave. The `reach` flood fill
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 85x: train 28.5 meals, holdout 27.0
+```
+
+> 17:58 model job `design` started
+
+---
+
+## Turn 16 -> island #19
+
+**Hypothesis:** Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid (free or unknown) cell tells, cell by cell, whether the agent's region connects to the outside — true in every open world even when no frontier is in view, false only in a truly sealed pocket. Only when the agent's own cell is cut off does `trapped` fill its pocket, and the solid faces of that pocket become dig sources weighted by their hue's leak and by `tw`, a static wall-penetrating distance to the outside, so the target is the thinnest, most yielding wall and stays the same thought after thought (commitment from geometry, not from a self-feeding claim). Open-world behaviour is u
+
+Prediction 29.5, got **28.2** meals, fitness 575, per world [30, 42, 28, 33, 22, 23, 42, 40, 38, 35, 32, 27, 16, 30, 13, 38, 0, 25, 20, 31]; model 128.2 s, repairs 0
+
+value on the test map: max 0.98, mean 0.40, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel reach
+channel tw
+channel trapped
+rule known:
+  when 0.7931
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 0.9931
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1.309
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# connected to the outside? flood from the horizon ring through non-solid cells (stale links fade)
+rule outside:
+  when 1
+  set reach = where((posx() < 0.06) or (posx() > 0.92) or (posy() < 0.06) or (posy() > 0.92), 1, 0.985 * max8(reach) * (solid < 0.3))
+# static distance to the outside THROUGH walls: thin walls score high
+rule thinness:
+  when 1
+  set tw = where((posx() < 0.06) or (posx() > 0.92) or (posy() < 0.06) or (posy() > 0.92), 1, max8(tw) * (0.95 - 0.55 * min(1, solid)))
+# the agent's own sealed pocket, flooded from its cell; zero wherever the outside is reachable
+rule pocket:
+  when 1
+  set trapped = where((solid < 0.3) and (reach < 0.05), max(here, 0.97 * max8(trapped)), 0)
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), 0.12 * beyond * (0.3635 + 1.576 * openness)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #17's priced wave, plus dig sources on the pocket's faces (outside the passability factor, so they are not crushed)
+rule wave:
+  when 1
+  set value = max(max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad), where(solid > 0.3, 0.6 * max8(trapped) * leak * (0.05 + tw), 0))
+```

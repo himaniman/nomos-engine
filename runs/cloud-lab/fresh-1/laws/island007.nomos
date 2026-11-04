@@ -1,0 +1,81 @@
+# The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accumulates "I pressed here and it did not give", which closes that cell's leak locally (independent of the per-hue lesson, which is too coarse or too slow when one stone sits on the smell's bearing) and kills the pull through it. In the same move, wall faces that separate known-free ground from unknown ground become faint CRACK sources weighted by leak and by (1 - tried), not divided by confinement — so a sealed pocket (world 16) gets systematically probed wall cell by wall cell, doors and rubble first because their taught leak is high, instead of one stone being pressed 205 times; in op
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel tried
+channel block
+channel crack
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5 * confinement)
+
+# the best value among the agent's eight neighbours, held at the agent's cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# frustration: a solid neighbour the wave leads the agent into, and it is still solid; fades slowly
+rule press:
+  when 1
+  set tried = min(1, 0.9995 * tried + where((solid > 0.5) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.012 * (1.2 - leak), 0))
+
+# effective blockage: a stone already pressed in vain lets nothing through
+rule blocked:
+  when 1
+  set block = solid * (1 - leak * (1 - tried))
+
+# a wall face between known-free ground and the unknown is a faint maybe-door, until tried
+rule cracks:
+  when 1
+  set crack = where((solid > 0.3) and (max8(free) > 0.5) and (max8(unknown) > 0.3), 0.06 * (1 - tried), 0)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave; diagonals squeeze past corners only as far as the corners let through
+rule wave:
+  when 1
+  set value = max(injection, crack, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(block, -1, 0), shift(block, 0, -1))), shift(value, 1, -1) * (1 - max(shift(block, 1, 0), shift(block, 0, -1))), shift(value, -1, 1) * (1 - max(shift(block, -1, 0), shift(block, 0, 1))), shift(value, 1, 1) * (1 - max(shift(block, 1, 0), shift(block, 0, 1))))) * (1 - block) * (1 - 0.9 * bad)

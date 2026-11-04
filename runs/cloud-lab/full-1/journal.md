@@ -1195,3 +1195,104 @@ Lesson: the read-out and the wave's dynamics are fragile; change what a step COS
 ```
 
 > 16:08 model job `design` started
+
+---
+
+## Turn 18 -> island #21
+
+**Hypothesis:** The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground the agent harvested reappears as frontier while it is still bare and pulls the agent back for nothing. A slow SEEN memory (once known free, fading over a couple of thousand ticks) lowers what a frontier mark is worth on ground that was seen before, so exploration prefers virgin ground, where food has never been eaten, and returns to old ground only when the memory has faded, roughly when its food has regrown.
+
+Prediction 28.0, got **27.6** meals, fitness 555, per world [34, 26, 21, 37, 40, 26, 26, 31, 34, 29, 30, 28, 22, 32, 29, 26, 0, 37, 5, 38]; model 10.1 s, repairs 0; vocabulary twin of #20, #18, #13, #12, #9, #7
+
+value on the test map: max 0.06, mean 0.04, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel seen
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# a slow memory that this ground was once known free: it outlives the map's own evidence
+rule recall:
+  when 1
+  set seen = max(free, 0.9997 * seen)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a frontier on ground seen before (forgotten, likely already harvested) is worth less than virgin ground
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - 0.8 * seen)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 16:23 model job `deep` started
+
+---
+
+## Turn 19 (DEEP) -> island #22
+
+**Hypothesis:** Every wave so far multiplies by a discount, so a target's pull decays exponentially with path length and only the ratio of two sources' strengths matters: a crumb of frontier two steps away routinely beats a sure meal fifteen steps away. An ADDITIVE wave (each step subtracts a walking cost, larger on unknown ground, floored at zero) makes pull fall off linearly, so strong sources (seen food, smell) keep their lead over long distances while faint frontier marks only matter nearby: a different far-versus-near trade-off, not a new source.
+
+Prediction 25.0, got **16.9** meals, fitness 338, per world [26, 0, 14, 30, 16, 16, 20, 21, 20, 3, 19, 21, 18, 22, 17, 10, 0, 23, 19, 23]; model 12.1 s, repairs 0; vocabulary twin of #20, #18, #21, #13, #12, #9
+
+value on the test map: max 0.30, mean 0.09, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+# an ADDITIVE wave: each step SUBTRACTS a walking cost (more on unknown ground) instead of multiplying by a discount,
+# so a target's pull falls off linearly with path length and a big prize far away can beat a crumb nearby
+rule plan:
+  when 1
+  set wave = max(injection, max4(wave) - 0.02 - 0.01 * (1 - free), max8(wave) - 0.0283 - 0.01 * (1 - free), 0) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

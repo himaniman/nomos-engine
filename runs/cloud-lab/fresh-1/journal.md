@@ -2644,3 +2644,95 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 150x: train 28.5 meals, holdout 27.0
 ```
+
+> 23:16 model job `design` started
+
+---
+
+## Turn 28 -> island #31
+
+**Hypothesis:** Digging should be a last resort that real food always vetoes. A food-only wave `fw` (seen morsels and smell, never the frontier, stopped by solid) is read at the agent's own cell and broadcast across the map as `fed`. While food is reachable without digging, every dig term is switched off and capped below any food source. Faces the agent has stood against wear out (`worn`), so it stops lapping its start chamber pressing the same faces and never works a rock with food beside it. The claim/clock is gone: the gate does the job the clock did, and it does it right away.
+
+Prediction 30.5, got **29.9** meals, fitness 602, per world [26, 32, 31, 27, 16, 25, 29, 33, 37, 28, 44, 43, 28, 37, 37, 30, 21, 34, 15, 26]; model 68.2 s, repairs 0; vocabulary twin of #17, #27, #28
+
+value on the test map: max 0.87, mean 0.39, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel fw
+channel fed
+channel worn
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.5839 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.5172 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1587) and (thing < 0.01) and (scent < 0.01136), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# food-only wave: real food reachable on foot, never through a wall
+rule food:
+  when 1
+  set fw = max(where(frontier > 0, 0, max(thing, source)) * (1 - bad), 0.94 * max4(fw), 0.916 * max8(fw)) * (1 - solid)
+# what the food wave says at the agent's own cell, broadcast over the map
+rule fedr:
+  when 1
+  set fed = max(here * fw, 0.97 * max8(fed))
+# a face the agent stands against wears out; forgets over a few hundred ticks
+rule wear:
+  when 1
+  set worn = where((solid > 0.3) and (max8(here) > 0.5), min(1, worn + 0.008), 0.9995 * worn)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak * (1 - worn), 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.2379) and (frontier < 0.5), max8(rim), 0)
+# dig term capped below food and vetoed while food is reachable on foot
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1.125 + 0.5618 * confinement), min(0.2, 0.1531 * beyond * (0.4534 + 1.576 * openness)) * clamp(1 - 3 * fed, 0, 1)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave, corners cut only where both sides are open
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (0.981 - 0.8642 * bad)
+```
+
+> 23:24 model job `observe` started
+
+---
+
+## Observer: #31 on world 18
+
+![](observe/obs05_island31_world18.png)
+
+`{'meals': 15, 'ticks': 8000, 'alive': True, 'distance': 1580.0, 'cells_visited': 901, 'last500_box': '17x11', 'doors': 1, 'breaks': 3, 'idle_presses': 54, 'nightcaps': 1}`
+
+The agent starts top-centre and spends its cyan youth well: it runs south-west on long, purposeful strokes and collects four or five meals across the western rooms. Then it gets caught at the bottom-centre, where the grey-blue track turns into a dense scribble against one block of rock: it paces back and forth along that face for a long stretch and earns only a single meal there. It escapes north on a wide loop through the top rooms (three more meals). It spends its red old age wound into one small walled room right of centre, circling tightly around a spot where it has already eaten, with short excursions south-east that always come back. The 17x11 last-500 box and 54 idle presses say the same: late in life it is not exploring. It keeps tasting the same walls and the same patch while the whole east and south of the map, still dotted with growing food, stays unvisited. The mechanism I would fix first is a slow-fading "trodden" trace. Every cell the agent stands on would be marked, the mark would fade over a few hundred ticks, and it would divide both the injection and the frontier sources. Ground it has recently walked, and the walls it has recently pressed, would then go dim in th

@@ -1,0 +1,67 @@
+# Digging should be a last resort that real food always vetoes. A food-only wave `fw` (seen morsels and smell, never the frontier, stopped by solid) is read at the agent's own cell and broadcast across the map as `fed`. While food is reachable without digging, every dig term is switched off and capped below any food source. Faces the agent has stood against wear out (`worn`), so it stops lapping its start chamber pressing the same faces and never works a rock with food beside it. The claim/clock is gone: the gate does the job the clock did, and it does it right away.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel fw
+channel fed
+channel worn
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.5839 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.5172 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1587) and (thing < 0.01) and (scent < 0.01136), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# food-only wave: real food reachable on foot, never through a wall
+rule food:
+  when 1
+  set fw = max(where(frontier > 0, 0, max(thing, source)) * (1 - bad), 0.94 * max4(fw), 0.916 * max8(fw)) * (1 - solid)
+# what the food wave says at the agent's own cell, broadcast over the map
+rule fedr:
+  when 1
+  set fed = max(here * fw, 0.97 * max8(fed))
+# a face the agent stands against wears out; forgets over a few hundred ticks
+rule wear:
+  when 1
+  set worn = where((solid > 0.3) and (max8(here) > 0.5), min(1, worn + 0.008), 0.9995 * worn)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak * (1 - worn), 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.2379) and (frontier < 0.5), max8(rim), 0)
+# dig term capped below food and vetoed while food is reachable on foot
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1.125 + 0.5618 * confinement), min(0.2, 0.1531 * beyond * (0.4534 + 1.576 * openness)) * clamp(1 - 3 * fed, 0, 1)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave, corners cut only where both sides are open
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (0.981 - 0.8642 * bad)

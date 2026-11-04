@@ -2591,3 +2591,112 @@ rule wave:
 ```
 
 > 23:00 model job `theory` started
+
+---
+
+## Theory (after 30 design turns)
+
+Meals come from exploring for information and from honest prices. Exploration: frontier muted around the walked path (#7, +2.5); frontier weighted by short-range fog mass (#26, 33.7 train, 32.5 holdout, best). It is information, not reach: distance weighting instead fell to 30.1 (#28); a second, regional fog scale added nothing (#32, 31.9). Honest prices: diagonals only where the body fits (#15); unknown cells pass less wave (#22); untaught walls pass less (#24, 31.0 holdout); morsels by learned appetite (#11); confinement kept on seen morsels (#21, -2.4 without); the aversion halo does real work (#31, -2.3 without). Traps: muting smell when loitering (#17).
+Hurts: weakening smell's direct pull (#27, -3.1); invented lures (groves #25, -10.9; walls #12); weakening ballistic search (#18); costs on usable cells (#19, #16); slower waves. Neutral: speed (#20), doors by fog (#29), smell out of walls (#30).
+Noise ~2.
+
+### Holdout checkpoint at 11.54 h
+
+```
+  #26  train 33.7 meals  holdout 32.5  (tuned 5x) | Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack betwe
+  #30  train 33.2 meals  holdout 30.6  (tuned 5x) | A smell is painted at the distance its strength implies, straight out along the walkable bearing, so in walled
+  #32  train 31.9 meals  holdout 29.0  (tuned 1x) | Information at two scales. #26's fog mass (the night's biggest gain, and #28 showed it is information, not rea
+  #29  train 33.5 meals  holdout 32.2  (tuned 5x) | #28 settled that #26's gain is information, not reach: weighting the frontier by plain distance fell back to 3
+  #31  train 31.4 meals  holdout  -    (tuned 5x) | Occam's test of a part I added early (#11). The harness already silences every source within two cells of a re
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #28  train 30.1 meals  holdout  -    (tuned 5x) | A test of what #26 really found. Weighting the frontier by blurred fog mass was the night's biggest gain, but 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 153x: train 29.2 meals, holdout 28.2
+```
+
+> 23:23 model job `design` started
+
+---
+
+## Turn 30 -> island #33
+
+**Hypothesis:** The ballistic mute silences frontier near the walked path on the assumption that walked ground is known ground, but the 120-degree eye never looks back, so the sides and rear of the path are often still fog. Relaxing the mute where the fog mass is high means only ground the agent has both walked AND seen is skipped, while unseen pockets beside its own track stay worth a look — information, the night's one strong lever, now also deciding what counts as behind. Base is #26.
+
+Prediction 34.0, got **32.5** meals, fitness 635, per world [42, 23, 37, 30, 33, 23, 32, 37, 40, 35, 27, 34, 30, 31, 30, 34, 30, 37, 23, 41]; model 12.2 s, repairs 0; vocabulary twin of #29, #26, #32, #30, #27, #24
+
+value on the test map: max 0.48, mean 0.26, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Behind is only boring while it is known. The ballistic mute silences frontier near
+# the walked path, but the path's surroundings are often still fog (the 120-degree
+# eye never looked back). Here the mute is relaxed where fog mass is high, so only
+# ground the agent has both walked AND seen is skipped. Base: #26.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel vista
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+rule unexplored_mass:
+  when 1
+  set vista = 0.5 * avg8(fog) + 0.5 * avg8(vista)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind * (1 - 0.7 * vista)) * (0.5 + 1.5 * vista)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```

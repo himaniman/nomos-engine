@@ -101,3 +101,122 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
 ```
+
+### Holdout checkpoint at 0.54 h
+
+```
+  #4   train 25.8 meals  holdout 27.6  (tuned 3x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #3   train 24.6 meals  holdout 26.8  (tuned 5x) | Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 8x: train 25.7 meals, holdout 25.7
+```
+
+> 12:12 model job `design` started
+
+---
+
+## Turn 2 -> island #5
+
+**Hypothesis:** Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then a few steps away instead of a long search. A blurred food-density channel (seen or smelt food, minus remembered refusals in `bad`) multiplies each food source, so the agent prefers patches over lone morsels; the open-frontier weighting and confinement suppression of #4 stay.
+
+Prediction 27.0, got **24.6** meals, fitness 492, per world [31, 19, 25, 26, 23, 18, 30, 24, 29, 27, 29, 22, 31, 38, 31, 40, 0, 22, 2, 26]; model 34.1 s, repairs 0; vocabulary twin of #4
+
+value on the test map: max 0.50, mean 0.26, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Patches: food that has other food around it is worth more, because the next
+# meal is then a step away. On top of #4 (open-frontier weighting + confinement).
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel value
+channel confinement
+channel unknown
+channel openness
+channel food
+channel patch
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule unknown_cells:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+
+rule open_area:
+  when 1
+  set openness = 0.5 * avg8(unknown) + 0.5 * avg8(openness)
+
+# What is wanted and known to be food (seen or smelt), minus remembered refusals.
+rule food_cells:
+  when 1
+  set food = max(thing, scent) * (1 - bad)
+
+# A blurred density of food around each cell (bounded diffusion).
+rule patch_density:
+  when 1
+  set patch = 0.6 * avg8(food) + 0.4 * avg8(patch)
+
+# Food boosted by the patch it sits in; frontier scaled by unknown mass.
+rule inject:
+  when 1
+  set injection = where(max(thing, scent) > 0, max(thing, source) * (1 - bad) * (1 + 3 * patch), source * (0.5 + 1.5 * openness)) / (1 + 0.5 * confinement)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```
+
+> 12:31 model job `design` started
+
+---
+
+## Turn 3 -> island #6
+
+**Hypothesis:** Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing, smell waypoint or frontier mark) and relaxes where none is, and it scales that lure down; a reachable target is reached before boredom matters, but food behind a wall the agent cannot open, or a frontier it cannot get to, fades out and releases the agent to go elsewhere instead of pressing against the same obstacle for thousands of ticks.
+
+Prediction 26.5, got **24.9** meals, fitness 484, per world [48, 16, 31, 37, 14, 38, 16, 22, 30, 19, 30, 23, 20, 31, 34, 28, 0, 40, 6, 14]; model 26.1 s, repairs 0
+
+value on the test map: max 0.92, mean 0.50, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Habituation (boredom): a source that has been on the map a long time without
+# being reached loses its pull, so unreachable lures and dead frontiers fade.
+channel source
+channel solid
+channel thing
+channel here
+channel value
+channel confinement
+channel lure
+channel boredom
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule lure_cells:
+  when 1
+  set lure = max(thing, source)
+
+# Grows slowly while a lure sits on a cell, relaxes where none is, reset under the agent.
+rule habituate:
+  when 1
+  set boredom = clamp(0.998 * boredom + 0.003 * min(lure * 8, 1), 0, 1) * (1 - here)
+
+rule inject:
+  when 1
+  set injection = lure * (1 - 0.8 * boredom) / (1 + 0.5 * confinement)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```

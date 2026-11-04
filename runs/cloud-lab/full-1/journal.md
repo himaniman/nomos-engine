@@ -1517,3 +1517,77 @@ rule read:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 116x: train 27.3 meals, holdout 25.4
 ```
+
+> 17:21 model job `design` started
+
+---
+
+## Turn 23 -> island #26
+
+**Hypothesis:** The `bright` sense has never been used: ground is dark (~0.21), foliage, which is walkable but opaque and is where plants bear (and hide) food, is ~0.58, below the 0.6 that makes a morsel. Reading bright, walkable, non-morsel cells as LEAVES and giving them a weak source (silenced on the fresh trail so a clump once searched does not hold the agent) sends it into clumps where food hides behind leaves and regrows, on top of the best structure (#23: map completion + knowledge pricing).
+
+Prediction 30.0, got **18.3** meals, fitness 390, per world [27, 18, 20, 18, 19, 21, 14, 20, 23, 21, 18, 26, 20, 18, 21, 17, 0, 17, 9, 19]; model 44.1 s, repairs 0; vocabulary twin of #23, #24, #25, #17
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel bright
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel leafy
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# leaves: a walkable, non-solid cell brighter than bare ground but not a morsel (foliage, where plants bear and hide food)
+rule leaves:
+  when 1
+  set leafy = clamp((bright - 0.4) * 5, 0, 1) * (1 - thing) * (1 - solid) * (1 - here)
+
+# leaves are a weak promise of hidden or regrowing food; the rest as #23
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess), 0.2 * leafy * (1 - trail)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 17:25 model job `theory` started
+
+---
+
+## Theory (after 24 design turns)
+
+CORE: persistent multiplicative max-wave; sum8 confinement on sources; darkness-weighted frontier; footprint trail on the read-out.
+WHAT PAYS: changing what a step COSTS by what the map KNOWS. Pricing unknown ground (#18: 27.7 untuned, holdout 29.0); guessing hidden wall continuations and treating them as wall + false frontier (#23: 29.6 untuned, best train; holdout 27.8, noisy).
+WHAT HURTS, consistently: new attracting sources — leaves from `bright` (#26: 18.3), ghost food 21.5, compass 21.4, breach 23.2, larder 24.6; changing the wave algebra — additive costs (#22: 16.9), harmonic (14.2), wiping persistence (12.8); touching the read-out beyond the trail — momentum (13.7); moving smell off walls (#24: 25.6); clearance cost (23.2). Exponential discount and the stale plateau are features.
+NOISE: within ~2 meals — seen-memory (#21), habituation (#25: 27.5), door contrast (#19, holdout 31.2), stone.
+UNTRIED: other knowledge priors (rock interiors, room closure), source worth by certainty, poison.
+
+> 17:35 model job `deep` started

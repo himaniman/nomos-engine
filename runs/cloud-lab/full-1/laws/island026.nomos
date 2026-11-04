@@ -1,0 +1,47 @@
+# The `bright` sense has never been used: ground is dark (~0.21), foliage, which is walkable but opaque and is where plants bear (and hide) food, is ~0.58, below the 0.6 that makes a morsel. Reading bright, walkable, non-morsel cells as LEAVES and giving them a weak source (silenced on the fresh trail so a clump once searched does not hold the agent) sends it into clumps where food hides behind leaves and regrows, on top of the best structure (#23: map completion + knowledge pricing).
+
+channel source
+channel solid
+channel free
+channel thing
+channel bright
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel leafy
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# leaves: a walkable, non-solid cell brighter than bare ground but not a morsel (foliage, where plants bear and hide food)
+rule leaves:
+  when 1
+  set leafy = clamp((bright - 0.4) * 5, 0, 1) * (1 - thing) * (1 - solid) * (1 - here)
+
+# leaves are a weak promise of hidden or regrowing food; the rest as #23
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess), 0.2 * leafy * (1 - trail)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

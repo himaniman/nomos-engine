@@ -268,3 +268,173 @@ The agent is born in a sealed slot about two cells wide and seven tall, between 
 ```
 
 > 14:04 model job `deep` started
+
+---
+
+## Turn 4 (DEEP) -> island #7
+
+**Hypothesis:** The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — and a solid face that keeps being aimed at accumulates WORK, which turns it into a stronger source, so pressing becomes self-reinforcing instead of being spent by the trail (in #6 the trail killed every face the agent touched, so in the sealed slot of world 110 it shuttled between two faces and chipped neither through). Positive feedback breaks the symmetry between faces and commits to one until rubble gives or the taught leak of that hue drops it; on open worlds the work share stays far below food and frontier, so foraging is unchanged and the two 0-meal worlds should start eating.
+
+Prediction 29.5, got **30.4** meals, fitness 604, per world [23, 34, 40, 31, 28, 24, 18, 29, 14, 33, 37, 36, 25, 31, 39, 28, 30, 40, 26, 43]; model 66.1 s, repairs 0
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Efference copy: the rule reads which neighbour the agent is being led to (aim); a wall face
+# it keeps pressing accumulates WORK, and work makes that face a stronger source -> commitment.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.6 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) / (1 + 0.7071 * confinement)
+
+# Best neighbour value seen from every cell (the agent's own copy is read below).
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Work: effort spent on a solid face; grows while it is aimed at, fades slowly, bounded.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid)
+
+# Wall faces are faint sources (spent by the trail) plus a committed share that grows with work.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.326 * trail, 0, 1) + 0.3 * work)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```
+
+> 14:24 model job `design` started
+
+### Holdout checkpoint at 1.68 h
+
+```
+  #7   train 33.5 meals  holdout 27.1  (tuned 5x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #6   train 28.5 meals  holdout 25.8  (tuned 5x) | When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent s
+  #3   train 26.9 meals  holdout 22.3  (tuned 5x) | Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls
+  #4   train 23.6 meals  holdout 21.6  (tuned 5x) | Every frontier mark is painted at the same 0.12 now, so a one-cell sliver of unknown pulls as hard as the mout
+  #5   train 19.9 meals  holdout  -    (tuned 5x) | The agent gets a global internal state, FRUSTRATION. A wide blur of the trail, read at the centre cell, measur
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 25x: train 27.2 meals, holdout 25.4
+```
+
+---
+
+## Turn 5 -> island #8
+
+**Hypothesis:** #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PATH every step: starting at the agent, each next cell is the best uphill step from the one before. The source that path reaches, whether food, frontier or a wall face, builds up a slowly fading LOCK that makes it brighter. So the agent commits to one target from any distance and stops flip-flopping between two foods or two faces. Wall faces also never wear down to zero, so a spent slot keeps a probe target and does not go flat.
+
+Prediction 32.0, got **29.0** meals, fitness 572, per world [20, 23, 31, 22, 28, 29, 36, 37, 31, 34, 26, 29, 33, 32, 38, 34, 16, 22, 27, 32]; model 104.1 s, repairs 0
+
+value on the test map: max 1.32, mean 0.47, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Target lock: the decision's whole PATH (gradient climb from the agent) is traced every
+# step; the source it ends on accumulates LOCK, and lock makes that source brighter.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel thr
+channel chain
+channel lock
+channel injection
+channel probe
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# On the path: the value a neighbour must reach to be this cell's next step (uphill only).
+rule calc_thr:
+  when 1
+  set thr = where(chain > 0, max(max8(value) - 0.00001, value + 0.00001 - 9 * here), 9)
+
+# The path: the agent's cell, then every cell that is the best uphill step of a path cell.
+rule calc_chain:
+  when 1
+  set chain = max(here, where(min8(thr) <= value, 1, 0) * where(value > 0, 1, 0))
+
+# Lock: grows on path cells that hold a source (food, frontier, a wall face); fades slowly.
+rule calc_lock:
+  when 1
+  set lock = min(1, 0.996 * lock + 0.04 * chain * (1 - here) * where(max(injection, probe) > 0.0001, 1, 0))
+
+# Seen morsels inject fully; other sources fade where the agent went; a locked target shines.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) * (1 + lock) / (1 + 0.8336 * confinement)
+
+# Wall faces: faint sources, worn down but never to zero by the trail, plus the locked share.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0.2, 1) + 0.3 * lock)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```
+
+> 14:33 model job `theory` started
+
+---
+
+## Theory (after 6 design turns)
+
+HELPS: local, structural memory. Inhibition of return (a fading trail, #3 +2.4) stops the agent re-walking the same ground. Keeping the wave alive when the map is spent (#6) stops it standing still. An efference copy that builds up pressure on the solid face being aimed at (#7, best at 33.5) turns random chipping into digging out. Confinement suppression (#1) is the only law that holds up on holdout (23.2 -> 23.6).
+HURTS: global or smoothed signals. A frustration scalar (#5) and a blurred `dark` frontier (#4) each lost ~7 meals, because they flatten the field. Tracing the whole path (#8) lost 4.5.
+WHY: wins come from small, sharp, local terms. Tuning overfits (#7 33.5 -> 27.1 on holdout).
+STILL FAILING: in a sealed slot the trail covers every cell and pressure gets split between two faces.
+UNTRIED: a winner-take-all lock on one face (the strongest pressure suppresses the others); trying the face nearest the most promising unknown first; using `bad` to avoid what burned it; a leak that grows with pressing.

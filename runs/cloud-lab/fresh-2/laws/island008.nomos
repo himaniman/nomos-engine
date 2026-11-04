@@ -1,0 +1,60 @@
+# #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PATH every step: starting at the agent, each next cell is the best uphill step from the one before. The source that path reaches, whether food, frontier or a wall face, builds up a slowly fading LOCK that makes it brighter. So the agent commits to one target from any distance and stops flip-flopping between two foods or two faces. Wall faces also never wear down to zero, so a spent slot keeps a probe target and does not go flat.
+
+# Target lock: the decision's whole PATH (gradient climb from the agent) is traced every
+# step; the source it ends on accumulates LOCK, and lock makes that source brighter.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel thr
+channel chain
+channel lock
+channel injection
+channel probe
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# On the path: the value a neighbour must reach to be this cell's next step (uphill only).
+rule calc_thr:
+  when 1
+  set thr = where(chain > 0, max(max8(value) - 0.00001, value + 0.00001 - 9 * here), 9)
+
+# The path: the agent's cell, then every cell that is the best uphill step of a path cell.
+rule calc_chain:
+  when 1
+  set chain = max(here, where(min8(thr) <= value, 1, 0) * where(value > 0, 1, 0))
+
+# Lock: grows on path cells that hold a source (food, frontier, a wall face); fades slowly.
+rule calc_lock:
+  when 1
+  set lock = min(1, 0.996 * lock + 0.04 * chain * (1 - here) * where(max(injection, probe) > 0.0001, 1, 0))
+
+# Seen morsels inject fully; other sources fade where the agent went; a locked target shines.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) * (1 + lock) / (1 + 0.8336 * confinement)
+
+# Wall faces: faint sources, worn down but never to zero by the trail, plus the locked share.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0.2, 1) + 0.3 * lock)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)

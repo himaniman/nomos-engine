@@ -368,3 +368,141 @@ Rests on single runs; per-world spread is large (world 16 always 0, world 18 2-1
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 25x: train 28.2 meals, holdout 26.6
 ```
+
+> 13:25 model job `design` started
+
+---
+
+## Turn 6 -> island #9
+
+**Hypothesis:** Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, so a closed room is invisible to exploration unless food inside happens to be smelt. A solid cell whose leak has been taught above the innate guess (its hue opened when pressed) and that faces known-free ground becomes a curiosity source itself, muted behind the agent like the frontier in #7, so once the agent has learned what a door looks like it opens the doors it passes and harvests the rooms behind them.
+
+Prediction 29.0, got **27.3** meals, fitness 536, per world [42, 38, 24, 27, 22, 24, 16, 39, 17, 26, 38, 36, 17, 23, 29, 41, 21, 23, 12, 31]; model 58.1 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Doors are frontier. Rooms behind doors are larders, but the frontier only marks
+# unknown cells that touch known-free ones, so a closed room is never worth
+# exploring unless something inside is smelt. A solid cell whose leak has been
+# taught ABOVE the innate guess (a hue that opened when pressed) and that faces
+# known-free ground becomes a curiosity source itself. Exploration as in #7.
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+# A known solid of a hue taught to give way, standing next to known-free ground.
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+# Food as before; frontier marks and doors muted where the agent has been.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, max(thing, source), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind))
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```
+
+> 13:39 model job `design` started
+
+---
+
+## Turn 7 -> island #10
+
+**Hypothesis:** Object permanence. A morsel is painted only while it is inside the field of view, so turning toward one target drops the others from the map and a corner hides the very morsel being chased, which makes the agent dither and abandon approaches. Seen, wanted morsels (appetite-weighted, minus refusals) are written into a slowly fading memory channel that keeps injecting after they leave view and is erased once the agent stands on or beside the spot; unlike the ghost law, smell waypoints and frontier marks are not remembered. Base is #9 (ballistic exploration + learned doors as curiosity), which was the first law to eat on world 16.
+
+Prediction 29.0, got **26.9** meals, fitness 506, per world [32, 29, 27, 33, 22, 25, 10, 33, 30, 16, 41, 27, 27, 32, 23, 51, 11, 19, 10, 40]; model 26.1 s, repairs 0; vocabulary twin of #9
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Object permanence: a morsel is painted only while it is in the field of view,
+# so turning toward one target drops the others and a corner hides the one being
+# chased. Seen, wanted morsels are remembered on the map (fading slowly, erased
+# under and beside the agent) and keep injecting after they leave view. Smell and
+# frontier are NOT remembered (the ghost's mistake). Base: #9 (ballistic + doors).
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel seen
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+# Where a wanted morsel was last seen; gone once the agent stands on or beside it.
+rule remember_things:
+  when 1
+  set seen = max(thing * min(source, 1) * (1 - bad), 0.995 * seen) * (1 - here) * (1 - max8(here))
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, max(thing, source), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind), seen / (1 + 0.5 * confinement))
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```
+
+### Holdout checkpoint at 2.20 h
+
+```
+  #7   train 28.2 meals  holdout 25.4  (tuned 5x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #10  train 26.9 meals  holdout  -    (tuned 1x) | Object permanence. A morsel is painted only while it is inside the field of view, so turning toward one target
+  #6   train 25.6 meals  holdout 23.5  (tuned 5x) | Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing,
+  #3   train 24.6 meals  holdout 26.8  (tuned 5x) | Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the
+  #8   train 21.8 meals  holdout  -    (tuned 5x) | The harness steps the law only 6 times per thought, so the wave moves at most 6 cells per thought: a freshly s
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 36x: train 28.2 meals, holdout 26.6
+```

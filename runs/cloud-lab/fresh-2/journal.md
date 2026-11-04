@@ -1547,3 +1547,109 @@ rule decide:
 ```
 
 > 19:06 model job `design` started
+
+---
+
+## Turn 17 -> island #20
+
+**Hypothesis:** The wave now doubts unknown ground: each step through a cell that is neither seen free nor known solid costs extra, so routes across mapped, walkable ground beat sources reached through guesses and leaks, and a visible way out of a slot beats a face. Separately, #13's futility exit was dead: work = 0.68*work + 0.03 levels off near 0.09 and never gets to 0.9, so it is now a counter that only climbs while aimed at and only fades when not, and a spent face also stops leaking into the wave. Together these should end the sealed-slot pressing (worlds 110/118) without flattening the field.
+
+Prediction 33.5, got **30.4** meals, fitness 609, per world [32, 24, 18, 33, 42, 34, 29, 26, 28, 16, 32, 38, 41, 27, 33, 33, 21, 24, 39, 37]; model 138.2 s, repairs 0; vocabulary twin of #13, #18, #16, #14, #7
+
+value on the test map: max 0.63, mean 0.33, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Doubt-weighted wave + a work COUNTER that cannot stall below the futility threshold.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel thin
+channel injection
+channel nbmax
+channel aim
+channel work
+channel spent
+channel doubt
+channel probe
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Doubt: how unknown a cell is (neither seen free nor known solid), in [0, 1].
+rule calc_doubt:
+  when 1
+  set doubt = clamp(1 - max(free, solid), 0, 1)
+# Thin wall: known free on one side and NOT known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.85 - bad) / (1 + 0.8 * confinement)
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+# Work counter: climbs while the face is aimed at, fades only when it is not; wiped once spent.
+rule effort:
+  when 1
+  set work = where(aim * solid > 0, min(1, work + 0.02), 0.995 * work) * (1 - spent)
+# Futility: a face that soaked up full work and is still solid is rock; slowly forgiven.
+rule futility:
+  when 1
+  set spent = max(0.9995 * spent, where(work > 0.9, 1, 0) * solid)
+# Wall faces are sources only if thin and not spent: faint by default, committed share with work.
+rule calc_probe:
+  when 1
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work)
+# Wave: doubtful ground costs extra per step; spent faces stop leaking; poison blocks.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.916 * max8(value)) * (1 - 0.2 * doubt) * (1 - solid * (1.3 - leak * (1 - spent))) * (1 - 0.9 * bad)
+```
+
+> 19:13 model job `theory` started
+
+---
+
+## Theory (after 18 design turns)
+
+HELPS: small, sharp, local structure that ranks neighbouring choices. Inhibition of return (fading trail, #3); keeping the wave alive on a spent map (#6); an efference copy building pressure on the aimed face (#7); faces competing for pressure (#9 crown, best holdout 29.8); confinement suppression (#1, holds on holdout). Thin-wall filter (#13) is the train best, 32.6.
+HURTS: anything global, directional or field-splitting: frustration, blurred frontier, x-ray wave, heading (#12, -10.6), inertia (#14, -12.3), unknown-density frontier weighting (#15, -5), separate walk and press waves (#17, #19, -5), doubting unknown ground (#20, -2).
+NEUTRAL: futility (#11, #18: it never fires), larder memory (#16), path tracing (#8).
+WHY: tuning overfits; local ranking generalizes; second waves and biases distort the field.
+STILL FAILING: born in a slot, presses a thin wall with food behind it for a whole life while the open exit is two steps away; zero doors.
+UNTRIED: a hard per-face timer (pressure that saturates, then inverts); gating presses by `leak`; using `bad`; old trail regrowing into a faint source.
+
+### Holdout checkpoint at 6.61 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #15  train 30.9 meals  holdout  -    (tuned 5x) | Two changes on new axes. First, a frontier mark is weighted by how much is still unknown behind it (the unknow
+  #18  train 30.3 meals  holdout  -    (tuned 5x) | #13's futility never fires: its tuned work decays by 0.68 a step, so it settles near 0.09 and never reaches th
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 93x: train 28.6 meals, holdout 26.2
+```

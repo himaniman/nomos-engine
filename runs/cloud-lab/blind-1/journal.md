@@ -907,3 +907,101 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
 ```
+
+### Holdout checkpoint at 3.81 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 1x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 7x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #14  train 25.7 meals  holdout  -    (tuned 5x) | The theory's strongest negative result is that a FASTER wave (#8) cost 6 meals, which suggests the lag of a sl
+  #10  train 26.9 meals  holdout  -    (tuned 5x) | Object permanence. A morsel is painted only while it is inside the field of view, so turning toward one target
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 62x: train 28.2 meals, holdout 26.6
+```
+
+> 15:37 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radian off, so turning round costs ~26 ticks (~9 cells of travel), yet every neighbour is priced alike and near-ties between a lure ahead and one behind are settled by noise. The cell the agent came from (the freshest trail cell on its ring) is charged a turn cost and the two cells flanking it half that, so the agent reverses only when what lies behind is clearly better — continuing #15's line that the field should respect the body (it changes only the agent's own ring, not the wave's speed or discount).
+
+Prediction 30.0, got **28.1** meals, fitness 539, per world [38, 30, 30, 20, 19, 36, 22, 33, 29, 24, 29, 28, 28, 48, 13, 27, 24, 26, 25, 34]; model 98.2 s, repairs 0; vocabulary twin of #15
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Turning has a price. The body turns 0.12 rad per tick and crawls while facing
+# more than a radian off, so turning round costs ~26 ticks, ~9 cells of travel,
+# but the wave prices every neighbour alike. The cell the agent came from (the
+# freshest trail cell beside it) and the two beside that one are charged a turn
+# cost, so it reverses only when what lies behind is clearly better.
+# Injection and body-honest diagonals as in #15.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel ring
+channel recent
+channel freshest
+channel back
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# The agent's eight neighbours, and how recently each was walked.
+rule neighbours:
+  when 1
+  set ring = max8(here)
+  set recent = trail * max8(here)
+# The best recency around the agent, carried back out to its ring.
+rule freshest_mark:
+  when 1
+  set freshest = max(here * max8(recent), max8(here * max8(recent)) * ring)
+# The cell it came from, and half for the two cells flanking it on the ring.
+rule backward:
+  when 1
+  set back = max(ring * (recent >= 0.99 * freshest) * (recent > 0.01), 0.5 * ring * max4(ring * (recent >= 0.99 * freshest) * (recent > 0.01)))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.4 * back)
+```

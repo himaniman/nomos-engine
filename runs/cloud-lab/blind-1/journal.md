@@ -1877,3 +1877,108 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
 ```
+
+### Holdout checkpoint at 8.15 h
+
+```
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #23  train 29.6 meals  holdout 29.0  (tuned 5x) | Frustration (#17) mutes smell but never a SEEN morsel, so a morsel the body cannot actually get to — beyond a 
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 6x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 6x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #20  train 29.5 meals  holdout  -    (tuned 5x) | A test of what #8 really showed. The express wave lost 6.4 meals and killed 5 agents, and I blamed its speed; 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 118x: train 28.2 meals, holdout 26.6
+```
+
+> 20:01 model job `design` started
+
+---
+
+## Turn 23 -> island #26
+
+**Hypothesis:** Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack between walls, so the agent spends walks checking slivers. A blurred mass of fog (cells neither seen free nor seen solid) around each cell scales the pure frontier marks, so of the frontiers ahead the agent heads for the one behind which most unknown ground — and so most unfound food — lies. #4 tried this on the old confinement base and had the best UNTUNED holdout of its time (27.6 vs 25.7) before tuning overfit it; it never met ballistic search, the fog-discounted wave or wall trust. Base is #24. (After #25: invented lures on landmarks are dangerous, so this only reweights the honest fr
+
+Prediction 31.5, got **33.7** meals, fitness 656, per world [36, 36, 27, 29, 23, 32, 40, 35, 45, 18, 35, 34, 39, 35, 48, 33, 38, 34, 31, 26]; model 42.2 s, repairs 0; vocabulary twin of #24, #22, #23, #21, #20, #17
+
+value on the test map: max 0.48, mean 0.26, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Frontier worth by what it opens onto. Every frontier mark weighs 0.12 whether it
+# borders a wide unexplored region or a one-cell crack between walls. A blurred
+# mass of fog (unknown cells) around each cell scales the pure-frontier marks, so
+# the agent heads for the frontier behind which most unknown ground lies. (#4 did
+# this on an old base: best untuned holdout of its time, 27.6.) Base: #24.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel vista
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+# Fog mass around each cell (bounded screened diffusion).
+rule unexplored_mass:
+  when 1
+  set vista = 0.5 * avg8(fog) + 0.5 * avg8(vista)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind) * (0.5 + 1.5 * vista)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```
+
+> 20:06 model job `theory` started

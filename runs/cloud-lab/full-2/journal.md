@@ -891,3 +891,114 @@ rule commit:
   when 1
   set value = plan * (1 + 0.1 * momentum)
 ```
+
+> 16:01 model job `design` started
+
+### Holdout checkpoint at 3.22 h
+
+```
+  #7   train 32.2 meals  holdout 27.2  (tuned 5x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #11  train 28.2 meals  holdout 25.5  (tuned 5x) | The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times
+  #10  train 27.9 meals  holdout 28.2  (tuned 5x) | Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over k
+  #13  train 29.3 meals  holdout  -    (tuned 5x) | A synthesis test of the two mechanisms that each fixed a hard world without breaking another: heading momentum
+  #12  train 26.9 meals  holdout  -    (tuned 5x) | Bold axis: AREA-RESTRICTED SEARCH, the classic optimal-foraging rule. Food in this world is clumped by habitat
+  #5   train 26.6 meals  holdout 28.7  (tuned 5x) | 70% of food spots are renewable and regrow ~1200 ticks after being eaten, but every law so far forgets a spot 
+  #4   train 26.2 meals  holdout 28.9  (tuned 5x) | Exploration is a flat 0.12 on every frontier cell, so a crack into a one-cell pocket pulls as hard as an openi
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 56x: train 27.6 meals, holdout 23.2
+```
+
+---
+
+## Turn 11 -> island #14
+
+**Hypothesis:** Bold axis: change the PHYSICS of exploration, not its weights. Every law so far plans exploration with a max-wave, which only ever sees the single best frontier cell, so roominess had to be bolted on to say how much unknown lies beyond it. Here exploration is a HARMONIC potential — each cell takes the discounted MEAN of its neighbours (0.99*avg8, bounded: weights sum below one, no saturation cliff) clamped at frontier sources — so many frontier cells together pull harder than one crack and the field's gradient points at the mass of the unknown; food keeps its own Bellman max-wave (sources with the frontier marks subtracted, lingering), and the agent follows the larger of the two. Frustration
+
+Prediction 28.0, got **18.9** meals, fitness 358, per world [22, 23, 21, 26, 20, 22, 32, 18, 21, 29, 0, 15, 14, 25, 21, 11, 22, 13, 0, 22]; model 84.2 s, repairs 0
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel unk
+channel front
+channel confinement
+channel dwell: init 0
+channel crowd: init 0
+channel recent: init 0
+channel momentum
+channel conduct
+channel morsel: init 0
+channel foodplan: init 0
+channel lure: init 0
+channel plan
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule heading:
+  when 1
+  set momentum = max(shift(here, 1, 0) * shift(recent, 2, 0), shift(here, -1, 0) * shift(recent, -2, 0), shift(here, 0, 1) * shift(recent, 0, 2), shift(here, 0, -1) * shift(recent, 0, -2), shift(here, 1, 1) * shift(recent, 2, 2), shift(here, -1, -1) * shift(recent, -2, -2), shift(here, 1, -1) * shift(recent, 2, -2), shift(here, -1, 1) * shift(recent, -2, 2))
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule conductance:
+  when 1
+  set conduct = 1 - solid * (1 - min(1, leak * (1 + 3 * crowd)))
+
+# FOOD only (the harness's 0.12 frontier marks taken out), lingering, erased under the agent
+rule food_memory:
+  when 1
+  set morsel = max(source - 0.12 * front, thing, 0.99 * morsel) * (1 - here) * (1 - max8(here)) * (1 - bad)
+# food is planned by Bellman: the single best target, discounted by distance
+rule food_wave:
+  when 1
+  set foodplan = max(morsel / (1 + 0.5 * confinement * (1 - crowd)), max(0.94 * max4(foodplan), 0.916214 * max8(foodplan))) * conduct
+
+# EXPLORATION is a harmonic potential: a cell takes the discounted MEAN of its neighbours, so many
+# frontier cells together pull harder than one — the mass of the unknown, not its nearest crack
+rule lure_field:
+  when 1
+  set lure = max(0.3 * front / (1 + 0.5 * confinement * (1 - crowd)), 0.04 * unk, 0.99 * avg8(lure)) * conduct
+
+rule combine:
+  when 1
+  set plan = max(foodplan, lure)
+rule commit:
+  when 1
+  set value = plan * (1 + 0.1 * momentum)
+```
+
+> 16:07 model job `theory` started
+
+---
+
+## Theory (after 12 design turns)
+
+Untuned, every Bellman-based structure since #3 lands at 25-28 meals (#3 25.8 ... #10/#11 27.9): within noise of each other; tuning adds 1-5 on train and mostly gives it back on holdout (#3 28.9->22.5, #7 32.2->27.2). Generalises: roominess-weighted frontier (#4/#5 holdout 28.9/28.7). Hard worlds are mechanism-specific: pocket 110 needs frustration (dwell opens walls) plus a symmetry breaker, trail or momentum (#7, #9: 29; #12 with neither: 0); town 117 needs leak only in thin walls (#11: 33 vs #7 6). Momentum raises the floor (#9, #13: 20/20 immortal, min 10-12) but not the mean. Gateway + unknown-route risk broke world 112 (#10/#11: 1 meal).
+Hurts: any non-max exploration physics — harmonic mean field #14 18.9, fast-decaying explore wave #8 25.7. Neutral: larder clock, area-restricted search (#12 26.9).
+Untried: why open worlds plateau at ~28 — speed/turning, what eats time between meals.
+
+> 16:22 model job `design` started

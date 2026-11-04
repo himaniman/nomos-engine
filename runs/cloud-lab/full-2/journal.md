@@ -2173,3 +2173,162 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
 ```
+
+> 20:57 model job `design` started
+
+---
+
+## Turn 21 -> island #24
+
+**Hypothesis:** Axis: commitment to ONE TARGET over thoughts, the oldest untried item in my notes, built with the inheritance primitive. Every source cell keeps a random id while it is a source, the wave carries the id of the source each cell's value comes from (argmax8 of value), the agent's current target is the id at its own cell, broadcast outward from the centre (argmax8 of centrality), and the source with that id counts 30% more — hysteresis on the choice of target, not on the step (#9's step momentum did not move the mean) or the course. Near-ties between two foods, or between food and a frontier, stop flipping the walk; a clearly better target still wins. Built on #21 (unit course + doors); the test
+
+Prediction 35.0, got **29.7** meals, fitness 584, per world [35, 28, 25, 35, 32, 38, 13, 33, 30, 37, 25, 29, 29, 26, 36, 18, 33, 27, 25, 40]; model 40.2 s, repairs 0; vocabulary twin of #21, #23
+
+value on the test map: max 1.30, mean 0.69, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel unitx
+channel unity
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel injection
+channel sid: init 0
+channel tag: init 0
+channel centrality
+channel aim: init 0
+channel locked
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+# RE-AIM: the course as a UNIT direction at the agent's cell. A looping walk averages to a short
+# vector whose pull used to vanish; normalised, it keeps full strength in whatever way the loop
+# drifts, so an orbit is broken instead of tolerated
+rule unit_x:
+  when 1
+  set unitx = here * coursex / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule unit_y:
+  when 1
+  set unity = here * coursey / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(unitx, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - unitx, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(unity, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - unity, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# DOORS AS FRONTIER: a thin wall whose hue has been taught to give (leak above the innate 0.5),
+# with known ground on one side and hidden space on the other, is a way into a new room
+rule doorways:
+  when 1
+  set door = thinwall * clamp(2 * (leak - 0.5), 0, 1) * (max8(free) > 0.5) * max8(hidden)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + ahead, 0, 2), 0.4 * door, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+# TARGET IDENTITY: every source cell keeps a random id while it stays a source; the wave carries
+# the id of the source its value comes from (argmax8 = inherit from the best neighbour)
+rule source_id:
+  when 1
+  set sid = where(injection > 0.05, where(sid > 0, sid, uniform(0.001, 1)), 0)
+rule carry_tag:
+  when 1
+  set tag = where(injection >= 0.94 * max8(value), sid, argmax8(value, tag))
+# the agent's current target is the tag at its own cell; it spreads outward from the centre
+rule central:
+  when 1
+  set centrality = 1 - sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+rule broadcast_aim:
+  when 1
+  set aim = where(here, tag, argmax8(centrality, aim))
+# COMMITMENT: the source the agent is already heading for counts 30% more, so a near-tie between
+# two targets no longer flips the walk back and forth
+rule lock:
+  when 1
+  set locked = injection * (1 + 0.3 * (abs(sid - aim) < 0.00001) * (sid > 0))
+rule wave:
+  when 1
+  set value = max(locked, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+```
+
+### Holdout checkpoint at 8.32 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 7x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #21  train 35.1 meals  holdout 34.6  (tuned 5x) | The course is the one structure that moved the mean (25-28 -> ~33), but its pull is proportional to how straig
+  #18  train 33.7 meals  holdout 34.8  (tuned 6x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 6x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #19  train 33.8 meals  holdout  -    (tuned 5x) | Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightn
+  #23  train 31.9 meals  holdout  -    (tuned 5x) | Axis: what memory is for. Every law since #3 lingers the WHOLE source, including the harness's flat 0.12 front
+  #22  train 32.2 meals  holdout  -    (tuned 5x) | Bold axis: an ANISOTROPIC wave — the course built into the physics of distance instead of bolted onto the fron
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 111x: train 29.8 meals, holdout 25.1
+```

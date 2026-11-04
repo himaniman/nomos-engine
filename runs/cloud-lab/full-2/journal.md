@@ -2441,3 +2441,152 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 118x: train 29.8 meals, holdout 25.1
 ```
+
+> 21:49 model job `design` started
+
+---
+
+## Turn 23 -> island #26
+
+**Hypothesis:** Axis: what a meal should do to memory. Smell is painted at a slightly different spot each thought as the agent closes in on a morsel, and the lingering ghost keeps every one of those paints; erasure happens only under the agent's own ring, so after a meal a scatter of phantom sources of the morsel it just ate stays behind for tens of ticks and can pull it back. Here a meal spreads a short-lived SATED field a few cells out (fading in ~30 ticks) and the lingering part of the ghost is wiped inside it — fresh paints and seen morsels are untouched — so the agent leaves an eaten spot cleanly and the course takes over. Built on #21 (unit course + doors, 35.1); the meal wipe is the one change.
+
+Prediction 35.5, got **34.7** meals, fitness 700, per world [31, 45, 40, 40, 27, 47, 41, 41, 30, 40, 18, 35, 33, 30, 35, 31, 29, 34, 29, 38]; model 44.3 s, repairs 0; vocabulary twin of #21, #23, #18, #19, #16, #22
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel unitx
+channel unity
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel injection
+channel feast
+channel sated: init 0
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+# RE-AIM: the course as a UNIT direction at the agent's cell. A looping walk averages to a short
+# vector whose pull used to vanish; normalised, it keeps full strength in whatever way the loop
+# drifts, so an orbit is broken instead of tolerated
+rule unit_x:
+  when 1
+  set unitx = here * coursex / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule unit_y:
+  when 1
+  set unity = here * coursey / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(unitx, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - unitx, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(unity, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - unity, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# DOORS AS FRONTIER: a thin wall whose hue has been taught to give (leak above the innate 0.5),
+# with known ground on one side and hidden space on the other, is a way into a new room
+rule doorways:
+  when 1
+  set door = thinwall * clamp(2 * (leak - 0.5), 0, 1) * (max8(free) > 0.5) * max8(hidden)
+# SATIATION WIPES THE EVIDENCE: a meal (the agent beside a wanted morsel) spreads a short-lived
+# 'sated' field a few cells out; inside it the lingering ghosts of that morsel's smell — painted at
+# slightly wrong places as the agent closed in — are erased, so it does not circle back to phantoms
+rule meal:
+  when 1
+  set feast = here * max(thing, max8(thing)) * (1 - bad)
+rule satiation:
+  when 1
+  set sated = max(feast, 0.8 * max8(sated), 0.97 * sated)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost * (1 - sated)) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + ahead, 0, 2), 0.4 * door, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+```
+
+> 21:55 model job `theory` started
+
+---
+
+## Theory (after 24 design turns)
+
+One structural gain dominates: a long COURSE (heading averaged over hundreds of ticks, kept at the agent's cell) weighting frontier goals lifts untuned meals from the 25-28 plateau to ~33 (#15, #16), and normalising it to a unit direction, so loops keep a full pull, gives the best law, #21 35.1 (holdout 34.6). The rest of the stack matters too: stripping #21 to course + roominess + memory (#25) fell to 28.8, losing ~5 on ordinary worlds as well as 0 in pocket 110 — confinement, frustration, thin-wall leak and doors are not just insurance. The course pays at the level of GOALS, not paths: anisotropic discount #22 32.2. Commitment hurts: target lock #24 29.7, step momentum #9; flexibility matters. Memory of explored edges helps (food-only memory #23 31.9). Neutral: meal wipe #26 34.7, doors/material/patches/habitat. Hurts: non-max exploration #14.
+Untried: course timescale as structure, re-aiming the course toward the unknown.
+
+> 22:00 model job `observe` started
+
+---
+
+## Observer: #7 on world 112
+
+![](observe/obs03_island7_world112.png)
+
+`{'meals': 24, 'ticks': 8000, 'alive': True, 'distance': 1504.4, 'cells_visited': 978, 'last500_box': '20x27', 'doors': 0, 'breaks': 12, 'idle_presses': 118, 'nightcaps': 0}`
+
+This is a dense town of small walled rooms; the agent survives the whole life and eats 24 times, mostly in the open streets, making three long excursions (south-west early, north-east, then west and north late) that all start from and return through the same crossroads just below its spawn, which it crosses four or five times. Many food dots sit inside small closed rooms along its route (centre, east, north-west), and it enters none of them: 0 doors opened against 118 idle presses, so it repeatedly leans on wall cells that do not give, while the actual doors of those rooms stay shut. The pressing also costs time at each room it passes, slowing the sweep. The failing is wall choice, not effort: the leak treats every wall alike, so the wave leads into plain stone as often as into a door. The one mechanism I would add is recognising a door by its look (doors are the brightest solid) and giving only those cells the leak, so presses land on doors and the stocked rooms get opened.

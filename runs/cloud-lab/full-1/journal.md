@@ -568,3 +568,129 @@ rule read:
 ```
 
 > 13:43 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** The map forgets a wall at the same rate as everything else, so a wall seen a few hundred ticks ago becomes half transparent to the wave and then "unknown" again: the agent is led through stale walls into presses that do nothing and back to re-inspect stone as if it were frontier. A MASONRY memory keeps walls nearly permanent (cleared only where the cell is seen free, so opened doors and chipped rubble disappear), and confinement, darkness, frontier and the wave's passability all read it, while free ground and food are still forgotten so regrowth gets revisited.
+
+Prediction 27.0, got **25.6** meals, fitness 499, per world [18, 27, 33, 30, 24, 38, 25, 36, 40, 10, 23, 33, 23, 26, 26, 27, 0, 19, 16, 38]; model 24.1 s, repairs 0; vocabulary twin of #9, #7, #4, #8
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel wall
+channel dark
+channel injection
+channel wave
+channel trail
+
+# walls are permanent: keep a wall far longer than the fading map does, until the cell is seen free (an opened door)
+rule masonry:
+  when 1
+  set wall = max(solid, 0.9995 * wall) * (1 - free)
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - wall) + 0.5 * avg8(dark)
+
+# confinement and passability read the remembered walls, not the fading evidence
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - wall)) / (1 + 0.5 * sum8(wall))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - wall * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 2.66 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 5x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 7x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #12  train 25.6 meals  holdout  -    (tuned 3x) | The map forgets a wall at the same rate as everything else, so a wall seen a few hundred ticks ago becomes hal
+  #8   train 24.6 meals  holdout  -    (tuned 5x) | Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as
+  #5   train 21.6 meals  holdout  -    (tuned 5x) | One discount serves two different promises: food (certain, worth a detour only when near) and the frontier (un
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 51x: train 27.3 meals, holdout 25.4
+```
+
+> 14:00 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** The smell is repainted from scratch every thought at a waypoint whose bearing flips between the two ways round a wall, so food-directed walks can dither even with the footprint trail; the plain ghost helped the bare wave by +4 meals but was never tried on top of darkness-weighted exploration. Here only FOOD evidence (smell and seen morsels) lingers in its own NOSE channel, erased when the agent reaches the spot or when it is marked bad, while frontier marks stay instantaneous, so a food target once chosen is held through the flip but exploration still follows the live map.
+
+Prediction 27.0, got **21.5** meals, fitness 424, per world [36, 27, 16, 29, 4, 19, 21, 34, 29, 13, 15, 27, 23, 23, 23, 20, 0, 31, 28, 12]; model 38.1 s, repairs 0; vocabulary twin of #12, #9, #7, #4, #8
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel nose
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# smell and seen morsels LINGER where they were painted (a flipping bearing keeps its first target);
+# reaching the place, or learning it is bad, erases the ghost
+rule linger:
+  when 1
+  set nose = max(scent, thing * (1 - bad), 0.99 * nose) * (1 - max(here, max8(here))) * (1 - bad)
+
+# frontier by darkness as before; food is the lingering nose, so a target once chosen is held
+rule inject:
+  when 1
+  set injection = max(nose, where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 14:14 model job `design` started

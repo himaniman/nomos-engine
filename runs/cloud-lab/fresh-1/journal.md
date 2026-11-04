@@ -383,3 +383,125 @@ rule wave:
   when 1
   set value = max(injection, crack, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(block, -1, 0), shift(block, 0, -1))), shift(value, 1, -1) * (1 - max(shift(block, 1, 0), shift(block, 0, -1))), shift(value, -1, 1) * (1 - max(shift(block, -1, 0), shift(block, 0, 1))), shift(value, 1, 1) * (1 - max(shift(block, 1, 0), shift(block, 0, 1))))) * (1 - block) * (1 - 0.9 * bad)
 ```
+
+### Holdout checkpoint at 1.73 h
+
+```
+  #6   train 28.5 meals  holdout 33.6  (tuned 5x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 3x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #4   train 27.2 meals  holdout 25.1  (tuned 7x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #5   train 25.7 meals  holdout 27.7  (tuned 5x) | The map gets a WEAR memory: footprints accumulate (bounded) where the agent stands and spread into a halo of w
+  #3   train 24.2 meals  holdout 20.2  (tuned 5x) | The map gets a FOOTPRINT memory: a slowly fading `trail` of where the agent has stood, scrolling with the map.
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 24x: train 28.5 meals, holdout 27.0
+```
+
+> 13:28 model job `design` started
+
+---
+
+## Turn 5 -> island #8
+
+**Hypothesis:** The map learns BOREDOM: a bounded footprint `trail` piles up where the agent keeps standing, and where it exceeds what one passing visit leaves, the ground is `worn` (spread as a decaying flood through free cells). Walls bordering worn ground, and not yet pressed in vain (`tried`), turn into dig sources weighted by their taught leak and the unknown behind them, and boredom raises how much wave those untried walls let through — so a sealed or looping agent stops pacing and probes its walls one after another, each refused stone closing as the next lights up, until a door or rubble gives (world 16), while an agent that keeps walking never wears anything and runs the #6 wave unchanged.
+
+Prediction 29.5, got **22.1** meals, fitness 434, per world [33, 32, 26, 20, 23, 24, 14, 28, 34, 18, 23, 20, 21, 28, 24, 13, 0, 29, 19, 13]; model 74.2 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel injection
+channel step
+channel stepd
+channel hv
+channel tried
+channel trail
+channel worn
+channel block
+channel dig
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+# footprints: bounded, slowly fading; one passing visit stays well under the wear line
+rule footprint:
+  when 1
+  set trail = min(1, 0.997 * trail + 0.05 * here)
+# worn ground: the excess of footprints, flooded a few cells through free ground
+rule wear:
+  when 1
+  set worn = max(clamp(2.5 * (trail - 0.6), 0, 1), 0.85 * max8(worn)) * (1 - solid)
+# frontier weighted by unknown behind it and dimmed on worn ground; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness) * (1 - 0.6 * worn), max(thing, source)) * (1 - bad) / (1 + 0.5 * sum8(solid))
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+# frustration: a solid neighbour the wave leads the agent into, still solid; fades slowly
+rule press:
+  when 1
+  set tried = min(1, 0.9995 * tried + where((solid > 0.5) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.012 * (1.2 - leak), 0))
+# boredom raises what an untried wall lets through; a stone pressed in vain lets nothing
+rule blocked:
+  when 1
+  set block = solid * (1 - max(leak, 0.8 * max8(worn)) * (1 - tried))
+# a wall beside worn ground is a dig site: doors (high leak) and walls with unknown behind first
+rule digsite:
+  when 1
+  set dig = where(solid > 0.5, 0.5 * max8(worn) * (1 - tried) * (0.3 + leak) * (0.5 + openness), 0)
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# priced wave through effective blockage; dig sites shine even where the wall is shut
+rule wave:
+  when 1
+  set value = max(dig, max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(block, -1, 0), shift(block, 0, -1))), shift(value, 1, -1) * (1 - max(shift(block, 1, 0), shift(block, 0, -1))), shift(value, -1, 1) * (1 - max(shift(block, -1, 0), shift(block, 0, 1))), shift(value, 1, 1) * (1 - max(shift(block, 1, 0), shift(block, 0, 1))))) * (1 - block) * (1 - 0.9 * bad))
+```
+
+> 13:33 model job `theory` started
+
+---
+
+## Theory (after 6 design turns)
+
+HELPS: how the wave SPREADS matters most. Confinement (sources hemmed in by solid count less, #1) lifted Bellman 14.8 -> 25.7. Per-cell step cost (cheap known-free, dear unknown, #6) is the real champion: holdout 33.6 against the tuned control's 27.0. Weighting frontier marks by the size of what lies beyond (#4) helped train, less holdout.
+HURTS: every footprint memory (trail #3, wear #5, boredom #8) loses 1-6 meals. Penalising where I stood bends the wave away from good corridors and food that respawns. Frustration on pressed stone (#7) gained nothing and dropped on holdout. Lingering sources alone are weak (#2).
+FAILURE: sealed pockets (world 16). Once a pocket is mapped it holds no frontier, and confinement mutes everything near its walls, so the wave goes flat and the agent paces. It presses one stone and never tries the brown, leaky cells.
+UNTRIED: when the reachable region holds no source, an escape wave seeded at the most leaky solids; commitment/heading; using `bad`; a distance discount from the agent.
+
+### Holdout checkpoint at 2.24 h
+
+```
+  #6   train 28.5 meals  holdout 33.6  (tuned 5x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 5x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #4   train 27.2 meals  holdout 25.1  (tuned 8x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #5   train 25.7 meals  holdout 27.7  (tuned 5x) | The map gets a WEAR memory: footprints accumulate (bounded) where the agent stands and spread into a halo of w
+  #3   train 24.2 meals  holdout 20.2  (tuned 5x) | The map gets a FOOTPRINT memory: a slowly fading `trail` of where the agent has stood, scrolling with the map.
+  #8   train 22.1 meals  holdout  -    (tuned 4x) | The map learns BOREDOM: a bounded footprint `trail` piles up where the agent keeps standing, and where it exce
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 32x: train 28.5 meals, holdout 27.0
+```

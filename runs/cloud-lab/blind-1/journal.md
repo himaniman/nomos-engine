@@ -1206,3 +1206,101 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
 ```
+
+> 16:56 model job `design` started
+
+---
+
+## Turn 16 -> island #19
+
+**Hypothesis:** Corridor geometry, continuing the line that the field must respect the body (#15's honest diagonals were the last clear gain). A body of radius 0.45 threads a one-cell gap only after drifting onto its centre line and slides along both walls of a one-wide corridor, so such cells cost more time than open floor, yet the wave prices them alike. A cell walled on two opposite sides (a gap or corridor) now passes the wave at a small discount, so of two routes of nearly equal length the agent takes the wider one and loses less time wedged and centring; where a squeeze is the only way, the discount is small enough that the route still wins. Base is #17 (frustration + body-honest diagonals).
+
+Prediction 30.5, got **26.2** meals, fitness 504, per world [27, 31, 24, 28, 24, 28, 23, 15, 38, 25, 34, 23, 22, 33, 27, 24, 28, 29, 22, 20]; model 46.2 s, repairs 0; vocabulary twin of #17, #18, #15
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Squeezes cost time. A body of radius 0.45 threads a one-cell gap only after
+# drifting to its centre line, and slides along both walls of a one-wide corridor,
+# but the wave prices such cells like open floor. A cell walled on two opposite
+# sides (a gap, a corridor) passes the wave at a discount, so of two routes of
+# equal length the agent takes the wider one. Base: #17.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel squeeze
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+# Walled on both sides, left-right or up-down.
+rule narrow:
+  when 1
+  set squeeze = max(min(shift(open, 1, 0) < 0.5, shift(open, -1, 0) < 0.5), min(shift(open, 0, 1) < 0.5, shift(open, 0, -1) < 0.5)) * (solid < 0.5)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully; smell-only lures are muted by frustration.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * squeeze)
+```
+
+### Holdout checkpoint at 5.46 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 6x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #16  train 28.1 meals  holdout  -    (tuned 5x) | Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radi
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #18  train 27.2 meals  holdout  -    (tuned 5x) | Area-restricted search. Food in this world is patchy — larder rooms hold two berries, trees two fruit, caves s
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 84x: train 28.2 meals, holdout 26.6
+```

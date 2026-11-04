@@ -2805,3 +2805,65 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 171x: train 29.8 meals, holdout 24.6
 ```
+
+> 23:55 model job `design` started
+
+---
+
+## Turn 35 -> island #37
+
+**Hypothesis:** Two mechanisms in the best-train law (#10) both decide WHICH frontier to walk to: the unknown-space weighting (#3, +5 over confinement) and the sweep away from the blurred past path. If the sweep already sends the agent toward big unexplored ground (what lies away from where it has been is mostly unknown), the unknown weighting is redundant there. This ablation removes `unknown`/`vast` from #10 as tuned: if it eats about the same, the sweep subsumes the information-gain weight; if it drops ~5, they are separate effects.
+
+Prediction 30.0, got **21.7** meals, fitness 431, per world [22, 4, 19, 39, 30, 30, 20, 8, 24, 39, 30, 26, 1, 29, 25, 8, 23, 33, 0, 24]; model 18.1 s, repairs 0; vocabulary twin of #36, #28, #26, #10, #7, #24
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel been
+channel injection
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the path walked, slowly fading; scrolls with the map
+rule trail:
+  when 1
+  set trail = max(here, 0.998 * trail)
+
+# a wide blur of the path: how much of the agent's own past lies around a cell
+rule been:
+  when 1
+  set been = 0.2 * trail + 0.8 * avg8(been)
+
+# frontier on the side the agent came from counts less: the sweep goes on away from its past
+# ablation: every frontier mark weighs the same again; only the sweep (been) shapes exploration
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, (1 - min(1, 3 * been)))) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 23:58 model job `theory` started

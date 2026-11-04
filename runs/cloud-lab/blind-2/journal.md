@@ -889,3 +889,156 @@ Measured on train, as-written: confinement alone 23.2; plus trust-in-known-groun
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 59x: train 28.3 meals, holdout 27.1
 ```
+
+> 16:53 model job `design` started
+
+---
+
+## Turn 12 -> island #15
+
+**Hypothesis:** The world stocks most of its berries in larder rooms behind doors (up to three per chunk), and the only things that make the agent open one are a faint smell seeping through it or frustration. Once the body has learned that a hue gives (its leak taught above the innate guess), every known wall face of that hue becomes a source in its own right, a promise of a stocked room, so the agent opens the doors it walks past instead of only the ones a smell happens to point at.
+
+Prediction 32.0, got **26.8** meals, fitness 538, per world [29, 17, 25, 46, 26, 38, 25, 30, 43, 32, 17, 48, 0, 13, 40, 14, 23, 37, 11, 22]; model 18.1 s, repairs 0; vocabulary twin of #5, #4, #12, #9, #7, #6
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel door
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# a known wall face whose hue has been TAUGHT to give (leak above the innate guess) is a door:
+# rooms behind doors are where the world stocks its larders
+rule door:
+  when 1
+  set door = solid * max8(free) * max(0, leak - 0.55)
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, 0.4275 + 1.5 * vast)) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak, 2 * door)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 17:12 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** One discount serves two jobs with different needs: food should be taken nearest-first, but for exploration the wave's 6% per step makes a two-cell crack next to the agent beat a wide unknown at the map's edge, so the agent pokes into every pocket and shadow nearby. Frontier marks are now paid back part of the distance discount by their distance from the agent (exp of distance), so exploration becomes far-sighted while food stays near-sighted, within one wave.
+
+Prediction 31.0, got **25.6** meals, fitness 504, per world [31, 34, 4, 19, 25, 35, 26, 34, 20, 43, 0, 17, 8, 39, 38, 33, 26, 24, 17, 38]; model 96.2 s, repairs 0; vocabulary twin of #5, #4
+
+value on the test map: max 0.10, mean 0.07, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel far
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# distance from the agent in cells (the agent sits at 14/29 of the lattice)
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frontier marks are paid back part of the wave's distance discount: exploration is far-sighted,
+# food stays near-sighted; frustrated, known wall faces become targets
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4275 + 1.5 * vast) * exp(0.04 * far))) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 4.51 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 6x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 6x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 6x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #14  train 30.2 meals  holdout  -    (tuned 5x) | The body turns only ~20 degrees per thought, so a U-turn costs about nine thoughts of standing and swinging, y
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #8   train 27.3 meals  holdout  -    (tuned 5x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 67x: train 28.3 meals, holdout 27.1
+```

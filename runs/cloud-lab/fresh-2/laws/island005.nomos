@@ -1,0 +1,48 @@
+# The agent gets a global internal state, FRUSTRATION. A wide blur of the trail, read at the centre cell, measures how much it is circling over old ground. That mood spreads across the map from the centre and fades slowly. As it rises, smell sources are damped and frontier marks are amplified, so a smell trap or limit cycle (the 0-meal worlds) flips the wave from exploiting to exploring until the agent reaches fresh ground. There, the trail thins and the smell takes back over.
+
+# Frustration-gated exploration: a blurred trail measures how much the agent is
+# circling; that mood is broadcast from the centre and flips injection from smell
+# (exploit) toward frontier marks (explore) until the agent breaks out.
+
+channel source
+channel solid
+channel thing
+channel scent
+channel here
+channel bad
+channel value
+channel trail
+channel crowd
+channel mood
+channel confinement
+channel injection
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.6 * max8(here), 0.997 * trail)
+
+# Wide blur of the trail: how revisited the neighbourhood of a cell is, in [0, 1].
+rule blur:
+  when 1
+  set crowd = 0.3 * avg8(trail) + 0.7 * avg8(crowd)
+
+# Mood = crowding read at the agent, broadcast over the map, fading slowly.
+rule frustrate:
+  when 1
+  set mood = max(here * clamp(3 * crowd - 0.6, 0, 1), 0.995 * max8(mood))
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Smell sources weaken and frontier marks strengthen as frustration builds; seen morsels inject fully.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.7824 * trail) * where(scent + thing > 0.012, 1 - 0.6 * mood, 1 + 2 * mood)) * (1.029 - bad) / (1 + 0.5 * confinement)
+
+# Bellman wave; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

@@ -1,0 +1,42 @@
+# When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent stands still and starves, which is my guess for worlds like 110 and 118. A new PROBE source makes the faces of known walls (solid touching known-free) faint sources weighted by their taught leak, kept below the 0.12 frontier and erased by the trail once pressed. That way a sealed agent goes and presses the most door-like walls one after another, opens a way out, and then the frontier and smell outside take over again, on top of #3's inhibition of return.
+
+# Wall probing: when the open map is spent, the faces of walls become faint sources weighted
+# by their taught leak, so the agent presses doors (likely ones first) instead of standing still.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.6 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.7824 * trail)) * (1.029 - bad) / (1 + 0.5 * confinement)
+
+# Known wall faces (solid touching known-free) are faint sources, scaled by leak, spent once pressed.
+rule calc_probe:
+  when 1
+  set probe = 0.06 * solid * max4(free) * leak * clamp(1 - 1.5 * trail, 0, 1) * (1 - bad)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.916214 * max8(value)) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

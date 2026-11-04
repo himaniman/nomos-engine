@@ -1296,3 +1296,92 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+### Holdout checkpoint at 5.33 h
+
+```
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #3   train 26.7 meals  holdout 27.3  (tuned 7x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 6x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 8x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 104x: train 27.3 meals, holdout 25.4
+```
+
+> 16:38 model job `design` started
+
+---
+
+## Turn 20 -> island #23
+
+**Hypothesis:** Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an unknown cell that continues a seen wall line (walls on two opposite sides, or two wall cells in a row pointing at it) is very likely wall. MAP COMPLETION guesses those cells, so frontier marks on them stop calling (a false frontier along every wall the agent walks beside) and the wave passes them at half strength, so plans stop aiming at the hidden continuation of walls and head for real gaps.
+
+Prediction 28.0, got **29.6** meals, fitness 584, per world [37, 34, 22, 34, 21, 27, 35, 33, 34, 35, 30, 26, 24, 37, 30, 41, 0, 37, 20, 36]; model 10.1 s, repairs 0; vocabulary twin of #17, #22, #20, #18, #21, #13
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel guess
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# map completion: an unknown cell that continues a straight wall (walls on two opposite sides, or one wall end pointing at it) is probably wall
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# a frontier mark that is probably wall is a false promise
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# unknown ground costs extra, and a guessed wall passes only half the wave
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 16:42 model job `observe` started
+
+---
+
+## Observer: #23 on world 16
+
+![](observe/obs03_island23_world16.png)
+
+`{'meals': 0, 'ticks': 3538, 'alive': False, 'distance': 385.8, 'cells_visited': 65, 'last500_box': '4x12', 'doors': 5, 'breaks': 5, 'idle_presses': 106, 'nightcaps': 0}`
+
+Same world, same trap: the agent is born in the small two-corridor pocket and spends its whole life sweeping it (65 cells visited, a 4x12 box for its last 500 ticks) until it starves at the east end, with food a few cells away in the neighbouring rooms.
+It is not passive: it opened 5 doors and broke 5 things, but made 106 idle presses, and after each opening it swings back into the pocket instead of stepping through, so the openings never become a way out.
+The pull that brings it back is the pocket itself: all values are local and short-lived, and the footprint trail fades within a few thoughts, so each time it turns round the far end of the pocket looks fresh again.
+One mechanism: a slow HABITUATION field that accumulates wherever the agent spends time (much slower to fade than the trail) and dims the value there, so after a few hundred ticks in one small area everything familiar is dark and the only bright cells left are beyond the doors it has opened.
+
+> 16:50 model job `design` started

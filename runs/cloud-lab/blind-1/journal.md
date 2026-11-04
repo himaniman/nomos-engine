@@ -663,3 +663,93 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 46x: train 28.2 meals, holdout 26.6
 ```
+
+> 14:38 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** Food and exploration have been one wave with one discount, so how a far frontier trades against a near one, and exploration against food, was fixed by distance alone. Splitting them into two waves with their own horizons — food (appetite-weighted things and smell, confinement-suppressed) with the usual steep discount, exploration (frontier and learned doors, muted behind the agent) with a much slower one — lets the far frontier straight ahead keep its pull over a near frontier at the side, making exploration more ballistic, while nearby food still wins; value is the larger of the two.
+
+Prediction 29.0, got **25.1** meals, fitness 496, per world [40, 24, 35, 35, 25, 26, 20, 33, 28, 21, 15, 34, 30, 13, 22, 40, 0, 7, 22, 32]; model 38.1 s, repairs 0
+
+value on the test map: max 0.96, mean 0.70, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Two waves, two horizons. Food and exploration were one wave with one discount,
+# so the trade between a far frontier and a near one was fixed by distance alone.
+# Here food (appetite-weighted things, smell) spreads in its own wave with the
+# usual 0.94, and exploration (frontier, learned doors, muted behind the agent)
+# in a second, slower-decaying wave, so the far frontier ahead keeps its pull over
+# the near one at the side; `value` is the larger of the two.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel trail
+channel behind
+channel door
+channel lure
+channel roam
+channel foodwave
+channel roamwave
+channel pass
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule passability:
+  when 1
+  set pass = (1 - solid * (1 - leak)) * (1 - bad)
+
+# Split the senses: what is food, and what is only worth looking at.
+rule split_sources:
+  when 1
+  set lure = where(max(thing, scent) > 0, source, 0) / (1 + 0.5 * sum8(solid))
+  set roam = max(where(max(thing, scent) > 0, 0, source), 0.3 * door) * exp(-40 * behind)
+
+rule food_wave:
+  when 1
+  set foodwave = max(lure, 0.94 * max4(foodwave), 0.916214 * max8(foodwave)) * pass
+
+rule roam_wave:
+  when 1
+  set roamwave = max(roam, 0.97 * max4(roamwave), 0.957847 * max8(roamwave)) * pass
+
+rule readout:
+  when 1
+  set value = max(foodwave, roamwave)
+```
+
+### Holdout checkpoint at 3.28 h
+
+```
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 7x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #10  train 26.9 meals  holdout  -    (tuned 5x) | Object permanence. A morsel is painted only while it is inside the field of view, so turning toward one target
+  #6   train 25.6 meals  holdout 23.5  (tuned 5x) | Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing,
+  #13  train 25.1 meals  holdout  -    (tuned 4x) | Food and exploration have been one wave with one discount, so how a far frontier trades against a near one, an
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 55x: train 28.2 meals, holdout 26.6
+```
+
+> 14:55 model job `design` started

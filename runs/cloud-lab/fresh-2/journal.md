@@ -1165,3 +1165,99 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 63x: train 27.2 meals, holdout 25.4
 ```
+
+> 17:38 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slow-fading memory of every seen morsel site (wiped by `bad`); once the trail there has faded, the old site glows again as a faint source, so the wave sends the agent back round its regrowing feeding grounds instead of pacing. Second, futility now counts aimed thoughts with no fast leak and turns on continuously, so the exit from pressing rock always fires (in #13 `work` settled at ~0.09 and never reached 0.9).
+
+Prediction 33.0, got **31.2** meals, fitness 633, per world [31, 25, 35, 31, 45, 44, 26, 15, 37, 40, 28, 12, 33, 37, 43, 27, 34, 31, 23, 28]; model 70.2 s, repairs 0; vocabulary twin of #13, #14, #7
+
+value on the test map: max 0.62, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Larder memory: where morsels were seen is remembered for long; once the trail there has
+# faded, the old site glows again as a faint source (food regrows). Futility counts presses.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel thin
+channel spent
+channel larder
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9094 * max8(here), 0.997 * trail)
+# Larder: a long memory of seen morsel sites, wiped where poison was refused.
+rule remember:
+  when 1
+  set larder = max(thing, 0.9998 * larder) * (1 - bad)
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Thin wall: known free on one side and NOT known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+# Seen morsels inject fully; other sources fade where the agent went; old larder sites regrow.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail), 0.35 * larder * clamp(1 - 1.5 * trail, 0, 1)) * (0.8345 - bad) / (1 + 0.8336 * confinement)
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+# Work: a COUNT of thoughts spent aimed at a solid face (no fast leak), wiped once spent.
+rule effort:
+  when 1
+  set work = min(1, 0.9995 * work + 0.006 * aim * solid) * (1 - spent)
+# Futility grows continuously with work, so the exit always fires eventually; slowly forgiven.
+rule futility:
+  when 1
+  set spent = max(0.9995 * spent, clamp(2 * work - 0.6, 0, 1) * solid)
+# Wall faces are sources only if thin and not spent: faint by default, committed share with work.
+rule calc_probe:
+  when 1
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.058 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work)
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.319 - leak)) * (1 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 4.99 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 5x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 1x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #15  train 30.9 meals  holdout  -    (tuned 5x) | Two changes on new axes. First, a frontier mark is weighted by how much is still unknown behind it (the unknow
+  #10  train 30.9 meals  holdout  -    (tuned 5x) | A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every w
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 69x: train 27.2 meals, holdout 25.4
+```

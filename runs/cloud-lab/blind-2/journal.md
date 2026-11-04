@@ -2453,3 +2453,96 @@ rule wave:
   when 0.8649
   set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value))) * (1 - solid * (1.028 - leak))
 ```
+
+### Holdout checkpoint at 9.80 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #30  train 32.2 meals  holdout 25.7  (tuned 5x) | Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so 
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 5x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 154x: train 28.3 meals, holdout 27.1
+```
+
+> 22:37 model job `design` started
+
+---
+
+## Turn 31 -> island #33
+
+**Hypothesis:** Removing trust in known ground (#32) brought world 112 back from 0 to 26 meals but cost ~7 meals elsewhere: distrust of unknown cells is right in general and wrong exactly when the only way on runs through unconfirmed ground. So distrust is made conditional: dwell-frustration, already the law's sign of being stuck, lifts it, and a stuck agent's wave values routes through unknown cells at full price until it moves again. Built on the best-holdout law (#25 as tuned).
+
+Prediction 32.0, got **27.7** meals, fitness 553, per world [29, 25, 34, 16, 37, 25, 26, 23, 31, 37, 26, 33, 24, 24, 43, 18, 28, 32, 24, 19]; model 18.1 s, repairs 0; vocabulary twin of #32, #30, #29, #25, #31, #16
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4611 + 1.5 * vast) * (0.8222 + 2 * ars * exp(0 - far / 4)))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known (unknown cells dearer) - unless the agent is stuck: frustration
+# lifts the distrust, so a way on through unconfirmed ground gets its full value back
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, max(free, 3 * frust)))) * (1 - solid * (1.028 - leak))
+```
+
+> 22:54 model job `design` started

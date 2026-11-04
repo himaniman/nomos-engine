@@ -1,0 +1,63 @@
+# Most of this world's food sits in closed places — larder rooms behind doors and caves behind rubble — but the frontier only marks unknown cells that touch known-FREE ground, so an unexplored room behind a wall is worth nothing to exploration, and the door rule of #9 only fires after a door's hue has already been taught. Here unknown cells directly behind a known wall face become a faint curiosity source (frontier strength, muted behind the agent); the wave reaches them only through the wall's leak, so walls are probed mainly when the open frontier is far away, and the existing leak learner (pressing opens = up, stone = down) quickly confines the probing to door- and rubble-coloured walls, op
+
+# What lies behind a wall. Larders and caves are closed rooms, and the frontier
+# only marks unknown cells touching known-FREE ground, so a walled-off unknown is
+# worth nothing until the leak of its door's hue has been taught. Here unknown
+# cells just behind a known wall face are a faint curiosity source; the wave
+# reaches it only through the wall's leak, so the agent probes walls when the open
+# frontier is far, and the leak learner (press: opens = +, stone = -) soon keeps
+# the probing on door-coloured walls. Base: #11 (appetite, aversion, ballistic, doors).
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel wallface
+channel beyond
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+# A known wall that faces known-free ground.
+rule find_wallface:
+  when 1
+  set wallface = solid * clamp(sum4(free), 0, 1)
+
+# Unknown cells right behind such a wall: a room nobody has looked into.
+rule find_beyond:
+  when 1
+  set beyond = clamp((1 - free) * (1 - solid), 0, 1) * clamp(sum4(wallface), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind), 0.12 * beyond * exp(-40 * behind)) * (1 - aversion)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion)

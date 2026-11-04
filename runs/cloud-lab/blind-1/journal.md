@@ -506,3 +506,160 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 36x: train 28.2 meals, holdout 26.6
 ```
+
+> 13:58 model job `design` started
+
+---
+
+## Turn 8 -> island #11
+
+**Hypothesis:** Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it overrode the appetite the brain learns (source carries the want-weighted morsel); the agent keeps walking to nightcaps it has learned to refuse and stands by them. Here morsels pull only through `source`, and a remembered refusal (`bad`) casts a decaying aversion halo that hushes lures near it and bends the wave around the burnt place, so after one burn the agent stops spending time and energy on poison. Base is #9 (ballistic exploration + learned doors).
+
+Prediction 28.5, got **28.9** meals, fitness 553, per world [37, 38, 29, 42, 15, 24, 20, 51, 33, 25, 32, 35, 6, 24, 27, 33, 26, 31, 18, 32]; model 46.2 s, repairs 0; vocabulary twin of #9, #10
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Honest appetite + aversion. `thing` is 1 on EVERY seen morsel, poison included,
+# and the old max(thing, source) let it override the appetite the brain has
+# learned (source = want-weighted). Here a morsel pulls only by `source`, and a
+# remembered refusal casts a decaying aversion halo that both hushes lures and
+# bends the wave around the burnt place. Base: #9 (ballistic + doors).
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+# A halo around remembered refusals, falling off with distance.
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+# Appetite-weighted lures only; frontier and doors muted behind; all hushed by aversion.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion)
+```
+
+> 14:14 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** Most of this world's food sits in closed places — larder rooms behind doors and caves behind rubble — but the frontier only marks unknown cells that touch known-FREE ground, so an unexplored room behind a wall is worth nothing to exploration, and the door rule of #9 only fires after a door's hue has already been taught. Here unknown cells directly behind a known wall face become a faint curiosity source (frontier strength, muted behind the agent); the wave reaches them only through the wall's leak, so walls are probed mainly when the open frontier is far away, and the existing leak learner (pressing opens = up, stone = down) quickly confines the probing to door- and rubble-coloured walls, op
+
+Prediction 30.0, got **23.7** meals, fitness 454, per world [24, 36, 25, 42, 15, 30, 15, 24, 33, 9, 32, 26, 21, 26, 21, 46, 0, 6, 15, 28]; model 90.2 s, repairs 0; vocabulary twin of #11, #9, #10
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# What lies behind a wall. Larders and caves are closed rooms, and the frontier
+# only marks unknown cells touching known-FREE ground, so a walled-off unknown is
+# worth nothing until the leak of its door's hue has been taught. Here unknown
+# cells just behind a known wall face are a faint curiosity source; the wave
+# reaches it only through the wall's leak, so the agent probes walls when the open
+# frontier is far, and the leak learner (press: opens = +, stone = -) soon keeps
+# the probing on door-coloured walls. Base: #11 (appetite, aversion, ballistic, doors).
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel wallface
+channel beyond
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+# A known wall that faces known-free ground.
+rule find_wallface:
+  when 1
+  set wallface = solid * clamp(sum4(free), 0, 1)
+
+# Unknown cells right behind such a wall: a room nobody has looked into.
+rule find_beyond:
+  when 1
+  set beyond = clamp((1 - free) * (1 - solid), 0, 1) * clamp(sum4(wallface), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind), 0.12 * beyond * exp(-40 * behind)) * (1 - aversion)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion)
+```
+
+### Holdout checkpoint at 2.78 h
+
+```
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 7x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #10  train 26.9 meals  holdout  -    (tuned 5x) | Object permanence. A morsel is painted only while it is inside the field of view, so turning toward one target
+  #6   train 25.6 meals  holdout 23.5  (tuned 5x) | Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing,
+  #3   train 24.6 meals  holdout 26.8  (tuned 5x) | Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 46x: train 28.2 meals, holdout 26.6
+```

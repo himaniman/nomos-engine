@@ -499,6 +499,18 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   accepts), hence `--margin 0.02` and 32 FINAL worlds nobody sees until the end.
   Run: `python -m cortex.night_lab --hours 6 --dir out/cortex/night/<name>` (same
   command again = resume). First 6-hour night: `out/cortex/night/2026-09-23/`.
+  RESULT: the model's structure won the 32 never-seen FINAL worlds — champion #35
+  (injection divided by confinement `sum8(solid)`) 24.5 meals vs reference wave 18.8,
+  control (ghost rng-tuned 138x) 17.1 — and showed no train->final drop, while every
+  heavily-tuned law dropped (structure generalises, constants don't). The night's
+  failure modes: world 16 ate the search (0 meals for EVERY law; the observer kept
+  showing that one life, and ~15 islands were variations on commit/confinement);
+  thinking turns (~17 min) paid nothing (0.6/3.0 meals) vs the champion's plain 75-s
+  turn; the final theory contradicted the champion. PORTED back as `Config.conf_pen`
+  + lineage gene (branch `atlas-confinement`): the law's 0.5 loses (37.4 vs 42.6),
+  0.3 looked like +10 meals on seeds 0-15 and DID NOT REPLICATE on 16-31 (32.6 ->
+  31.2); over 32 worlds +4.4 with SE ~5 = a shrug, a textbook winner's curse on
+  chaotic worlds. Default stays 0.0 — available to the lineage and the next night.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

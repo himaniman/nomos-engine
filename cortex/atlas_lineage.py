@@ -53,6 +53,9 @@ FIELDS: dict[str, tuple] = {
     "smell_floor": (0.35, 0.0, 1.0, False,
                     "the least a faint smell is painted at"),
     "thing_gain":  (1.0, 0.0, 2.0, False, "pull of a seen bright thing"),
+    "conf_pen":    (0.0, 0.0, 2.0, False,
+                    "confinement suppression: a source hemmed in by solid counts"
+                    " less (night lab champion, 2026-09-23)"),
     "leak":        (0.5, 0.0, 0.9, False,
                     "how much wave a solid cell lets through, innately (the hue learns)"),
     "linger":      (0.99, 0.0, 0.998, False,

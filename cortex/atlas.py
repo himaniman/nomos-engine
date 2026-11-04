@@ -109,6 +109,14 @@ class Config:
                                     # 32.2, 1.0 -> 18.8 (chases every far smell to the
                                     # map edge instead of exploring what is near)
         self.thing_gain = 1.0       # ...and of a seen bright non-solid thing
+        self.conf_pen = 0.0         # CONFINEMENT SUPPRESSION: a source hemmed in by
+                                    # solid is divided by (1 + conf_pen * sum8(solid)),
+                                    # so local food in a nook stops dominating the
+                                    # field and the frontier wins there. Found by the
+                                    # night lab (champion #35, 2026-09-23): 24.5 meals
+                                    # on 32 never-seen worlds vs 18.8 the plain wave,
+                                    # 17.1 the ghost tuned 138x — and no drop between
+                                    # train/holdout/final, a structural gain
         self.bright_min = 0.6       # what counts as a THING: brighter than any floor
                                     # or leaf (0.58), i.e. the innate appetite is "go
                                     # for the bright stuff" — hue is left for learning
@@ -393,6 +401,12 @@ class Atlas:
             for dy, dx in _NBRS:
                 nb |= np.roll(known_free, (dy, dx), axis=(0, 1))
             src = src + c.frontier * (unknown & nb)
+        if c.conf_pen > 0.0:
+            sol = np.clip(st[SOLID], 0.0, 1.0)
+            conf = np.zeros_like(sol)
+            for dy, dx in _NBRS:
+                conf += np.roll(sol, (dy, dx), axis=(0, 1))
+            src = src / (1.0 + c.conf_pen * conf)
         if st[BAD].max() > 0.05:
             # a remembered bad thing silences every source near it: the smell that led
             # here is a lie this brain has learned not to follow, for a while

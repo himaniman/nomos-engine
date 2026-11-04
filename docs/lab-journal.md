@@ -2793,4 +2793,82 @@ agent does wrong.
 **The night** (`out/cortex/night/2026-09-23/`): 6 hours, train 0-19, holdout 20-35,
 final 36-67, 8000 ticks, tune 5 evaluations per new structure then round-robin over the
 best three, a deep (thinking) turn every 6th design turn, theory every 6, observer every
-8 (or on a new champion). Results below once it is done.
+8 (or on a new champion).
+
+## 2026-09-24 — the night's results, and what it says about the loop
+
+### The port experiment (branch `atlas-confinement`): the dose is the finding
+
+#35's mechanism went into `cortex/atlas.py` as `Config.conf_pen` (a source hemmed in
+by solid is divided by `1 + conf_pen * sum8(solid)`; also a lineage gene). Probe
+ladder unchanged at every dose tried (0.87-0.88). But the headline, 16 worlds x 20000
+ticks, is NON-MONOTONE in the dose:
+
+```
+conf_pen   meals   immortal
+0.0        42.6    9/16      (the current default: linger 0.99, leak 0.5)
+0.15       43.7    9/16
+0.3        52.9    12/16
+0.5        37.4    6/16
+```
+
+At the law's own 0.5 the mechanism LOSES — suppression so strong the agent starves
+waiting (immortal halves). At 0.3 it looked like the best headline the atlas had
+posted: +10 meals, 12 immortal. **So we confirmed on sixteen worlds nobody had used
+(seeds 16-31): base 32.6 meals / 9 immortal, conf 0.3: 31.2 / 6 — the win did not
+replicate.** Combined over all 32 worlds the paired difference is +4.4 meals with an
+SE near 5: a shrug. The 0-15 sweep is a textbook winner's curse on chaotic worlds —
+four doses tried, one world swinging 40 meals on a single learned verdict, and the
+best-looking dose is the luckiest one. The night's own lesson about 1+1 jitter applies
+to a manual sweep of four. `conf_pen` stays in the code and the genome at default 0.0 —
+a mechanism the lineage or the next night can reach for, not a default.
+
+And the model's final theory, wrong about its own champion at the law's dose ("the
+confinement penalty is too aggressive"), at least named the right tension: suppression
+strong enough to matter is strong enough to starve.
+
+### What the night itself said
+
+42 design turns, 38 islands, 6 theory rewrites, 5 observations. **FINAL worlds** (32,
+seen by nobody until the end; the champion was only tuned 5x — the structure, not the
+constants, carried it):
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+ghost, hand-written (#1)            14.6 meals  immortal 20/32
+CONTROL: ghost tuned 138x           17.1 meals  immortal 26/32
+#35 tuned 5x                        24.5 meals  immortal 28/32
+#10 tuned 12x                       21.6 meals  immortal 29/32
+#3 tuned 24x                        20.6 meals  immortal 26/32
+#10 as written                      19.6 meals  immortal 29/32
+```
+
+**The model beat the control with an idea.** Champion #35 divides the injection by
+confinement — `injection = max(thing, source) / (1 + 0.5 * sum8(solid))` — local food
+in tight spots stops dominating the field, the frontier wins there. It did not drop
+between sets at all (train 25.7 = holdout 25.7 -> final 24.5), while everything
+heavily tuned did (#3: holdout 23.5 -> final 20.6; control: 21.4 -> 17.1). Second
+confirmation of the division of labour: **structure generalises, constants don't.**
+The control lost to the hand-written wave on finals too (17.1 vs 18.8) — 138 accepted
+jitters bought nothing the world didn't already give for free.
+
+**And three findings about the night lab itself:**
+
+1. **World 16 ate the night.** It scored 0 for EVERY law, champion included, and the
+   observer showed the model the same frozen life there four times (identical metrics:
+   59 cells, box 1x1) — so the model wrote ~15 variations of one idea (commit /
+   confinement / visited, embedding similarity 0.76-0.92) aimed at a single world.
+   The win came from a different direction. Fixes for night 2: the observer rotates
+   over the champion's several worst lives instead of one, and an embedding deduper
+   pushes the model onto a new axis instead of the 10th commit channel.
+2. **Thinking did not pay.** Deep turns (~17 min each) produced 0.6 and 3.0 meals; the
+   champion came from a plain 75-second turn. Worse, the final THEORY contradicted the
+   result ("the confinement penalty is too aggressive" — the champion IS a confinement
+   penalty): the theory tracked the conversation, not the evidence.
+3. Two turns lost to parse errors, one behavioural twin slipped through (a chained-set
+   law scoring the ghost's exact meals on every world).
+
+The night validated the design split (model = structure, rng = constants, control arm
+to keep both honest) and left a concrete continuation: port the confinement mechanism
+back into `cortex/atlas.py` like `linger` before it, and seed night 2 from the
+champion rather than the ghost.

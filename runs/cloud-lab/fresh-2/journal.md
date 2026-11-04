@@ -2620,3 +2620,104 @@ rule wave:
 ```
 
 > 23:31 model job `design` started
+
+---
+
+## Turn 28 -> island #31
+
+**Hypothesis:** A new axis, aversion memory: every remembered refusal (`bad`) now casts a fading `burn` field a few cells wide. Inside that field the painted smell (`scent`) is subtracted from the source, and the wave detours softly around it. A nightcap smells like a berry, so until now the smell bearing kept dragging the agent back to the spot it had already refused, where it circled or ate poison worth -30. Discounting the smell where it has burned the agent before lets the wave go for the next-best real food or the frontier, so less of the life is lost in those loops and fewer nightcaps get eaten.
+
+Prediction 35.5, got **31.1** meals, fitness 634, per world [40, 24, 41, 35, 32, 26, 41, 25, 26, 32, 36, 31, 22, 31, 29, 26, 27, 27, 30, 40]; model 80.2 s, repairs 0; vocabulary twin of #23, #28, #30, #29, #27, #26
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Burn: a remembered refusal casts a fading aversion field; the smell is distrusted inside it,
+# because a nightcap smells like a berry and its scent keeps the agent circling the refused spot.
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel burn
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+# Grain: drawn once for a cell when it scrolls into view, then fixed to that place.
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Burn: aversion spreading out of every refusal, discounted with distance, bounded by 1.
+rule calc_burn:
+  when 1
+  set burn = max(bad, 0.86 * max4(burn), 0.8 * max8(burn))
+# Thin wall: known free on one side and not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+# Face score: thin, leaky, not burnt, ranked by grain.
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - burn) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+# Seen morsels inject fully; the smell is subtracted where it lies in a burn; trail fades sources.
+rule inject:
+  when 1
+  set injection = max(thing * (1 - 0.5 * burn), clamp(source - 0.9 * burn * scent, 0, 1) * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave; the wave itself passes a burn a little less readily (a soft detour round it).
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad) * (1 - 0.15 * burn)
+```
+
+### Holdout checkpoint at 11.01 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 6x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #30  train 34.5 meals  holdout 31.4  (tuned 5x) | A new axis — connectivity. A second, walk-only wave (`hope`) spreads the same sources but stops dead at every 
+  #28  train 34.4 meals  holdout 29.9  (tuned 7x) | The pocket-born agent chips several faces and breaks none because faces are ranked by a random grain, blind to
+  #26  train 32.9 meals  holdout 25.9  (tuned 5x) | Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing wit
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #27  train 33.2 meals  holdout  -    (tuned 5x) | Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trai
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 147x: train 29.7 meals, holdout 24.6
+```

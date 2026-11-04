@@ -1,0 +1,66 @@
+# A synthesis test of the two mechanisms that each fixed a hard world without breaking another: heading momentum (#9: worlds 116/117 at 28/20 where the trail law #7 had 7/6, and still out of the world-110 pocket at 29, 20/20 immortal) and thin-wall leak (#11: world 117 6 -> 33 by leading presses into room walls instead of rock), on #7's frustration/roominess/ghost/confinement substrate — with the trail, gateway and unknown-route risk dropped (the last two are the only common factor of #10/#11's collapse to 1 meal on world 112). If momentum + thin walls are additive, the law should keep #9's floor and #11's town worlds.
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel recent: init 0
+channel momentum
+channel thinwall
+channel plan
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+# a neighbour of the agent scores how freshly the cell opposite it was left
+rule heading:
+  when 1
+  set momentum = max(shift(here, 1, 0) * shift(recent, 2, 0), shift(here, -1, 0) * shift(recent, -2, 0), shift(here, 0, 1) * shift(recent, 0, 2), shift(here, 0, -1) * shift(recent, 0, -2), shift(here, 1, 1) * shift(recent, 2, 2), shift(here, -1, -1) * shift(recent, -2, -2), shift(here, 1, -1) * shift(recent, 2, -2), shift(here, -1, 1) * shift(recent, -2, 2))
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+# a solid cell one cell thick along some axis: a room wall where a door can be, not rock mass
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+# the leak lives in thin walls; frustration raises it; no trail term
+rule wave:
+  when 1
+  set plan = max(injection, max(0.94 * max4(plan), 0.916214 * max8(plan))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+# keep going the way you were going unless another way is clearly better
+rule commit:
+  when 1
+  set value = plan * (1 + 0.1 * momentum)

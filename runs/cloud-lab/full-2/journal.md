@@ -795,3 +795,99 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (1 + 3 * crowd))))
 ```
+
+### Holdout checkpoint at 2.71 h
+
+```
+  #7   train 32.2 meals  holdout 27.2  (tuned 5x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #11  train 28.2 meals  holdout 25.5  (tuned 5x) | The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times
+  #10  train 27.9 meals  holdout 28.2  (tuned 5x) | Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over k
+  #12  train 26.9 meals  holdout  -    (tuned 2x) | Bold axis: AREA-RESTRICTED SEARCH, the classic optimal-foraging rule. Food in this world is clumped by habitat
+  #5   train 26.6 meals  holdout 28.7  (tuned 5x) | 70% of food spots are renewable and regrow ~1200 ticks after being eaten, but every law so far forgets a spot 
+  #4   train 26.2 meals  holdout 28.9  (tuned 5x) | Exploration is a flat 0.12 on every frontier cell, so a crack into a one-cell pocket pulls as hard as an openi
+  #8   train 25.7 meals  holdout  -    (tuned 5x) | Axis: the far-vs-near trade-off. One wave gives every source the same 0.94/cell horizon, so a wide frontier te
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 48x: train 27.6 meals, holdout 23.2
+```
+
+> 15:40 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** A synthesis test of the two mechanisms that each fixed a hard world without breaking another: heading momentum (#9: worlds 116/117 at 28/20 where the trail law #7 had 7/6, and still out of the world-110 pocket at 29, 20/20 immortal) and thin-wall leak (#11: world 117 6 -> 33 by leading presses into room walls instead of rock), on #7's frustration/roominess/ghost/confinement substrate — with the trail, gateway and unknown-route risk dropped (the last two are the only common factor of #10/#11's collapse to 1 meal on world 112). If momentum + thin walls are additive, the law should keep #9's floor and #11's town worlds.
+
+Prediction 29.0, got **26.1** meals, fitness 511, per world [31, 27, 23, 30, 29, 27, 15, 29, 12, 34, 30, 19, 31, 27, 30, 31, 21, 23, 26, 28]; model 70.1 s, repairs 0; vocabulary twin of #9, #11
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel recent: init 0
+channel momentum
+channel thinwall
+channel plan
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+# a neighbour of the agent scores how freshly the cell opposite it was left
+rule heading:
+  when 1
+  set momentum = max(shift(here, 1, 0) * shift(recent, 2, 0), shift(here, -1, 0) * shift(recent, -2, 0), shift(here, 0, 1) * shift(recent, 0, 2), shift(here, 0, -1) * shift(recent, 0, -2), shift(here, 1, 1) * shift(recent, 2, 2), shift(here, -1, -1) * shift(recent, -2, -2), shift(here, 1, -1) * shift(recent, 2, -2), shift(here, -1, 1) * shift(recent, -2, 2))
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+# a solid cell one cell thick along some axis: a room wall where a door can be, not rock mass
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+# the leak lives in thin walls; frustration raises it; no trail term
+rule wave:
+  when 1
+  set plan = max(injection, max(0.94 * max4(plan), 0.916214 * max8(plan))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+# keep going the way you were going unless another way is clearly better
+rule commit:
+  when 1
+  set value = plan * (1 + 0.1 * momentum)
+```

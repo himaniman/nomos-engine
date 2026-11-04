@@ -1779,3 +1779,154 @@ rule plan:
 ```
 
 > 18:24 model job `design` started
+
+---
+
+## Turn 27 -> island #30
+
+**Hypothesis:** The minimal law fell to 24.6 (#29), so darkness and trail are load-bearing, and the best structure is the knowledge-priced wave with its helpers. The one remaining unpriced thing in it is a SEEN wall: every wall cell passes the wave by its own taught leak, alike for rock and door; door contrast (#19) gave the best holdout (31.2) on the older base. Here walls are priced by their door contrast inside #23 (map completion + unknown-ground price), and darkness no longer counts guessed-wall cells as unexplored, so the whole map is priced by what the agent knows: seen floor cheap, unknown dearer, guessed wall dearer still, rock nearly shut, doors open.
+
+Prediction 30.0, got **27.1** meals, fitness 548, per world [42, 30, 24, 33, 17, 28, 25, 29, 31, 16, 33, 27, 25, 33, 29, 34, 0, 31, 21, 33]; model 12.1 s, repairs 0; vocabulary twin of #19, #27, #25, #23, #26, #28
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs, guessed wall passes half, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 18:36 model job `observe` started
+
+---
+
+## Observer: #30 on world 16
+
+![](observe/obs04_island30_world16.png)
+
+`{'meals': 0, 'ticks': 3640, 'alive': False, 'distance': 416.5, 'cells_visited': 63, 'last500_box': '4x12', 'doors': 0, 'breaks': 0, 'idle_presses': 182, 'nightcaps': 0}`
+
+The new best law fails world 16 exactly like its predecessors: born in the two-corridor pocket, it sweeps the same ~63 cells for its whole life and starves at the east end, never reaching the food in the rooms around it.
+What changed is the pressing: 182 idle presses and 0 doors or breaks (earlier laws opened 1-5 doors here), so the door contrast now concentrates its pushes on a few rock cells instead of spreading them, and none of those cells is one of the brown door/rubble tiles at the pocket's ends and below it.
+The contrast can only light a door once the door's hue has been pressed and taught; a door never pressed keeps the innate leak and does not stand out from untaught rock, while repeatedly pressed rock is the cell the wave keeps returning to.
+One mechanism: make a wall cell's pull through the wave decay with the number of presses it has already received without giving (a per-cell, not per-hue, refusal count that dims its leak), so after a few failed pushes on one rock cell the next-best wall cell becomes the target and every boundary cell of a pocket, the doors included, eventually gets tried.
+
+> 18:42 model job `design` started
+
+---
+
+## Turn 28 -> island #31
+
+**Hypothesis:** Every law of the night injects a seen morsel at full strength (thing * (1 - bad)) whatever the taught appetite says, so a nightcap the brain has learned to refuse still calls the agent across the map until it arrives, refuses and marks it bad; the harness's own source already carries that appetite. Scaling the morsel term by the source painted on it (appetite-weighted, hushed near bad things) makes the agent ignore things it does not want and saves those wasted trips; a poison-handling axis the night has not touched, on the new best base (#30).
+
+Prediction 30.0, got **27.8** meals, fitness 561, per world [42, 30, 24, 33, 18, 28, 27, 29, 32, 16, 33, 27, 25, 36, 32, 34, 0, 36, 20, 33]; model 14.1 s, repairs 0; vocabulary twin of #30, #19, #27, #25, #23, #26
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+# a seen morsel counts only as much as the appetite wants it (source at the morsel carries the taught appetite)
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad) * clamp(2 * source, 0, 1), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs, guessed wall passes half, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - free)) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 7.60 h
+
+```
+  #30  train 31.4 meals  holdout 27.2  (tuned 5x) | The minimal law fell to 24.6 (#29), so darkness and trail are load-bearing, and the best structure is the know
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #31  train 27.8 meals  holdout 27.9  (tuned 0x) | Every law of the night injects a seen morsel at full strength (thing * (1 - bad)) whatever the taught appetite
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #27  train 27.4 meals  holdout  -    (tuned 5x) | Map completion (#23, best train 29.6) guesses only the one unknown cell that continues a wall line, so a wall 
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 146x: train 30.7 meals, holdout 24.2
+```

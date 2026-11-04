@@ -1,0 +1,30 @@
+# The agent remembers where it has walked: a TRAIL channel stamped under `here`, scrolling with the map and fading slowly. Cells on the trail pass on less of the wave and their sources count less, so stepping back onto the cell it just left is never the brightest choice — this breaks the two-cell limit cycle at a flipping smell bearing and pushes the agent onto fresh ground, while confinement suppression keeps nooks from dominating.
+
+channel source
+channel solid
+channel thing
+channel here
+channel value
+channel trail: init 0
+channel confinement
+channel injection
+
+# Where I have been: stamped under the agent, fading slowly, scrolls with the map.
+rule walk:
+  when 1
+  set trail = clamp(max(here, 0.97 * trail), 0, 1)
+
+# Local confinement, as in the best law.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Sources hemmed in, or on ground already walked, count less.
+rule inject:
+  when 1
+  set injection = max(thing, source * (1 - 0.6 * trail)) / (1 + 0.5 * confinement)
+
+# Bellman wave; a walked cell passes on less, so backtracking is never the best step.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.3 * trail)

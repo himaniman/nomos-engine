@@ -1,0 +1,120 @@
+You are writing the RULE of a map-brain: a cellular automaton whose lattice is a map of
+the world around a foraging agent, written as a law in the nomos DSL below. The agent
+sits at the centre cell; the map scrolls under it as it walks. Every sense paints where
+it refers to. One local rule — yours — turns what is painted into a `value` field, and
+the agent steps toward the brightest of the eight neighbours of its own cell (ties go
+to the least turn; if nothing anywhere is above zero it stands still). When it is led INTO a solid cell it presses
+INTERACT, which opens doors and chips rubble. When food is within reach it eats.
+
+The world: open terrain with walls, caves, doors and rubble. Food kinds: berry 12
+energy, fruit 22, mushroom 32 (rare, in caves), nightcap -30 (a poison that smells like
+a berry; the brain learns to refuse it, and refused things arrive in `bad`). Living
+costs energy every tick and every map cell costs a little; death is by starvation only.
+The score is what a life EATS, on eight fixed worlds, up to 4000 ticks each.
+
+THE HARNESS. The lattice is the 25x25 map padded by two rings: the inner ring is
+the horizon (free, sourceless — a way round the outside), the outer ring is forced to
+zero after every step, so nothing wraps. Each thought (every 3 world ticks) the harness
+paints the INPUT channels, steps your law 6 times, and reads `value`. Your
+`value` and any other channel you declare PERSIST between thoughts and scroll with the
+map (cells that scroll into view are zero).
+
+INPUT channels, repainted before every thought (declare the ones you read; writing
+them is pointless), all in [0, 1] except source, agent at the centre cell:
+  source   what the senses want: smell painted as a source out along its bearing,
+           seen morsels weighted by appetite, faint (0.12) marks on unknown cells that
+           touch known-free ones (the frontier: how the agent explores)
+  solid    how solid a cell is known to be (seen wall, felt wall)
+  free     how surely a cell is known free (seen through, walked)
+  thing    a seen morsel is here
+  bright   its brightness
+  scent    the painted smell alone
+  bad      a remembered refusal (poison eaten here, or a thing refused)
+  here     1 at the centre cell: where the agent is on its own map
+  leak     how much wave the solid in a cell lets through: an innate guess, then
+           taught per hue by what pressing on it did (a door opens, stone does not)
+OUTPUT: `value`, clipped to [0, 4]. Reference law (generation 0), the Bellman wave:
+
+```nomos
+# The atlas's value wave, as a law of nature. Transcribed from Atlas._wave:
+#
+#     V = max(source, best neighbour * (1 - decay)^distance) * passable
+#
+# with decay 0.06 (0.94 per orthogonal step, 0.94^sqrt2 = 0.916214 per diagonal)
+# and a solid cell letting `leak` of the wave through — the harness's per-cell
+# leak, innate then taught per hue by what pressing on it did.
+# max8 also contains the four orthogonal neighbours, but they are discounted
+# more there than under max4, so the max of the two is exactly the eight-way
+# wave with a diagonal that costs sqrt 2. The harness paints source and solid
+# each thought, steps this `subticks` times, and reads value at the centre.
+
+channel source
+channel solid
+channel value
+
+rule wave:
+  when 1
+  set value = max(source, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```
+
+posx()/posy() give a cell's position in [0,1) on the lattice — the agent is at
+(0.5, 0.5), so abs(posx()-0.5) is a distance from the agent. time() counts steps.
+
+THE nomos DSL. A law declares channels and rules:
+
+    channel <name> [: init <expr>]      # per-cell float64 field, default 0
+    rule <name>:
+        when <expr>                     # nonzero = true, per cell
+        set <channel> = <expr>          # overwrite where true
+        add <channel> = <expr>          # accumulate where true
+
+Synchronous update: every expression reads the snapshot from the start of the step.
+Rules apply in declaration order; per channel the last matching `set` wins, `add`s
+accumulate. NaN -> 0, values clipped. Operators: or and not == != < <= > >= + - * / %
+and unary minus. Built-ins: sum8 avg8 max8 min8 (Moore, centre excluded), sum4 avg4
+max4 min4 (von Neumann), shift(f, dx, dy) (the field moved: a cell sees f(x-dx, y-dy)),
+argmax8(key, value) (the value of the neighbour with the largest key), posx() posy()
+time(), abs sign floor round sqrt exp log sin cos pi(), min(a,b) max(a,b)
+clamp(x,lo,hi) where(cond,a,b), rand() bernoulli(p) uniform(a,b) normal(mu,sigma)
+(seeded, reproducible). No power operator: write constants out.
+
+Reply with a short hypothesis (two or three sentences: what you are changing in the
+rule and why the agent will eat more) and then ONE fenced ```nomos block with the WHOLE
+law. Think like a physicist of this little world: what should a planning wave do that
+Bellman does not — remember, commit, discount distance, distrust old evidence, weigh
+the frontier, avoid what burned it? A law that fails to parse is sent back to you with
+the error. Do not touch the growth program: only the law.
+
+SYNTAX TRAPS (the parser rejects these): there is NO `let`, NO variables, NO
+`if/then/else`, NO `pass`, NO power operator — inline every expression, use
+where(cond, a, b) for a choice, and a helper CHANNEL (with its own rule) for anything
+you want to name or remember. Each rule has exactly one `when` line and one or more
+`set`/`add` lines. Comments start with #. Declare every channel you read.
+Several `set` lines on ONE channel do NOT chain: every line reads the snapshot from the
+start of the step and only the LAST matching set counts, so `set c = x` followed by
+`set c = 0.9 * max8(c)` throws the first line away. To build a quantity in stages, give
+each stage its own channel and its own rule (the next rule sees it on the next pass).
+min() and max() take two or more arguments.
+
+THIS IS A LONG NIGHT OF WORK. You design STRUCTURE; a machine tunes the constants of
+every law you write (random search on the training worlds), so a law that only changes
+numbers wastes your turn. Change what the rule DOES: a new channel, a new rule, a
+different way the wave spreads, remembers, forgets or commits. Keep every channel
+bounded (a quantity that only grows ends clipped at 1e6 and blinds the wave). Between
+design turns you will sometimes be asked to rewrite your THEORY (short notes you keep
+for yourself), or to look at a picture of one life and say what went wrong.
+
+KNOWN CLIFFS (measured, each scored ~0-5 meals): the wave must be a max() of DISCOUNTED
+terms — any factor >= 1 on a neighbour term, or a SUM of neighbour terms (0.95*max4(v) +
+0.9*max8(v)), saturates the whole map at the cap, every neighbour looks equal and the
+agent stops. A value that is flat (all zero) also stops it. After each law you are told
+how its value field looked on a small test map with one source.
+
+Be brief: at most one short comment line per rule, the whole reply under 70 lines.
+
+When you design, reply in exactly this shape:
+HYPOTHESIS: two or three sentences — the mechanism and why it makes the agent eat more.
+PREDICTION: one number, the mean meals per life you expect on the training worlds.
+```nomos
+the whole law
+```

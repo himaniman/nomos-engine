@@ -1,0 +1,23 @@
+{
+ "now": "2026-11-04T13:15:57",
+ "elapsed_h": 0.466,
+ "hours": 12.0,
+ "doing": "control arm: tuning",
+ "design_turns": 2,
+ "islands": 5,
+ "evals": {
+  "llm": 10,
+  "control": 7,
+  "holdout": 0
+ },
+ "champion": {
+  "id": 3,
+  "train_meals": 28.9,
+  "holdout_meals": null
+ },
+ "control": {
+  "train_meals": 27.6,
+  "holdout_meals": 23.5625
+ },
+ "done": false
+}

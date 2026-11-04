@@ -1,0 +1,75 @@
+# The wave gets COMMITMENT TO DIGGING. A solid cell the wave actually leads the agent into gains a bounded `dig` mark (fading slowly, seeded weakly onto the solid cells next to it so a tunnel keeps a direction), and a dug cell becomes a source of its own weighted by its learned `leak`: rubble that chips keeps pulling the agent back to the same face until it breaks, stone that taught a low leak lets the mark fade, a door opens at once and the mark vanishes with its solidity. In a sealed pocket (world 16) the pacing between faint pulls turns into persistent pressing on one brown face, and elsewhere a half-chipped way to food is no longer abandoned the moment a frontier mark flickers.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel dig
+channel digsrc
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (0.8 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1
+  set openness = 0.64 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1.2, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+
+# the best value among the agent's eight neighbours, held at the agent's cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# commitment: a solid neighbour the wave leads the agent into is marked; the mark fades slowly and seeds the solid cells beside it
+rule commit:
+  when 1
+  set dig = min(1, max(0.998 * dig + where((solid > 0.5) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.05, 0), 0.5 * max4(dig) * solid)) * where(solid > 0.2, 1, 0.97)
+
+# a dug face pulls by how much its hue is known to give
+rule pull:
+  when 1
+  set digsrc = 0.35 * dig * solid * leak
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.011 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave; diagonals pass a corner only as far as it leaks; dug faces are sources past the wall's mute
+rule wave:
+  when 1
+  set value = max(digsrc, max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad))

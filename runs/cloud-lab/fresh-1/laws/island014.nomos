@@ -1,0 +1,69 @@
+# The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls sits exactly behind the agent; `behind` latches it (decaying), and `ahead` marks the one neighbour of the agent that lies straight opposite (shift(behind, 2d) gated by shift(here, d)). The planning wave `w` is #6's priced, confined wave untouched, and only the read-out `value` gives the ahead cell a few percent bonus, with no feedback into the wave. Near-ties (two equidistant foods, two ways round a wall, a smell bearing that flips) then resolve in favour of the direction already walked, so reactive limit cycles stop, and every honest gradient still wins.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel w
+channel last
+channel behind
+channel ahead
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+# how much unknown lies around a cell, spread a few rings out (bounded)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# frontier weighted by the unknown behind it; confined and burned cells inject less
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5 * confinement)
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# the planning wave (#6), kept in its own channel so the momentum bonus never feeds back
+rule wave:
+  when 1
+  set w = max(injection, step * max4(w), stepd * max(shift(w, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(w, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(w, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(w, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+# where the agent stood last step; after a scroll this cell sits behind it
+rule trail:
+  when 1
+  set last = here
+# latch the cell it came from (fades if it stands still)
+rule came:
+  when 1
+  set behind = max(last * (1 - here), 0.9 * behind)
+# the neighbour of the agent straight opposite the cell it came from
+rule heading:
+  when 1
+  set ahead = shift(behind, 2, 0) * shift(here, 1, 0) + shift(behind, -2, 0) * shift(here, -1, 0) + shift(behind, 0, 2) * shift(here, 0, 1) + shift(behind, 0, -2) * shift(here, 0, -1) + shift(behind, 2, 2) * shift(here, 1, 1) + shift(behind, -2, 2) * shift(here, -1, 1) + shift(behind, 2, -2) * shift(here, 1, -1) + shift(behind, -2, -2) * shift(here, -1, -1)
+# read-out: the wave, with a small bonus for keeping on straight
+rule read:
+  when 1
+  set value = w * (1 + 0.05 * ahead)

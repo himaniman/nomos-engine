@@ -889,3 +889,199 @@ rule out:
 ```
 
 > 15:32 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** The wave gets COMMITMENT TO DIGGING. A solid cell the wave actually leads the agent into gains a bounded `dig` mark (fading slowly, seeded weakly onto the solid cells next to it so a tunnel keeps a direction), and a dug cell becomes a source of its own weighted by its learned `leak`: rubble that chips keeps pulling the agent back to the same face until it breaks, stone that taught a low leak lets the mark fade, a door opens at once and the mark vanishes with its solidity. In a sealed pocket (world 16) the pacing between faint pulls turns into persistent pressing on one brown face, and elsewhere a half-chipped way to food is no longer abandoned the moment a frontier mark flickers.
+
+Prediction 29.5, got **26.6** meals, fitness 524, per world [34, 40, 26, 36, 18, 20, 36, 35, 37, 26, 35, 9, 22, 33, 11, 18, 25, 30, 12, 28]; model 68.2 s, repairs 0; vocabulary twin of #7, #9, #11, #8, #6
+
+value on the test map: max 1.00, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel dig
+channel digsrc
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (0.8 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1
+  set openness = 0.64 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1.2, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+
+# the best value among the agent's eight neighbours, held at the agent's cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# commitment: a solid neighbour the wave leads the agent into is marked; the mark fades slowly and seeds the solid cells beside it
+rule commit:
+  when 1
+  set dig = min(1, max(0.998 * dig + where((solid > 0.5) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.05, 0), 0.5 * max4(dig) * solid)) * where(solid > 0.2, 1, 0.97)
+
+# a dug face pulls by how much its hue is known to give
+rule pull:
+  when 1
+  set digsrc = 0.35 * dig * solid * leak
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.011 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave; diagonals pass a corner only as far as it leaks; dug faces are sources past the wall's mute
+rule wave:
+  when 1
+  set value = max(digsrc, max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad))
+```
+
+> 15:54 model job `design` started
+
+---
+
+## Turn 11 -> island #14
+
+**Hypothesis:** The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls sits exactly behind the agent; `behind` latches it (decaying), and `ahead` marks the one neighbour of the agent that lies straight opposite (shift(behind, 2d) gated by shift(here, d)). The planning wave `w` is #6's priced, confined wave untouched, and only the read-out `value` gives the ahead cell a few percent bonus, with no feedback into the wave. Near-ties (two equidistant foods, two ways round a wall, a smell bearing that flips) then resolve in favour of the direction already walked, so reactive limit cycles stop, and every honest gradient still wins.
+
+Prediction 29.5, got **28.0** meals, fitness 558, per world [28, 32, 20, 44, 39, 35, 25, 36, 31, 26, 24, 32, 28, 24, 33, 26, 0, 32, 18, 27]; model 78.2 s, repairs 0; vocabulary twin of #6
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel w
+channel last
+channel behind
+channel ahead
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+# how much unknown lies around a cell, spread a few rings out (bounded)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# frontier weighted by the unknown behind it; confined and burned cells inject less
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5 * confinement)
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# the planning wave (#6), kept in its own channel so the momentum bonus never feeds back
+rule wave:
+  when 1
+  set w = max(injection, step * max4(w), stepd * max(shift(w, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(w, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(w, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(w, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+# where the agent stood last step; after a scroll this cell sits behind it
+rule trail:
+  when 1
+  set last = here
+# latch the cell it came from (fades if it stands still)
+rule came:
+  when 1
+  set behind = max(last * (1 - here), 0.9 * behind)
+# the neighbour of the agent straight opposite the cell it came from
+rule heading:
+  when 1
+  set ahead = shift(behind, 2, 0) * shift(here, 1, 0) + shift(behind, -2, 0) * shift(here, -1, 0) + shift(behind, 0, 2) * shift(here, 0, 1) + shift(behind, 0, -2) * shift(here, 0, -1) + shift(behind, 2, 2) * shift(here, 1, 1) + shift(behind, -2, 2) * shift(here, -1, 1) + shift(behind, 2, -2) * shift(here, 1, -1) + shift(behind, -2, -2) * shift(here, -1, -1)
+# read-out: the wave, with a small bonus for keeping on straight
+rule read:
+  when 1
+  set value = w * (1 + 0.05 * ahead)
+```
+
+> 16:00 model job `theory` started
+
+### Holdout checkpoint at 4.45 h
+
+```
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 6x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #14  train 28.0 meals  holdout 28.8  (tuned 0x) | The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls
+  #11  train 26.9 meals  holdout 30.1  (tuned 6x) | Keep #6's priced, confined wave, and add a TRAPPED gate plus an escape-and-commit wave. The `reach` flood fill
+  #4   train 27.2 meals  holdout 25.1  (tuned 8x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #13  train 26.6 meals  holdout  -    (tuned 5x) | The wave gets COMMITMENT TO DIGGING. A solid cell the wave actually leads the agent into gains a bounded `dig`
+  #5   train 25.7 meals  holdout 27.7  (tuned 5x) | The map gets a WEAR memory: footprints accumulate (bounded) where the agent stands and spread into a halo of w
+  #10  train 25.4 meals  holdout  -    (tuned 5x) | The wave gets a sense of being TRAPPED. A `hope` flood carries the best source reachable over open ground (ort
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 61x: train 28.5 meals, holdout 27.0
+```
+
+---
+
+## Theory (after 12 design turns)
+
+HELPS: how the wave SPREADS. Confinement (#1) lifted Bellman 14.8 -> 25.7; per-cell step cost (#6: known-free cheap, unknown dear) is champion, holdout 33.6 vs tuned control 27.0. Frontier weighted by what lies beyond (#4) fits train, not holdout. Momentum (#14, 28.0 untuned) is near-neutral; tuning may tip it.
+HURTS: footprint memories (trail #3, wear #5, boredom #8) cost 2-6 meals: they bend the wave off good corridors and respawning food. Every trapped/despair/escape gate (#9-#13) lost 2-7: "no reachable source" fires in open worlds too, where hope is only far, and the escape wave steals the agent from food. Frustration (#7) gained nothing, dropped on holdout.
+FAILURE: sealed pockets (world 16): no frontier, confinement mutes walls, the agent shuttles a T for life, 89 idle presses, never commits to the brown rock.
+UNTRIED: using `bad`; a distance discount from the agent; letting leak alone (not a gate) shape the wave in pockets; escape that cannot touch open-world behaviour.

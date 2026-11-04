@@ -172,3 +172,146 @@ rule read:
   when 1
   set value = max(food, explore) * (1 - 0.4 * trail)
 ```
+
+> 12:04 model job `design` started
+
+---
+
+## Turn 3 -> island #6
+
+**Hypothesis:** When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweeps nothing completely. A frozen random preference per place (seeded once, inherited by cells scrolling in, smoothed into regions, and carried with the map) breaks such ties the same way every thought, so the agent commits to one side of the unknown and explores it through; the frontier/food split is also computed inline now, removing a one-pass lag that injected a stale full-strength peak.
+
+Prediction 27.0, got **24.4** meals, fitness 486, per world [22, 24, 17, 33, 33, 32, 4, 30, 32, 25, 26, 37, 23, 31, 29, 33, 0, 20, 15, 21]; model 130.1 s, repairs 0
+
+value on the test map: max 0.15, mean 0.08, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel injection
+channel wave
+channel trail
+channel whim: init uniform(0.01, 1)
+channel taste
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# a frozen random preference per place; cells scrolling in inherit a random neighbour's
+rule seed_whim:
+  when whim <= 0
+  set whim = clamp(argmax8(rand() * (whim > 0), whim) + uniform(-0.05, 0.05), 0.01, 1)
+
+# smoothed into regions: one side of the map is simply preferred, and stays preferred
+rule smooth_whim:
+  when 1
+  set taste = 0.5 * whim + 0.5 * avg8(taste)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# frontier (faint marks, no smell or morsel) pull = darkness behind it times the region's standing preference
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (0.5 + taste)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 12:09 model job `observe` started
+
+---
+
+## Observer: #3 on world 16
+
+![](observe/obs00_island3_world16.png)
+
+`{'meals': 0, 'ticks': 3747, 'alive': False, 'distance': 283.6, 'cells_visited': 60, 'last500_box': '4x12', 'doors': 3, 'breaks': 5, 'idle_presses': 8, 'nightcaps': 0}`
+
+The agent spends its whole life inside one small walled pocket (a 4x12 box, start and death in the same spot), sweeping back and forth along it and never leaving, so it never even reaches the food lying a short walk away in the neighbouring rooms.
+It does press and break things (3 doors, 5 breaks), but after each press it drifts back into the pocket instead of walking through, so the openings it makes do not turn into a route out.
+The failure is that inside a sealed pocket every boundary cell is known solid, so there are no frontier marks (unknown cells touching known-free ones) and the value field has nothing to point at except leak through walls, which is weak and spread evenly around the whole box.
+A fix: give solid cells that have unknown space behind them (a wall with darkness on its far side, especially one whose leak was taught high by a door opening) a source of their own when no frontier exists, so the wave leads the agent into one specific wall and through it, and keep that target (a lingering source) until it is passed.
+
+### Holdout checkpoint at 1.09 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 6x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #6   train 25.1 meals  holdout 24.9  (tuned 3x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #5   train 21.6 meals  holdout  -    (tuned 5x) | One discount serves two different promises: food (certain, worth a detour only when near) and the frontier (un
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 18x: train 25.7 meals, holdout 25.7
+```
+
+> 12:26 model job `deep` started
+
+---
+
+## Turn 4 (DEEP) -> island #7
+
+**Hypothesis:** Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground; once the agent has seen every wall of a room, cave or pocket, the value field has nothing to aim at and it sweeps the box until it starves (the observer's world-16 life). A BREACH source on every reachable wall cell with darkness behind it, weighted by the darkness and passed through the wall's taught leak, is weak enough that any food or frontier beats it in the max, but when nothing else calls it leads the agent into the most promising wall, where pressing opens doors and chips rubble; stone that never gives is taught a low leak and drops out, so the agent tries walls in turn. The
+
+Prediction 27.5, got **23.2** meals, fitness 460, per world [26, 30, 27, 34, 40, 23, 4, 28, 31, 26, 30, 34, 11, 19, 2, 33, 0, 22, 24, 20]; model 48.1 s, repairs 0; vocabulary twin of #4
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel breach
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a wall the agent can reach with darkness behind it is a way out, weighted by how it gave before
+rule breach_mark:
+  when 1
+  set breach = where((solid > 0.5) * (max8(free) > 0.5), dark * leak, 0)
+
+# food as told, frontier by darkness, breaches as a weak fallback the max lets win only when nothing else calls
+rule inject:
+  when 1
+  set injection = max(max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid)), 0.1 * breach)
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

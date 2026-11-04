@@ -1,0 +1,47 @@
+# When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweeps nothing completely. A frozen random preference per place (seeded once, inherited by cells scrolling in, smoothed into regions, and carried with the map) breaks such ties the same way every thought, so the agent commits to one side of the unknown and explores it through; the frontier/food split is also computed inline now, removing a one-pass lag that injected a stale full-strength peak.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel injection
+channel wave
+channel trail
+channel whim: init uniform(0.01, 1)
+channel taste
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# a frozen random preference per place; cells scrolling in inherit a random neighbour's
+rule seed_whim:
+  when whim <= 0
+  set whim = clamp(argmax8(rand() * (whim > 0), whim) + uniform(-0.05, 0.05), 0.01, 1)
+
+# smoothed into regions: one side of the map is simply preferred, and stays preferred
+rule smooth_whim:
+  when 1
+  set taste = 0.5 * whim + 0.5 * avg8(taste)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# frontier (faint marks, no smell or morsel) pull = darkness behind it times the region's standing preference
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (0.5 + taste)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

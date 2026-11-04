@@ -1563,3 +1563,129 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 103x: train 28.3 meals, holdout 27.1
 ```
+
+---
+
+## Turn 20: behavioural twin of #5
+
+**Hypothesis:** Giving the law a longer memory of the map (#21) cost ~4 meals and brought back two 0-meal worlds, so re-visiting old ground is valuable: 70% of food spots regrow after ~1200 ticks, about when the map forgets. The opposite test: ground whose free-belief has HALF faded (`stale`, peaking midway through forgetting) becomes a faint source of its own, so the agent drifts back over ground it saw a few hundred ticks ago, where eaten spots are ripening, instead of waiting for it to be fully forgotten and re-raised as frontier.
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel stale
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# ground seen long ago: still believed free, but the belief has faded (half-forgotten);
+# food regrows on about the timescale the map forgets on, so stale ground is worth a look
+rule stale:
+  when 1
+  set stale = where(free > 0.2, 4 * free * (1 - free), 0) * (1 - solid) * (1 - max(here, max8(here)))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, 0.4275 + 1.5 * vast), 0.05 * stale) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 19:28 model job `design` started
+
+---
+
+## Turn 21 -> island #23
+
+**Hypothesis:** Every law so far plans with a max() wave: each cell sees only its single best target, so one berry pulls exactly as hard as a cluster of three, one frontier crack as hard as a long open edge, and between two near-equal targets the agent can rock. This law replaces the wave with a POTENTIAL FIELD: each cell relaxes toward the slightly discounted MEAN of its eight neighbours (walls absorb by their leak), so the pulls of all sources add up, the field is smooth with no plateaus or ties, and the agent heads to where the most food and unknown lie together. Same senses and injection as the best law; only the planning physics changes.
+
+Prediction 28.0, got **11.3** meals, fitness 234, per world [4, 15, 18, 20, 18, 17, 8, 0, 4, 22, 0, 13, 13, 4, 13, 11, 23, 11, 0, 13]; model 48.1 s, repairs 0; vocabulary twin of #20, #19, #5, #4, #15, #12
+
+value on the test map: max 0.08, mean 0.00, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, 0.4275 + 1.5 * vast)) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# a POTENTIAL FIELD instead of a wave: each cell relaxes to the (slightly discounted) MEAN of
+# its neighbours, walls absorb by their leak; sources add up, so many marks pull harder than one
+rule potential:
+  when 1
+  set value = max(injection, 0.995 * avg8(value) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 19:45 model job `design` started

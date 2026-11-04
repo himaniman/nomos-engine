@@ -2547,3 +2547,100 @@ rule wave:
   when 1
   set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
 ```
+
+> 22:53 model job `design` started
+
+---
+
+## Turn 27 -> island #30
+
+**Hypothesis:** Split the planner into a strict PRIORITY ladder, food > frontier > dig, instead of one claim with a clock. A separate food-only wave `fw` (real morsels and smell, never frontier or digging) is used only as a GATE and a floor: a wall face may inject dig value only where no food wave reaches it, that value is capped below the faintest frontier mark, and a face the agent keeps pressing tires (habituation that recovers slowly). The agent then leaves its start chamber as soon as a corridor's frontier is visible, and it can never starve working a rock while food is in reach, because food switches digging off.
+
+Prediction 30.5, got **27.0** meals, fitness 547, per world [30, 29, 35, 35, 12, 34, 38, 42, 28, 34, 24, 29, 28, 21, 35, 29, 0, 31, 2, 24]; model 56.2 s, repairs 0
+
+value on the test map: max 1.00, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel food
+channel fw
+channel step
+channel stepd
+channel explore
+channel rim
+channel tire
+channel dig
+rule known:
+  when 1
+  set unknown = clamp((1 - free) * (1 - solid), 0, 1)
+rule spread:
+  when 1
+  set openness = 0.75 * avg8(unknown) + 0.5 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.15) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# real food only: morsels and smell, never the frontier; burned cells count nothing
+rule feed:
+  when 1
+  set food = where(frontier > 0, 0, max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# the food wave: a gate and a floor, never steered by exploration or digging
+rule foodwave:
+  when 1
+  set fw = max(food, step * max4(fw), stepd * max8(fw)) * (1 - solid * (1 - leak)) * (1 - 0.86 * bad)
+rule scout:
+  when 1
+  set explore = where(frontier > 0, source * (0.42 + 2 * openness) / (1.1 + 0.56 * confinement), 0) * (1 - bad)
+# a pressable face next to known free ground, dulled by how long it has been worked
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak * (1 - tire), 0)
+# habituation: a face tires while the agent works it, recovers slowly after
+rule tiring:
+  when 1
+  set tire = clamp(where((solid > 0.3) and (max8(here) > 0.5), tire + 0.01, 0.995 * tire), 0, 1)
+# dig: only past a face, only where no food wave reaches, capped below the frontier
+rule digging:
+  when 1
+  set dig = where((unknown > 0.25) and (frontier < 0.5) and (max8(fw) < 0.05), min(0.03, 0.1 * max8(rim) * (0.5 + openness)), 0)
+rule wave:
+  when 1
+  set value = max(fw, explore, dig, step * max4(value), stepd * max8(value)) * (1 - solid * (1 - leak)) * (1 - 0.86 * bad)
+```
+
+### Holdout checkpoint at 11.41 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 7x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 7x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 150x: train 28.5 meals, holdout 27.0
+```

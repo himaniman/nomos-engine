@@ -1,0 +1,67 @@
+# Split the planner into a strict PRIORITY ladder, food > frontier > dig, instead of one claim with a clock. A separate food-only wave `fw` (real morsels and smell, never frontier or digging) is used only as a GATE and a floor: a wall face may inject dig value only where no food wave reaches it, that value is capped below the faintest frontier mark, and a face the agent keeps pressing tires (habituation that recovers slowly). The agent then leaves its start chamber as soon as a corridor's frontier is visible, and it can never starve working a rock while food is in reach, because food switches digging off.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel food
+channel fw
+channel step
+channel stepd
+channel explore
+channel rim
+channel tire
+channel dig
+rule known:
+  when 1
+  set unknown = clamp((1 - free) * (1 - solid), 0, 1)
+rule spread:
+  when 1
+  set openness = 0.75 * avg8(unknown) + 0.5 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.15) and (thing < 0.01) and (scent < 0.01), 1, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# real food only: morsels and smell, never the frontier; burned cells count nothing
+rule feed:
+  when 1
+  set food = where(frontier > 0, 0, max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# the food wave: a gate and a floor, never steered by exploration or digging
+rule foodwave:
+  when 1
+  set fw = max(food, step * max4(fw), stepd * max8(fw)) * (1 - solid * (1 - leak)) * (1 - 0.86 * bad)
+rule scout:
+  when 1
+  set explore = where(frontier > 0, source * (0.42 + 2 * openness) / (1.1 + 0.56 * confinement), 0) * (1 - bad)
+# a pressable face next to known free ground, dulled by how long it has been worked
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak * (1 - tire), 0)
+# habituation: a face tires while the agent works it, recovers slowly after
+rule tiring:
+  when 1
+  set tire = clamp(where((solid > 0.3) and (max8(here) > 0.5), tire + 0.01, 0.995 * tire), 0, 1)
+# dig: only past a face, only where no food wave reaches, capped below the frontier
+rule digging:
+  when 1
+  set dig = where((unknown > 0.25) and (frontier < 0.5) and (max8(fw) < 0.05), min(0.03, 0.1 * max8(rim) * (0.5 + openness)), 0)
+rule wave:
+  when 1
+  set value = max(fw, explore, dig, step * max4(value), stepd * max8(value)) * (1 - solid * (1 - leak)) * (1 - 0.86 * bad)

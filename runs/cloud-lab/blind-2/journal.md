@@ -660,3 +660,123 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 43x: train 28.3 meals, holdout 27.1
 ```
+
+> 15:49 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and turn; a shortest path hugs walls and cuts diagonals past corners, where the body collides, slides and loses time on every trip. A `clearance` channel (lower beside any solid, lowest orthogonally) makes the wave dearer along walls, so paths keep a cell of berth where the space allows and still thread doorways and corridors where it does not, and every trip gets faster.
+
+Prediction 31.0, got **31.4** meals, fitness 628, per world [22, 34, 41, 28, 26, 32, 31, 29, 39, 32, 31, 29, 21, 34, 46, 28, 34, 24, 33, 34]; model 42.1 s, repairs 0; vocabulary twin of #5, #4, #9, #7, #6, #11
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel clearance
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# how far a cell is from touching any wall: 1 in the open, lower beside solid
+rule clearance:
+  when 1
+  set clearance = 1 - max(max4(solid), 0.5 * max8(solid))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, 0.4275 + 1.5 * vast)) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts known ground and prefers cells clear of walls (no corner-cutting for a round body)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free)) * (0.9 + 0.1 * clearance)) * (1 - solid * (1.028 - leak))
+```
+
+> 16:08 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** Every law since #5 lands at about 31 meals on train and 25-27 on holdout whatever mechanism is added, so the stack may be carrying parts that do nothing or only fit the training worlds. This is the ablation: night 1's confinement plus only the trust-in-known-ground wave (#5's one new idea), without the unknown-weighted frontier or the frustration channels. If it eats as much, trust is the mechanism and the rest is noise, and a smaller law should generalise better to the holdout.
+
+Prediction 29.0, got **23.9** meals, fitness 474, per world [25, 33, 24, 43, 22, 30, 20, 12, 28, 7, 0, 23, 21, 30, 44, 35, 28, 26, 0, 27]; model 68.0 s, repairs 0
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel value
+channel confinement
+channel injection
+
+# a source hemmed in by solid counts less
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule inject:
+  when 1
+  set injection = max(thing, source) / (1 + 0.5 * confinement)
+
+# the wave trusts what is known: a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1 - leak))
+```
+
+### Holdout checkpoint at 3.41 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 6x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 5x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 5x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #8   train 27.3 meals  holdout  -    (tuned 5x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #3   train 27.1 meals  holdout 21.9  (tuned 5x) | Meals come mostly from exploration, but every frontier mark is worth the same 0.12, so a crack between two wal
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 51x: train 28.3 meals, holdout 27.1
+```

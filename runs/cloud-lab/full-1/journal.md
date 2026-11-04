@@ -2091,3 +2091,92 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+> 19:49 model job `design` started
+
+---
+
+## Turn 31 -> island #34
+
+**Hypothesis:** Raising a frontier's worth by predicted floor collapsed (#33: 22.1) while PRICING by predicted floor paid (#32: 30.5, holdout 30.5): knowledge belongs in step costs, not in what a source is worth. One price is still wrong: ground seen free a few hundred ticks ago fades back towards "unknown" and is charged as if it might be rock, although floors never move. A slow SEEN memory of floor (cleared by solid) waives the unknown price on remembered floor, so plans back across ground the agent has already walked cost what they really cost, while frontier and darkness still follow the fading map.
+
+Prediction 30.5, got **27.4** meals, fitness 538, per world [34, 32, 34, 22, 34, 24, 17, 33, 43, 33, 27, 25, 26, 33, 16, 37, 0, 35, 17, 27]; model 10.1 s, repairs 0; vocabulary twin of #33, #32, #31, #30, #19, #27
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel open
+channel seen
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+# floors do not move: once seen free, a cell stays cheap to plan over long after the map's evidence has faded
+rule recall:
+  when 1
+  set seen = max(free, 0.9997 * seen) * (1 - solid)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# the other half of map completion: an unknown cell that continues a line of open floor is probably floor
+rule open_floor:
+  when 1
+  set open = (1 - free) * (1 - solid) * (1 - guess) * max(shift(free, 1, 0) * shift(free, -1, 0), shift(free, 0, 1) * shift(free, 0, -1), 0.6 * shift(free, 1, 0) * shift(free, 2, 0), 0.6 * shift(free, -1, 0) * shift(free, -2, 0), 0.6 * shift(free, 0, 1) * shift(free, 0, 2), 0.6 * shift(free, 0, -1) * shift(free, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs unless predicted floor, guessed wall passes half, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - max(free, open, seen))) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+### Holdout checkpoint at 8.65 h
+
+```
+  #30  train 31.4 meals  holdout 27.2  (tuned 5x) | The minimal law fell to 24.6 (#29), so darkness and trail are load-bearing, and the best structure is the know
+  #32  train 30.5 meals  holdout 30.5  (tuned 5x) | Map completion so far predicts only WALLS; the price of unknown ground (#18) is then paid alike by a cell that
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #31  train 27.8 meals  holdout 27.9  (tuned 5x) | Every law of the night injects a seen morsel at full strength (thing * (1 - bad)) whatever the taught appetite
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #27  train 27.4 meals  holdout  -    (tuned 5x) | Map completion (#23, best train 29.6) guesses only the one unknown cell that continues a wall line, so a wall 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 161x: train 30.7 meals, holdout 24.2
+```

@@ -2380,3 +2380,76 @@ Load-bearing, each shown by a loss when removed or weakened: the max() wave (mea
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 147x: train 28.3 meals, holdout 27.1
 ```
+
+> 22:19 model job `design` started
+
+---
+
+## Turn 30 -> island #32
+
+**Hypothesis:** Trust in known ground (unknown cells dearer for the wave) did nothing on its own (#13), and since it entered the stack world 112 ends at or near 0 meals in most laws (#5, #19, #20, #25, #31) where earlier laws ate 16-21: when the only way on runs through cells the map has not confirmed free, the trust term starves that route of value. This ablation removes trust from the best-holdout law (#25, area-restricted search, as tuned), keeping everything else: if trust is the cause, world 112 comes back and nothing else is lost.
+
+Prediction 32.0, got **24.9** meals, fitness 478, per world [13, 24, 18, 26, 28, 40, 28, 34, 35, 28, 22, 17, 26, 20, 32, 14, 27, 23, 22, 22]; model 18.1 s, repairs 0; vocabulary twin of #30, #29, #25, #31, #16, #27
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4611 + 1.5 * vast) * (0.8222 + 2 * ars * exp(0 - far / 4)))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# NO trust term: an unknown cell carries the wave at the same price as a known one
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value))) * (1 - solid * (1.028 - leak))
+```

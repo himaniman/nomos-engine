@@ -1,0 +1,31 @@
+# Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the map) and damp the wave across it. The cell the agent came from always looks worse than the cells ahead, so equidistant targets and two-way smell bearings stop producing back-and-forth limit cycles and the agent commits to moving on, exploring more ground per tick.
+
+# Inhibition of return on top of confinement suppression: the path just walked
+# is remembered and the wave is damped across it, so ties break forward.
+channel source
+channel solid
+channel thing
+channel here
+channel value
+channel confinement
+channel injection
+channel trail
+
+# Local solidity: a source hemmed in by walls counts less.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# The walked path, fading; it scrolls with the map so it lies behind the agent.
+rule remember_path:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule inject:
+  when 1
+  set injection = max(thing, source) / (1 + 0.5 * confinement)
+
+# Bellman wave, damped where the agent has just been.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.3 * trail)

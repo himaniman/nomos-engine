@@ -1,0 +1,49 @@
+# Dropping raw `thing` (#19) cost ~4 meals, so the full-strength pull of every SEEN morsel is load-bearing (and a nightcap eaten is still a meal). Yet confinement divides that pull too, and seen food is often hemmed in by solid: fruit grows at tree trunks, larder berries sit by room walls, mushrooms live in caves. Here a seen morsel is never suppressed; confinement still hushes the guesses (smell and frontier) in tight spots, which is where night 1 said its benefit comes from.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# a SEEN morsel is real and is never suppressed; confinement hushes only the guesses (smell,
+# frontier) in tight spots; frustrated, known wall faces become targets
+rule inject:
+  when 1
+  set injection = max(where(thing > 0, max(thing, 1.027 * source), source * where(scent > 0, 1.027, 0.4275 + 1.5 * vast) / (1 + 0.5 * confinement)), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))

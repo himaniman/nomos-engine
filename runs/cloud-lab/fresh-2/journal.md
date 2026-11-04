@@ -438,3 +438,110 @@ HURTS: global or smoothed signals. A frustration scalar (#5) and a blurred `dark
 WHY: wins come from small, sharp, local terms. Tuning overfits (#7 33.5 -> 27.1 on holdout).
 STILL FAILING: in a sealed slot the trail covers every cell and pressure gets split between two faces.
 UNTRIED: a winner-take-all lock on one face (the strongest pressure suppresses the others); trying the face nearest the most promising unknown first; using `bad` to avoid what burned it; a leak that grows with pressing.
+
+> evaluation failed (NomosError: line 33: expected ')', got '.413'); pool rebuilt
+
+> 14:47 model job `design` started
+
+---
+
+## Turn 6 -> island #9
+
+**Hypothesis:** The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spreads the strongest leak-weighted work across the room by a discounted max, and only the face holding the crown keeps its committed pull (winner-take-all). The faint probe share favours faces that border unknown ground, and a face being dug lets more wave through as its work builds, so the agent stays on one face until it opens and then breaks out to the food beyond.
+
+Prediction 34.5, got **27.9** meals, fitness 552, per world [30, 23, 42, 30, 36, 12, 36, 36, 33, 31, 0, 14, 25, 33, 44, 22, 40, 34, 0, 37]; model 68.1 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Crowned face: work on wall faces competes; a decaying max ("crown") spreads the strongest
+# leak-weighted pressure across the room, and only the face that holds the crown keeps its pull.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel crown
+channel unk
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Unknown ground: neither seen solid nor known free.
+rule calc_unk:
+  when 1
+  set unk = clamp(1 - solid - free, 0, 1)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) / (1 + 0.8336 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Work: effort spent on a solid face; grows while aimed at, fades slowly, bounded.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid)
+
+# Crown: strongest leak-weighted work nearby, spread by a discounted max (fades on its own).
+rule calc_crown:
+  when 1
+  set crown = max(work * leak, 0.99 * max8(crown))
+
+# Faint share favours faces bordering unknown; committed share only on the crowned face.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0, 1) * (0.5 + avg8(unk)) + 0.3 * work * where(work * leak >= 0.95 * crown, 1, 0))
+
+# Bellman wave; a face being dug lets more wave through as work builds.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak) * (1 - 0.3 * work)) * (1 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 2.26 h
+
+```
+  #8   train 33.5 meals  holdout 24.9  (tuned 5x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 6x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 2x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #6   train 28.5 meals  holdout 25.8  (tuned 5x) | When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent s
+  #3   train 26.9 meals  holdout 22.3  (tuned 5x) | Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls
+  #4   train 23.6 meals  holdout 21.6  (tuned 5x) | Every frontier mark is painted at the same 0.12 now, so a one-cell sliver of unknown pulls as hard as the mout
+  #5   train 19.9 meals  holdout  -    (tuned 5x) | The agent gets a global internal state, FRUSTRATION. A wide blur of the trail, read at the centre cell, measur
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 33x: train 27.2 meals, holdout 25.4
+```
+
+> evaluation failed (NomosError: line 50: expected ')', got '.713'); pool rebuilt
+
+> 15:10 model job `design` started

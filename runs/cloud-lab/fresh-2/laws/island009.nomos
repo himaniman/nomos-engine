@@ -1,0 +1,72 @@
+# The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spreads the strongest leak-weighted work across the room by a discounted max, and only the face holding the crown keeps its committed pull (winner-take-all). The faint probe share favours faces that border unknown ground, and a face being dug lets more wave through as its work builds, so the agent stays on one face until it opens and then breaks out to the food beyond.
+
+# Crowned face: work on wall faces competes; a decaying max ("crown") spreads the strongest
+# leak-weighted pressure across the room, and only the face that holds the crown keeps its pull.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel crown
+channel unk
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Unknown ground: neither seen solid nor known free.
+rule calc_unk:
+  when 1
+  set unk = clamp(1 - solid - free, 0, 1)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) / (1 + 0.8336 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Work: effort spent on a solid face; grows while aimed at, fades slowly, bounded.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid)
+
+# Crown: strongest leak-weighted work nearby, spread by a discounted max (fades on its own).
+rule calc_crown:
+  when 1
+  set crown = max(work * leak, 0.99 * max8(crown))
+
+# Faint share favours faces bordering unknown; committed share only on the crowned face.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * leak * (1 - bad) * (0.06 * clamp(1 - 1.214 * trail, 0, 1) * (0.5 + avg8(unk)) + 0.3 * work * where(work * leak >= 0.95 * crown, 1, 0))
+
+# Bellman wave; a face being dug lets more wave through as work builds.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak) * (1 - 0.3 * work)) * (1 - 0.9 * bad)

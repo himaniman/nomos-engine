@@ -1977,3 +1977,193 @@ rule wave:
 ```
 
 > 20:25 model job `design` started
+
+---
+
+## Turn 21 -> island #24
+
+**Hypothesis:** Every wave so far ranks targets by MAX — one lone berry and a grove of five look the same, and a frontier beside food looks like any other frontier. I add a second physics beside the wave: a bounded DIFFUSION field `plenty` (averaging, not max — it measures the density of food evidence, seen morsels and scent, and lingers with the map) that multiplies how much a food source or a frontier injects, so the agent heads for groves and explores the unknown next to where food was, where more meals lie per step walked. And `bad` stops being a point mask: a short `burn` halo spreads from refusals, so nightcap patches are skirted rather than approached and refused cell by cell.
+
+Prediction 30.5, got **23.1** meals, fitness 467, per world [28, 27, 21, 40, 4, 21, 15, 29, 23, 16, 33, 29, 9, 29, 28, 32, 26, 30, 2, 19]; model 58.1 s, repairs 0; vocabulary twin of #21, #23
+
+value on the test map: max 0.52, mean 0.20, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel bright
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel claim
+channel age
+channel spent
+channel plenty
+channel burn
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.5839 - solid)
+rule spread:
+  when 0.9167
+  set openness = 0.7539 * avg8(unknown) + 0.5172 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1587) and (thing < 0.01) and (scent < 0.01136), 1.21, 0)
+rule calc_conf:
+  when 1.354
+  set confinement = sum8(solid)
+# density of food evidence: a bounded diffusion (average, never a sum), lingering with the map
+rule density:
+  when 1
+  set plenty = clamp(0.8 * avg8(plenty) * (1 - solid) + 0.25 * max(thing * bright, scent), 0, 1)
+# a short halo of wariness around remembered refusals
+rule scorch:
+  when 1
+  set burn = clamp(max(bad, 0.6 * max8(burn)), 0, 1)
+rule face:
+  when 1.106
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak * (0.7937 - spent), 0)
+rule past:
+  when 1.127
+  set beyond = where((unknown > 0.2379) and (frontier < 0.5), max8(rim), 0)
+# #21's dig claim with its own clock
+rule claimit:
+  when 1.151
+  set claim = where((solid < 0.1694) or (age > 0.995), 0, where((rim > 0.1126) and (max8(here) > 0.5) and (value > argmax8(here, value)), 1.146, 0.998 * claim))
+rule aging:
+  when 1
+  set age = where(claim > 0.3, min(1, age + 0.005419), 0.9758 * age)
+rule habit:
+  when 1
+  set spent = where(age > 1.187, 1, 1.038 * spent)
+# groves outweigh lone morsels; frontiers beside food outweigh barren ones; burned halos are skirted
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness) * (1 + 1.5 * plenty), max(thing, source) * (0.6 + 0.8 * plenty)) / (1.125 + 0.5618 * confinement), 0.1531 * beyond * (0.4534 + 1.576 * openness)) * (1 - bad) * (1 - 0.6 * burn)
+rule price:
+  when 0.8237
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+rule wave:
+  when 1.437
+  set value = max(0.5 * claim * (0.9165 - age) * (1 - bad), max(injection, step * max4(value), stepd * max(shift(value, -0.8165, -0.837) * (0.8991 - max(shift(solid, -0.8085, 0), shift(solid, 0, -0.856)) * (1.164 - leak)), shift(value, 1, -1.013) * (0.9917 - max(shift(solid, 0.9927, 0), shift(solid, 0, -1.052)) * (0.9323 - leak)), shift(value, -1.472, 1.315) * (0.8849 - max(shift(solid, -1.386, 0), shift(solid, 0, 1.331)) * (1 - leak)), shift(value, 1.434, 1) * (0.848 - max(shift(solid, 0.9773, 0), shift(solid, 0, 0.6262)) * (1.365 - leak)))) * (1 - solid * (1.592 - leak)) * (0.981 - 0.8642 * bad))
+```
+
+> 20:31 model job `observe` started
+
+---
+
+## Observer: #21 on world 16
+
+![](observe/obs04_island21_world16.png)
+
+`{'meals': 3, 'ticks': 4704, 'alive': False, 'distance': 472.6, 'cells_visited': 213, 'last500_box': '28x28', 'doors': 1, 'breaks': 23, 'idle_presses': 51, 'nightcaps': 1}`
+
+The agent spends its whole early life (all the cyan) inside the small walled chamber beside its start, running laps tight against the chamber's rim and pressing the same faces again and again. That is where the 51 idle presses and most of the 23 breaks went, while open ground and food lay a short corridor away. Only late, once it is already hungry, does it leave by the corridor south. It then roams widely and well, eating three meals in quick succession on a big loop through the lower-middle and eastern rooms. It starves on the far east side, pressed against the big rock block, with a food morsel just beside it: it was probably back to working a wall face when the energy ran out. The one mechanism I would fix first is the habituation on spent wall faces, because as written it never switches on. A face's age is capped at 1 but has to pass about 1.19 before the face counts as spent, and spent can only grow, never fade. So a released face is just as attractive as a fresh one once its age decays, and the agent claims it again, which is the wall-pacing loop in the cyan part of the track.
+
+> 20:51 model job `design` started
+
+---
+
+## Turn 22 -> island #25
+
+**Hypothesis:** Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources but never leaks through any solid, so it holds what legs alone can reach. A wall face may seed the digging wave only where WALK beside it is dead (dig = rim * exp(-12 * max8(walk))). In a chamber with an open corridor, or near seen food, the faces go quiet and the agent walks out. A truly sealed pocket still digs. This should stop the face-lapping seen on world 16 and lift starved worlds without the theft that footprint memories caused.
+
+Prediction 29.5, got **28.6** meals, fitness 579, per world [40, 24, 29, 16, 23, 23, 34, 44, 26, 29, 26, 39, 27, 26, 31, 21, 35, 29, 11, 38]; model 52.2 s, repairs 0; vocabulary twin of #17
+
+value on the test map: max 0.89, mean 0.39, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel walk
+channel dig
+channel beyond
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.5 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.155) and (thing < 0.01) and (scent < 0.011), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak, 0)
+# what the senses want, hemmed-in sources discounted, burned cells silent
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) / (1.1 + 0.56 * confinement) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.0475 * free) * (1 - 0.0107 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# WALK: a second wave that never leaks through anything - what legs alone can reach
+rule walking:
+  when 1
+  set walk = max(injection, step * max4(walk), stepd * max8(walk)) * (1 - solid) * (1 - bad)
+# a face is worth digging only where walking from beside it offers nothing
+rule gate:
+  when 1
+  set dig = rim * exp(-12 * max8(walk))
+rule past:
+  when 1
+  set beyond = where((unknown > 0.24) and (frontier < 0.5), max8(dig), 0)
+# the full wave: walking sources everywhere, dig sources only where the walk is dead
+rule wave:
+  when 1
+  set value = max(injection, 0.15 * beyond * (0.45 + 1.6 * openness), step * max4(value), stepd * max8(value)) * (1 - solid * (1 - leak)) * (0.98 - 0.86 * bad)
+```
+
+### Holdout checkpoint at 9.35 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 6x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 0x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 123x: train 28.5 meals, holdout 27.0
+```

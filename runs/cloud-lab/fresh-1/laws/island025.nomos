@@ -1,0 +1,62 @@
+# Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources but never leaks through any solid, so it holds what legs alone can reach. A wall face may seed the digging wave only where WALK beside it is dead (dig = rim * exp(-12 * max8(walk))). In a chamber with an open corridor, or near seen food, the faces go quiet and the agent walks out. A truly sealed pocket still digs. This should stop the face-lapping seen on world 16 and lift starved worlds without the theft that footprint memories caused.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel walk
+channel dig
+channel beyond
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.5 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.155) and (thing < 0.01) and (scent < 0.011), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * leak, 0)
+# what the senses want, hemmed-in sources discounted, burned cells silent
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) / (1.1 + 0.56 * confinement) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.0475 * free) * (1 - 0.0107 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# WALK: a second wave that never leaks through anything - what legs alone can reach
+rule walking:
+  when 1
+  set walk = max(injection, step * max4(walk), stepd * max8(walk)) * (1 - solid) * (1 - bad)
+# a face is worth digging only where walking from beside it offers nothing
+rule gate:
+  when 1
+  set dig = rim * exp(-12 * max8(walk))
+rule past:
+  when 1
+  set beyond = where((unknown > 0.24) and (frontier < 0.5), max8(dig), 0)
+# the full wave: walking sources everywhere, dig sources only where the walk is dead
+rule wave:
+  when 1
+  set value = max(injection, 0.15 * beyond * (0.45 + 1.6 * openness), step * max4(value), stepd * max8(value)) * (1 - solid * (1 - leak)) * (0.98 - 0.86 * bad)

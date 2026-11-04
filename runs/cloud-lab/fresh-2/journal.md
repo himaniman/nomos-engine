@@ -2109,3 +2109,117 @@ rule wave:
 ```
 
 > 21:04 model job `design` started
+
+---
+
+## Turn 23 -> island #26
+
+**Hypothesis:** Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing with sources the agent has already used up inside the pocket. A new `reach` flood marks the region the agent can walk to without pressing, and `hope` carries the best unspent source (unvisited smell, frontier or seen morsel) through that region. When there is no hope left, the one winning face next to the region (the grain/crest winner, already gated by leak and bad) becomes a strong source that skips the wall's damping, and it gets stronger as work builds. So the agent commits to a single face and digs it through, instead of shuttling and chipping at several faces. In open ground hope 
+
+Prediction 34.0, got **32.9** meals, fitness 672, per world [46, 31, 23, 32, 32, 34, 29, 28, 39, 33, 29, 41, 26, 39, 42, 28, 27, 31, 23, 44]; model 70.1 s, repairs 0; vocabulary twin of #23, #24
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Despair: a flood of the agent's reachable region asks "is any unspent source in here?"
+# If not (sealed or spent pocket), the single winner wall face becomes a strong source.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel reach
+channel hope
+channel dig
+# Grain: a fixed random rank per place, so equal faces stop tying.
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells, slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# Thin wall: free on one side, not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+# Reach: the region the agent can walk to without pressing (flood from here, stopped by solid).
+rule calc_reach:
+  when 1
+  set reach = max(here, 0.97 * max8(reach)) * (1 - solid)
+# Hope: the best UNSPENT source inside the reachable region, spread through it (forgets ~0.83/thought).
+rule calc_hope:
+  when 1
+  set hope = max(max(thing, source * (1 - trail)) * (1 - bad), 0.97 * max8(hope)) * where(reach > 0.01, 1, 0)
+# Dig: in a hopeless region, the local winner face beside it becomes a source, more as its work grows.
+rule calc_dig:
+  when 1
+  set dig = solid * where(face >= crest - 0.000001, 1, 0) * where(face > 0, 1, 0) * max8(reach) * clamp(1 - 15 * max8(hope), 0, 1) * (0.35 + 0.4 * work)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+# Efference copy: the neighbour of the agent the decision heads into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave; the dig pull bypasses the wall's damping so the agent is led into that face.
+rule wave:
+  when 1
+  set value = max(dig, max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad))
+```
+
+> 21:10 model job `theory` started
+
+---
+
+## Theory (after 24 design turns)
+
+HELPS: small, sharp, local structure that ranks neighbouring choices. Inhibition of return (#3); keeping the wave alive on a spent map (#6); an efference copy on the aimed face (#7); faces competing (#9); confinement suppression (#1); thin-wall filter (#13); now symmetry breaking: a fixed world-anchored random preference among wall faces (#23, best on train 34.8 and holdout 29.9).
+HURTS: global, directional or field-splitting terms: heading, inertia, frontier weighting, separate walk/press waves, doubting unknown ground. Committing by what a face gives back (#25) collapsed to 3.0. A louder wall pull (#26) and hard per-face clocks (#24) cost ~2.
+WHY: tuning overfits; local ranking generalizes. Pocket starvation is a TIE, not too weak a pull: equal faces split effort, and a fixed bias picks one and keeps picking it.
+STILL FAILING: the pocket-born agent chips several faces and breaks none, with food 1-2 cells out; zero doors.
+UNTRIED: gating presses by `leak`; using `bad`; old trail regrowing into a faint source; biasing toward the thinnest face.
+
+> 21:14 model job `observe` started
+
+---
+
+## Observer: #23 on world 116
+
+![](observe/obs04_island23_world116.png)
+
+`{'meals': 24, 'ticks': 8000, 'alive': True, 'distance': 1844.0, 'cells_visited': 1107, 'last500_box': '57x50', 'doors': 0, 'breaks': 1, 'idle_presses': 40, 'nightcaps': 0}`
+
+The agent starts in the south-east and forages well at first, looping through the open ground there and eating steadily (the cyan stretch holds about eight meals). It then climbs north-east into a small walled enclosure and gets tangled in it: the pink-violet knot of crossing tracks shows it pacing back and forth along the same inner walls for a long stretch, which is where most of its 40 idle presses and its one break went, with no meals to show for it. Once it escapes, it drifts west through the middle and into the north-west, eating again at a decent rate, and ends standing just below the cluster of its last meals in the centre-west. Its weakness is that it spends a large slice of the life on that one enclosure while whole regions full of growing food — the entire south-west, the north, and the far east — are never visited at all. The one mechanism I would fix first is the steady pull toward the local winner wall face: it should fade once effort spent on that face has produced nothing, so a wall that has been pressed and refused stops shining and the wave turns back toward unexplored ground.

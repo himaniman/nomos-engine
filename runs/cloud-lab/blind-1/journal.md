@@ -753,3 +753,157 @@ rule readout:
 ```
 
 > 14:55 model job `design` started
+
+---
+
+## Turn 11 -> island #14
+
+**Hypothesis:** The theory's strongest negative result is that a FASTER wave (#8) cost 6 meals, which suggests the lag of a slow wave works as commitment: the field the agent climbs changes its mind slowly, so the agent finishes approaches instead of flipping between lures. This tests that directly: the Bellman target is computed separately and value only relaxes part of the way toward it each step, so a newly painted or flickering lure must persist for a few thoughts before it can steal the agent from its current target, while the fixed point is the same wave as #11. If inertia helps, this beats #11; if it loses, the express-wave result had another cause.
+
+Prediction 29.5, got **25.7** meals, fitness 509, per world [30, 11, 29, 20, 17, 38, 29, 23, 29, 26, 35, 28, 24, 36, 29, 33, 0, 28, 15, 34]; model 36.1 s, repairs 0; vocabulary twin of #11, #12, #9, #10
+
+value on the test map: max 0.97, mean 0.32, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Inertia, tested directly. The two-cell express wave (#8) cost 6 meals, which
+# suggests the lag of a slow wave is useful: the field the agent climbs changes
+# its mind slowly. Here the Bellman target is computed separately and
+# `value` RELAXES toward it (a blend of the old field and the new), so a newly
+# painted lure must persist for a few thoughts before it can steal the agent from
+# its current target, while the fixed point is still the same wave. Base: #11.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel target
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+
+# What the wave would be now, built from the current field.
+rule bellman:
+  when 1
+  set target = max(injection, 0.94 * max4(value), 0.916214 * max8(value)) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion)
+
+# The field the agent climbs moves only part of the way toward it each step.
+rule relax:
+  when 1
+  set value = 0.6 * value + 0.4 * target
+```
+
+> 14:59 model job `theory` started
+
+---
+
+## Theory (after 12 design turns)
+
+Gains come only from WHAT is injected, never from changing how the wave moves. Helps: ballistic exploration (#7, frontier muted around the walked path: 28.2 vs 25.7 for #1); honest appetite + aversion (#11, morsels pull only by want-weighted source, halo around bad: 28.9 train, 28.1 holdout vs control 26.6); learned doors as curiosity (#9-#11 are the only laws that ever ate on world 16: 21, 11, 26).
+Hurts: every change to wave dynamics — faster two-cell hops (#8, -6.4), slower relaxation (#14, -3.2: refutes my old "inertia" reading of #8), two waves with different discounts (#13, -3.8), damping along the path (#3). Plain Bellman at 6 subticks is a sweet spot. Also hurts: probing every wall for rooms behind it (#12, -5.2, wastes presses, world 16 back to 0); boredom (#6).
+Untried: weighing food by kind or brightness, smell reliability, corridor geometry. Noise is ~2 meals.
+
+> 15:14 model job `design` started
+
+---
+
+## Turn 12 -> island #15
+
+**Hypothesis:** The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner, and past any single wall corner, but a body of radius 0.45 moving cell-centre to cell-centre diagonally brushes both corner cells, so the agent is led into gaps it cannot fit and slides or wedges, losing ticks in exactly the cluttered places (caves, rubble, room corners) where food sits. Here a diagonal step only carries the wave when both orthogonal cells it brushes are open, and a diagonal neighbour of the agent that its body cannot reach directly reads as nothing, so routes bend orthogonally around corners; injection is #11's (not a change to the wave's speed or discount, only to
+
+Prediction 29.5, got **29.3** meals, fitness 554, per world [35, 31, 29, 34, 23, 31, 25, 32, 21, 13, 28, 33, 39, 39, 26, 32, 26, 22, 35, 32]; model 52.2 s, repairs 0; vocabulary twin of #11, #14, #10, #12
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# The wave must respect the body. max8 lets the wave cut diagonally between two
+# walls that touch at a corner, and past any wall corner, but a body of radius
+# 0.45 cannot squeeze through such a pinch: it is led into a gap it cannot fit,
+# and slides or sticks. Here a diagonal step only carries the wave when BOTH
+# orthogonal cells it passes are open, and a diagonal neighbour the agent
+# cannot reach directly reads as nothing. Injection as in #11.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+# How clear a cell is for a body to pass beside.
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+
+# A diagonal neighbour of the agent that its body cannot reach directly.
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+
+# Orthogonal steps as before; each diagonal gated by the two corner cells it brushes.
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
+```

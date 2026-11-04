@@ -1,0 +1,57 @@
+# The theory's strongest negative result is that a FASTER wave (#8) cost 6 meals, which suggests the lag of a slow wave works as commitment: the field the agent climbs changes its mind slowly, so the agent finishes approaches instead of flipping between lures. This tests that directly: the Bellman target is computed separately and value only relaxes part of the way toward it each step, so a newly painted or flickering lure must persist for a few thoughts before it can steal the agent from its current target, while the fixed point is the same wave as #11. If inertia helps, this beats #11; if it loses, the express-wave result had another cause.
+
+# Inertia, tested directly. The two-cell express wave (#8) cost 6 meals, which
+# suggests the lag of a slow wave is useful: the field the agent climbs changes
+# its mind slowly. Here the Bellman target is computed separately and
+# `value` RELAXES toward it (a blend of the old field and the new), so a newly
+# painted lure must persist for a few thoughts before it can steal the agent from
+# its current target, while the fixed point is still the same wave. Base: #11.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel target
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source, source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+
+# What the wave would be now, built from the current field.
+rule bellman:
+  when 1
+  set target = max(injection, 0.94 * max4(value), 0.916214 * max8(value)) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion)
+
+# The field the agent climbs moves only part of the way toward it each step.
+rule relax:
+  when 1
+  set value = 0.6 * value + 0.4 * target

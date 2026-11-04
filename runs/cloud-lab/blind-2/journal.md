@@ -2202,3 +2202,181 @@ rule wave:
 ```
 
 > 21:39 model job `design` started
+
+---
+
+## Turn 28 -> island #30
+
+**Hypothesis:** Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so the far smell, phantom or not, is the agent's main long-range lead to food: it is the only sense that reaches past the 12-cell map. The opposite test: a far smell is painted at the map's edge where the wave's distance discount already halves it before it reaches the agent, so its weight is now boosted back as it gets fainter (faint smells pull more, near ones as before), and the nearest frontier crack should no longer outbid a real meal beyond the map.
+
+Prediction 33.0, got **28.5** meals, fitness 582, per world [18, 12, 31, 54, 31, 36, 17, 41, 42, 32, 27, 14, 23, 22, 44, 25, 26, 17, 26, 32]; model 22.1 s, repairs 0; vocabulary twin of #29, #25, #16, #27, #18
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+# a smell's painted strength says how far it is; a far smell is painted at the map's edge and the
+# wave's discount already halves it, so it is boosted back: faint smells pull MORE, not less
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing > 0, 1.027, where(scent > 0, 1.027 * (2 - scent), (0.4611 + 1.5 * vast) * (0.8222 + 2 * ars * exp(0 - far / 4))))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 21:56 model job `deep` started
+
+---
+
+## Turn 29 (DEEP) -> island #31
+
+**Hypothesis:** The max() wave values a lone berry exactly like a berry with two more beside it, yet food grows in clumps (one or two berries per larder, two fruits per tree) and a trip to a clump pays several meals for one walk. A `clump` blur of the seen morsels raises each morsel's pull by how many others lie around it, so between two seen targets at similar distances the agent goes for the group; area-restricted search (#25, the best holdout law, which this builds on) then combs the rest of it.
+
+Prediction 32.0, got **29.1** meals, fitness 584, per world [35, 11, 29, 32, 29, 47, 30, 33, 22, 28, 28, 32, 8, 24, 42, 39, 26, 21, 31, 35]; model 40.1 s, repairs 0; vocabulary twin of #30, #29, #25, #16, #27, #18
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel clump
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+# how many seen morsels lie around a cell: food grows in clumps (larders, trees), and a morsel
+# with others beside it is worth more than one alone, the trip pays several meals
+rule clump:
+  when 1
+  set clump = 0.3 * thing + 0.6 * avg8(clump)
+
+rule inject:
+  when 1
+  set injection = max(max(thing * (1 + 2 * clump), source * where(thing + scent > 0, 1.027, (0.4611 + 1.5 * vast) * (0.8222 + 2 * ars * exp(0 - far / 4)))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+> 22:00 model job `theory` started
+
+---
+
+## Theory (after 30 design turns)
+
+Load-bearing, each shown by a loss when removed or weakened: the max() wave (mean-based potential field #23: 11.3); the far smell, the only sense past the map (weighing it by its own faint strength, #29: 22.2, -10 against its base); raw pull of seen morsels (#19: 26.1); frontier weighted by unknown behind it (#3: +5); dwell-frustration on wall faces (removing or bypassing it brings back the 0-meal worlds 110/118, e.g. Manhattan wave #28: 27.0). The plain discount and the 8-way wave sit at an optimum: reshaping frontier distance either way (#16, #18) and pure orthogonal waves (#17, #28) lost. Neutral, within the ~2-meal noise of one 20-world mean: boosting far smell (#30: 28.5), clump bonus (#31: 29.1), sweep plus wall-aware unknown (#26: 31.6). Honest numbers: area-restricted search after meals (#25) holds 29.4 on holdout against the tuned control's 27.1; the sweep (#10) is best on train, 25.4 holdout.
+
+### Holdout checkpoint at 9.28 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #30  train 32.2 meals  holdout 25.7  (tuned 5x) | Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so 
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 5x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 147x: train 28.3 meals, holdout 27.1
+```

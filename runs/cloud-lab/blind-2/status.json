@@ -1,14 +1,14 @@
 {
- "now": "2026-11-04T21:39:21",
- "elapsed_h": 8.856,
+ "now": "2026-11-04T22:08:49",
+ "elapsed_h": 9.347,
  "hours": 12.0,
- "doing": "control arm: tuning",
- "design_turns": 28,
- "islands": 30,
+ "doing": "llm arm: tuning #31",
+ "design_turns": 30,
+ "islands": 32,
  "evals": {
-  "llm": 169,
-  "control": 140,
-  "holdout": 11
+  "llm": 178,
+  "control": 148,
+  "holdout": 12
  },
  "champion": {
   "id": 10,

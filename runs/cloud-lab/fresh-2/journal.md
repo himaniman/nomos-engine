@@ -2328,3 +2328,104 @@ rule wave:
   when 1
   set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
 ```
+
+> 22:04 model job `design` started
+
+---
+
+## Turn 25 -> island #28
+
+**Hypothesis:** The pocket-born agent chips several faces and breaks none because faces are ranked by a random grain, blind to where the food is — the one beyond the wall 1-2 cells out. I add an X-RAY field (a Bellman distance to smelled/seen food that ignores walls) and let it, not the grain, pick the local winner face; pull strength is unchanged, so the agent digs the face with food right behind it and grain only breaks ties when nothing is smelled.
+
+Prediction 35.5, got **34.4** meals, fitness 694, per world [45, 31, 32, 26, 32, 43, 29, 30, 39, 47, 29, 36, 37, 39, 42, 37, 24, 31, 19, 39]; model 70.1 s, repairs 0; vocabulary twin of #23, #27, #26, #24
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel xray
+channel rank
+channel crest
+channel probe
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+# X-ray: discounted distance to real food (smell or sight), walls ignored, poison avoided.
+rule calc_xray:
+  when 1
+  set xray = max(max(thing, scent) * (1 - bad), 0.94 * max4(xray), 0.916214 * max8(xray))
+# Face strength (how hard it pulls): thin, leaky, not poisoned, as before.
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+# Rank (who wins): nearness of food beyond the face first, grain as the tie-breaker.
+rule calc_rank:
+  when 1
+  set rank = solid * thin * leak * (1 - bad) * (0.05 + 0.04 * grain + xray)
+# Crest: the best rank within reach, discounted with distance (winner-take-all field).
+rule calc_crest:
+  when 1
+  set crest = max(rank, 0.93 * max8(crest))
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+# Probes: faint trail-faded faces + work, and a steady pull to the local winner face only.
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(rank >= crest - 0.000001, 1, 0))
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 9.39 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 5x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #28  train 34.4 meals  holdout 29.9  (tuned 0x) | The pocket-born agent chips several faces and breaks none because faces are ranked by a random grain, blind to
+  #26  train 32.9 meals  holdout 25.9  (tuned 5x) | Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing wit
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #27  train 33.2 meals  holdout  -    (tuned 5x) | Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trai
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 127x: train 29.7 meals, holdout 24.6
+```

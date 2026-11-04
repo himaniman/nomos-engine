@@ -1,0 +1,69 @@
+# Bold axis: AREA-RESTRICTED SEARCH, the classic optimal-foraging rule. Food in this world is clumped by habitat (stocked rooms hold two berries, trees two fruits, caves several mushrooms), yet every law weighs exploration the same everywhere and walks off after a meal. Here a meal (the agent beside a wanted morsel) leaves a LUCK mark pinned to that world spot (it scrolls with the map) and fading over a few hundred ticks; its PATCH (a few cells, falling off with distance) triples the frontier there and lifts confinement suppression, so the agent combs the clump — including the nooks and rooms beside it — before ranging out, and far from luck the law is #7 as before. I also drop #7's trail term
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel feast
+channel luck: init 0
+channel patch: init 0
+channel injection
+
+# a MEAL is happening where the agent stands next to a wanted morsel
+rule meal:
+  when 1
+  set feast = here * max(thing, max8(thing)) * (1 - bad)
+
+# LUCK: where meals happened, pinned to the world (it scrolls with the map), fading over a few hundred ticks
+rule remember_luck:
+  when 1
+  set luck = max(feast, 0.998 * luck)
+
+# the PATCH around a lucky spot: a few cells of radius, falling off with distance
+rule patch_extent:
+  when 1
+  set patch = max(luck, 0.8 * max8(patch))
+
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# AREA-RESTRICTED SEARCH: food grows in patches, so unexplored ground near a recent meal is worth
+# up to 3x (and its nooks are not suppressed); far from luck the frontier is weighed as before
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * (1 + 2 * patch), 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd) * (1 - patch)) * (1 - bad)
+
+# #7's wave without the trail term
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (1 + 3 * crowd))))

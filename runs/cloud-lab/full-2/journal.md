@@ -614,3 +614,184 @@ rule wave:
 `{'meals': 13, 'ticks': 8000, 'alive': True, 'distance': 1490.7, 'cells_visited': 902, 'last500_box': '33x24', 'doors': 0, 'breaks': 3, 'idle_presses': 42, 'nightcaps': 0}`
 
 This world is a town of many small walled rooms with food scattered both outside and inside them; the agent lives the whole 8000 ticks, eats 13 times, and spends most of its life walking loop after loop around the OUTSIDE of room walls (the blue and red tracks trace room perimeters two and three times over). Food dots sit inside rooms whose walls it walks right along, yet it opens no door (doors 0) while pressing walls 42 times for nothing, so the wave is leading it into plain wall cells rather than the rooms' doors. Late in life (red) it is confined to one block of rooms in the upper right, circling the same corridors, so it is not starving for lack of food but for lack of a way in. The trail and frustration terms make walls it has lingered beside more conductive, which spreads the leak over whichever stone it happens to be next to, instead of the one cell that actually opens. The mechanism I would try is a thin-wall detector: a solid cell with free (or a seen thing) on both opposite sides is a door candidate and keeps its leak, while solid cells backed by more solid get almost none, so the wave pours through doorways and the presses land on doors.
+
+### Holdout checkpoint at 2.17 h
+
+```
+  #7   train 32.2 meals  holdout 27.2  (tuned 5x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #10  train 27.9 meals  holdout 28.2  (tuned 4x) | Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over k
+  #5   train 26.6 meals  holdout 28.7  (tuned 5x) | 70% of food spots are renewable and regrow ~1200 ticks after being eaten, but every law so far forgets a spot 
+  #4   train 26.2 meals  holdout 28.9  (tuned 5x) | Exploration is a flat 0.12 on every frontier cell, so a crack into a one-cell pocket pulls as hard as an openi
+  #8   train 25.7 meals  holdout  -    (tuned 5x) | Axis: the far-vs-near trade-off. One wave gives every source the same 0.94/cell horizon, so a wide frontier te
+  #9   train 25.4 meals  holdout  -    (tuned 5x) | Axis: commitment in the agent's own motion. Every law so far re-decides from scratch each thought, so near-tie
+  #6   train 23.1 meals  holdout  -    (tuned 5x) | The agent's failure modes are dithering between two targets and re-walking ground it has already searched, and
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 41x: train 27.6 meals, holdout 23.2
+```
+
+> 15:01 model job `design` started
+
+---
+
+## Turn 8 -> island #11
+
+**Hypothesis:** The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times and opening no door: the leak is spread evenly over every solid cell, so the wave pours into thick rock as readily as into a one-cell room wall where a door can be. A `thinwall` detector (a solid cell with non-solid on both sides along an axis) keeps the taught leak only on thin walls and cuts thick rock to a third, so plans lead into room walls and doors (where the per-hue leak learning then picks the door) instead of rock masses; frustration still multiplies both, so a sealed pocket can still be dug out. Built on #10 (best untuned, 27.9), the wall-thickness rule is the one change.
+
+Prediction 29.0, got **27.9** meals, fitness 560, per world [41, 31, 39, 28, 24, 35, 32, 35, 18, 33, 27, 20, 1, 18, 29, 29, 27, 33, 24, 34]; model 36.1 s, repairs 0; vocabulary twin of #10, #7
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel trail: init 0
+channel dwell: init 0
+channel crowd: init 0
+channel gateway
+channel thinwall
+channel conduct
+channel injection
+
+rule lay_trail:
+  when 1
+  set trail = max(here, 0.999 * trail)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule gaps:
+  when 1
+  set gateway = max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1)) * (1 - solid)
+
+# DOOR CANDIDATE: a solid cell only one cell thick along some axis (a room wall), not a mass of rock
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * (1 + gateway), 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd) * (1 - gateway)) * (1 - bad)
+
+# the leak goes where a wall can open: thin walls keep their taught leak, rock mass keeps a third of it;
+# frustration still raises both; known ground is trusted over unknown
+rule conductance:
+  when 1
+  set conduct = (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd)))) * (1 - 0.08 * trail) * (1 - 0.04 * (1 - free) * (1 - solid))
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * conduct
+```
+
+> 15:20 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** Bold axis: AREA-RESTRICTED SEARCH, the classic optimal-foraging rule. Food in this world is clumped by habitat (stocked rooms hold two berries, trees two fruits, caves several mushrooms), yet every law weighs exploration the same everywhere and walks off after a meal. Here a meal (the agent beside a wanted morsel) leaves a LUCK mark pinned to that world spot (it scrolls with the map) and fading over a few hundred ticks; its PATCH (a few cells, falling off with distance) triples the frontier there and lifts confinement suppression, so the agent combs the clump — including the nooks and rooms beside it — before ranging out, and far from luck the law is #7 as before. I also drop #7's trail term
+
+Prediction 29.5, got **26.9** meals, fitness 543, per world [20, 32, 31, 34, 36, 38, 23, 31, 26, 34, 0, 28, 25, 32, 34, 28, 21, 21, 21, 23]; model 58.1 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel feast
+channel luck: init 0
+channel patch: init 0
+channel injection
+
+# a MEAL is happening where the agent stands next to a wanted morsel
+rule meal:
+  when 1
+  set feast = here * max(thing, max8(thing)) * (1 - bad)
+
+# LUCK: where meals happened, pinned to the world (it scrolls with the map), fading over a few hundred ticks
+rule remember_luck:
+  when 1
+  set luck = max(feast, 0.998 * luck)
+
+# the PATCH around a lucky spot: a few cells of radius, falling off with distance
+rule patch_extent:
+  when 1
+  set patch = max(luck, 0.8 * max8(patch))
+
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# AREA-RESTRICTED SEARCH: food grows in patches, so unexplored ground near a recent meal is worth
+# up to 3x (and its nooks are not suppressed); far from luck the frontier is weighed as before
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * (1 + 2 * patch), 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd) * (1 - patch)) * (1 - bad)
+
+# #7's wave without the trail term
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (1 + 3 * crowd))))
+```

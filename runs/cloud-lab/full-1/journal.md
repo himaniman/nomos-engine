@@ -3064,3 +3064,34 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+### Holdout checkpoint at 12.03 h
+
+```
+  #30  train 31.4 meals  holdout 27.2  (tuned 6x) | The minimal law fell to 24.6 (#29), so darkness and trail are load-bearing, and the best structure is the know
+  #44  train 30.1 meals  holdout 30.2  (tuned 1x) | A guessed wall continuation passes a fixed half of the wave, whatever the wall it continues is made of: the hi
+  #32  train 30.5 meals  holdout 30.5  (tuned 5x) | Map completion so far predicts only WALLS; the price of unknown ground (#18) is then paid alike by a cell that
+  #43  train 29.9 meals  holdout 28.6  (tuned 5x) | Removing the read-out dimming cost 3.5 meals (#42: 25.1 vs #35: 28.8), so the trail must act at the decision, 
+  #35  train 28.8 meals  holdout 30.8  (tuned 5x) | The footprint trail is load-bearing (#29 without it fell to 24.6) but acts only on the read-out, at the agent'
+  #41  train 28.6 meals  holdout  -    (tuned 5x) | Counting guessed walls in the confinement gave 28.1 (#40), no better than #32: the night's knowledge priors ar
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #38  train 28.4 meals  holdout  -    (tuned 5x) | The night measured the plan's update speed twice and both faster plans lost: wiping it each thought 12.8 (#16)
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 212x: train 30.7 meals, holdout 24.2
+```
+
+### FINAL worlds (never seen by selection or by the model)
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 212x              25.8 meals  immortal 28/32
+#19 tuned 5x                        26.9 meals  immortal 30/32
+#35 tuned 5x                        29.8 meals  immortal 31/32
+#32 tuned 5x                        26.9 meals  immortal 28/32
+#30 tuned 6x                        28.2 meals  immortal 29/32
+#44 tuned 1x                        27.2 meals  immortal 28/32
+#19 as written                      27.1 meals  immortal 30/32
+```

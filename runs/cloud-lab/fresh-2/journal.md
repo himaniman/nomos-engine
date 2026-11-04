@@ -2013,3 +2013,99 @@ rule wave:
   when 1
   set value = where(timer >= 1, 0, max(pull, max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)))
 ```
+
+> 20:57 model job `design` started
+
+---
+
+## Turn 22 -> island #25 (poor: 1 tuning try)
+
+**Hypothesis:** Every law so far commits to a wall face by EFFORT (aim, work, timers), whatever the face does in return, so the pocket-born agent scatters its presses and never breaks through. This law commits by CONSEQUENCE. It keeps the previous step's `solid`, marks any cell whose solidity just fell (a chip, an opening door) as `dug`, which fades slowly, and makes that cell and the solid right next to it a source that gets past the wall's damping. A face that gave gets pressed again until the tunnel is through, faces that never gave stay faint probes, and the agent should get out of sealed pockets onto the food just beyond.
+
+Prediction 34.5, got **3.0** meals, fitness 68, per world [6, 3, 1, 2, 6, 0, 2, 0, 2, 4, 0, 10, 1, 5, 1, 8, 1, 1, 0, 6]; model 60.1 s, repairs 0
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Drill: a face that GAVE under a press (its solidity dropped since the last step) is
+# remembered; the cells it gave into, and the solid just beyond, become a committed source.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel psolid
+channel dug
+channel drill
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells, slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+# Yield: solidity fell since the last step (a chip, a door) -> the cell is marked dug; slow fade.
+rule calc_dug:
+  when 1
+  set dug = clamp(max(0.998 * dug, where(psolid - solid > 0.1, 1, 0)), 0, 1)
+# Remember this step's solidity (read as the previous one on the next thought's first step).
+rule remember:
+  when 1
+  set psolid = solid
+# Drill target: still-solid cells that gave, or touch one that gave, ranked by grain.
+rule calc_drill:
+  when 1
+  set drill = 0.45 * solid * max(dug, 0.8 * max4(dug)) * (1 - bad) * (0.7 + 0.3 * grain)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * 0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave; the drill target bypasses the wall's damping, everything else as before.
+rule wave:
+  when 1
+  set value = max(drill, max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad))
+```
+
+### Holdout checkpoint at 8.24 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 5x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #22  train 32.0 meals  holdout  -    (tuned 5x) | #13's futility could never fire: work = 0.68*work + 0.03*aim settles near 0.09, far below the 0.9 threshold. T
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 116x: train 29.7 meals, holdout 24.6
+```
+
+> 21:04 model job `design` started

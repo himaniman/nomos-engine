@@ -1,0 +1,64 @@
+# Every law so far commits to a wall face by EFFORT (aim, work, timers), whatever the face does in return, so the pocket-born agent scatters its presses and never breaks through. This law commits by CONSEQUENCE. It keeps the previous step's `solid`, marks any cell whose solidity just fell (a chip, an opening door) as `dug`, which fades slowly, and makes that cell and the solid right next to it a source that gets past the wall's damping. A face that gave gets pressed again until the tunnel is through, faces that never gave stay faint probes, and the agent should get out of sealed pockets onto the food just beyond.
+
+# Drill: a face that GAVE under a press (its solidity dropped since the last step) is
+# remembered; the cells it gave into, and the solid just beyond, become a committed source.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel psolid
+channel dug
+channel drill
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+# Trail of visited cells, slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement)
+# Yield: solidity fell since the last step (a chip, a door) -> the cell is marked dug; slow fade.
+rule calc_dug:
+  when 1
+  set dug = clamp(max(0.998 * dug, where(psolid - solid > 0.1, 1, 0)), 0, 1)
+# Remember this step's solidity (read as the previous one on the next thought's first step).
+rule remember:
+  when 1
+  set psolid = solid
+# Drill target: still-solid cells that gave, or touch one that gave, ranked by grain.
+rule calc_drill:
+  when 1
+  set drill = 0.45 * solid * max(dug, 0.8 * max4(dug)) * (1 - bad) * (0.7 + 0.3 * grain)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * 0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+# Bellman wave; the drill target bypasses the wall's damping, everything else as before.
+rule wave:
+  when 1
+  set value = max(drill, max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad))

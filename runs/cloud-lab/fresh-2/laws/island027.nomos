@@ -1,0 +1,75 @@
+# Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trail term makes it actively repulsive. Food grows back, though, and the observed life ate best looping through the same open ground. This law adds a memory along a new axis, time. A `larder` keeps every unpoisoned morsel ever seen, so one seen behind the agent's view fan keeps pulling. A `crop` clock marks where a larder cell was reached and eaten. A `regrow` source rises as that clock ages, so the wave sends the agent back to old feeding grounds at about the time they should have regrown, before the frontier sends it off into empty land. The agent should spend fewer ticks searching bet
+
+# Larder: remember where morsels were seen, mark where they were taken (crop), and let a
+# taken place regrow into a faint source as its crop memory ages: return to feeding grounds.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel larder
+channel crop
+channel regrow
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+# Larder: every unpoisoned morsel ever seen, slow fade, wiped where the agent reached it.
+rule remember:
+  when 1
+  set larder = max(thing * (1 - bad), 0.9995 * larder) * (1 - max(here, max8(here)))
+# Crop: a larder cell the agent reached (it ate there); a clock that fades from 1 to 0.
+rule harvest:
+  when 1
+  set crop = max(max(here, max8(here)) * larder, 0.9985 * crop)
+# Regrow: a harvested place pulls more the longer ago it was taken, then is forgotten.
+rule calc_regrow:
+  when 1
+  set regrow = 0.15 * free * (1 - bad) * where(crop > 0.02, 1, 0) * (1 - crop)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+# Sources: seen morsels, out-of-sight remembered ones, trail-faded smell/frontier, regrowth.
+rule inject:
+  when 1
+  set injection = max(thing, 0.6 * larder, source * (0.74 - 0.82 * trail), regrow) * (0.83 - bad) / (1 + 0.83 * confinement)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)

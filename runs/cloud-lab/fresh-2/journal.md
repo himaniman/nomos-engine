@@ -2223,3 +2223,108 @@ UNTRIED: gating presses by `leak`; using `bad`; old trail regrowing into a faint
 `{'meals': 24, 'ticks': 8000, 'alive': True, 'distance': 1844.0, 'cells_visited': 1107, 'last500_box': '57x50', 'doors': 0, 'breaks': 1, 'idle_presses': 40, 'nightcaps': 0}`
 
 The agent starts in the south-east and forages well at first, looping through the open ground there and eating steadily (the cyan stretch holds about eight meals). It then climbs north-east into a small walled enclosure and gets tangled in it: the pink-violet knot of crossing tracks shows it pacing back and forth along the same inner walls for a long stretch, which is where most of its 40 idle presses and its one break went, with no meals to show for it. Once it escapes, it drifts west through the middle and into the north-west, eating again at a decent rate, and ends standing just below the cluster of its last meals in the centre-west. Its weakness is that it spends a large slice of the life on that one enclosure while whole regions full of growing food — the entire south-west, the north, and the far east — are never visited at all. The one mechanism I would fix first is the steady pull toward the local winner wall face: it should fade once effort spent on that face has produced nothing, so a wall that has been pressed and refused stops shining and the wave turns back toward unexplored ground.
+
+> 21:33 model job `deep` started
+
+### Holdout checkpoint at 8.80 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 5x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #26  train 32.9 meals  holdout 25.9  (tuned 5x) | Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing wit
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 8x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #22  train 32.0 meals  holdout  -    (tuned 5x) | #13's futility could never fire: work = 0.68*work + 0.03*aim settles near 0.09, far below the 0.9 threshold. T
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 121x: train 29.7 meals, holdout 24.6
+```
+
+---
+
+## Turn 24 (DEEP) -> island #27
+
+**Hypothesis:** Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trail term makes it actively repulsive. Food grows back, though, and the observed life ate best looping through the same open ground. This law adds a memory along a new axis, time. A `larder` keeps every unpoisoned morsel ever seen, so one seen behind the agent's view fan keeps pulling. A `crop` clock marks where a larder cell was reached and eaten. A `regrow` source rises as that clock ages, so the wave sends the agent back to old feeding grounds at about the time they should have regrown, before the frontier sends it off into empty land. The agent should spend fewer ticks searching bet
+
+Prediction 36.0, got **33.2** meals, fitness 667, per world [34, 7, 26, 37, 38, 32, 28, 33, 34, 40, 32, 43, 27, 32, 36, 33, 34, 34, 35, 49]; model 128.2 s, repairs 0; vocabulary twin of #23, #26, #24
+
+value on the test map: max 0.61, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Larder: remember where morsels were seen, mark where they were taken (crop), and let a
+# taken place regrow into a faint source as its crop memory ages: return to feeding grounds.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel grain
+channel face
+channel crest
+channel probe
+channel larder
+channel crop
+channel regrow
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+# Larder: every unpoisoned morsel ever seen, slow fade, wiped where the agent reached it.
+rule remember:
+  when 1
+  set larder = max(thing * (1 - bad), 0.9995 * larder) * (1 - max(here, max8(here)))
+# Crop: a larder cell the agent reached (it ate there); a clock that fades from 1 to 0.
+rule harvest:
+  when 1
+  set crop = max(max(here, max8(here)) * larder, 0.9985 * crop)
+# Regrow: a harvested place pulls more the longer ago it was taken, then is forgotten.
+rule calc_regrow:
+  when 1
+  set regrow = 0.15 * free * (1 - bad) * where(crop > 0.02, 1, 0) * (1 - crop)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule calc_face:
+  when 1
+  set face = solid * thin * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+# Sources: seen morsels, out-of-sight remembered ones, trail-faded smell/frontier, regrowth.
+rule inject:
+  when 1
+  set injection = max(thing, 0.6 * larder, source * (0.74 - 0.82 * trail), regrow) * (0.83 - bad) / (1 + 0.83 * confinement)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0))
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
+```

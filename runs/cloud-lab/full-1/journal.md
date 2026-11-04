@@ -315,3 +315,145 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+> 12:41 model job `design` started
+
+---
+
+## Turn 5 -> island #8
+
+**Hypothesis:** Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as its sighting fades, so the agent re-finds food only by luck. A long LARDER memory of where good morsels were seen, multiplied by a RIPENESS clock that is reset whenever the agent stands on or beside the place and climbs slowly back, injects a source that calls the agent back to a patch about when it should have regrown: a trapline over the remembered map, on top of the darkness-weighted frontier and the footprint trail.
+
+Prediction 27.5, got **24.6** meals, fitness 491, per world [26, 30, 27, 34, 40, 23, 4, 28, 31, 26, 30, 34, 11, 27, 23, 33, 0, 22, 24, 20]; model 40.1 s, repairs 0; vocabulary twin of #7, #4
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel larder
+channel ripe
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# where good food has been seen: a long memory that outlives the fading sighting
+rule remember:
+  when 1
+  set larder = max(thing * (1 - bad), 0.9998 * larder)
+
+# a remembered place ripens with time since the agent last stood on or beside it
+rule ripen:
+  when 1
+  set ripe = where(max(here, max8(here)) > 0, 0, min(1, ripe + 0.0004))
+
+# food and frontier as before; a ripe remembered patch calls the agent back (a trapline)
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark), 0.5 * larder * ripe) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 12:45 model job `theory` started
+
+---
+
+## Theory (after 6 design turns)
+
+1. Exploration is the lever; frontier quality matters. Darkness-weighted frontier (#3) is the train leader (26.7 tuned, holdout 27.3) over plain confinement (#1, 25.7/25.7).
+2. Do not walk back. The footprint trail (#4) is the best holdout (30.0) with equal train (25.9); it rescued worlds 3 and 6 (5->26, 4->29), the dithering worlds.
+3. Splitting food and frontier into two waves with different discounts hurts (#5, 21.6): one shared discount keeps food and frontier comparable.
+4. Extra pull terms layered on top so far cost meals untuned: random regional preference (#6, 24.4, holdout 24.9), wall breach (#7, 23.2 raw, 26.2 tuned, world 16 still 0), larder/trapline (#8, 24.6 raw, untuned). Each new source competes with the frontier and distracts.
+5. Per-world scores swing 2 <-> 28 between near-identical laws: one world is not evidence; trust holdout.
+6. World 16 (sealed pocket) starves every law, breach included.
+
+### Holdout checkpoint at 1.62 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 6x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 5x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 7x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #8   train 24.6 meals  holdout  -    (tuned 1x) | Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as
+  #5   train 21.6 meals  holdout  -    (tuned 5x) | One discount serves two different promises: food (certain, worth a detour only when near) and the frontier (un
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 29x: train 25.7 meals, holdout 25.7
+```
+
+> 13:01 model job `design` started
+
+---
+
+## Turn 6 -> island #9
+
+**Hypothesis:** My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint trail). The smell is painted at a single point along a bearing that flips around walls, so following it directly is fragile, but it says roughly where food is. A broad slowly fading AROMA halo around recent smell points multiplies frontier marks inside it, so exploration is biased toward unknown ground in the smelled direction (finding the actual path around the wall) instead of toward any dark region, with no new competing source.
+
+Prediction 27.0, got **25.9** meals, fitness 521, per world [37, 29, 23, 33, 15, 26, 25, 20, 36, 23, 27, 34, 22, 36, 26, 28, 0, 26, 19, 32]; model 46.1 s, repairs 0; vocabulary twin of #7, #4, #8
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel aroma
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a broad, slowly fading halo around where the nose has pointed (crosses walls: it is a belief, not a path)
+rule halo:
+  when 1
+  set aroma = max(scent, 0.85 * max8(aroma), 0.95 * aroma)
+
+# frontier marks are worth more inside the halo: explore toward what is smelled, not just what is dark
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 + 3.0 * aroma)) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

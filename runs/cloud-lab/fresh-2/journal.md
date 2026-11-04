@@ -831,3 +831,104 @@ rule wave:
   when 0.9718
   set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
 ```
+
+### Holdout checkpoint at 3.41 h
+
+```
+  #8   train 33.5 meals  holdout 24.9  (tuned 5x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #10  train 30.9 meals  holdout  -    (tuned 5x) | A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every w
+  #6   train 28.5 meals  holdout 25.8  (tuned 5x) | When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent s
+  #3   train 26.9 meals  holdout 22.3  (tuned 5x) | Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls
+  #4   train 23.6 meals  holdout 21.6  (tuned 5x) | Every frontier mark is painted at the same 0.12 now, so a one-cell sliver of unknown pulls as hard as the mout
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 49x: train 27.2 meals, holdout 25.4
+```
+
+> 16:22 model job `design` started
+
+---
+
+## Turn 10 -> island #13
+
+**Hypothesis:** The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground counted as a wall worth probing. A new `thin` channel keeps only one-cell walls: free on one side and not known solid straight across, which is what a door or a room's outline looks like and what bedrock does not. A `spent` memory marks a face that soaked up full work and is still solid as rock, which wipes its work and silences it. Commitment then goes to doors into food-filled rooms rather than to digging, and once a face proves futile the agent moves on instead of tangling in place.
+
+Prediction 32.5, got **31.6** meals, fitness 630, per world [28, 35, 44, 30, 36, 21, 34, 39, 6, 33, 28, 40, 26, 33, 44, 26, 40, 26, 24, 38]; model 42.1 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 0.76, mean 0.35, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Thin-wall gate + futility exit: only one-cell walls with no solid behind them are worth pressing.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel probe
+channel nbmax
+channel aim
+channel work
+channel thin
+channel spent
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.9144 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Thin wall: known free on one side and NOT known solid straight across (a door, not bedrock).
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (1.029 - bad) / (1 + 0.8336 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: 1 on the neighbour(s) of the agent that the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Work: effort on a solid face; grows while aimed at, fades slowly, wiped once the face is spent.
+rule effort:
+  when 1
+  set work = min(1, 0.998 * work + 0.03 * aim * solid) * (1 - spent)
+
+# Futility: a face that soaked up full work and is still solid is rock; remembered, slowly forgiven.
+rule futility:
+  when 1
+  set spent = max(0.9995 * spent, where(work > 0.9, 1, 0) * solid)
+
+# Wall faces are sources only if thin and not spent: faint by default, committed share with work.
+rule calc_probe:
+  when 1
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.06 * clamp(1 - 1.214 * trail, 0, 1) + 0.3 * work)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
+```

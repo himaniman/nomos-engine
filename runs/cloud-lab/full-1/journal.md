@@ -2981,3 +2981,86 @@ KNOWLEDGE GOES INTO STEP PRICES: +2 to +3 meals each time (#18, #23, #32); the s
 SETTLED NEGATIVES: new pulls (leaves 18.3, room source changed nothing, #32 twin), changing distance pricing either way (additive 16.9, trust horizon 21.9), plan speed either way (12.8, 26.7, 28.4).
 SATURATED: further priors and two-scale confinement 28.1-28.8.
 Tuning overfits (#30 31.4 -> 27.2 holdout; control 30.7 -> 24.2). World 16 starves everything.
+
+> 23:07 model job `design` started
+
+### Holdout checkpoint at 11.91 h
+
+```
+  #30  train 31.4 meals  holdout 27.2  (tuned 6x) | The minimal law fell to 24.6 (#29), so darkness and trail are load-bearing, and the best structure is the know
+  #32  train 30.5 meals  holdout 30.5  (tuned 5x) | Map completion so far predicts only WALLS; the price of unknown ground (#18) is then paid alike by a cell that
+  #43  train 29.9 meals  holdout 28.6  (tuned 5x) | Removing the read-out dimming cost 3.5 meals (#42: 25.1 vs #35: 28.8), so the trail must act at the decision, 
+  #35  train 28.8 meals  holdout 30.8  (tuned 5x) | The footprint trail is load-bearing (#29 without it fell to 24.6) but acts only on the read-out, at the agent'
+  #41  train 28.6 meals  holdout  -    (tuned 5x) | Counting guessed walls in the confinement gave 28.1 (#40), no better than #32: the night's knowledge priors ar
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #38  train 28.4 meals  holdout  -    (tuned 5x) | The night measured the plan's update speed twice and both faster plans lost: wiping it each thought 12.8 (#16)
+  #40  train 28.1 meals  holdout  -    (tuned 5x) | Distance is priced right as it is: flattening it (additive, 16.9) and steepening it far out (trust horizon, #3
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 211x: train 30.7 meals, holdout 24.2
+```
+
+---
+
+## Turn 42 -> island #44
+
+**Hypothesis:** A guessed wall continuation passes a fixed half of the wave, whatever the wall it continues is made of: the hidden part of a rock wall is as transparent as the hidden part of a wall of doors and rubble. Letting a guessed wall cell pass what its seen neighbouring wall passes (its door contrast) carries the taught per-hue knowledge into the predicted part of the map, so plans stop leaking through hidden rock and keep leaking through hidden stretches of door-like walls.
+
+Prediction 30.0, got **30.1** meals, fitness 619, per world [41, 32, 36, 34, 17, 29, 32, 33, 24, 34, 28, 29, 31, 43, 27, 33, 0, 37, 33, 28]; model 14.1 s, repairs 0; vocabulary twin of #42, #41, #40, #38, #37, #35
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel open
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# the other half of map completion: an unknown cell that continues a line of open floor is probably floor
+rule open_floor:
+  when 1
+  set open = (1 - free) * (1 - solid) * (1 - guess) * max(shift(free, 1, 0) * shift(free, -1, 0), shift(free, 0, 1) * shift(free, 0, -1), 0.6 * shift(free, 1, 0) * shift(free, 2, 0), 0.6 * shift(free, -1, 0) * shift(free, -2, 0), 0.6 * shift(free, 0, 1) * shift(free, 0, 2), 0.6 * shift(free, 0, -1) * shift(free, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs unless predicted floor, a guessed wall passes what the seen wall it continues passes, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - max(free, open))) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door)) * (1 - guess * (1 - max8(solid * door)))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```

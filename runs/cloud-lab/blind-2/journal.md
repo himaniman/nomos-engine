@@ -488,3 +488,89 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
 ```
+
+> 14:59 model job `design` started
+
+---
+
+## Turn 7 -> island #10
+
+**Hypothesis:** The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its frontier choice can lead it back into ground it just emptied of food. A slowly fading `trail` of the walked path, blurred wide into `been`, discounts frontier marks on the side the agent came from, so exploration becomes a sweep that keeps moving away from its own past into fresh ground where uneaten food is.
+
+Prediction 32.0, got **34.7** meals, fitness 684, per world [32, 29, 31, 32, 40, 40, 41, 44, 14, 40, 33, 34, 32, 34, 44, 27, 33, 39, 33, 42]; model 36.1 s, repairs 0; vocabulary twin of #7, #5, #4, #9, #6, #8
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel been
+channel injection
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the path walked, slowly fading; scrolls with the map
+rule trail:
+  when 1
+  set trail = max(here, 0.998 * trail)
+
+# a wide blur of the path: how much of the agent's own past lies around a cell
+rule been:
+  when 1
+  set been = 0.2 * trail + 0.8 * avg8(been)
+
+# frontier on the side the agent came from counts less: the sweep goes on away from its past
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, (0.4275 + 1.5 * vast) * (1 - min(1, 3 * been)))) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 2.32 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 0x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 5x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #8   train 27.3 meals  holdout  -    (tuned 5x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #3   train 27.1 meals  holdout 21.9  (tuned 5x) | Meals come mostly from exploration, but every frontier mark is worth the same 0.12, so a crack between two wal
+  #4   train 27.9 meals  holdout 27.5  (tuned 5x) | An agent that finds nothing worth walking to stands still or rocks between two cells and starves (worlds where
+  #6   train 27.2 meals  holdout  -    (tuned 5x) | The smell is painted along the world's geodesic bearing, which flips between the two ways round a wall as the 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 35x: train 28.2 meals, holdout 25.6
+```

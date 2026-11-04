@@ -505,3 +505,203 @@ UNTRIED: when the reachable region holds no source, an escape wave seeded at the
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 32x: train 28.5 meals, holdout 27.0
 ```
+
+> 13:53 model job `design` started
+
+---
+
+## Turn 6 -> island #9
+
+**Hypothesis:** When the region the agent can reach holds no source, the map should say so and turn its own walls into goals. A DESPAIR field floods out from the agent's cell through non-solid cells whenever the best value beside the agent is near zero; solid cells bordering that despairing region become ESCAPE sources weighted by their leak, so the wave leads the agent into the wall most likely to give (untested hues stay at the curious innate leak, stone already pressed in vain has been taught low). This touches only sealed pockets and dead ends, where the champion goes flat, so it should rescue world 16 and similar starvations without bending the wave anywhere food or frontier exists.
+
+Prediction 30.0, got **21.2** meals, fitness 424, per world [34, 27, 21, 36, 17, 20, 15, 19, 20, 6, 17, 25, 28, 26, 3, 21, 0, 36, 19, 34]; model 50.2 s, repairs 0; vocabulary twin of #6
+
+value on the test map: max 1.00, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel despair
+channel escape
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (0.8 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1
+  set openness = 0.64 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1.2, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+
+# the best value beside the agent, held at its own cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# despair: born at the agent when nothing reachable shines, flooded through non-solid cells, fading with distance
+rule hopeless:
+  when 1
+  set despair = where(here > 0.5, clamp(1 - 25 * hv, 0, 1), 0.97 * max8(despair) * (1 - solid))
+
+# escape: a solid cell on the rim of a despairing region becomes a goal, as bright as it is leaky
+rule rim:
+  when 1
+  set escape = where(solid > 0.3, 0.5 * max8(despair) * leak * (1 - bad), 0)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave seeded by sources and escapes; diagonals squeeze past corners only as far as they leak
+rule wave:
+  when 1
+  set value = max(injection, escape, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+```
+
+> 14:13 model job `design` started
+
+---
+
+## Turn 7 -> island #10
+
+**Hypothesis:** The wave gets a sense of being TRAPPED. A `hope` flood carries the best source reachable over open ground (orthogonally, through non-solid cells only) back to the agent. When the agent's own cell holds no hope, a `need` signal goes out from it across the whole map, walls included. That need lights every wall face touching known-free ground as an escape source, as bright as its taught `leak`. So in a sealed pocket (world 16) the wave stops going flat. It points at the leakiest wall, the brown door or rubble, not the stone that has already refused. In open worlds need stays near zero and the champion #6 priced wave is unchanged, so the fix costs nothing where the agent already eats.
+
+Prediction 29.5, got **25.4** meals, fitness 513, per world [36, 24, 27, 25, 30, 29, 21, 40, 29, 23, 29, 24, 33, 22, 34, 31, 0, 6, 24, 20]; model 60.1 s, repairs 0
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel injection
+channel step
+channel stepd
+channel hope
+channel need
+channel door
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+
+# frontier weighted by the unknown behind it; confined and burned sources count less
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5 * sum8(solid))
+
+# HOPE: the best source reachable over open ground, flooded orthogonally through non-solid cells
+rule reach:
+  when 1
+  set hope = max(injection, 0.97 * max4(hope)) * (1 - solid)
+
+# NEED: how hopeless the agent's own cell is, broadcast across the whole map (walls too), fading with distance
+rule despair:
+  when 1
+  set need = max(here * clamp(1 - 30 * hope, 0, 1), 0.93 * max8(need))
+
+# ESCAPE seeds: wall faces touching known-free ground, as bright as they are leaky, lit only by need
+rule doors:
+  when 1
+  set door = where((solid > 0.5) and (max4(free) > 0.5), need * leak, 0)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave seeded by food, frontier AND (when trapped) escape doors; diagonals do not cut corners
+rule wave:
+  when 1
+  set value = max(injection, door, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+```
+
+> 14:18 model job `observe` started
+
+---
+
+## Observer: #6 on world 16
+
+![](observe/obs01_island6_world16.png)
+
+`{'meals': 0, 'ticks': 3604, 'alive': False, 'distance': 404.8, 'cells_visited': 81, 'last500_box': '14x12', 'doors': 1, 'breaks': 4, 'idle_presses': 89, 'nightcaps': 0}`
+
+The agent is born in a narrow sealed T of corridors (a short east-west passage and a one-cell-wide shaft running south) and spends its whole life of 3604 ticks shuttling inside it: up the shaft, along the top passage, back down to the dead end at the bottom, again and again, until the track is a solid red smear and it starves where it began. It is not ignoring food it can reach, because nothing edible lies in the pocket; the two pink morsels in the room just west sit behind a wall it never gets through. Its 89 idle presses and 4 breaks show it repeatedly pushing at the corridor walls and the brown rock at the shaft's foot without ever committing to tunnelling out, so after the first few hundred ticks it is pacing between the ends of a corridor it has already fully mapped. The failure is confinement in a room it has exhausted: once every cell of the pocket is known, the only remaining pulls are faint frontier sources just beyond the walls, and the law divides every injection by one plus about half the count of solid neighbours, which is largest in exactly the one-cell shafts and wall-side cells where those exits are, so the escape signal is crushed to roughly a fifth while nothing e
+
+### Holdout checkpoint at 2.76 h
+
+```
+  #6   train 28.5 meals  holdout 33.6  (tuned 5x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 5x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #4   train 27.2 meals  holdout 25.1  (tuned 8x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #5   train 25.7 meals  holdout 27.7  (tuned 5x) | The map gets a WEAR memory: footprints accumulate (bounded) where the agent stands and spread into a halo of w
+  #10  train 25.4 meals  holdout  -    (tuned 1x) | The wave gets a sense of being TRAPPED. A `hope` flood carries the best source reachable over open ground (ort
+  #3   train 24.2 meals  holdout 20.2  (tuned 5x) | The map gets a FOOTPRINT memory: a slowly fading `trail` of where the agent has stood, scrolling with the map.
+  #8   train 22.1 meals  holdout  -    (tuned 5x) | The map learns BOREDOM: a bounded footprint `trail` piles up where the agent keeps standing, and where it exce
+  #9   train 21.2 meals  holdout  -    (tuned 5x) | When the region the agent can reach holds no source, the map should say so and turn its own walls into goals. 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 39x: train 28.5 meals, holdout 27.0
+```

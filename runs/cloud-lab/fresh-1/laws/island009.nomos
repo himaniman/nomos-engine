@@ -1,0 +1,75 @@
+# When the region the agent can reach holds no source, the map should say so and turn its own walls into goals. A DESPAIR field floods out from the agent's cell through non-solid cells whenever the best value beside the agent is near zero; solid cells bordering that despairing region become ESCAPE sources weighted by their leak, so the wave leads the agent into the wall most likely to give (untested hues stay at the curious innate leak, stone already pressed in vain has been taught low). This touches only sealed pockets and dead ends, where the champion goes flat, so it should rescue world 16 and similar starvations without bending the wave anywhere food or frontier exists.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel despair
+channel escape
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (0.8 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1
+  set openness = 0.64 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1.2, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.56 * confinement)
+
+# the best value beside the agent, held at its own cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# despair: born at the agent when nothing reachable shines, flooded through non-solid cells, fading with distance
+rule hopeless:
+  when 1
+  set despair = where(here > 0.5, clamp(1 - 25 * hv, 0, 1), 0.97 * max8(despair) * (1 - solid))
+
+# escape: a solid cell on the rim of a despairing region becomes a goal, as bright as it is leaky
+rule rim:
+  when 1
+  set escape = where(solid > 0.3, 0.5 * max8(despair) * leak * (1 - bad), 0)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave seeded by sources and escapes; diagonals squeeze past corners only as far as they leak
+rule wave:
+  when 1
+  set value = max(injection, escape, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

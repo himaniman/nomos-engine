@@ -1,0 +1,34 @@
+# Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls with the map. Smell and frontier sources are injected weaker on that trail, while seen morsels still inject at full strength. A smell bearing that flips between two ways round a wall, or a nook already searched, stops pulling the agent back, so the wave turns to unvisited frontier instead of a limit cycle. The 0-meal worlds look like this kind of trap. Remembered poison (`bad`) also damps the wave, so the agent does not walk back over a burn.
+
+# Inhibition of return: a decaying trail of where the agent has stood suppresses
+# re-injection there, so smell traps and two-way limit cycles burn themselves out.
+
+channel source
+channel solid
+channel thing
+channel here
+channel bad
+channel value
+channel trail
+channel confinement
+channel injection
+
+# Trail of visited cells (centre + a faint ring), slow fade, bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.6 * max8(here), 0.997 * trail)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen morsels inject fully; other sources fade where the agent already went.
+rule inject:
+  when 1
+  set injection = max(thing, source * (1 - 0.8 * trail)) * (1 - bad) / (1 + 0.5 * confinement)
+
+# Bellman wave; remembered poison blocks passage like solid.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

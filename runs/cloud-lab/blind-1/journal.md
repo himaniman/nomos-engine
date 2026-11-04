@@ -1100,3 +1100,109 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
 ```
+
+> 16:26 model job `design` started
+
+### Holdout checkpoint at 4.89 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 5x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #16  train 28.1 meals  holdout  -    (tuned 5x) | Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radi
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 78x: train 28.2 meals, holdout 26.6
+```
+
+---
+
+## Turn 15 -> island #18
+
+**Hypothesis:** Area-restricted search. Food in this world is patchy — larder rooms hold two berries, trees two fruit, caves several mushrooms — so right after finding food the best place to look is nearby (including behind and beside, outside the 120-degree view), while in a barren stretch the best move is straight on. A PLENTY level rises when a seen morsel is within two cells of the agent, floods the map and fades over ~60 thoughts, and it weakens #7's ballistic muting of the frontier behind the agent: local, turning search just after food, long straight runs where there has been none. Base is #17 (frustration, body-honest diagonals, appetite, aversion, doors).
+
+Prediction 31.0, got **27.2** meals, fitness 519, per world [24, 27, 22, 37, 30, 19, 24, 43, 29, 15, 26, 31, 30, 39, 27, 21, 31, 27, 19, 23]; model 56.2 s, repairs 0; vocabulary twin of #17, #15
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Area-restricted search: after a morsel close by, PLENTY rises (fading over ~60
+# thoughts) and weakens the ballistic muting of the frontier behind the agent, so
+# it searches locally near food and runs straight where there has been none.
+# Base: #17.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel near
+channel plenty
+channel roam
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+# The 5x5 around the agent; a seen morsel there means food was just found.
+rule around_me:
+  when 1
+  set near = max(here, max8(here), max8(max8(here)))
+rule food_around:
+  when 1
+  set plenty = clamp(max(thing * near, 0.998 * plenty, 0.998 * max8(plenty)), 0, 1)
+# Ballistic muting, weakened when food has been around lately.
+rule roaming:
+  when 1
+  set roam = exp(-40 * behind * (1 - 0.8 * plenty))
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully; smell-only lures are muted by frustration.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * roam) / (1 + 0.5 * confinement), 0.3 * door * roam) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
+```

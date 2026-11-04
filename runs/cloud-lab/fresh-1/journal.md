@@ -802,3 +802,90 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 46x: train 28.5 meals, holdout 27.0
 ```
+
+> 15:04 model job `deep` started
+
+---
+
+## Turn 9 (DEEP) -> island #12
+
+**Hypothesis:** Keep #6's priced, confined wave as the agent's PROMISE (`real`), and run a second, leak-free flood over open ground only (`reach`). When the agent's own ground holds no promise, a LOST signal spreads out from it and seeds an ESCAPE wave on the wall faces of known ground: each face weighted by its leak (brown before stone), by the unknown behind it, and by any promise leaking through it. The wave ends ON the chosen wall, so the agent presses it. A COMMIT memory (`dig`) charges the face it keeps pressing, in proportion to the leak, so it keeps chipping one rubble cell until it gives instead of pacing between faces. Stone teaches its leak down, so its charge fades. When the cell opens, the char
+
+Prediction 29.5, got **25.3** meals, fitness 512, per world [25, 22, 24, 34, 16, 27, 27, 39, 31, 26, 20, 10, 27, 18, 29, 35, 0, 35, 25, 36]; model 132.2 s, repairs 0
+
+value on the test map: max 0.98, mean 0.43, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel openness
+channel injection
+channel step
+channel real
+channel reach
+channel lost
+channel hv
+channel dig
+channel esc
+rule spread:
+  when 1
+  set openness = 0.64 * avg8((1 - free) * (0.8 - solid)) + 0.45 * avg8(openness)
+rule inject:
+  when 1
+  set injection = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1.2 * source * (0.42 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.56 * sum8(solid))
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+# #6's priced, confined, corner-respecting wave: what the senses promise
+rule wave:
+  when 1
+  set real = max(injection, step * max4(real), exp(1.4142 * log(0.0001 + step)) * max(shift(real, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(real, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - leak)), shift(real, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - leak)), shift(real, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - leak)))) * (1 - solid * (1.4 - leak)) * (0.98 - 0.9 * bad)
+# the same promise flooded over open ground only: no leaks, no doors
+rule flood:
+  when 1
+  set reach = max(injection, 0.95 * max8(reach)) * where(solid < 0.5, 1, 0)
+# LOST: nothing promised on the agent's own ground; broadcast outward, fading with distance
+rule trapped:
+  when 1
+  set lost = where(here > 0.5, clamp(1 - 25 * max(reach, max8(reach)), 0, 1), 0.85 * max8(lost))
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+# COMMIT: the solid the agent is led into while lost charges by its leak; once open it still pulls; erased underfoot
+rule commit:
+  when 1
+  set dig = clamp((0.99 * dig + where((solid > 0.5) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.04 * leak * lost, 0)) * (1 - here), 0, 0.4)
+# ESCAPE: seeded on wall faces by leak x unknown behind x promise leaking through; runs over open ground, ends ON the wall
+rule escape:
+  when 1
+  set esc = max(min(0.8, lost * where((solid > 0.5) and (max4(free) > 0.5), leak * (0.1 + 0.5 * openness + 3 * real), 0) + dig), max(0.93 * max4(esc), 0.9 * max8(esc)) * where(solid > 0.5, 0, 1))
+rule out:
+  when 1
+  set value = max(real, esc)
+```
+
+### Holdout checkpoint at 3.83 h
+
+```
+  #6   train 28.5 meals  holdout 33.6  (tuned 6x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 6x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #11  train 26.9 meals  holdout 30.1  (tuned 5x) | Keep #6's priced, confined wave, and add a TRAPPED gate plus an escape-and-commit wave. The `reach` flood fill
+  #4   train 27.2 meals  holdout 25.1  (tuned 8x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #5   train 25.7 meals  holdout 27.7  (tuned 5x) | The map gets a WEAR memory: footprints accumulate (bounded) where the agent stands and spread into a halo of w
+  #10  train 25.4 meals  holdout  -    (tuned 5x) | The wave gets a sense of being TRAPPED. A `hope` flood carries the best source reachable over open ground (ort
+  #12  train 25.3 meals  holdout  -    (tuned 3x) | Keep #6's priced, confined wave as the agent's PROMISE (`real`), and run a second, leak-free flood over open g
+  #3   train 24.2 meals  holdout 20.2  (tuned 5x) | The map gets a FOOTPRINT memory: a slowly fading `trail` of where the agent has stood, scrolling with the map.
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 52x: train 28.5 meals, holdout 27.0
+```
+
+> 15:32 model job `design` started

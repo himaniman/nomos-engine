@@ -2167,3 +2167,111 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 123x: train 28.5 meals, holdout 27.0
 ```
+
+> 21:15 model job `design` started
+
+---
+
+## Turn 23 -> island #26
+
+**Hypothesis:** A second, forward wave REACH spreads from the agent (`here`) through every non-solid cell, known or unknown, the horizon ring included: it marks what the agent can WALK to without pressing anything. A wall slab with walkable ground on both opposite sides has a way round, so its leak is cut (`lk`). The wave stops tunnelling through chamber rims, rims stop luring the agent to dig, and the agent takes the corridor. Digging stays fully paid only where no walking route is known (thick walls, sealed pockets). This replaces #21's claim and clock, which kept the agent lapping one chamber, with a topological test of "is there another way": the agent leaves early and spends its life eating.
+
+Prediction 29.5, got **23.4** meals, fitness 462, per world [6, 28, 25, 23, 15, 24, 24, 38, 23, 32, 25, 26, 27, 22, 31, 28, 0, 39, 10, 21]; model 76.1 s, repairs 0; vocabulary twin of #17, #19
+
+value on the test map: max 0.87, mean 0.38, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel reach
+channel bypass
+channel lk
+channel rim
+channel beyond
+channel injection
+channel step
+channel stepd
+rule known:
+  when 1
+  set unknown = (0.92 - free) * (0.6 - solid)
+rule spread:
+  when 1
+  set openness = 0.75 * avg8(unknown) + 0.5 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.16) and (thing < 0.01) and (scent < 0.011), 1.2, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# where the agent can walk without pressing: a forward wave from here through non-solid cells
+rule walk:
+  when 1
+  set reach = where(solid > 0.3, 0, max(here, 0.85 * max8(reach)))
+# a wall slab with walkable ground on both opposite sides has a way round it
+rule round:
+  when 1
+  set bypass = where(((shift(reach, 1, 0) > 0.0005) and (shift(reach, -1, 0) > 0.0005)) or ((shift(reach, 0, 1) > 0.0005) and (shift(reach, 0, -1) > 0.0005)), 1, 0)
+# a bypassable wall leaks little: walk round it instead of digging
+rule thru:
+  when 1
+  set lk = leak * where(bypass > 0.5, 0.4, 1)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.45), solid * lk, 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.24) and (frontier < 0.5), max8(rim), 0)
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.42 + 2 * openness), max(thing, source)) / (1.12 + 0.56 * confinement), 0.15 * beyond * (0.45 + 1.58 * openness)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.047 * free) * (1 - 0.0107 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave, the solid letting through only its reach-aware leak
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, -1)) * (1 - lk)), shift(value, 1, -1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, -1)) * (1 - lk)), shift(value, -1, 1) * (1 - max(shift(solid, -1, 0), shift(solid, 0, 1)) * (1 - lk)), shift(value, 1, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 1)) * (1 - lk)))) * (1 - solid * (1 - lk)) * (0.98 - 0.86 * bad)
+```
+
+> 21:20 model job `theory` started
+
+---
+
+## Theory (after 24 design turns)
+
+HELPS: how the wave SPREADS. Confinement (#1) lifted Bellman 14.8 -> 25.7. Per-cell step cost (#6: known-free cheap, unknown dear) is still the holdout champion (33.6 vs control 27.0). Dig commitment (#16) holds holdout 32.6. A dig claim with its own clock (#21) won train 29.1 but fell to 27.8 on holdout. The clock frees the agent too late: it still laps its start chamber pressing the same faces (51 idle presses), and it starved at a rock with food beside it.
+HURTS: anything that outvalues real food. Second fields (#25 walk, #26 reach -5.8), grove sums (#24 -6.1, near the sum cliff), wall memories that change what the wave carries (#23 -2.4), footprints and escape gates (#19, #20). Ghost (#22) and larder (#18) are neutral.
+UNTRIED: a dig value capped BELOW any food source, so food always outbids a wall. Gating a dig on "no food wave reaches here". Using `bad`. A distance discount from the agent.
+
+### Holdout checkpoint at 9.85 h
+
+```
+  #21  train 29.1 meals  holdout 27.8  (tuned 6x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 6x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 129x: train 28.5 meals, holdout 27.0
+```
+
+> 21:37 model job `deep` started

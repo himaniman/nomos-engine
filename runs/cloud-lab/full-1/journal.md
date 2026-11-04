@@ -1930,3 +1930,81 @@ rule read:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 146x: train 30.7 meals, holdout 24.2
 ```
+
+> 19:07 model job `deep` started
+
+---
+
+## Turn 29 (DEEP) -> island #32
+
+**Hypothesis:** Map completion so far predicts only WALLS; the price of unknown ground (#18) is then paid alike by a cell that obviously continues an open corridor or room and by one in the middle of nowhere. The other half of completion guesses an unknown cell that continues a line of open floor (open on two opposite sides, or two free cells in a row pointing at it) as probably floor and waives its unknown price, so plans run cheaply along the obvious continuation of corridors and rooms and the price still bites where the map gives no hint.
+
+Prediction 31.0, got **30.5** meals, fitness 603, per world [21, 32, 40, 38, 17, 22, 32, 45, 43, 37, 33, 38, 31, 30, 27, 24, 0, 39, 29, 32]; model 10.2 s, repairs 0; vocabulary twin of #31, #30, #19, #27, #25, #23
+
+value on the test map: max 0.30, mean 0.16, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel leak
+channel value
+channel dark
+channel guess
+channel door
+channel open
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) * (1 - guess) + 0.5 * avg8(dark)
+
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# the other half of map completion: an unknown cell that continues a line of open floor is probably floor
+rule open_floor:
+  when 1
+  set open = (1 - free) * (1 - solid) * (1 - guess) * max(shift(free, 1, 0) * shift(free, -1, 0), shift(free, 0, 1) * shift(free, 0, -1), 0.6 * shift(free, 1, 0) * shift(free, 2, 0), 0.6 * shift(free, -1, 0) * shift(free, -2, 0), 0.6 * shift(free, 0, 1) * shift(free, 0, 2), 0.6 * shift(free, 0, -1) * shift(free, 0, -2))
+
+# a wall cell whose taught leak exceeds the walls around it stands out as a door
+rule doorness:
+  when 1
+  set door = clamp(leak + 2.0 * (leak - sum8(solid * leak) / (sum8(solid) + 0.01)) * min(1, 0.5 * sum8(solid)), 0, 1)
+
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * (1 - guess)) / (1 + 0.5 * sum8(solid))
+
+# the whole map priced by knowledge: unknown ground costs unless predicted floor, guessed wall passes half, a seen wall passes by its door contrast
+rule plan:
+  when 1
+  set wave = max(injection, (1 - 0.08 * (1 - max(free, open))) * max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - door)) * (1 - 0.5 * guess)
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 19:11 model job `theory` started
+
+---
+
+## Theory (after 30 design turns)
+
+MAIN RESULT: price each step by what the map KNOWS. Untuned train meals climb with each knowledge prior: plain base 25.6 (#4) -> unknown ground priced 27.7 (#18) -> guessed wall continuations 29.6 (#23) -> also guessed floor continuations 30.5 (#32, best untuned of the night). Walls priced by door contrast (#30) tuned to 31.4 train but holdout 27.2: tuning overfits; untuned structure is the honest signal, and the control likewise overfits (train 30.7, holdout 24.2).
+LOAD-BEARING HELPERS: darkness-weighted frontier and footprint trail (minimal law without them 24.6, #29); confinement; persistent multiplicative wave (wiping 12.8, faster express lanes 26.7, additive 16.9).
+HURTS: new attracting sources (leaves 18.3, ghost, compass, larder, breach), read-out tricks (momentum 13.7), smell moved off walls (25.6).
+NEUTRAL: appetite-weighted morsels (27.8), habituation, recursive completion (27.4), stone.
+OPEN: world 16 sealed pocket starves every law.

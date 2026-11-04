@@ -1610,3 +1610,154 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd) * (1 - 0.9 * stone))))
 ```
+
+### Holdout checkpoint at 6.12 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 6x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #18  train 33.7 meals  holdout 34.8  (tuned 6x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 5x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #19  train 33.8 meals  holdout  -    (tuned 3x) | Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightn
+  #17  train 31.4 meals  holdout  -    (tuned 5x) | Both placements of the long course broke the plateau (#15 step-level 33.4, #16 goal-level 33.0 untuned, holdou
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #11  train 28.2 meals  holdout 25.5  (tuned 6x) | The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 87x: train 29.8 meals, holdout 25.1
+```
+
+> 19:05 model job `design` started
+
+---
+
+## Turn 17 -> island #20
+
+**Hypothesis:** Axis: a HABITAT prior. Fruit grows only right beside a trunk, and leaves are walkable but opaque, so a tree's fruit is usually hidden from sight under its own canopy; the world's colours say where food should be, and brightness reads them (trunk 0.41, leaves 0.58). Here a seen trunk makes the leaf cells around it (and the free cells touching it) a modest source, unless the agent has looked there lately — a `picked` memory laid at its own ring fades over about the 1200-tick regrowth time — so the agent checks under every canopy it passes and comes back to known trees roughly when their fruit is due. Built on #18 (long course + doors-as-frontier, holdout 34.8); the orchard source is the only c
+
+Prediction 34.5, got **31.9** meals, fitness 631, per world [27, 38, 34, 37, 27, 28, 33, 27, 29, 38, 29, 31, 27, 37, 37, 23, 30, 41, 35, 30]; model 44.3 s, repairs 0; vocabulary twin of #19, #18, #16
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel trunk
+channel canopy
+channel picked: init 0
+channel orchard
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(coursex, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - coursex, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(coursey, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - coursey, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# DOORS AS FRONTIER: a thin wall whose hue has been taught to give (leak above the innate 0.5),
+# with known ground on one side and hidden space on the other, is a way into a new room
+rule doorways:
+  when 1
+  set door = thinwall * clamp(2 * (leak - 0.5), 0, 1) * (max8(free) > 0.5) * max8(hidden)
+# HABITAT BY LOOK: a trunk (solid, brightness 0.41) bears fruit right beside it, under leaves
+# (walkable, opaque, 0.58) that hide it from sight — the canopy around a trunk is a likely meal
+rule trunks:
+  when 1
+  set trunk = solid * (bright > 0.39) * (bright < 0.425)
+rule canopies:
+  when 1
+  set canopy = (1 - solid) * (bright > 0.56) * (bright < 0.6) * max8(trunk)
+# where the agent has already looked lately (its own ring), remembered about as long as fruit takes to regrow
+rule looked:
+  when 1
+  set picked = max(max(here, max8(here)), 0.9995 * picked)
+rule orchards:
+  when 1
+  set orchard = max(canopy, 0.5 * max8(trunk) * (1 - solid)) * (1 - picked)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + 2 * ahead, 0, 2), 0.4 * door, 0.35 * orchard, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+```
+
+> 19:12 model job `theory` started
+
+---
+
+## Theory (after 18 design turns)
+
+The one large structural gain is the SCALE of exploration: a long course (heading averaged over hundreds of ticks, kept at the agent's cell) lifts untuned meals from the 25-28 plateau to ~33 (#15 33.4 step-level, #16 33.0 goal-level, holdout 33.8; 20/20 immortal), because the 25-cell forgetting map otherwise re-sweeps home blocks (observer, world 100). Additions on top of the course are within noise: doors-as-frontier #18 33.7 (best holdout 34.8, and escapes pocket 110), material-by-brightness #19 33.8; slightly negative: intermittent search #17 31.4, tree/canopy prior #20 31.9 (patches and habitat priors pull the walk back, against the course). Before the course: roominess frontier generalises; frustration + a symmetry breaker escapes pockets; thin-wall leak fixes the room town 117. Hurts: non-max exploration (#14 18.9). Tuned constants mostly fail to transfer (#7 34.1->28.4).
+Untried: changing the course itself — re-aiming it when the walk loops, course-weighted smell.

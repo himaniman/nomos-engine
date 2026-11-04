@@ -1486,3 +1486,104 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
 ```
+
+### Holdout checkpoint at 6.50 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 6x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 6x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #20  train 29.5 meals  holdout  -    (tuned 5x) | A test of what #8 really showed. The express wave lost 6.4 meals and killed 5 agents, and I blamed its speed; 
+  #16  train 28.1 meals  holdout  -    (tuned 5x) | Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radi
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #21  train 27.2 meals  holdout  -    (tuned 2x) | Confinement suppression divides EVERY lure by the solid around it, so a morsel the agent can actually SEE in a
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 98x: train 28.2 meals, holdout 26.6
+```
+
+> 18:14 model job `deep` started
+
+---
+
+## Turn 19 (DEEP) -> island #22
+
+**Hypothesis:** Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so a plan to a smell waypoint or a morsel glimpsed in clutter runs straight through fog that may hold a wall; the agent commits, meets the wall, and replans — and #21 just showed that targets in clutter really are worse than Bellman says (taking confinement off seen morsels cost 3.3 meals and two lives). Here every cell passes the wave in proportion to how sure the map is that it is walkable: known-free at full rate, unknown at a discount, so of two plans the one over ground already seen wins, and an approach through fog must be clearly shorter to be chosen. Base is #17.
+
+Prediction 31.0, got **30.8** meals, fitness 612, per world [37, 33, 35, 31, 23, 31, 26, 33, 30, 36, 27, 34, 25, 36, 36, 34, 27, 36, 22, 24]; model 40.2 s, repairs 0; vocabulary twin of #21, #20, #17, #19, #18, #15
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Unknown ground is a gamble. The wave treats a cell nobody has seen like known
+# floor, so a plan to a smelt waypoint or a morsel glimpsed in clutter happily
+# runs through fog that may hold a wall, and the agent walks into dead ends and
+# replans. (#21 showed that targets in clutter really are worse than Bellman says:
+# taking confinement off seen morsels cost 3.3 meals.) Here every cell passes the
+# wave in proportion to how sure the map is that it is walkable: a known-free cell
+# at full rate, an unknown one at a discount, so plans prefer ground already seen.
+# Base: #17.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+# How unknown a cell is: neither seen free nor seen solid.
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully; smell-only lures are muted by frustration.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```

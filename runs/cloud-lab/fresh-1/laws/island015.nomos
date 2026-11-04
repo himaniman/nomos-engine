@@ -1,0 +1,73 @@
+# A LEXICOGRAPHIC two-tier wave. Tier 1 is #6's priced, confined wave, but it passes a solid only once that hue has been TAUGHT to give (a door), not on the innate guess. Tier 2 is a separate `dig` wave seeded by the horizon ring and the smell, flowing through every wall in proportion to its taught leak (stone pressed shut, rubble chipped open), and added to `value` 1e5 times fainter, so it can only decide where tier 1 is effectively dead. No gate and no threshold, so it cannot touch open-world foraging. In a sealed pocket it gives a single stable dig target (the rubble) to commit to, instead of #6 shuttling between leaks.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel block
+channel rim
+channel dig
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (1 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded)
+rule spread:
+  when 1
+  set openness = 0.6 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.14) and (thing < 0.01) and (scent < 0.01), 1, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; confined and burned cells inject less
+rule inject:
+  when 1
+  set injection = where(frontier > 0, source * (0.4 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5 * confinement)
+
+# per-cell step price: seen-free ground cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.05 * free) * (1 - 0.01 * sum8(solid))
+
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# tier 1 sees through a solid only once its hue is taught to give (door), not on the innate guess
+rule blocked:
+  when 1
+  set block = solid * (1 - clamp(2.5 * (leak - 0.4), 0, 1))
+
+# tier 2 sources: the horizon ring (a way out of anything) and the smell
+rule rims:
+  when 1
+  set rim = max(where(max(abs(posx() - 0.5), abs(posy() - 0.5)) > 0.44, 0.3, 0), scent) * (1 - bad)
+
+# tier 2: a digging wave through every wall as far as its leak lets it (stone taught shut, rubble taught open)
+rule digging:
+  when 1
+  set dig = max(rim, step * max4(dig), stepd * max8(dig)) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+
+# tier 1 priced wave, corner-squeezed diagonals; the dig wave 1e5 fainter decides only where tier 1 is dead
+rule wave:
+  when 1
+  set value = max(0.00001 * dig, max(injection, step * max4(value), stepd * max(shift(value, -1, -1) * (1 - max(shift(block, -1, 0), shift(block, 0, -1))), shift(value, 1, -1) * (1 - max(shift(block, 1, 0), shift(block, 0, -1))), shift(value, -1, 1) * (1 - max(shift(block, -1, 0), shift(block, 0, 1))), shift(value, 1, 1) * (1 - max(shift(block, 1, 0), shift(block, 0, 1))))) * (1 - block) * (1 - 0.9 * bad))

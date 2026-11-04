@@ -1,0 +1,43 @@
+# The harness steps the law only 6 times per thought, so the wave moves at most 6 cells per thought: a freshly seen morsel 12 cells away needs two thoughts before the agent feels it, and an eaten one leaves a stale ridge that keeps pulling for several thoughts after it is gone. Adding two-cell hops (discounted as two steps, gated by the passability of the cell jumped over so walls still block) doubles the wave's speed, so the field the agent climbs is closer to the true current plan and less time is lost walking along stale gradients; exploration stays ballistic as in #7.
+
+# Express wave: the harness steps the law only 6 times per thought, so a new
+# source needs several thoughts to reach the agent and an eaten one leaves a
+# stale ridge for several more. Two-cell hops (gated by the passability of the
+# cell jumped over) double the wave speed. Exploration as in #7 (ballistic).
+channel source
+channel solid
+channel thing
+channel scent
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel injection
+channel pass
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule inject:
+  when 1
+  set injection = where(max(thing, scent) > 0, max(thing, source), source * exp(-40 * behind)) / (1 + 0.5 * confinement)
+
+# How much wave a cell lets through.
+rule passability:
+  when 1
+  set pass = 1 - solid * (1 - leak)
+
+# One-step Bellman terms plus two-step hops over a passable middle cell.
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max8(value), 0.8836 * max(shift(value, 2, 0) * shift(pass, 1, 0), shift(value, -2, 0) * shift(pass, -1, 0), shift(value, 0, 2) * shift(pass, 0, 1), shift(value, 0, -2) * shift(pass, 0, -1)), 0.8394 * max(shift(value, 2, 2) * shift(pass, 1, 1), shift(value, -2, 2) * shift(pass, -1, 1), shift(value, 2, -2) * shift(pass, 1, -1), shift(value, -2, -2) * shift(pass, -1, -1))) * pass

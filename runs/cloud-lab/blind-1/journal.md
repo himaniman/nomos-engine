@@ -220,3 +220,151 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
 ```
+
+### Holdout checkpoint at 1.12 h
+
+```
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #6   train 25.6 meals  holdout 23.5  (tuned 2x) | Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing,
+  #3   train 24.6 meals  holdout 26.8  (tuned 5x) | Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 16x: train 25.7 meals, holdout 25.7
+```
+
+> 12:50 model job `deep` started
+
+---
+
+## Turn 4 (DEEP) -> island #7
+
+**Hypothesis:** The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fresh frontier and it re-explores it; the efficient search on a forgetful map is ballistic — keep going the way you were going. A long-lived trail of the walked path is diffused into a wide, screened "behind" field (high around and behind the path, low ahead), and pure frontier marks are muted by exp(-k*behind), so the frontier ahead always beats the frontier behind and the agent sweeps new ground in long runs instead of dithering between frontiers on opposite sides; food sources and confinement suppression are unchanged.
+
+Prediction 28.0, got **28.2** meals, fitness 552, per world [42, 38, 27, 27, 28, 22, 16, 39, 17, 26, 38, 36, 22, 38, 30, 52, 0, 23, 12, 31]; model 44.1 s, repairs 0
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Ballistic exploration: the map forgets everything 12 cells away, so the way to
+# cover new ground is to keep going. A wide blurred "behind" field grows around
+# the walked path; frontier marks inside it are muted, so the frontier AHEAD wins
+# and the agent sweeps in long straight-ish runs instead of dithering between
+# frontiers on opposite sides. Food is untouched.
+channel source
+channel solid
+channel thing
+channel scent
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel injection
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# The walked path, long-lived; it scrolls with the map.
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+# Screened diffusion of the path: high near and behind it, low far ahead (bounded by 1).
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+# Food as in confinement; pure frontier marks muted where the agent has been.
+rule inject:
+  when 1
+  set injection = where(max(thing, scent) > 0, max(thing, source), source * exp(-40 * behind)) / (1 + 0.5 * confinement)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))
+```
+
+> 13:08 model job `design` started
+
+---
+
+## Turn 5 -> island #8
+
+**Hypothesis:** The harness steps the law only 6 times per thought, so the wave moves at most 6 cells per thought: a freshly seen morsel 12 cells away needs two thoughts before the agent feels it, and an eaten one leaves a stale ridge that keeps pulling for several thoughts after it is gone. Adding two-cell hops (discounted as two steps, gated by the passability of the cell jumped over so walls still block) doubles the wave's speed, so the field the agent climbs is closer to the true current plan and less time is lost walking along stale gradients; exploration stays ballistic as in #7.
+
+Prediction 29.0, got **21.8** meals, fitness 429, per world [7, 31, 21, 33, 15, 32, 46, 43, 20, 2, 11, 34, 13, 36, 5, 46, 0, 6, 16, 18]; model 48.1 s, repairs 0; vocabulary twin of #7
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Express wave: the harness steps the law only 6 times per thought, so a new
+# source needs several thoughts to reach the agent and an eaten one leaves a
+# stale ridge for several more. Two-cell hops (gated by the passability of the
+# cell jumped over) double the wave speed. Exploration as in #7 (ballistic).
+channel source
+channel solid
+channel thing
+channel scent
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel injection
+channel pass
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+
+rule inject:
+  when 1
+  set injection = where(max(thing, scent) > 0, max(thing, source), source * exp(-40 * behind)) / (1 + 0.5 * confinement)
+
+# How much wave a cell lets through.
+rule passability:
+  when 1
+  set pass = 1 - solid * (1 - leak)
+
+# One-step Bellman terms plus two-step hops over a passable middle cell.
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max8(value), 0.8836 * max(shift(value, 2, 0) * shift(pass, 1, 0), shift(value, -2, 0) * shift(pass, -1, 0), shift(value, 0, 2) * shift(pass, 0, 1), shift(value, 0, -2) * shift(pass, 0, -1)), 0.8394 * max(shift(value, 2, 2) * shift(pass, 1, 1), shift(value, -2, 2) * shift(pass, -1, 1), shift(value, 2, -2) * shift(pass, 1, -1), shift(value, -2, -2) * shift(pass, -1, -1))) * pass
+```
+
+> 13:12 model job `theory` started
+
+---
+
+## Theory (after 6 design turns)
+
+Helps: where the agent explores. Ballistic exploration (#7: frontier muted inside a wide field around the walked path, so the frontier ahead wins) is the best idea, 28.2 untuned vs 25.7 for confinement (#1). Weighting frontier by unknown mass behind it (#4, +1.2) also helped on train, but its holdout fell after tuning (27.6 -> 24.4), so treat it as weak. Confinement suppression (#1) is a solid base.
+Hurts: damping the wave itself across the path (#3, -1.1); boredom on long-held lures (#6, -1.8); and above all a FASTER wave (#8, two-cell hops, -6.4). That last one suggests the slow, laggy wave is itself useful inertia: a stale field keeps the agent on its current target. Patch weighting (#5) was -1.4 on train but best holdout 28.6 — ambiguous, maybe its (1-bad) term.
+Untried: explicit commitment to a target, poison avoidance alone, near-vs-far food trade, door/corridor geometry.
+Rests on single runs; per-world spread is large (world 16 always 0, world 18 2-18).
+
+### Holdout checkpoint at 1.67 h
+
+```
+  #7   train 28.2 meals  holdout 25.4  (tuned 5x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #4   train 26.1 meals  holdout 24.4  (tuned 5x) | Exploration is where meals come from, but every frontier mark currently weighs the same 0.12 whether it opens 
+  #6   train 25.6 meals  holdout 23.5  (tuned 5x) | Distrust old evidence. A boredom channel grows slowly on every map cell that keeps holding a lure (seen thing,
+  #3   train 24.6 meals  holdout 26.8  (tuned 5x) | Keep confinement suppression but add a MEMORY of the walked path (a fading trail channel that scrolls with the
+  #8   train 21.8 meals  holdout  -    (tuned 1x) | The harness steps the law only 6 times per thought, so the wave moves at most 6 cells per thought: a freshly s
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 25x: train 28.2 meals, holdout 26.6
+```

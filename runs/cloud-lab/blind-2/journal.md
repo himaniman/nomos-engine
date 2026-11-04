@@ -1849,3 +1849,91 @@ rule wave:
 Core that works (#5, 30.3 as written; ablation #13 shows confinement plus trust alone is 23.9): frontier weighted by the unknown behind it (+5) and wall faces lit by dwell-frustration (rescues the 0-meal starts). The max() wave itself is essential: a mean-based potential field fell to 11.3 (#23). The plain wave discount is a local optimum: far-sighted (#16, 25.6) and near-sighted (#18, 22.4) frontiers both lost; so did area-restricted search after meals (#25, 28.2). Map memory: a slower memory than the harness's lost 4 (#21, 26.4) and a faint pull to half-forgotten ground never won a max (#5 twin): re-exploring forgotten ground is needed, not added. Raw seen-morsel pull is load-bearing (#19, 26.1). Neutral or noise (26.9-29.9): random tie-breaker (#22), frustration-opened walls (#24), unsuppressed seen food (#20). Single train means differ by ~2 from noise alone. Only the sweep away from the past (#10, 34.7) stands out on train; holdout 25.4, unresolved.
 
 > 20:23 model job `deep` started
+
+---
+
+## Turn 24 (DEEP) -> island #26
+
+**Hypothesis:** Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5), but that blur passes straight through walls, so a crack whose far side is the next sealed room counts the room's unknown as if walking there would reveal it. Here the unknown-space blur stops at solid cells (information you can actually see from that frontier), on top of the best law, the sweep away from the agent's own past (#10): both the target choice and the direction of exploration should spend fewer trips on frontier that opens onto nothing.
+
+Prediction 34.0, got **31.6** meals, fitness 637, per world [36, 20, 25, 52, 28, 32, 6, 49, 28, 38, 39, 18, 35, 32, 47, 28, 28, 32, 23, 35]; model 10.1 s, repairs 0; vocabulary twin of #10, #7, #24, #20, #19, #5
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel been
+channel injection
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+# unexplored space a frontier opens onto, blurred only through what is not solid: the unknown
+# in the next room, behind a wall, is not what walking to this frontier will reveal
+rule vast:
+  when 1
+  set vast = (0.3 * unknown + 0.8306 * avg8(vast)) * (1 - solid)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the path walked, slowly fading; scrolls with the map
+rule trail:
+  when 1
+  set trail = max(here, 0.998 * trail)
+
+# a wide blur of the path: how much of the agent's own past lies around a cell
+rule been:
+  when 1
+  set been = 0.2 * trail + 0.8 * avg8(been)
+
+# frontier on the side the agent came from counts less: the sweep goes on away from its past
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, (0.4275 + 1.5 * vast) * (1 - min(1, 3 * been)))) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 7.71 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 0x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #20  train 29.9 meals  holdout  -    (tuned 5x) | Dropping raw `thing` (#19) cost ~4 meals, so the full-strength pull of every SEEN morsel is load-bearing (and 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 121x: train 28.3 meals, holdout 27.1
+```
+
+> 20:45 model job `design` started

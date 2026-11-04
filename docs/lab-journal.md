@@ -2907,3 +2907,77 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-04 — cloud study FULL-1
+
+Arm FULL (the session's agent answered every request itself, one mind all night, observer
+on), replicate 1 (`--train 0-19 --holdout 20-35 --seed 0`), `runs/cloud-lab/full-1/`,
+branch `cloud-lab-full-1`. 12.4 h, 43 design turns (all parsed first try, 1 constants
+twin), 7 theories, 6 observations (worlds 16 x4, 2, 18).
+
+**FINAL** (32 sealed worlds, seeds 36-67; paired difference vs the control over the 32):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32   -7.0 (SE 2.6)
+confine, hand-written (#1)     24.5        28/32            -1.3 (SE 2.0)
+CONTROL: #1 tuned 212x         25.8        28/32
+#19 tuned 5x  (CHAMPION)       26.9        30/32            +1.1 (SE 1.5)
+#35 tuned 5x                   29.8        31/32            +4.0 (SE 1.7)
+#30 tuned 6x                   28.2        29/32            +2.4 (SE 2.1)
+#44 tuned 1x                   27.2        28/32            +1.4 (SE 2.2)
+#32 tuned 5x                   26.9        28/32            +1.1 (SE 2.5)
+#19 as written                 27.1        30/32            +1.2 (SE 1.8)
+```
+
+**Champion vs control:** the champion (picked by holdout, #19) beats tuned confinement by
++1.1 meals with SE 1.5 — not a win by itself. All five model laws that reached FINAL beat
+the control (+1.1 to +4.0) and the hand-written confine (+2.4 to +5.3); the best, #35, is
++4.0 (SE 1.7), but it is the holdout's SECOND pick (30.8 vs #19's 31.2), so that number is
+chosen after the fact.
+
+**train -> holdout -> final:** #19 27.1 -> 31.2 -> 26.9; #35 28.8 -> 30.8 -> 29.8;
+#32 30.5 -> 30.5 -> 26.9; #30 31.4 -> 27.2 -> 28.2; control 30.7 -> 24.2 -> 25.8. The
+control arm overfit its 212 jitters the most (-4.9 train -> final); the model laws were
+tuned only 5x and moved within about +-3, in both directions — the 16-world holdout cannot
+rank laws this close (its gaps are ~1 SE).
+
+**Prediction error** (|predicted - untuned train meals|): first half 4.8, second half 3.3.
+
+**Mechanism.** One idea carried the night: price every STEP of the wave by what the map
+knows. Unknown ground costs extra (#18, 25.6 -> 27.7 untuned), unknown cells continuing
+a seen wall line are guessed wall and pass half (#23, 29.6), cells continuing a line of
+open floor are guessed floor and pay no unknown price (#32, 30.5 untuned = holdout 30.5),
+walls pass by DOOR CONTRAST (taught per-hue leak minus the mean leak of the walls around
+it). On top: confinement, darkness-weighted frontier (frontier mark x smoothed unknown
+around it), a fading footprint trail that dims the read-out. #35 = #32 + the trail also
+charged as a step price. Ablations: without darkness + trail 24.6, without door contrast
+26.7, without the read-out dimming 25.1 — all load-bearing. Settled negatives (untuned):
+any new attracting source (leaves from `bright` 18.3, lingering food 21.5, compass 21.4,
+breach 23.2, larder 24.6, a room source that changed no decision at all), the same
+knowledge used as source WORTH instead of step price (22.1), changing distance pricing
+either way (additive 16.9, distance-steepened 21.9), the plan's speed either way (wipe each
+thought 12.8, express lanes 26.7, slower 28.4), harmonic relaxation 14.2, a momentum
+read-out 13.7. Train world 16 (a sealed pocket) scored 0 for every law; the observer described it
+four times and no law fixed it. Two FINAL worlds (seeds 61, 62) scored 0 for nearly every
+law (#35 got 18 on seed 62, the reference wave 30 on seed 61).
+
+**The theory** ended as "knowledge goes into step prices, not into source worth; every
+piece of #32 is load-bearing; tuning overfits" — consistent with its evidence and with
+FINAL (every knowledge-priced law beat the control). It called trail-as-price "neutral"
+(28.8 train, 30.8 holdout); FINAL makes that law the best, which the theory could not
+have known.
+
+**What this arm's agent did differently.** It kept one line of inquiry and climbed it:
+four successive knowledge priors, each built on the last, plus three explicit ablations to
+find what was load-bearing (night 1's entry records no ablation). It read harness code
+(`cortex/atlas.py`, `world.py`, `tiles.py`) for facts the prompt does not give (food
+regrows after 1200 ticks, the map forgets at 0.0015/tick, foliage brightness 0.58 vs
+ground 0.21) — these facts motivated the larder, seen-memory and leaves laws, and all
+three lost. Disclosure on rule 2: besides `mailbox check` it stepped `LawRule` by hand on
+a few hand-built test maps (one source, a sealed box, a wall line; no world lived, no
+score) to see a field; that is how it found a one-pass lag in its own early laws (a
+helper channel read before it was written injects a stale full-strength source for one
+pass). Compared with night 1 (deepseek, 6 h, ghost as control): night 1's champion IS this
+night's hand-written anchor (24.5 on the same FINAL worlds); this arm's champion adds
++2.4 and its best law +5.3 on top, against a control that was itself the stronger
+structure.

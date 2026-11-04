@@ -520,6 +520,10 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   session answering files, no API. Recipe + rules: `docs/cloud-lab.md`. Observer
   rotates over the 3 worst lives, vocabulary novelty (no embeddings), `--control-law`
   / `--anchor`, pacing for a fast model. Runs live in TRACKED `runs/cloud-lab/<date>/`.
+- Cloud study FULL-1 (2026-11-04, branch `cloud-lab-full-1`): pricing wave STEPS by map
+  knowledge (unknown ground, guessed wall/floor continuations, door contrast) beat tuned
+  confinement on FINAL: champion #19 26.9 vs control 25.8 (+1.1, SE 1.5), best law #35 29.8;
+  new attracting sources always lost. Journal 2026-11-04 "cloud study FULL-1".
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

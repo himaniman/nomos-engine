@@ -2429,3 +2429,5 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 127x: train 29.7 meals, holdout 24.6
 ```
+
+> 22:34 model job `design` started

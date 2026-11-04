@@ -1,0 +1,71 @@
+# The body turns only ~20 degrees per thought, so a U-turn costs about nine thoughts of standing and swinging, yet the wave treats a frontier behind the agent the same as one ahead of it and the nearest unknown pocket can drag it round again and again. The law now estimates the HEADING (away from the freshest trail cell next to the agent, smoothed, copied outward over the map) and scales every frontier mark by how far it lies ahead of that heading, so exploration keeps going forward and turns only for food or a clearly better frontier.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel hx
+channel hy
+channel ahead
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the walked path; the freshest neighbour of the agent's cell is where it came from
+rule trail:
+  when 1
+  set trail = max(here, 0.99 * trail)
+
+# heading = away from the previous cell, smoothed at the agent, copied outward from it
+rule hx:
+  when 1
+  set hx = where(here > 0, 0.8 * hx + 0.2 * where(max8(trail) > 0.01, 29 * (posx() - argmax8(trail, posx())), 0), argmax8(2 - abs(posx() - 0.4828) - abs(posy() - 0.4828), hx))
+
+rule hy:
+  when 1
+  set hy = where(here > 0, 0.8 * hy + 0.2 * where(max8(trail) > 0.01, 29 * (posy() - argmax8(trail, posy())), 0), argmax8(2 - abs(posx() - 0.4828) - abs(posy() - 0.4828), hy))
+
+# cosine between a cell's bearing from the agent and the heading: +1 dead ahead, -1 behind
+rule ahead:
+  when 1
+  set ahead = ((posx() - 0.4828) * hx + (posy() - 0.4828) * hy) / (0.001 + sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) * sqrt(hx * hx + hy * hy))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4275 + 1.5 * vast) * (1 + 0.5 * clamp(ahead, -1, 1)))) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))

@@ -2601,3 +2601,22 @@ rule wave:
   when 1
   set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
 ```
+
+### Holdout checkpoint at 10.51 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 6x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #30  train 34.5 meals  holdout 31.4  (tuned 2x) | A new axis — connectivity. A second, walk-only wave (`hope`) spreads the same sources but stops dead at every 
+  #28  train 34.4 meals  holdout 29.9  (tuned 6x) | The pocket-born agent chips several faces and breaks none because faces are ranked by a random grain, blind to
+  #26  train 32.9 meals  holdout 25.9  (tuned 5x) | Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing wit
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #27  train 33.2 meals  holdout  -    (tuned 5x) | Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trai
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 140x: train 29.7 meals, holdout 24.6
+```
+
+> 23:31 model job `design` started

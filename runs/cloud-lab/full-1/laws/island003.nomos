@@ -1,0 +1,31 @@
+# Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as the edge of a large unexplored region. Weighting each frontier mark by the smoothed amount of unknown around it (information gain) sends the agent toward big unseen areas where new food is likely, while smell and seen morsels keep their value and the confinement suppression is kept.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel value
+channel dark
+channel front
+channel injection
+
+# how much unknown lies around a cell: a smoothed field of not-yet-known cells
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# the frontier part of source: faint marks where no smell and no morsel are painted
+rule split:
+  when 1
+  set front = where(scent + thing < 0.05, source, 0)
+
+# food counts as told; a frontier counts by the darkness behind it; tight places count less
+rule inject:
+  when 1
+  set injection = max(source - front, thing * (1 - bad), front * (0.3 + 2.0 * dark)) / (1 + 0.5 * sum8(solid))
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

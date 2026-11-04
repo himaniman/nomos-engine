@@ -1480,3 +1480,133 @@ rule wave:
 `{'meals': 22, 'ticks': 8000, 'alive': True, 'distance': 1194.3, 'cells_visited': 703, 'last500_box': '30x16', 'doors': 1, 'breaks': 150, 'idle_presses': 58, 'nightcaps': 0}`
 
 Early in life (cyan) the agent ranges widely to the south and east through a district of walled blocks and eats steadily, about one meal per room-sized stretch of new ground. From mid-life on (pink to red) it comes back north and spends the rest of its 8000 ticks orbiting the same large central block and the two corridors beside it, tracing the same loop four or five times, eating now and then at the same few spots near the start. It also spends a lot of effort on walls — 150 breaks and 58 idle presses for a single door — so much of the late loop is chipping rubble around that block rather than walking to new ground. Most of the map (west, far east, south-west rooms with food dots) is never visited, so the low score is a coverage failure: once the near frontier is exhausted the wave keeps bringing it back to the familiar ring. The mechanism I would add is a long-term heading kept over hundreds of ticks that, while only exploring, favours steps and frontier goals that continue the course, so the walk sweeps away into unvisited districts instead of circling the home block.
+
+### Holdout checkpoint at 5.57 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 6x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #18  train 33.7 meals  holdout 34.8  (tuned 3x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 5x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #17  train 31.4 meals  holdout  -    (tuned 5x) | Both placements of the long course broke the plateau (#15 step-level 33.4, #16 goal-level 33.0 untuned, holdou
+  #3   train 28.9 meals  holdout 22.5  (tuned 7x) | The confinement law has no memory: when the geodesic smell bearing flips between the two ways round a wall, it
+  #11  train 28.2 meals  holdout 25.5  (tuned 6x) | The observer saw #7 on world 117 circle the outsides of small rooms full of food, pressing plain wall 42 times
+  #10  train 27.9 meals  holdout 28.2  (tuned 5x) | Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over k
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 81x: train 29.8 meals, holdout 25.1
+```
+
+> 18:32 model job `design` started
+
+---
+
+## Turn 16 -> island #19
+
+**Hypothesis:** Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightness names the material: stone 0.50 never gives, a door 0.77 is brighter than any other solid (rubble 0.59, crate 0.67, trunk 0.41), yet every law so far leaks the wave equally into all solids until per-hue pressing teaches otherwise — the observer saw 58 idle presses and 150 rubble chips for one door. Here stone is recognised on sight and conducts a tenth of its leak (so plans route round rock and the pocket's way out is its rubble), and any door with walled-off unexplored space behind it is a frontier source from the first glimpse, no lesson needed. Built on #18 (doors-as-frontier, 
+
+Prediction 35.0, got **33.8** meals, fitness 655, per world [30, 32, 43, 45, 34, 36, 35, 36, 31, 35, 35, 9, 26, 42, 32, 33, 48, 29, 34, 30]; model 66.2 s, repairs 0; vocabulary twin of #18, #16, #17
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel stone
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(coursex, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - coursex, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(coursey, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - coursey, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# MATERIAL BY LOOK (brightness of what the rays hit): stone 0.50 never gives (chipped rubble dims below it); a door ~0.77 is
+# brighter than any other solid (rubble 0.59, trunk 0.41, crate 0.67) — known on sight, not taught
+rule plain_stone:
+  when 1
+  set stone = solid * (bright > 0.49) * (bright < 0.515)
+rule doorways:
+  when 1
+  set door = solid * (bright > 0.72) * max8(hidden)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# a door with unexplored space behind it is a frontier
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + 2 * ahead, 0, 2), 0.4 * door, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+# the wave leaks through what can give and not through plain stone, whatever the hue learning says
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd) * (1 - 0.9 * stone))))
+```

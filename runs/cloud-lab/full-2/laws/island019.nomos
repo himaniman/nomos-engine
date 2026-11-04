@@ -1,0 +1,100 @@
+# Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightness names the material: stone 0.50 never gives, a door 0.77 is brighter than any other solid (rubble 0.59, crate 0.67, trunk 0.41), yet every law so far leaks the wave equally into all solids until per-hue pressing teaches otherwise — the observer saw 58 idle presses and 150 rubble chips for one door. Here stone is recognised on sight and conducts a tenth of its leak (so plans route round rock and the pocket's way out is its rubble), and any door with walled-off unexplored space behind it is a frontier source from the first glimpse, no lesson needed. Built on #18 (doors-as-frontier, 
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel stone
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(coursex, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - coursex, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(coursey, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - coursey, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# MATERIAL BY LOOK (brightness of what the rays hit): stone 0.50 never gives (chipped rubble dims below it); a door ~0.77 is
+# brighter than any other solid (rubble 0.59, trunk 0.41, crate 0.67) — known on sight, not taught
+rule plain_stone:
+  when 1
+  set stone = solid * (bright > 0.49) * (bright < 0.515)
+rule doorways:
+  when 1
+  set door = solid * (bright > 0.72) * max8(hidden)
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+# a door with unexplored space behind it is a frontier
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * clamp(1 + 2 * ahead, 0, 2), 0.4 * door, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+# the wave leaks through what can give and not through plain stone, whatever the hue learning says
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd) * (1 - 0.9 * stone))))

@@ -2094,3 +2094,106 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
 ```
+
+### Holdout checkpoint at 9.25 h
+
+```
+  #26  train 33.7 meals  holdout 32.5  (tuned 5x) | Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack betwe
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #27  train 30.6 meals  holdout  -    (tuned 2x) | Smell should say where to LOOK, and sight where to EAT. A far smell is painted as a point about 11 cells out a
+  #23  train 29.6 meals  holdout 29.0  (tuned 5x) | Frustration (#17) mutes smell but never a SEEN morsel, so a morsel the body cannot actually get to — beyond a 
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 6x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 6x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 130x: train 29.2 meals, holdout 28.2
+```
+
+> 21:02 model job `design` started
+
+---
+
+## Turn 25 -> island #28
+
+**Hypothesis:** A test of what #26 really found. Weighting the frontier by blurred fog mass was the night's biggest gain, but fog is largest at the map's rim where the blank padding begins, so the same rule also pulls the agent toward FAR frontier — long runs into new ground instead of nibbling at the nearest unknown cell, which may be the real mechanism (it fits #7: ballistic search pays). Here the frontier is weighted by its plain distance from the agent and the fog mass is removed; if this matches #26, reach was the mechanism and information is not needed; if it falls back to ~31, fog mass (information) is what pays. Base is #26 minus vista.
+
+Prediction 32.0, got **30.1** meals, fitness 608, per world [31, 23, 33, 25, 39, 43, 28, 43, 31, 27, 33, 29, 26, 32, 13, 40, 21, 29, 23, 34]; model 32.2 s, repairs 0; vocabulary twin of #24, #26, #22, #27, #23, #21
+
+value on the test map: max 0.93, mean 0.50, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Is #26's gain information or reach? The fog mass is largest at the map's rim,
+# where the blank padding begins, so weighting the frontier by fog also pulls the
+# agent toward FAR frontier: long runs instead of nibbling at the nearest unknown.
+# Here the frontier is weighted by its plain distance from the agent instead (no
+# fog mass): if this matches #26, reach was the mechanism. Base: #26 minus vista.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel reach
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+# How far a cell is from the agent, 0 at the centre, ~0.5 at the rim.
+rule distance:
+  when 1
+  set reach = sqrt((posx() - 0.5) * (posx() - 0.5) + (posy() - 0.5) * (posy() - 0.5))
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind) * (0.5 + 3 * reach)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```

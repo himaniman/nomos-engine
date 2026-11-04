@@ -2590,3 +2590,22 @@ Untried: course timescale as structure, re-aiming the course toward the unknown.
 `{'meals': 24, 'ticks': 8000, 'alive': True, 'distance': 1504.4, 'cells_visited': 978, 'last500_box': '20x27', 'doors': 0, 'breaks': 12, 'idle_presses': 118, 'nightcaps': 0}`
 
 This is a dense town of small walled rooms; the agent survives the whole life and eats 24 times, mostly in the open streets, making three long excursions (south-west early, north-east, then west and north late) that all start from and return through the same crossroads just below its spawn, which it crosses four or five times. Many food dots sit inside small closed rooms along its route (centre, east, north-west), and it enters none of them: 0 doors opened against 118 idle presses, so it repeatedly leans on wall cells that do not give, while the actual doors of those rooms stay shut. The pressing also costs time at each room it passes, slowing the sweep. The failing is wall choice, not effort: the leak treats every wall alike, so the wave leads into plain stone as often as into a door. The one mechanism I would add is recognising a door by its look (doors are the brightest solid) and giving only those cells the leak, so presses land on doors and the stocked rooms get opened.
+
+### Holdout checkpoint at 9.43 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 7x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #26  train 34.7 meals  holdout 31.4  (tuned 3x) | Axis: what a meal should do to memory. Smell is painted at a slightly different spot each thought as the agent
+  #21  train 35.1 meals  holdout 34.6  (tuned 5x) | The course is the one structure that moved the mean (25-28 -> ~33), but its pull is proportional to how straig
+  #18  train 33.7 meals  holdout 34.8  (tuned 6x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 6x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #19  train 33.8 meals  holdout  -    (tuned 5x) | Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightn
+  #23  train 31.9 meals  holdout  -    (tuned 5x) | Axis: what memory is for. Every law since #3 lingers the WHOLE source, including the harness's flat 0.12 front
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 124x: train 29.8 meals, holdout 25.1
+```
+
+> 22:22 model job `deep` started

@@ -189,3 +189,150 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
 ```
+
+> 13:45 model job `design` started
+
+---
+
+## Turn 3 -> island #6
+
+**Hypothesis:** The smell is painted along the world's geodesic bearing, which flips between the two ways round a wall as the agent steps, a sensor-level limit cycle (night lab: the ghost fixed exactly those trap worlds). Here only the SMELL gets a memory: its painted spot lingers as a `ghost` after the bearing moves on and is erased where the agent stands, so the agent commits to the first way round instead of rocking; the frontier, which never flips, stays memoryless.
+
+Prediction 31.0, got **27.2** meals, fitness 539, per world [25, 26, 38, 22, 33, 31, 24, 35, 27, 23, 37, 14, 33, 34, 24, 19, 14, 29, 31, 25]; model 22.1 s, repairs 0; vocabulary twin of #5, #4
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ghost
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1.176
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# the smell's painted spot lingers after the bearing moves on, erased where the agent stands
+rule ghost:
+  when 1
+  set ghost = max(scent, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, ghost, source * where(thing + scent > 0, 1.358, 0.4275 + 1.5 * vast)) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 1.16 h
+
+```
+  #5   train 31.6 meals  holdout 26.7  (tuned 5x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #3   train 27.1 meals  holdout 21.9  (tuned 5x) | Meals come mostly from exploration, but every frontier mark is worth the same 0.12, so a crack between two wal
+  #4   train 27.9 meals  holdout 27.5  (tuned 5x) | An agent that finds nothing worth walking to stands still or rocks between two cells and starves (worlds where
+  #6   train 27.2 meals  holdout  -    (tuned 3x) | The smell is painted along the world's geodesic bearing, which flips between the two ways round a wall as the 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 17x: train 28.2 meals, holdout 25.6
+```
+
+> 14:03 model job `deep` started
+
+---
+
+## Turn 4 (DEEP) -> island #7
+
+**Hypothesis:** When two targets are about equally good the agent can turn back and forth between them, and a reactive wave has no reason to prefer going on; the ghost (#6) fixed rocking but by committing to the smell, which cost the rich worlds. Here the commitment is in the movement instead: a fading `trail` of where the agent has just been makes the wave dearer back over its own fresh tracks, so it keeps heading on, sweeps new ground and backtracks only when the target behind is clearly better.
+
+Prediction 31.0, got **30.2** meals, fitness 601, per world [39, 16, 48, 26, 28, 38, 23, 32, 33, 33, 35, 28, 11, 26, 46, 25, 34, 34, 30, 20]; model 30.1 s, repairs 0; vocabulary twin of #5, #4, #6
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel trail
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1.176
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# a fading trail of where the agent has just been (scrolls with the map)
+rule trail:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, 0.4275 + 1.5 * vast)) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts known ground, and going back over the fresh trail costs extra (momentum)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free)) * (1 - 0.3 * trail)) * (1 - solid * (1.028 - leak))
+```

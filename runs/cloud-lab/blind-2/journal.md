@@ -1042,3 +1042,116 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 67x: train 28.3 meals, holdout 27.1
 ```
+
+> 17:33 model job `deep` started
+
+---
+
+## Turn 14 (DEEP) -> island #17
+
+**Hypothesis:** The planner and the body disagree about what a path costs: the wave charges distance only, but the body turns ~20 degrees a thought and slows hard above ~57 degrees of error, so a route with many bends costs far more time than its length (the tuned control drifted the same way: its diagonal step is now dearer than two straight ones). This law plans in position x heading: four directional waves (entered moving E, W, N, S) where going on straight costs one step and a 90-degree turn costs extra, U-turns are not a move; each orthogonal neighbour of the agent reads the layer of the move that enters it times the turn from the current heading (estimated from the trail), diagonals read nothing. The 
+
+Prediction 33.0, got **22.3** meals, fitness 435, per world [26, 27, 25, 21, 18, 28, 20, 31, 23, 17, 27, 14, 24, 15, 30, 26, 21, 22, 8, 23]; model 130.2 s, repairs 0
+
+value on the test map: max 0.08, mean 0.04, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel injection
+channel pass
+channel ox
+channel oy
+channel trail
+channel hx
+channel hy
+channel ve
+channel vw
+channel vn
+channel vs
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.358, 0.4275 + 1.5 * vast)) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+# what a cell lets through: known ground at full price, unknown dearer, solid by its leak
+rule pass:
+  when 1
+  set pass = (0.85 + 0.15 * min(1, free)) * (1 - solid * (1.028 - leak))
+
+# a cell's offset from the agent in cells (the agent sits at 14/29 of the lattice)
+rule ox:
+  when 1
+  set ox = round(29 * (posx() - 0.4828))
+
+rule oy:
+  when 1
+  set oy = round(29 * (posy() - 0.4828))
+
+# heading = away from the freshest trail cell beside the agent, copied outward
+rule trail:
+  when 1
+  set trail = max(here, 0.99 * trail)
+
+rule hx:
+  when 1
+  set hx = where(here > 0, 0.5 * hx + 0.5 * where(max8(trail) > 0.01, 29 * (posx() - argmax8(trail, posx())), 0), argmax8(2 - abs(posx() - 0.4828) - abs(posy() - 0.4828), hx))
+
+rule hy:
+  when 1
+  set hy = where(here > 0, 0.5 * hy + 0.5 * where(max8(trail) > 0.01, 29 * (posy() - argmax8(trail, posy())), 0), argmax8(2 - abs(posx() - 0.4828) - abs(posy() - 0.4828), hy))
+
+# TURN-AWARE wave: v<d> = value of a cell entered moving in direction d; going on straight
+# costs the step, turning 90 degrees costs extra (the body turns ~20 degrees a thought)
+rule ve:
+  when 1
+  set ve = max(injection, 0.94 * max(shift(ve, -1, 0), 0.85 * shift(vn, 0, 1), 0.85 * shift(vs, 0, -1)) * pass)
+
+rule vw:
+  when 1
+  set vw = max(injection, 0.94 * max(shift(vw, 1, 0), 0.85 * shift(vn, 0, 1), 0.85 * shift(vs, 0, -1)) * pass)
+
+rule vn:
+  when 1
+  set vn = max(injection, 0.94 * max(shift(vn, 0, 1), 0.85 * shift(ve, -1, 0), 0.85 * shift(vw, 1, 0)) * pass)
+
+rule vs:
+  when 1
+  set vs = max(injection, 0.94 * max(shift(vs, 0, -1), 0.85 * shift(ve, -1, 0), 0.85 * shift(vw, 1, 0)) * pass)
+
+# read-out: each orthogonal neighbour shows the layer of the move that enters it, times the
+# turn from the current heading; diagonals show nothing (moves are orthogonal)
+rule value:
+  when 1
+  set value = where(abs(ox) + abs(oy) == 1, where(ox == 1, ve * (1 - 0.1 * (1 - clamp(hx, -1, 1))), where(ox == 0 - 1, vw * (1 - 0.1 * (1 + clamp(hx, -1, 1))), where(oy == 1, vs * (1 - 0.1 * (1 - clamp(hy, -1, 1))), vn * (1 - 0.1 * (1 + clamp(hy, -1, 1)))))), where(abs(ox) + abs(oy) == 2 and abs(ox) == 1, 0, max(ve, vw, vn, vs)))
+```

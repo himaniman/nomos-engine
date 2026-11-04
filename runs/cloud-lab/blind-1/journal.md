@@ -1304,3 +1304,107 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 84x: train 28.2 meals, holdout 26.6
 ```
+
+> 17:24 model job `design` started
+
+---
+
+## Turn 17 -> island #20
+
+**Hypothesis:** A test of what #8 really showed. The express wave lost 6.4 meals and killed 5 agents, and I blamed its speed; but its two-cell DIAGONAL hops were gated only by the middle cell, so they cut wall corners — exactly the fault whose repair in #15 was a gain. Here the wave gets two-cell hops only in straight lines through an open middle cell, discounted as two steps, so a new lure reaches the agent twice as fast and an eaten one's stale ridge fades twice as fast, while nothing passes a corner. If it wins, speed was never the problem and corner-cutting was; if it loses, the slow wave really is a sweet spot. Base is #17.
+
+Prediction 30.5, got **29.5** meals, fitness 550, per world [47, 21, 31, 35, 26, 37, 28, 24, 28, 22, 38, 24, 24, 29, 28, 38, 31, 16, 21, 42]; model 50.2 s, repairs 0; vocabulary twin of #17, #19, #18, #15, #16
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Was the express wave (#8, -6.4) bad because it was FAST, or because its
+# two-cell DIAGONAL hops cut corners the body cannot (the fault #15 fixed)? Here
+# the wave gets two-cell hops only in straight lines, through an open middle
+# cell, discounted as two steps: twice as fast to reach a new lure and to forget
+# an eaten one, and never past a corner. Base: #17.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully; smell-only lures are muted by frustration.
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.8836 * max(shift(value, 2, 0) * shift(open, 1, 0), shift(value, -2, 0) * shift(open, -1, 0), shift(value, 0, 2) * shift(open, 0, 1), shift(value, 0, -2) * shift(open, 0, -1)), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
+```
+
+> 17:29 model job `theory` started
+
+---
+
+## Theory (after 18 design turns)
+
+What pays is honesty about the world and the body, plus ballistic search. Helps: frontier muted around the walked path (#7, +2.5 over #1); morsels pulled only by learned appetite, halo round refusals (#11); learned doors as curiosity (#9-#11 first to eat on world 16); diagonals only where the body fits (#15, 29.6 train and holdout); muting smell when the agent notices it is loitering (#17, 30.5 train, 29.2 holdout).
+Corrected: #8's -6.4 was corner-cutting, not speed — straight-only two-cell hops (#20) score 29.5, neutral. Slowing the wave (#14, -3.2) and two discounts (#13, -3.8) still hurt.
+Hurts: anything weakening ballistic search (area-restricted search #18, -2.4; path damping #3); costs on cells the body can still use (squeezes #19, -3.4; turn cost #16, -1.5); probing all walls (#12, -5.2); boredom (#6).
+Untried: smell vs sight trust, randomness, food brightness. Noise ~2.
+
+### Holdout checkpoint at 5.98 h
+
+```
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #17  train 30.5 meals  holdout 29.2  (tuned 6x) | Every trap this agent can fall into — a smell whose bearing flips between two ways round a wall, a smell from 
+  #11  train 28.9 meals  holdout 28.1  (tuned 5x) | Every law so far injected max(thing, source), and `thing` is 1 on every seen morsel, poison included, so it ov
+  #7   train 28.2 meals  holdout 25.4  (tuned 8x) | The map forgets everything more than 12 cells away, so ground the agent covered a while ago comes back as fres
+  #20  train 29.5 meals  holdout  -    (tuned 1x) | A test of what #8 really showed. The express wave lost 6.4 meals and killed 5 agents, and I blamed its speed; 
+  #16  train 28.1 meals  holdout  -    (tuned 5x) | Turning has a price the wave does not know: the body turns 0.12 rad per tick and crawls while more than a radi
+  #9   train 27.3 meals  holdout 25.8  (tuned 5x) | Rooms behind doors are stocked larders, but the frontier marks only unknown cells touching known-free ground, 
+  #5   train 26.6 meals  holdout 28.6  (tuned 5x) | Food is not uniformly spread: a morsel with other food around it is worth more, because the next meal is then 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 91x: train 28.2 meals, holdout 26.6
+```

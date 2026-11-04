@@ -2299,3 +2299,108 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
 ```
+
+### Holdout checkpoint at 10.39 h
+
+```
+  #26  train 33.7 meals  holdout 32.5  (tuned 5x) | Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack betwe
+  #29  train 33.5 meals  holdout 32.2  (tuned 4x) | #28 settled that #26's gain is information, not reach: weighting the frontier by plain distance fell back to 3
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #28  train 30.1 meals  holdout  -    (tuned 5x) | A test of what #26 really found. Weighting the frontier by blurred fog mass was the night's biggest gain, but 
+  #27  train 30.6 meals  holdout  -    (tuned 5x) | Smell should say where to LOOK, and sight where to EAT. A far smell is painted as a point about 11 cells out a
+  #23  train 29.6 meals  holdout 29.0  (tuned 5x) | Frustration (#17) mutes smell but never a SEEN morsel, so a morsel the body cannot actually get to — beyond a 
+  #15  train 29.6 meals  holdout 29.6  (tuned 6x) | The wave has never respected the body. max8 carries value diagonally between two walls that touch at a corner,
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 142x: train 29.2 meals, holdout 28.2
+```
+
+> 22:02 model job `design` started
+
+---
+
+## Turn 27 -> island #30
+
+**Hypothesis:** A smell is painted at the distance its strength implies, straight out along the walkable bearing, so in walled terrain it often lands INSIDE a wall cell; since #24 a wall of untaught or stone hue passes almost none of the wave, so such a smell silently vanishes from the plan — and #27 showed that weakening smell's direct pull costs about 3 meals. Here a smell painted into a solid cell is handed to the open cells beside it at one step's discount (still muted by frustration and confinement like any smell), so the agent keeps following it to the open side of the wall while the wall itself stays honest. Base is #26.
+
+Prediction 34.5, got **33.2** meals, fitness 656, per world [43, 34, 24, 33, 30, 24, 39, 40, 39, 19, 25, 26, 42, 42, 33, 36, 27, 41, 42, 25]; model 28.2 s, repairs 0; vocabulary twin of #29, #26, #27, #24, #22, #23
+
+value on the test map: max 0.48, mean 0.26, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Smell lives in the air, not in the stone. A smell painted straight out along its
+# bearing often lands INSIDE a wall, and since #24 a wall of untaught or stone hue
+# passes almost no wave, so the smell vanishes. Here a smell painted into a solid
+# is handed to the open cells beside it, one step's discount less. Base: #26.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel vista
+channel aired
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+rule unexplored_mass:
+  when 1
+  set vista = 0.5 * avg8(fog) + 0.5 * avg8(vista)
+rule air_smell:
+  when 1
+  set aired = max8(scent * clamp(solid, 0, 1)) * (1 - clamp(solid, 0, 1))
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind) * (0.5 + 1.5 * vista)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind), 0.94 * aired * (1 - frust) / (1 + 0.5 * confinement)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```

@@ -85,6 +85,11 @@ The loop (repeat until it prints `NIGHT DONE`):
 call stays under the 10-minute foreground limit and the session never sits idle (an idle
 session's VM pauses and can be reclaimed).
 
+Do not shrink the worlds to go faster. The 2026-11-04 pilot (8 train worlds x 4000
+ticks) showed tuning overfitting badly: the control went 17.4 train -> 11.9 holdout ->
+13.1 FINAL while the same law untuned held 15.2, and FINAL differences on 8 worlds were
+noise. The defaults (20 train, 16 holdout, 32 FINAL, 8000 ticks) are the experiment.
+
 ## Keep it alive and saved
 
 - **Every ~30 minutes** (or after each holdout checkpoint in `journal.md`): commit and

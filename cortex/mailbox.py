@@ -149,8 +149,9 @@ def _brief(st: dict) -> str:
     ch, co = st.get("champion") or {}, st.get("control") or {}
     return (f"status: {st.get('elapsed_h')} of {st.get('hours')} h, doing "
             f"'{st.get('doing')}', design turns {st.get('design_turns')}, islands "
-            f"{st.get('islands')}, evals {st.get('evals')}, champion "
-            f"#{ch.get('id', '-')} train {ch.get('train_meals', '-')} hold "
+            f"{st.get('islands')}, evals {st.get('evals')}, train leader (summary.md's "
+            f"champion is the best by HOLDOUT) #{ch.get('id', '-')} train "
+            f"{ch.get('train_meals', '-')} hold "
             f"{ch.get('holdout_meals', '-')} | control train {co.get('train_meals', '-')} "
             f"hold {co.get('holdout_meals', '-')}")
 

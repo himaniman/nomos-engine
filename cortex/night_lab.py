@@ -809,7 +809,7 @@ class NightLab:
         new_champ = champ is not None and champ["id"] != self.s["observed_champion"]
         if self.s["since_theory"] >= self.theory_every:
             return self.theory_job()
-        if self.s["since_observe"] >= self.observe_every or (
+        if self.observe_every > 0 and (self.s["since_observe"] >= self.observe_every or
                 new_champ and self.s["since_observe"] >= self.observe_every // 2):
             return self.observe_job()
         if self.pace and any(i["tune_left"] > 0 for i in self.born()):
@@ -1227,7 +1227,8 @@ def main(argv=None) -> int:
     p.add_argument("--tune", type=int, default=5)
     p.add_argument("--deep-every", type=int, default=5)
     p.add_argument("--theory-every", type=int, default=6)
-    p.add_argument("--observe-every", type=int, default=8)
+    p.add_argument("--observe-every", type=int, default=8, help="0 = no observer at all "
+                   "(BLIND: the model never sees a life, only numbers)")
     p.add_argument("--holdout-every", type=float, default=30.0, help="minutes")
     p.add_argument("--grace", type=float, default=25.0, help="minutes past the deadline "
                    "to wait for a running model job")

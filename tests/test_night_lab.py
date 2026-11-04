@@ -113,3 +113,13 @@ def test_mailbox_names_the_kind_of_request():
     assert M.kind_of(N.THEORY_TURN).startswith("THEORY")
     assert M.kind_of(N.OBSERVE_TURN).startswith("OBSERVE")
     assert M.kind_of(N.DESIGN_TURN + "\nThat law was sent back: x").startswith("REPAIR")
+
+
+def test_a_blind_night_has_no_observer(tmp_path):
+    lab = N.NightLab(N.NightMock(), tmp_path, hours=0.004, train=(0,), holdout=(1,),
+                     ticks=200, jobs=1, tune=1, use_embed=False, grace=0.1,
+                     observe_every=0, theory_every=2)
+    lab.loop()
+    s = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
+    assert s["done"] and not s["observations"]
+    assert not [t for t in s["turns"] if t.get("kind") == "observe"]

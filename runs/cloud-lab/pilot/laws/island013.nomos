@@ -1,0 +1,36 @@
+# Doors are the cheapest way into new country — a closed room behind one is full of unseen food (mushrooms live in caves) — but the wave treats a door only as a partly passable wall and so routes round it to the nearest open frontier. Here a solid cell whose LEAK has been taught above the innate guess (the body learned that this hue gives) becomes a DOOR source itself, worth more the more unknown lies behind it, so the agent seeks out learned doors and opens them; stone that taught leak downward gets nothing. Void weighting and confinement are kept for the rest.
+
+channel source
+channel solid
+channel free
+channel thing
+channel value
+channel void: init 0
+channel door
+channel confinement
+channel injection
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# A learned door: solid whose leak was taught above the innate guess, with unknown beyond.
+rule doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * max8(void)
+
+# Local confinement.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Food and frontier as in the best law; a learned door is a source too.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.5 + 1.5 * void), 0.8 * door) / (1.3 + 0.5 * confinement)
+
+# The Bellman wave; the door cell keeps its own injection.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (1 - solid * (1 - leak)))

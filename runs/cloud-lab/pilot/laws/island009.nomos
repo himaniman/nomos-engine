@@ -1,0 +1,38 @@
+# The Bellman discount makes the nearest frontier mark always win, so the agent explores by dithering into every small unseen pocket beside it — pockets its eyes would clear anyway — instead of striding out. A PROXIMITY field (a short wave from `here`, through non-solid cells) marks ground close to the agent, and frontier marks are discounted there while smell and seen food are not: near food is still taken at once, but exploration becomes long straight strides toward distant unknown, which uncovers more food per tick. Void weighting and confinement are kept.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel void: init 0
+channel proximity
+channel confinement
+channel injection
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# How close a cell is to the agent, by a short wave from `here` around solids.
+rule nearness:
+  when 1
+  set proximity = clamp(max(here, 0.8 * max8(proximity)) * (1 - solid), 0, 1)
+
+# Local confinement, as in the best law.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Food counts as is; a frontier mark counts by the unknown behind it and less when near.
+rule inject:
+  when 1
+  set injection = max(thing, where(scent > 0, source, source * (0.5 + 1.5 * void) * (1 - 0.7 * proximity))) / (1.3 + 0.5 * confinement)
+
+# The Bellman wave.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

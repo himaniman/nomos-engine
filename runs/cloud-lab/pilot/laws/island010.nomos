@@ -1,0 +1,38 @@
+# Every seen morsel enters the wave at full strength whatever it looks like, although the food differs fourfold in worth (berry 12, fruit 22, mushroom 32) and the eye reports a brightness for each. Here a seen thing is weighted by its BRIGHTNESS (a quality cue, sharpened by a square so differences matter) and silenced where a refusal is remembered (`bad`, and its ring), so the agent walks past a dim berry to a bright fruit or mushroom and never returns to a poison it has burned on; frontier marks keep the void weighting and confinement of the best law.
+
+channel source
+channel solid
+channel free
+channel thing
+channel bright
+channel bad
+channel value
+channel void: init 0
+channel quality
+channel confinement
+channel injection
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# What a seen morsel is worth: its brightness, sharpened; nothing where I was burned.
+rule appraise:
+  when 1
+  set quality = thing * (0.3 + 1.2 * bright * bright) * (1 - max(bad, max8(bad)))
+
+# Local confinement, as in the best law.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen food by its quality; smell and frontier by the unknown behind them.
+rule inject:
+  when 1
+  set injection = max(quality, source * (0.5 + 1.5 * void) * (1 - bad)) / (1.3 + 0.5 * confinement)
+
+# The Bellman wave.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

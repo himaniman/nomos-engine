@@ -1,0 +1,30 @@
+# The wave values every morsel alike, so a lone berry one step away beats a rich patch of five a few steps further, and the agent spends its walking on singletons. A persistent CLUSTER field diffuses food evidence (seen morsels and smell) over the map and remembers it for a while, so a source counts in proportion to how much food lies around it: the agent travels to dense patches where one trip buys several meals (far-but-rich over near-but-poor), while confinement still keeps nooks from dominating.
+
+channel source
+channel solid
+channel thing
+channel scent
+channel value
+channel cluster: init 0
+channel confinement
+channel injection
+
+# Food density around a cell: morsels and smell, diffused and remembered.
+rule density:
+  when 1
+  set cluster = clamp(0.85 * (0.5 * cluster + 0.5 * avg8(cluster)) + 0.3 * max(thing, scent), 0, 1)
+
+# Local confinement, as in the best law.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# A source inside a rich patch counts more; nooks count less.
+rule inject:
+  when 1
+  set injection = max(thing, source) * (1 + 2 * cluster) / (1 + 0.5 * confinement)
+
+# The Bellman wave.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

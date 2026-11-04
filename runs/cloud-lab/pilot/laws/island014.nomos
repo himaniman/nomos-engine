@@ -1,0 +1,36 @@
+# A deterministic wave over a symmetric map leaves the agent like Buridan's ass: two frontiers or two smells of equal worth pull it back and forth, and on the same map it always makes the same choice, so a bad route is repeated. Here every map cell carries a WHIM — a random preference, resampled only rarely so it stays attached to the place as the map scrolls — and frontier and smell sources are scaled by it: ties are broken by a lasting arbitrary preference (a commitment that costs nothing to compute), and different parts of the frontier get tried instead of always the geometrically nearest. Void weighting and confinement are kept.
+
+channel source
+channel solid
+channel free
+channel thing
+channel value
+channel void: init 0
+channel whim: init rand()
+channel confinement
+channel injection
+
+# A lasting arbitrary preference per place: resampled rarely, scrolls with the map.
+rule fancy:
+  when bernoulli(0.002)
+  set whim = rand()
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# Local confinement.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Seen food as is; smell and frontier by the unknown behind them and by whim.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.5 + 1.5 * void) * (0.4 + 0.6 * whim)) / (1.3 + 0.5 * confinement)
+
+# The Bellman wave.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak))

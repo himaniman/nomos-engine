@@ -1,0 +1,37 @@
+# night lab champion #16: Some frontier marks never go away — unknown cells inside sealed rooms or behind rock, seen from outside but unreachable — and they keep pulling the agent round the same walls (the circling of world 2). Here each cell keeps a STALE clock that runs while it stays a bare frontier mark (no smell, no thing) and resets the moment it stops being one, and a frontier mark loses weight as it goes stale: fresh edges of the map pull, old unreachable ones fade, so the agent stops orbiting what it cannot reach. Learned doors, void weighting and confinement (#13, best raw) are kept.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel value
+channel void: init 0
+channel stale: init 0
+channel door
+channel injection
+
+# How long a cell has been a bare frontier mark; reset when it stops being one.
+rule age_frontier:
+  when 1
+  set stale = where(source * (1 - thing) * (1 - min(scent * 100, 1)) > 0, clamp(stale + 0.002, 0, 1), 0)
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# A learned door: solid whose leak was taught above the innate guess, with unknown beyond.
+rule doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * max8(void)
+
+# Food as is; frontier by the unknown behind it, fading as it goes stale; doors.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.5 + 1.5 * void) * (1 - 0.8 * stale), 0.8 * door) / (1.3 + 0.5 * sum8(solid))
+
+# The Bellman wave; a door cell keeps its own injection.
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (1 - solid * (1 - leak)))

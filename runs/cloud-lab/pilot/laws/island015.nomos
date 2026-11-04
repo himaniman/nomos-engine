@@ -1,0 +1,43 @@
+# The observer saw the agent circle small closed rooms with food inside for a third of its life (world 2, doors 0): the wave only seeps through a wall at the leak fraction, so going round always looks cheaper and the wall is never pressed. Here a LURE field spreads seen and smelled food a few cells through open ground, and a solid cell that the lure reaches becomes a BREACH source at the lure's strength, so the wave leads straight into the wall between the agent and the food and it presses INTERACT. Food (with breaches) and exploration (frontier weighted by unknown, plus learned doors) run as two separate waves — the split that held on holdout (#7).
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel value
+channel void: init 0
+channel lure
+channel breach
+channel food
+channel explore
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# Food spreads a short lure through open ground; walls do not pass it on.
+rule spread_lure:
+  when 1
+  set lure = max(thing, scent, 0.7 * max8(lure)) * (1 - solid)
+
+# A wall the lure presses on is a breach: the way in to the food.
+rule find_breach:
+  when 1
+  set breach = solid * max8(lure)
+
+# Food wave: seen and smelled food, and any wall the lure presses on (a breach).
+rule food_wave:
+  when 1
+  set food = max(max(thing, where(scent > 0, source, 0), 0.9 * breach), max(0.94 * max4(food), 0.916214 * max8(food)) * (1 - solid * (1 - leak)))
+
+# Explore wave: frontier by the unknown behind it, and learned doors.
+rule explore_wave:
+  when 1
+  set explore = max(max(where(scent + thing > 0, 0, source) * (0.5 + 1.5 * void), 0.8 * solid * clamp(2 * (leak - 0.5), 0, 1) * max8(void)) / (1 + 0.5 * sum8(solid)), max(0.94 * max4(explore), 0.916214 * max8(explore)) * (1 - solid * (1 - leak)))
+
+# The stronger want leads.
+rule decide:
+  when 1
+  set value = max(food, explore)

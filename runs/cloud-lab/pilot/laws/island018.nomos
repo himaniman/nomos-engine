@@ -1,0 +1,31 @@
+# One discount rate serves two horizons badly: food is worth chasing only when near (a far smell is often a lie round a wall), while unexplored country is worth a long walk. Here two waves with DIFFERENT horizons: a SHORT wave from smelled and seen food that dies within a few cells, and a LONG wave from the frontier and void that crosses the whole map almost undiminished, so near food is always taken, but beyond a few cells the agent commits to the long-range plan of where unknown country lies instead of bending toward every distant smell.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel value
+channel void: init 0
+channel near
+channel far
+
+# How much undiscovered country surrounds a cell, diffused and remembered.
+rule unknown_mass:
+  when 1
+  set void = clamp(0.7 * avg8(void) + 0.3 * (1 - free) * (1 - solid), 0, 1)
+
+# Short horizon: food, steeply discounted.
+rule near_wave:
+  when 1
+  set near = max(max(thing, where(scent > 0, source, 0)) / (1 + 0.5 * sum8(solid)), max(0.8 * max4(near), 0.75 * max8(near))) * (1 - solid * (1 - leak))
+
+# Long horizon: frontier by the unknown behind it, gently discounted.
+rule far_wave:
+  when 1
+  set far = max(where(scent + thing > 0, 0, source) * (0.5 + 1.5 * void) / (1 + 0.5 * sum8(solid)), max(0.97 * max4(far), 0.958 * max8(far))) * (1 - solid * (1 - leak))
+
+# The stronger want leads.
+rule decide:
+  when 1
+  set value = max(near, far)

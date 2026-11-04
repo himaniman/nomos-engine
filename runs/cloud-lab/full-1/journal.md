@@ -1727,3 +1727,55 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+> 18:09 model job `design` started
+
+---
+
+## Turn 26 -> island #29
+
+**Hypothesis:** Two changes of step price by knowledge (#18 unknown ground, #23 guessed walls) gave the only clear gains, while the helpers stacked around them (darkness weighting, footprint trail, frontier split, inline channels) may now be redundant or fitted to the training worlds. A MINIMAL law keeps only the knowledge-priced wave with map completion and source confinement, in ONE rule writing `value` directly: if it eats about as much, the night's structure is the knowledge pricing and a simpler law should generalise better to unseen worlds; if it drops, the helpers are load-bearing.
+
+Prediction 27.0, got **24.6** meals, fitness 483, per world [33, 34, 26, 34, 15, 26, 32, 24, 38, 23, 1, 19, 23, 38, 27, 31, 0, 17, 16, 36]; model 8.1 s, repairs 0
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel bad
+channel value
+channel guess
+
+# map completion: an unknown cell that continues a straight wall line is probably wall
+rule complete:
+  when 1
+  set guess = (1 - free) * (1 - solid) * max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1), 0.6 * shift(solid, 1, 0) * shift(solid, 2, 0), 0.6 * shift(solid, -1, 0) * shift(solid, -2, 0), 0.6 * shift(solid, 0, 1) * shift(solid, 0, 2), 0.6 * shift(solid, 0, -1) * shift(solid, 0, -2))
+
+# ONE wave, priced by what the map knows: sources as sensed (minus guessed-wall ones, hemmed-in ones less),
+# unknown ground costs extra, guessed walls pass half, walls pass their leak. No trail, no darkness, no helpers.
+rule plan:
+  when 1
+  set value = max(max(source * (1 - guess), thing * (1 - bad)) / (1 + 0.5 * sum8(solid)), (1 - 0.08 * (1 - free)) * max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.5 * guess)
+```
+
+### Holdout checkpoint at 6.98 h
+
+```
+  #23  train 29.6 meals  holdout 27.8  (tuned 5x) | Pricing unknown ground helped (#18), but every unknown cell is priced alike, although walls are straight: an u
+  #18  train 27.7 meals  holdout 29.0  (tuned 5x) | The wave prices every non-solid cell the same, so a plan to a smell waypoint or a far frontier runs straight t
+  #20  train 27.9 meals  holdout 29.8  (tuned 5x) | Pricing unknown ground (#18) was the first change of the step COST rather than of sources, and it gave the bes
+  #21  train 27.6 meals  holdout 29.0  (tuned 5x) | The map forgets free ground after roughly a thousand ticks, but eaten food regrows only after ~1200, so ground
+  #27  train 27.4 meals  holdout  -    (tuned 5x) | Map completion (#23, best train 29.6) guesses only the one unknown cell that continues a wall line, so a wall 
+  #19  train 27.1 meals  holdout 31.2  (tuned 5x) | In sealed pockets and walled rooms (the observer's world 16 and world 2: many presses, few doors) the wave lea
+  #25  train 27.5 meals  holdout  -    (tuned 5x) | On the trap worlds the agent paces one small area for thousands of ticks because nothing there ever becomes le
+  #28  train 26.2 meals  holdout  -    (tuned 5x) | Wiping the plan every thought collapsed foraging (#16: 12.8), but that change also cut the wave's range to fiv
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 136x: train 28.6 meals, holdout 30.6
+```
+
+> 18:24 model job `design` started

@@ -2036,3 +2036,140 @@ rule wave:
   when 1
   set value = max(injection, shift(value, 1, 0) * (0.94 - 0.02 * ux), shift(value, -1, 0) * (0.94 + 0.02 * ux), shift(value, 0, 1) * (0.94 - 0.02 * uy), shift(value, 0, -1) * (0.94 + 0.02 * uy), shift(value, 1, 1) * (0.9162 - 0.0141 * (ux + uy)), shift(value, -1, -1) * (0.9162 + 0.0141 * (ux + uy)), shift(value, 1, -1) * (0.9162 - 0.0141 * (ux - uy)), shift(value, -1, 1) * (0.9162 + 0.0141 * (ux - uy))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
 ```
+
+> 20:34 model job `design` started
+
+### Holdout checkpoint at 7.77 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 6x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #21  train 35.1 meals  holdout 34.6  (tuned 5x) | The course is the one structure that moved the mean (25-28 -> ~33), but its pull is proportional to how straig
+  #18  train 33.7 meals  holdout 34.8  (tuned 6x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 6x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #19  train 33.8 meals  holdout  -    (tuned 5x) | Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightn
+  #22  train 32.2 meals  holdout  -    (tuned 5x) | Bold axis: an ANISOTROPIC wave — the course built into the physics of distance instead of bolted onto the fron
+  #20  train 31.9 meals  holdout  -    (tuned 5x) | Axis: a HABITAT prior. Fruit grows only right beside a trunk, and leaves are walkable but opaque, so a tree's 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 105x: train 29.8 meals, holdout 25.1
+```
+
+---
+
+## Turn 20 -> island #23
+
+**Hypothesis:** Axis: what memory is for. Every law since #3 lingers the WHOLE source, including the harness's flat 0.12 frontier marks, so each frontier cell the agent has just looked at leaves a fading phantom pull — mostly behind it, and never course-weighted — that works against the course (#22 showed the course pays at the level of goals, not paths, so stray goals matter). Here memory is for food only: the frontier marks are subtracted from the source before it lingers, smells and seen morsels still persist and are erased under the agent, and exploration comes solely from the live, course-weighted, roominess-weighted frontier. Built on #21 (unit course + doors, 35.1 untuned); the memory split is the on
+
+Prediction 35.5, got **31.9** meals, fitness 651, per world [41, 25, 30, 44, 33, 35, 21, 37, 29, 34, 33, 22, 26, 29, 40, 22, 37, 40, 25, 35]; model 28.2 s, repairs 0; vocabulary twin of #21, #18, #19, #16, #22, #20
+
+value on the test map: max 1.00, mean 0.53, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel morsel: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel dwell: init 0
+channel crowd: init 0
+channel thinwall
+channel recent: init 0
+channel coursex: init 0
+channel coursey: init 0
+channel unitx
+channel unity
+channel beamxp: init 0
+channel beamxn: init 0
+channel beamyp: init 0
+channel beamyn: init 0
+channel ahead
+channel hidden
+channel door
+channel injection
+
+rule recency:
+  when 1
+  set recent = max(here, 0.95 * recent)
+rule course_x:
+  when 1
+  set coursex = here * (0.998 * (coursex + sum8(coursex)) + 0.002 * (shift(recent, 1, 0) - shift(recent, -1, 0)))
+rule course_y:
+  when 1
+  set coursey = here * (0.998 * (coursey + sum8(coursey)) + 0.002 * (shift(recent, 0, 1) - shift(recent, 0, -1)))
+# RE-AIM: the course as a UNIT direction at the agent's cell. A looping walk averages to a short
+# vector whose pull used to vanish; normalised, it keeps full strength in whatever way the loop
+# drifts, so an orbit is broken instead of tolerated
+rule unit_x:
+  when 1
+  set unitx = here * coursex / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule unit_y:
+  when 1
+  set unity = here * coursey / (sqrt(coursex * coursex + coursey * coursey) + 0.02)
+rule beam_xp:
+  when 1
+  set beamxp = where(here, max(unitx, 0), 0.97 * max8(beamxp))
+rule beam_xn:
+  when 1
+  set beamxn = where(here, max(0 - unitx, 0), 0.97 * max8(beamxn))
+rule beam_yp:
+  when 1
+  set beamyp = where(here, max(unity, 0), 0.97 * max8(beamyp))
+rule beam_yn:
+  when 1
+  set beamyn = where(here, max(0 - unity, 0), 0.97 * max8(beamyn))
+rule along_course:
+  when 1
+  set ahead = ((posx() - 0.4828) * (beamxp - beamxn) + (posy() - 0.4828) * (beamyp - beamyn)) / (sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828)) + 0.01)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+rule thin_walls:
+  when 1
+  set thinwall = solid * max((1 - shift(solid, 1, 0)) * (1 - shift(solid, -1, 0)), (1 - shift(solid, 0, 1)) * (1 - shift(solid, 0, -1)))
+# an unexplored space BEHIND a wall: unknown cells walled off from every known-free cell
+rule walled_off:
+  when 1
+  set hidden = unk * (max8(free) < 0.5) * (max8(solid) > 0.5)
+# DOORS AS FRONTIER: a thin wall whose hue has been taught to give (leak above the innate 0.5),
+# with known ground on one side and hidden space on the other, is a way into a new room
+rule doorways:
+  when 1
+  set door = thinwall * clamp(2 * (leak - 0.5), 0, 1) * (max8(free) > 0.5) * max8(hidden)
+# MEMORY FOR FOOD ONLY: the harness's 0.12 frontier marks are subtracted before anything lingers,
+# so explored edges leave no phantom pulls behind the agent (those were never course-weighted);
+# smells and seen morsels still linger, erased where the agent stands
+rule food_memory:
+  when 1
+  set morsel = max(source - 0.12 * front, thing, 0.99 * morsel) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule inject:
+  when 1
+  set injection = max(morsel, 0.3 * front * room * room * clamp(1 + ahead, 0, 2), 0.4 * door, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
+```

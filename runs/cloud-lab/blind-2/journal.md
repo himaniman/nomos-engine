@@ -1155,3 +1155,88 @@ rule value:
   when 1
   set value = where(abs(ox) + abs(oy) == 1, where(ox == 1, ve * (1 - 0.1 * (1 - clamp(hx, -1, 1))), where(ox == 0 - 1, vw * (1 - 0.1 * (1 + clamp(hx, -1, 1))), where(oy == 1, vs * (1 - 0.1 * (1 - clamp(hy, -1, 1))), vn * (1 - 0.1 * (1 + clamp(hy, -1, 1)))))), where(abs(ox) + abs(oy) == 2 and abs(ox) == 1, 0, max(ve, vw, vn, vs)))
 ```
+
+### Holdout checkpoint at 5.07 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 7x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 6x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 6x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #14  train 30.2 meals  holdout  -    (tuned 5x) | The body turns only ~20 degrees per thought, so a U-turn costs about nine thoughts of standing and swinging, y
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #8   train 27.3 meals  holdout  -    (tuned 5x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 75x: train 28.3 meals, holdout 27.1
+```
+
+> 18:10 model job `design` started
+
+---
+
+## Turn 15 -> island #18
+
+**Hypothesis:** Paying frontier marks back for distance (#16, far-sighted exploration) cost ~5 meals, so the trade-off has a direction: if far-sighted exploration hurts, near-sighted should help. Frontier marks now pay an EXTRA discount by their distance from the agent (food keeps the plain wave discount), so the agent finishes the unknown around it, shadows and corners within a few cells, before walking off to the map's edge, and food hidden close by is found before it is walked past.
+
+Prediction 31.0, got **22.4** meals, fitness 441, per world [9, 8, 21, 24, 32, 41, 17, 22, 11, 21, 15, 27, 28, 40, 32, 6, 3, 35, 20, 37]; model 64.2 s, repairs 1; vocabulary twin of #16, #5, #4, #15, #12, #9
+
+value on the test map: max 0.29, mean 0.15, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel far
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = max(0, 0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# distance from the agent in cells (the agent sits at 14/29 of the lattice)
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.4828) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frontier marks pay an EXTRA distance discount: exploration finishes the ground nearby first
+# (food keeps the plain discount); frustrated, known wall faces become targets
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4275 + 1.5 * vast) / (1 + 0.1 * far))) / (1 + 0.5 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```

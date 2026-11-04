@@ -1,0 +1,47 @@
+# Exploration so far is local and isotropic: the darkness-weighted frontier wave keeps the agent re-sweeping the same neighbourhood, while food regrows on fixed spots spread over the whole world. A slowly turning world-fixed COMPASS (a life clock carried by the map, and each cell's projection on a heading that rotates once every few thousand ticks) multiplies frontier marks that lie ahead, so the agent makes long straight excursions into new land and comes round to every side over a life, while food and smell are untouched and still win when present.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel clock
+channel compass
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a life-long clock, shared by the whole map (cells scrolling in take their neighbours' time)
+rule tick:
+  when 1
+  set clock = max(clock, max8(clock)) + 1
+
+# a slowly turning world-fixed heading: how far each cell lies along it from the agent
+rule turn:
+  when 1
+  set compass = clamp(1 + 2.0 * ((posx() - 0.5) * cos(0.0008 * clock) + (posy() - 0.5) * sin(0.0008 * clock)), 0.1, 3)
+
+# frontier marks ahead along the heading count more: long straight excursions into new land
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * compass) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)

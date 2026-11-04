@@ -457,3 +457,114 @@ rule read:
   when 1
   set value = wave * (1 - 0.4 * trail)
 ```
+
+> 13:18 model job `design` started
+
+---
+
+## Turn 7 -> island #10
+
+**Hypothesis:** Every law so far is a max-wave, which follows the single best target and ignores how much is there: one frontier cell and a whole dark region, one berry and a patch of five pull alike once discounted. Replacing the race with a RELAXATION (each free cell becomes the mean of its neighbours, sources fixed, zero at the outer ring and in walls) gives a harmonic potential with no local maxima away from sources, where many sources in one direction add up, so the agent heads for where most food and most unknown lie and cannot be trapped between two equal targets.
+
+Prediction 22.0, got **14.2** meals, fitness 298, per world [11, 14, 12, 10, 6, 18, 15, 21, 15, 13, 0, 14, 17, 34, 18, 17, 0, 24, 16, 10]; model 34.0 s, repairs 0
+
+value on the test map: max 1.00, mean 0.04, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel thing
+channel bad
+channel value
+channel inflow
+
+# what calls: senses as painted, plus seen good morsels; hemmed-in sources count less
+rule inject:
+  when 1
+  set inflow = max(source / (1 + 0.5 * sum8(solid)), thing * (1 - bad))
+
+# a pressure field, not a race: each cell relaxes to the MEAN of its neighbours (bounded by
+# the sources, zero at the outer ring), so many sources in one direction pull harder than one
+rule relax:
+  when 1
+  set value = max(inflow, 0.6 * avg8(value) + 0.4 * avg4(value)) * (1 - solid * (1 - leak))
+```
+
+### Holdout checkpoint at 2.13 h
+
+```
+  #3   train 26.7 meals  holdout 27.3  (tuned 6x) | Every frontier mark is worth the same 0.12 today, so a one-cell unknown pocket beside a wall pulls as hard as 
+  #7   train 26.2 meals  holdout 26.4  (tuned 5x) | Exploration is driven only by frontier marks, which exist only where unknown ground touches known-free ground;
+  #6   train 25.1 meals  holdout 24.9  (tuned 7x) | When frontiers on several sides look alike, the agent's target can switch from thought to thought and it sweep
+  #9   train 25.9 meals  holdout  -    (tuned 5x) | My theory says extra competing pulls distract; modulating the frontier helps (darkness weighting, footprint tr
+  #4   train 25.9 meals  holdout 30.0  (tuned 5x) | A reactive wave lets the agent step back onto the cell it just left whenever two targets are nearly equal, whi
+  #8   train 24.6 meals  holdout  -    (tuned 5x) | Food in this world grows on fixed spots that regrow on a timer, yet every law so far forgets a spot as soon as
+  #5   train 21.6 meals  holdout  -    (tuned 5x) | One discount serves two different promises: food (certain, worth a detour only when near) and the frontier (un
+  #10  train 14.2 meals  holdout  -    (tuned 1x) | Every law so far is a max-wave, which follows the single best target and ignores how much is there: one fronti
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 39x: train 25.7 meals, holdout 25.7
+```
+
+> 13:28 model job `design` started
+
+---
+
+## Turn 8 -> island #11
+
+**Hypothesis:** Exploration so far is local and isotropic: the darkness-weighted frontier wave keeps the agent re-sweeping the same neighbourhood, while food regrows on fixed spots spread over the whole world. A slowly turning world-fixed COMPASS (a life clock carried by the map, and each cell's projection on a heading that rotates once every few thousand ticks) multiplies frontier marks that lie ahead, so the agent makes long straight excursions into new land and comes round to every side over a life, while food and smell are untouched and still win when present.
+
+Prediction 27.0, got **21.4** meals, fitness 414, per world [27, 17, 15, 17, 31, 26, 31, 23, 25, 23, 1, 18, 24, 18, 26, 17, 0, 34, 26, 29]; model 40.1 s, repairs 0
+
+value on the test map: max 0.39, mean 0.21, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel here
+channel value
+channel dark
+channel clock
+channel compass
+channel injection
+channel wave
+channel trail
+
+rule track:
+  when 1
+  set trail = max(here, 0.97 * trail)
+
+rule darkness:
+  when 1
+  set dark = 0.5 * (1 - free) * (1 - solid) + 0.5 * avg8(dark)
+
+# a life-long clock, shared by the whole map (cells scrolling in take their neighbours' time)
+rule tick:
+  when 1
+  set clock = max(clock, max8(clock)) + 1
+
+# a slowly turning world-fixed heading: how far each cell lies along it from the agent
+rule turn:
+  when 1
+  set compass = clamp(1 + 2.0 * ((posx() - 0.5) * cos(0.0008 * clock) + (posy() - 0.5) * sin(0.0008 * clock)), 0.1, 3)
+
+# frontier marks ahead along the heading count more: long straight excursions into new land
+rule inject:
+  when 1
+  set injection = max(where(scent + thing < 0.05, 0, source), thing * (1 - bad), where(scent + thing < 0.05, source, 0) * (0.3 + 2.0 * dark) * compass) / (1 + 0.5 * sum8(solid))
+
+rule plan:
+  when 1
+  set wave = max(injection, max(0.94 * max4(wave), 0.916214 * max8(wave))) * (1 - solid * (1 - leak))
+
+rule read:
+  when 1
+  set value = wave * (1 - 0.4 * trail)
+```
+
+> 13:43 model job `deep` started

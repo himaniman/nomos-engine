@@ -1366,3 +1366,93 @@ rule decide:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 78x: train 27.2 meals, holdout 25.4
 ```
+
+> 18:25 model job `design` started
+
+---
+
+## Turn 15 -> island #18
+
+**Hypothesis:** #13's futility never fires: its tuned work decays by 0.68 a step, so it settles near 0.09 and never reaches the 0.9 threshold. On world 110 the agent paced its slot pressing rock until it starved. Here futility has no threshold to break. Aimed presses on low-leak solid (stone) wear the face down continuously, and the wear SPREADS along the contiguous rock, so one futile face writes off the whole wall. That lets the frontier at the end of the slot win. Separately, ground walked long ago but not lately (slow memo minus fast trail) regrows as a faint source, so a life stalled in a spent patch is drawn back to old ground where food respawns.
+
+Prediction 33.5, got **27.6** meals, fitness 563, per world [18, 34, 26, 42, 28, 34, 28, 18, 28, 46, 0, 22, 31, 35, 42, 24, 29, 30, 0, 37]; model 74.1 s, repairs 0; vocabulary twin of #13, #16, #14, #7
+
+value on the test map: max 0.74, mean 0.34, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Rock is contiguous + regrowth: futility spreads along a stone wall; long-unvisited ground regrows as a faint source.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel memo
+channel confinement
+channel injection
+channel thin
+channel nbmax
+channel aim
+channel work
+channel spent
+channel probe
+
+# Fast trail of visited cells (inhibition of return), bounded in [0, 1].
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+
+# Slow memory of where the agent walked; memo - trail = walked long ago, not lately.
+rule remember:
+  when 1
+  set memo = max(here, 0.9998 * memo)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Thin wall: known free on one side and not known solid straight across.
+rule calc_thin:
+  when 1
+  set thin = max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+
+# Sources: seen morsels, trail-faded senses, and REGROWTH on ground walked long ago.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail), 0.1 * free * clamp(memo - trail, 0, 1)) * (1 - bad) / (1 + 0.83 * confinement)
+
+# Best neighbour value seen from every cell.
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+
+# Efference copy: the neighbour(s) of the agent the decision is heading into.
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+
+# Pressure on the aimed face, saturating, gone once the face is spent.
+rule effort:
+  when 1
+  set work = min(1, 0.9 * work + 0.1 * aim * solid) * (1 - spent)
+
+# Futility without a threshold: aimed presses on low-leak solid add up, and spread along the contiguous rock.
+rule futility:
+  when 1
+  set spent = min(1, max(0.9995 * spent, 0.85 * max4(spent) * solid * (1 - leak)) + 0.03 * aim * solid * (1 - leak))
+
+# Wall faces are sources only if thin and not spent: faint by default, committed share with work.
+rule calc_probe:
+  when 1
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work)
+
+# Bellman wave over both kinds of source; remembered poison blocks passage.
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.319 - leak)) * (1 - 0.9 * bad)
+```

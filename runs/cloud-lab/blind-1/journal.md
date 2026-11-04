@@ -2423,3 +2423,171 @@ rule wave:
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 147x: train 29.2 meals, holdout 28.2
 ```
+
+---
+
+## Turn 28 -> island #31
+
+**Hypothesis:** Occam's test of a part I added early (#11). The harness already silences every source within two cells of a remembered refusal and wipes the wave already standing there, so the law's own aversion halo is redundant for lures, and its remaining effect — a second, wider damping of PATHS near burnt places — bends routes around spots that are dangerous only to eat, not to walk past. Removing it should cost nothing and may gain a little; if it loses clearly, the wider halo was doing real work keeping the agent away from poison it would otherwise press on. Everything else is #26 (the champion by holdout).
+
+Prediction 34.0, got **31.4** meals, fitness 616, per world [34, 37, 30, 29, 14, 30, 37, 40, 20, 18, 35, 38, 39, 32, 48, 40, 30, 20, 28, 29]; model 28.2 s, repairs 0; vocabulary twin of #29, #26, #30, #27, #24, #22
+
+value on the test map: max 0.48, mean 0.26, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Occam: the law's own halo around refusals is redundant. The harness already
+# silences every source within two cells of a remembered refusal and wipes the wave
+# already there, so the halo only adds a second, wider damping of PATHS near burnt
+# places, bending routes for nothing. Removed; everything else is #26.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel vista
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+rule unexplored_mass:
+  when 1
+  set vista = 0.5 * avg8(fog) + 0.5 * avg8(vista)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind) * (0.5 + 1.5 * vista)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind))
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - pinched) * (1 - 0.15 * fog)
+```
+
+> 22:55 model job `deep` started
+
+---
+
+## Turn 29 (DEEP) -> island #32
+
+**Hypothesis:** Information at two scales. #26's fog mass (the night's biggest gain, and #28 showed it is information, not reach) is short-range — a few cells — so it tells a crack from an opening, but not a pocket of fog in a corner of explored ground from the edge of a whole unexplored quarter of the map. A second, slowly screened fog mass measures the wider region, and the frontier is weighted by both: open right here AND leading into a large unknown, so the agent's runs aim at the biggest unexplored region rather than the nearest wide-ish gap. Base is #26 (aversion kept: #31 showed it does real work).
+
+Prediction 34.5, got **31.9** meals, fitness 652, per world [35, 40, 27, 36, 16, 30, 23, 42, 38, 35, 30, 28, 37, 31, 40, 35, 26, 47, 5, 38]; model 18.2 s, repairs 0; vocabulary twin of #29, #26, #30, #27, #24, #31
+
+value on the test map: max 0.24, mean 0.13, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Information at two scales. #26's fog mass is short-range (a few cells): it tells
+# a crack from an opening but not a dead corner of the map from a whole unexplored
+# quarter. A second, slowly screened fog mass measures the REGION beyond, and the
+# frontier is weighted by both: open now AND leading somewhere big. Base: #26.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+channel fog
+channel give
+channel vista
+channel region
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule uncertainty:
+  when 1
+  set fog = clamp((1 - free) * (1 - solid), 0, 1)
+rule wall_trust:
+  when 1
+  set give = clamp((leak - 0.3) / 0.6, 0, 1)
+rule unexplored_mass:
+  when 1
+  set vista = 0.5 * avg8(fog) + 0.5 * avg8(vista)
+# The same fog, diffused far: how unexplored the wider region is.
+rule unexplored_region:
+  when 1
+  set region = 0.1 * avg8(fog) + 0.9 * avg8(region)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+rule inject:
+  when 1
+  set injection = max(where(max(thing, scent) > 0, source * where(thing > 0.5, 1, 1 - frust), source * exp(-40 * behind) * (0.5 + 1.5 * vista) * (0.5 + region)) / (1 + 0.5 * confinement), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
+```
+
+> 23:00 model job `theory` started

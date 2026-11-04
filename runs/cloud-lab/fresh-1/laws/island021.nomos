@@ -1,0 +1,66 @@
+# A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's value beats the agent's own cell, read via argmax8(here, value)), that face gets claimed. The claim keeps it bright enough to keep pressing, so the agent sticks with one wall long enough to chip it. That is #16's win (larder dropped: neutral). But an age ticks on every claimed face whatever happens, and at full age the claim dies and the face is SPENT: habituated, with its rim hope dimmed for a few hundred ticks. So a dead dig lets the agent go instead of looping round one rock, and the world-16 pocket stops pulling it back to faces that never gave. A seen morsel a few cells away still 
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel claim
+channel age
+channel spent
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak * (1 - spent), 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# claim a face the agent touches and the wave leads into; dies when it opens or its age runs out
+rule claimit:
+  when 1
+  set claim = where((solid < 0.2) or (age > 0.995), 0, where((rim > 0.1) and (max8(here) > 0.5) and (value > argmax8(here, value)), 1, 0.998 * claim))
+# the claim's own clock: ages while claimed whatever happens, forgets slowly once released
+rule aging:
+  when 1
+  set age = where(claim > 0.3, min(1, age + 0.004), 0.98 * age)
+# a face whose claim expired is spent: habituation that fades over a few hundred ticks
+rule habit:
+  when 1
+  set spent = where(age > 0.995, 1, 0.999 * spent)
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), 0.12 * beyond * (0.3635 + 1.576 * openness)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave, with the claimed face held bright above the solid damping (fading with age)
+rule wave:
+  when 1
+  set value = max(0.5 * claim * (1 - age) * (1 - bad), max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad))

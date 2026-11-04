@@ -1672,3 +1672,99 @@ UNTRIED: a claim that EXPIRES by its own clock (bounded age, fades whatever happ
 `{'meals': 0, 'ticks': 3529, 'alive': False, 'distance': 433.1, 'cells_visited': 48, 'last500_box': '4x12', 'doors': 0, 'breaks': 0, 'idle_presses': 169, 'nightcaps': 0}`
 
 The agent is born in a narrow walled pocket, a strip about four cells high and a dozen long, pinned between the big rock mass above and the walled room below. It spends its whole life of 3529 ticks there: it sweeps back and forth along the strip in tight loops and diagonal scrapes, visiting only 48 cells, and never gets into the open ground where food is growing all around. It is not ignoring visible food, because none is in sight from inside the pocket. What kills it is pacing and pressing against the pocket's walls: 169 idle presses and no door ever opened, so something keeps drawing it back to the same wall faces even though pressing them never works. The first fix would be habituation in the leak and beyond-wall pull: every press or long stay at a wall face that gives nothing should leave a slowly fading "tried, nothing here" mark that switches off the rim and beyond injection behind that face and lowers its leak. The wave would then stop pulling the agent into dead rock, and the remaining weaker gradients, such as the true opening at the end of the strip or an untried wall, would win.
+
+### Holdout checkpoint at 7.23 h
+
+```
+  #18  train 28.6 meals  holdout 27.8  (tuned 6x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 6x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #16  train 28.8 meals  holdout 32.6  (tuned 5x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 8x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #14  train 28.0 meals  holdout 28.8  (tuned 5x) | The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls
+  #15  train 27.5 meals  holdout  -    (tuned 5x) | A LEXICOGRAPHIC two-tier wave. Tier 1 is #6's priced, confined wave, but it passes a solid only once that hue 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 99x: train 28.5 meals, holdout 27.0
+```
+
+> 18:53 model job `design` started
+
+---
+
+## Turn 18 -> island #21
+
+**Hypothesis:** A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's value beats the agent's own cell, read via argmax8(here, value)), that face gets claimed. The claim keeps it bright enough to keep pressing, so the agent sticks with one wall long enough to chip it. That is #16's win (larder dropped: neutral). But an age ticks on every claimed face whatever happens, and at full age the claim dies and the face is SPENT: habituated, with its rim hope dimmed for a few hundred ticks. So a dead dig lets the agent go instead of looping round one rock, and the world-16 pocket stops pulling it back to faces that never gave. A seen morsel a few cells away still 
+
+Prediction 30.0, got **27.0** meals, fitness 542, per world [29, 24, 18, 27, 27, 26, 34, 35, 36, 40, 23, 35, 24, 36, 16, 32, 2, 26, 28, 22]; model 68.2 s, repairs 0
+
+value on the test map: max 0.98, mean 0.40, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+channel claim
+channel age
+channel spent
+rule known:
+  when 1
+  set unknown = (0.9243 - free) * (0.6868 - solid)
+rule spread:
+  when 1
+  set openness = 0.7539 * avg8(unknown) + 0.45 * avg8(openness)
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1489) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.4502), solid * leak * (1 - spent), 0)
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+# claim a face the agent touches and the wave leads into; dies when it opens or its age runs out
+rule claimit:
+  when 1
+  set claim = where((solid < 0.2) or (age > 0.995), 0, where((rim > 0.1) and (max8(here) > 0.5) and (value > argmax8(here, value)), 1, 0.998 * claim))
+# the claim's own clock: ages while claimed whatever happens, forgets slowly once released
+rule aging:
+  when 1
+  set age = where(claim > 0.3, min(1, age + 0.004), 0.98 * age)
+# a face whose claim expired is spent: habituation that fades over a few hundred ticks
+rule habit:
+  when 1
+  set spent = where(age > 0.995, 1, 0.999 * spent)
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), 0.12 * beyond * (0.3635 + 1.576 * openness)) * (1 - bad)
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+# #18's priced wave, with the claimed face held bright above the solid damping (fading with age)
+rule wave:
+  when 1
+  set value = max(0.5 * claim * (1 - age) * (1 - bad), max(injection, step * max4(value), stepd * max(shift(value, -0.877, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 1.072, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.231)) * (1 - leak)), shift(value, 1.434, 1) * (0.9385 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.8642 * bad))
+```

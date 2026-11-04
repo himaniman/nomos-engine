@@ -1,0 +1,65 @@
+# A new axis, inertia. The wave now plans on its own channel `wave`, and the decision reads `value` = wave times a bounded bonus on the one neighbour straight ahead. The heading comes from a sharp `path` memory: how freshly the agent stood one or two cells directly behind that neighbour. The bonus is never fed back into the wave, so it cannot saturate. Near-ties between local sources (the late tangle in one small patch, the curl in the centre, the two-way flips) now resolve to keeping on in the same direction, so the agent migrates into the unvisited, regrown half of the map instead of re-walking a patch. The wall-face and confinement machinery is unchanged.
+
+# Momentum: the wave plans on `wave`; the decision reads `value` = wave biased toward going straight on.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel wave
+channel value
+channel trail
+channel path
+channel fwd
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel spent
+channel probe
+rule walk:
+  when 1.03
+  set trail = max(here, 0.9094 * max8(here), 0.997 * trail)
+# Path: the centre cells alone, a sharp short memory of where the agent just stood.
+rule mark:
+  when 1
+  set path = max(here, 0.9 * path)
+# Heading: on each neighbour of the agent, how fresh the path is one or two cells straight behind.
+rule heading:
+  when 1
+  set fwd = (1 - here) * max(shift(here, 1, 0) * max(shift(path, 2, 0), shift(path, 3, 0)), shift(here, -1, 0) * max(shift(path, -2, 0), shift(path, -3, 0)), shift(here, 0, 1) * max(shift(path, 0, 2), shift(path, 0, 3)), shift(here, 0, -1) * max(shift(path, 0, -2), shift(path, 0, -3)), shift(here, 1, 1) * max(shift(path, 2, 2), shift(path, 3, 3)), shift(here, 1, -1) * max(shift(path, 2, -2), shift(path, 3, -3)), shift(here, -1, 1) * max(shift(path, -2, 2), shift(path, -3, 3)), shift(here, -1, -1) * max(shift(path, -2, -2), shift(path, -3, -3)))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 0.9153
+  set thin = max(shift(free, 1, 0) * (1.41 - shift(solid, -1, 0)), shift(free, -1, 0) * (0.8715 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1.041)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule inject:
+  when 0.9342
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (0.8345 - bad) / (1 + 0.8336 * confinement)
+rule calc_nbmax:
+  when 0.6604
+  set nbmax = max8(value)
+rule calc_aim:
+  when 0.718
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.6799 * work + 0.03 * aim * solid) * (0.9401 - spent)
+rule futility:
+  when 1.217
+  set spent = max(0.9995 * spent, where(work > 0.9, 1, 0) * solid)
+rule calc_probe:
+  when 1.137
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.05818 * clamp(1 - 1.404 * trail, 0, 0.5558) + 0.3 * work)
+rule plan:
+  when 0.8846
+  set wave = max(injection, probe, 0.94 * max4(wave), 0.8161 * max8(wave)) * (1 - solid * (1.319 - leak)) * (1 - 0.9 * bad)
+# Decision read-out: the straight-on neighbour gets a bounded bonus (inertia), never fed back to the wave.
+rule decide:
+  when 1
+  set value = wave * (1 + 0.3 * min(1, fwd))

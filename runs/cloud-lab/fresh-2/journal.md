@@ -932,3 +932,113 @@ rule wave:
   when 1
   set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.055 - leak)) * (1 - 0.9 * bad)
 ```
+
+> 16:45 model job `design` started
+
+### Holdout checkpoint at 3.98 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 5x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 5x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #10  train 30.9 meals  holdout  -    (tuned 5x) | A second, wall-blind X-RAY wave spreads promise (smell, seen food, frontier) straight through rock, so every w
+  #6   train 28.5 meals  holdout 25.8  (tuned 5x) | When the open map is spent (no frontier, no smell worth following), every law so far goes flat and the agent s
+  #3   train 26.9 meals  holdout 22.3  (tuned 5x) | Add inhibition of return. A slowly fading TRAIL channel marks the cells the agent has stood on, and it scrolls
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 57x: train 27.2 meals, holdout 25.4
+```
+
+---
+
+## Turn 11 -> island #14
+
+**Hypothesis:** A new axis, inertia. The wave now plans on its own channel `wave`, and the decision reads `value` = wave times a bounded bonus on the one neighbour straight ahead. The heading comes from a sharp `path` memory: how freshly the agent stood one or two cells directly behind that neighbour. The bonus is never fed back into the wave, so it cannot saturate. Near-ties between local sources (the late tangle in one small patch, the curl in the centre, the two-way flips) now resolve to keeping on in the same direction, so the agent migrates into the unvisited, regrown half of the map instead of re-walking a patch. The wall-face and confinement machinery is unchanged.
+
+Prediction 34.0, got **20.3** meals, fitness 404, per world [26, 24, 22, 20, 17, 32, 17, 30, 5, 25, 0, 23, 15, 26, 33, 16, 26, 26, 0, 23]; model 98.2 s, repairs 0; vocabulary twin of #13
+
+value on the test map: max 0.62, mean 0.29, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Momentum: the wave plans on `wave`; the decision reads `value` = wave biased toward going straight on.
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel wave
+channel value
+channel trail
+channel path
+channel fwd
+channel confinement
+channel injection
+channel nbmax
+channel aim
+channel work
+channel thin
+channel spent
+channel probe
+rule walk:
+  when 1.03
+  set trail = max(here, 0.9094 * max8(here), 0.997 * trail)
+# Path: the centre cells alone, a sharp short memory of where the agent just stood.
+rule mark:
+  when 1
+  set path = max(here, 0.9 * path)
+# Heading: on each neighbour of the agent, how fresh the path is one or two cells straight behind.
+rule heading:
+  when 1
+  set fwd = (1 - here) * max(shift(here, 1, 0) * max(shift(path, 2, 0), shift(path, 3, 0)), shift(here, -1, 0) * max(shift(path, -2, 0), shift(path, -3, 0)), shift(here, 0, 1) * max(shift(path, 0, 2), shift(path, 0, 3)), shift(here, 0, -1) * max(shift(path, 0, -2), shift(path, 0, -3)), shift(here, 1, 1) * max(shift(path, 2, 2), shift(path, 3, 3)), shift(here, 1, -1) * max(shift(path, 2, -2), shift(path, 3, -3)), shift(here, -1, 1) * max(shift(path, -2, 2), shift(path, -3, 3)), shift(here, -1, -1) * max(shift(path, -2, -2), shift(path, -3, -3)))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_thin:
+  when 0.9153
+  set thin = max(shift(free, 1, 0) * (1.41 - shift(solid, -1, 0)), shift(free, -1, 0) * (0.8715 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1.041)), shift(free, 0, -1) * (1 - shift(solid, 0, 1)))
+rule inject:
+  when 0.9342
+  set injection = max(thing, source * (0.7387 - 0.8243 * trail)) * (0.8345 - bad) / (1 + 0.8336 * confinement)
+rule calc_nbmax:
+  when 0.6604
+  set nbmax = max8(value)
+rule calc_aim:
+  when 0.718
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.6799 * work + 0.03 * aim * solid) * (0.9401 - spent)
+rule futility:
+  when 1.217
+  set spent = max(0.9995 * spent, where(work > 0.9, 1, 0) * solid)
+rule calc_probe:
+  when 1.137
+  set probe = solid * thin * leak * (1 - bad) * (1 - spent) * (0.05818 * clamp(1 - 1.404 * trail, 0, 0.5558) + 0.3 * work)
+rule plan:
+  when 0.8846
+  set wave = max(injection, probe, 0.94 * max4(wave), 0.8161 * max8(wave)) * (1 - solid * (1.319 - leak)) * (1 - 0.9 * bad)
+# Decision read-out: the straight-on neighbour gets a bounded bonus (inertia), never fed back to the wave.
+rule decide:
+  when 1
+  set value = wave * (1 + 0.3 * min(1, fwd))
+```
+
+> 16:52 model job `theory` started
+
+---
+
+## Theory (after 12 design turns)
+
+HELPS: small, sharp, local structure. Inhibition of return (fading trail, #3). Keeping the wave alive when the map is spent (#6). An efference copy that builds pressure on the solid face being aimed at (#7). Faces that compete for pressure (#9 crown): lower on train but the best holdout so far, 29.8. Confinement suppression (#1) also holds up on holdout.
+HURTS: anything global, smoothed or directional laid over the field. Frustration (#5), blurred frontier (#4), x-ray wave through rock (#10), a persistent heading (#12) and inertia (#14) cost 7-12 meals each, because they flatten or bias the value field.
+NEUTRAL: futility (#11), thin-wall filter (#13), tracing the path (#8).
+WHY: tuning overfits (#7 33.5 -> 27.1 holdout); structure that ranks local choices generalizes.
+STILL FAILING: zero doors opened, 115 presses on rock; late life stalls in one spent patch while distant food regrows.
+UNTRIED: old trail decaying back into a faint source (regrowth); pressing only where `leak` is high; using `bad`.
+
+> 16:53 model job `observe` started

@@ -2404,3 +2404,22 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
 ```
+
+> 22:29 model job `design` started
+
+### Holdout checkpoint at 10.96 h
+
+```
+  #26  train 33.7 meals  holdout 32.5  (tuned 5x) | Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack betwe
+  #30  train 33.2 meals  holdout 30.6  (tuned 5x) | A smell is painted at the distance its strength implies, straight out along the walkable bearing, so in walled
+  #29  train 33.5 meals  holdout 32.2  (tuned 5x) | #28 settled that #26's gain is information, not reach: weighting the frontier by plain distance fell back to 3
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #28  train 30.1 meals  holdout  -    (tuned 5x) | A test of what #26 really found. Weighting the frontier by blurred fog mass was the night's biggest gain, but 
+  #27  train 30.6 meals  holdout  -    (tuned 5x) | Smell should say where to LOOK, and sight where to EAT. A far smell is painted as a point about 11 cells out a
+  #23  train 29.6 meals  holdout 29.0  (tuned 5x) | Frustration (#17) mutes smell but never a SEEN morsel, so a morsel the body cannot actually get to — beyond a 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 147x: train 29.2 meals, holdout 28.2
+```

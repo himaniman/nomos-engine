@@ -1456,3 +1456,94 @@ rule wave:
   when 1
   set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.319 - leak)) * (1 - 0.9 * bad)
 ```
+
+> 18:47 model job `design` started
+
+---
+
+## Turn 16 -> island #19
+
+**Hypothesis:** Every law so far runs ONE wave that blends walking and pressing, so a thin wall with food behind it outbids the long walk out of a slot (world 110: a life spent pressing rock). Now there are two waves: a DRY wave that only spreads through walkable cells, and a WET wave that leaks through solid and wants wall faces, but only faces whose taught `leak` is still high. The agent follows max(dry, 0.7*wet), so a wall is pressed only when it clearly beats walking. A slow `visit` memory minus the fast `trail` turns ground walked long ago back into a faint source, so a spent patch stops holding the agent while food elsewhere regrows.
+
+Prediction 31.5, got **27.9** meals, fitness 569, per world [33, 27, 42, 30, 39, 29, 26, 21, 21, 38, 0, 22, 15, 35, 39, 35, 41, 29, 0, 35]; model 70.1 s, repairs 0; vocabulary twin of #6
+
+value on the test map: max 0.74, mean 0.39, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Two waves: a DRY wave that only walks, a WET wave that may leak through solid; the
+# agent follows the dry route unless a wall route is clearly better. Old trail regrows.
+
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel visit
+channel confinement
+channel injection
+channel probe
+channel dry
+channel wet
+
+# Recent trail (fast fade) and long memory of where the agent has ever walked (slow fade).
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+
+rule remember:
+  when 1
+  set visit = max(here, 0.9995 * visit)
+
+# Local solidity: dead-ends and nooks.
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# Sources: morsels, senses faded by recent trail, and REGROWTH where the trail went long ago.
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail), 0.08 * clamp(visit - trail, 0, 1) * free) * clamp(1 - bad, 0, 1) / (1 + 0.83 * confinement)
+
+# Wall faces are faint sources only where the taught leak says the solid may give.
+rule calc_probe:
+  when 1
+  set probe = solid * max4(free) * where(leak > 0.45, leak, 0) * clamp(1 - bad, 0, 1) * 0.06 * clamp(1 - 1.4 * trail, 0, 0.56)
+
+# Dry wave: Bellman through walkable cells only.
+rule wave_dry:
+  when 1
+  set dry = max(injection, 0.94 * max4(dry), 0.916214 * max8(dry)) * (1 - solid) * (1 - 0.9 * bad)
+
+# Wet wave: Bellman that leaks through solid and also wants the probe faces.
+rule wave_wet:
+  when 1
+  set wet = max(injection, probe, 0.94 * max4(wet), 0.916214 * max8(wet)) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)
+
+# Decision: a route through a wall must beat the walking route by a margin.
+rule decide:
+  when 1
+  set value = max(dry, 0.7 * wet)
+```
+
+### Holdout checkpoint at 6.06 h
+
+```
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #7   train 33.5 meals  holdout 27.1  (tuned 7x) | The rule gets an efference copy — `aim` marks the neighbour of the agent that the wave is leading it into — an
+  #9   train 31.7 meals  holdout 29.8  (tuned 6x) | The sealed-slot failure is pressure split between two faces, so wall faces now COMPETE: a `crown` field spread
+  #16  train 31.2 meals  holdout  -    (tuned 5x) | Late lives stall in a spent patch because nothing remembers where food WAS. A new `larder` channel keeps a slo
+  #11  train 31.7 meals  holdout  -    (tuned 5x) | #7's commitment has no exit. The observed life pressed rock 115 times and never opened a door, so I add FUTILI
+  #15  train 30.9 meals  holdout  -    (tuned 5x) | Two changes on new axes. First, a frontier mark is weighted by how much is still unknown behind it (the unknow
+  #18  train 30.3 meals  holdout  -    (tuned 5x) | #13's futility never fires: its tuned work decays by 0.68 a step, so it settles near 0.09 and never reaches th
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 85x: train 27.8 meals, holdout 25.7
+```
+
+> 19:06 model job `design` started

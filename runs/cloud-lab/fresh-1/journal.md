@@ -1190,3 +1190,193 @@ rule wave:
 ```
 
 > 16:40 model job `design` started
+
+---
+
+## Turn 13 -> island #16
+
+**Hypothesis:** The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewhere, so rubble is chipped once and abandoned (89 idle presses, 4 breaks, a life shuttling the T in world 16). A new `dig` channel gives a solid the wave actually led the agent into a held claim, grown in proportion to that solid's taught `leak` (rubble and doors build it, stone that never gives barely does), injected OUTSIDE the solid mask so the agent comes back and keeps pressing until it gives, and erased once the cell is walked on. In open worlds presses are rare and food sources dwarf the 0.35*leak claim, so foraging is untouched while sealed pockets get tunnelled out.
+
+Prediction 29.5, got **28.8** meals, fitness 576, per world [33, 31, 36, 34, 16, 29, 20, 32, 40, 27, 15, 39, 32, 34, 19, 23, 28, 42, 17, 29]; model 64.1 s, repairs 0; vocabulary twin of #13, #7, #9, #6, #11, #8
+
+value on the test map: max 0.98, mean 0.41, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel here
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel hv
+channel dig
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 0.7089
+  set unknown = (1 - free) * (0.8013 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1.087
+  set openness = 0.6435 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1.102
+  set frontier = where((source > 0) and (source < 0.1403) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+
+rule calc_conf:
+  when 1.124
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1.768
+  set injection = where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5618 * confinement)
+
+# the best value among the agent's eight neighbours, held at the agent's cell
+rule lookout:
+  when 1
+  set hv = where(here > 0.5, max8(value), 0)
+
+# DIG commitment: a solid the wave leads the agent into gains a held claim, in proportion to how much it gives (leak); erased once walked on
+rule commit:
+  when 1
+  set dig = min(1, 0.998 * dig + where((solid > 0.3) and (max8(here) > 0.5) and (value > 0.001) and (value >= max8(hv) - 0.000001), 0.15 * leak, 0)) * (1 - here)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# #6's priced wave; a claimed dig site is a source OUTSIDE the solid mask, so the agent returns to press it until it gives
+rule wave:
+  when 1
+  set value = max(0.35 * dig * leak * (1 - bad), max(injection, step * max4(value), stepd * max(shift(value, -0.7359, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 0.9087, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.361)) * (1 - leak)), shift(value, 1.212, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.9 * bad))
+```
+
+> 16:45 model job `observe` started
+
+---
+
+## Observer: #16 on world 10
+
+![](observe/obs02_island16_world10.png)
+
+`{'meals': 15, 'ticks': 8000, 'alive': True, 'distance': 1697.4, 'cells_visited': 621, 'last500_box': '22x17', 'doors': 0, 'breaks': 0, 'idle_presses': 55, 'nightcaps': 1}`
+
+The agent starts in the south-east, travels a winding but productive road north-west through the middle of the map, and eats most of its meals along that corridor while the track is still blue. Once it reaches the upper-left rooms, the whole red half of its life is spent tracing tight loops around one grey rock block and its walls, in an area of about 22x17 cells. In that time it eats almost nothing more, presses walls 55 times without opening a single door, and never returns to the food scattered across the east and south. The failing is a dig commitment that has gone stale. The claim on a solid cell is erased only when the agent walks onto that cell, which it can never do while the wall holds. So a wall that will not give keeps a 0.998-per-pass claim that draws the agent back to press it again and again, while its exploration frontier fades behind it. The fix I would make first is to give up on the dig claim after failed presses. Each idle press at a claimed site should erase or sharply decay that site's dig value and mark it as burned (bad), so a wall that refuses once stops being a source and the frontier wave can pull the agent out of the pocket.
+
+> 17:01 model job `deep` started
+
+---
+
+## Turn 14 (DEEP) -> island #17
+
+**Hypothesis:** Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale around one rock) and replace it with a BEYOND-THE-WALL frontier: an unknown cell right behind a solid that the agent can stand beside becomes a faint source, weighted by that solid's leak and by the unknown mass behind it, and its wave must cross the solid through the ordinary leak mask. In open worlds this source is squared down by the leak twice and loses to every real frontier, so it cannot steal the agent; in a sealed pocket it is the only hope left, and it ranks the walls by what pressing has taught: a door or rubble hue that gives keeps its pull (commitment by learning, not by a sta
+
+Prediction 29.5, got **27.6** meals, fitness 556, per world [22, 33, 36, 31, 19, 32, 25, 37, 28, 21, 32, 43, 33, 37, 25, 26, 0, 30, 11, 32]; model 110.2 s, repairs 0; vocabulary twin of #6, #16
+
+value on the test map: max 0.98, mean 0.41, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+channel rim
+channel beyond
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 1
+  set unknown = (1 - free) * (0.8013 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1
+  set openness = 0.6435 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1
+  set frontier = where((source > 0) and (source < 0.1403) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# a solid face the agent can reach (touches known-free ground), as permeable as its hue has proved
+rule face:
+  when 1
+  set rim = where((solid > 0.3) and (max8(free) > 0.5), solid * leak, 0)
+
+# an unknown cell just behind a reachable face, not already a frontier mark: hope past the wall
+rule past:
+  when 1
+  set beyond = where((unknown > 0.3) and (frontier < 0.5), max8(rim), 0)
+
+# frontier weighted by the unknown behind it; past-the-wall hope weighted by leak; burned cells inject nothing
+rule inject:
+  when 1
+  set injection = max(where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) / (1 + 0.5618 * confinement), 0.12 * beyond * (0.4 + 2 * openness)) * (1 - bad)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# #6's priced wave; a solid passes only what its leak lets through, so beyond-hope is dimmed by the wall it hides behind
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -0.7359, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 0.9087, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.361)) * (1 - leak)), shift(value, 1.212, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.9 * bad)
+```
+
+### Holdout checkpoint at 5.59 h
+
+```
+  #16  train 28.8 meals  holdout 32.6  (tuned 5x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #6   train 28.5 meals  holdout 33.6  (tuned 7x) | The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0
+  #7   train 28.6 meals  holdout 27.9  (tuned 8x) | The map gets a per-cell FRUSTRATION memory (`tried`): a solid cell the wave keeps leading the agent into accum
+  #14  train 28.0 meals  holdout 28.8  (tuned 5x) | The wave gets MOMENTUM. A `last` channel holds the previous thought's centre cell, which after the map scrolls
+  #15  train 27.5 meals  holdout  -    (tuned 5x) | A LEXICOGRAPHIC two-tier wave. Tier 1 is #6's priced, confined wave, but it passes a solid only once that hue 
+  #17  train 27.6 meals  holdout  -    (tuned 0x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #11  train 26.9 meals  holdout 30.1  (tuned 6x) | Keep #6's priced, confined wave, and add a TRAPPED gate plus an escape-and-commit wave. The `reach` flood fill
+  #4   train 27.2 meals  holdout 25.1  (tuned 8x) | Every frontier mark is painted at the same 0.12, so a crack in a wall that leads nowhere pulls the agent as ha
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 78x: train 28.5 meals, holdout 27.0
+```

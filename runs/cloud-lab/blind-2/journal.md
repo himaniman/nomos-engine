@@ -574,3 +574,89 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 35x: train 28.2 meals, holdout 25.6
 ```
+
+> 15:22 model job `design` started
+
+---
+
+## Turn 8 -> island #11
+
+**Hypothesis:** Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has just eaten is worth coming back to later, and the plain wave forgets it the moment the morsel is gone. A `larder` memory marks each place a morsel was taken and a `ripe` clock refills it on the regrowth timescale, so ripe larders inside the map join the food as sources: the agent harvests a home range of regrowing spots instead of relying only on finding new ones.
+
+Prediction 32.0, got **31.6** meals, fitness 631, per world [35, 30, 33, 41, 42, 21, 20, 36, 44, 31, 38, 33, 12, 28, 45, 32, 23, 31, 24, 33]; model 84.1 s, repairs 0; vocabulary twin of #5, #4, #9, #7, #6, #10
+
+value on the test map: max 0.08, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel larder
+channel ripe
+channel injection
+
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 1
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+rule dwell:
+  when 1
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# a place where the agent took a morsel is remembered (it may be a renewable spot)
+rule larder:
+  when 1
+  set larder = where(thing * max(here, max8(here)) > 0, 1, 0.9998 * larder)
+
+# ...and ripens again on the regrowth timescale, reset at each meal there
+rule ripe:
+  when 1
+  set ripe = where(thing * max(here, max8(here)) > 0, 0, min(1, ripe + 0.0004 * larder))
+
+# ripe larders join the food as sources
+rule inject:
+  when 1
+  set injection = max(max(thing, 0.5 * larder * ripe, source * where(thing + scent > 0, 1.358, 0.4275 + 1.5 * vast)) / (1 + 0.4454 * confinement), frust * solid * max8(free) * leak)
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 2.89 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 6x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #5   train 31.6 meals  holdout 26.7  (tuned 5x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 2x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #9   train 30.9 meals  holdout 25.2  (tuned 5x) | The painted smell is a phantom place: right in direction, wrong in position, and it flips between the two ways
+  #7   train 30.2 meals  holdout 27.1  (tuned 5x) | When two targets are about equally good the agent can turn back and forth between them, and a reactive wave ha
+  #8   train 27.3 meals  holdout  -    (tuned 5x) | In one Bellman wave every goal competes through max(), so the agent serves exactly one goal at a time and is i
+  #3   train 27.1 meals  holdout 21.9  (tuned 5x) | Meals come mostly from exploration, but every frontier mark is worth the same 0.12, so a crack between two wal
+  #4   train 27.9 meals  holdout 27.5  (tuned 5x) | An agent that finds nothing worth walking to stands still or rocks between two cells and starves (worlds where
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 43x: train 28.3 meals, holdout 27.1
+```

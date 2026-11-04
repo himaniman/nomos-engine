@@ -1,0 +1,63 @@
+# Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals vs 0 for every other law), while confinement + roominess (#3/#4) carry the open worlds; the observer saw the agent pace the slot pressing scattered walls. This law adds a FRUSTRATION state: accumulated dwell time, smoothed into a `crowd` field, is high only where the agent has paced for long; there it (a) multiplies the wall leak (so a taught-leaky rubble cell becomes the clear way out while learned-dead rock stays low), (b) lifts the confinement suppression, and (c) a faint pull from every unknown cell gives the wave something beyond a sealed wall to aim at. In open ground dwell nev
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel trail: init 0
+channel dwell: init 0
+channel crowd: init 0
+channel injection
+
+# any visit: the recent path (max), and accumulated time spent on a cell (sum, saturating)
+rule lay_trail:
+  when 1
+  set trail = max(here, 0.999 * trail)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+
+# frustration: smoothed dwell — high only where the agent has paced for long (a pocket)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+
+# what is not yet known, the frontier, and how much unknown lies around
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+
+# a source lingers after the paint moves on, erased where the agent stands
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# sources: sensed, wide frontier, and a faint pull of ALL unknown (the only thing beyond a sealed wall);
+# confinement suppression is lifted where the agent is frustrated
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room, 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd)) * (1 - bad)
+
+# the wave: walls near long dwelling conduct more (a taught-leaky wall most), walked ground a little less
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (1 + 3 * crowd)))) * (1 - 0.08 * trail)

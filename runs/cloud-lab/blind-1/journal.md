@@ -1408,3 +1408,81 @@ Untried: smell vs sight trust, randomness, food brightness. Noise ~2.
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 91x: train 28.2 meals, holdout 26.6
 ```
+
+> 17:48 model job `design` started
+
+---
+
+## Turn 18 -> island #21
+
+**Hypothesis:** Confinement suppression divides EVERY lure by the solid around it, so a morsel the agent can actually SEE in a cave or a larder room — where much of this world's food is placed — is pulled at a fraction of its worth and loses to open frontier. The traps confinement was built against are uncertain lures (smell painted into a nook, frontier in a dead end). Here seen morsels pull at full learned appetite wherever they are, while smell (also muted by frustration) and frontier (also muted behind the agent) keep the confinement discount, so the agent goes into caves and rooms for food it has seen without being drawn into nooks by smell. Base is #17.
+
+Prediction 31.0, got **27.2** meals, fitness 527, per world [34, 39, 21, 34, 24, 18, 25, 13, 28, 18, 29, 29, 23, 25, 16, 35, 26, 49, 31, 27]; model 96.2 s, repairs 0; vocabulary twin of #20, #17, #19, #18, #15, #16
+
+value on the test map: max 0.96, mean 0.51, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+# Confinement only for what is uncertain. Night 1's rule divides EVERY lure by the
+# solid around it, so a morsel the agent can SEE in a cave or a larder room, where
+# much of this world's food sits, is pulled at a fifth of its worth. The traps it
+# was built against are uncertain lures: smell painted into a nook, frontier in a
+# dead end. Here seen morsels pull at full appetite wherever they are; smell and
+# frontier keep the confinement discount. Base: #17.
+channel source
+channel solid
+channel free
+channel scent
+channel thing
+channel bad
+channel here
+channel value
+channel confinement
+channel trail
+channel behind
+channel door
+channel aversion
+channel injection
+channel open
+channel pinched
+channel visits
+channel loiter
+channel frust
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule remember_path:
+  when 1
+  set trail = max(here, 0.995 * trail)
+rule spread_behind:
+  when 1
+  set behind = 0.99 * avg8(behind) + 0.01 * trail
+# Time spent on each cell, slowly forgotten; and its 3x3 sum.
+rule count_visits:
+  when 1
+  set visits = clamp(0.998 * visits + 0.02 * here, 0, 10)
+  set loiter = visits + sum8(visits)
+# Rises when the agent loiters, spreads over the map, fades over ~100 thoughts.
+rule frustration:
+  when 1
+  set frust = clamp(max(here * (loiter - 2) / 3, 0.999 * frust, 0.999 * max8(frust)), 0, 1)
+rule find_doors:
+  when 1
+  set door = solid * clamp(2 * (leak - 0.5), 0, 1) * clamp(sum4(free), 0, 1)
+rule fear:
+  when 1
+  set aversion = max(bad, 0.7 * max8(aversion))
+rule clearance:
+  when 1
+  set open = 1 - clamp(solid, 0, 1)
+rule pinch:
+  when 1
+  set pinched = max(shift(here, 1, 1) * (1 - min(shift(open, 1, 0), shift(open, 0, 1))), shift(here, -1, 1) * (1 - min(shift(open, -1, 0), shift(open, 0, 1))), shift(here, 1, -1) * (1 - min(shift(open, 1, 0), shift(open, 0, -1))), shift(here, -1, -1) * (1 - min(shift(open, -1, 0), shift(open, 0, -1))))
+# Seen morsels pull fully anywhere; smell (frustration) and frontier (ballistic) are
+# discounted by confinement.
+rule inject:
+  when 1
+  set injection = max(where(thing > 0.5, source, where(scent > 0, source * (1 - frust), source * exp(-40 * behind)) / (1 + 0.5 * confinement)), 0.3 * door * exp(-40 * behind)) * (1 - aversion)
+rule wave:
+  when 1
+  set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - leak)) * (1 - 0.5 * aversion) * (1 - pinched)
+```

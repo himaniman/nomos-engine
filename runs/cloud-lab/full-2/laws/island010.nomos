@@ -1,0 +1,66 @@
+# Axis: reading the map's geometry. The wave treats a route through never-seen cells exactly like a route over known ground, so it plans paths through unknown territory that turn out walled, and it cannot tell a doorway (a gap flanked by solid on opposite sides) from a nook, so confinement suppression also mutes the frontier at doors that open new rooms. This law adds a `gateway` field (gap detection with shift) that doubles a frontier source at a gap and exempts it from confinement, and a risk discount on cells not known free, so plans prefer known ground and exits; #7's frustration/trail/roominess substrate is kept unchanged so the geometry is the only thing under test.
+
+channel source
+channel thing
+channel solid
+channel free
+channel here
+channel bad
+channel leak
+channel value
+channel ghost: init 0
+channel confinement
+channel unk
+channel room
+channel front
+channel trail: init 0
+channel dwell: init 0
+channel crowd: init 0
+channel gateway
+channel conduct
+channel injection
+
+rule lay_trail:
+  when 1
+  set trail = max(here, 0.999 * trail)
+rule dwell_time:
+  when 1
+  set dwell = min(1, 0.998 * dwell + 0.02 * here)
+rule frustration:
+  when 1
+  set crowd = 0.5 * dwell + 0.5 * avg8(crowd)
+rule unknown:
+  when 1
+  set unk = (free < 0.2) * (solid < 0.5)
+rule roominess:
+  when 1
+  set room = 0.5 * unk + 0.5 * avg8(room)
+rule frontier:
+  when 1
+  set front = unk * (max8(free) > 0.5)
+
+# GEOMETRY: a gap — a cell flanked by solid on two opposite sides (a doorway or corridor mouth)
+rule gaps:
+  when 1
+  set gateway = max(shift(solid, 1, 0) * shift(solid, -1, 0), shift(solid, 0, 1) * shift(solid, 0, -1)) * (1 - solid)
+
+rule linger:
+  when 1
+  set ghost = max(source, thing, 0.99 * ghost) * (1 - here) * (1 - max8(here))
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# a frontier at a gap opens a new room: worth more; a gap is not a nook, so it escapes confinement
+rule inject:
+  when 1
+  set injection = max(ghost, 0.3 * front * room * room * (1 + gateway), 0.04 * unk) / (1 + 0.5 * confinement * (1 - crowd) * (1 - gateway)) * (1 - bad)
+
+# DISTRUST: a route through cells never seen free may be walled — it conducts a little less than known ground
+rule conductance:
+  when 1
+  set conduct = (1 - solid * (1 - min(1, leak * (1 + 3 * crowd)))) * (1 - 0.08 * trail) * (1 - 0.04 * (1 - free) * (1 - solid))
+
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * conduct

@@ -1,0 +1,37 @@
+# The map gets a FOOTPRINT memory: a slowly fading `trail` of where the agent has stood, scrolling with the map. Remembered sources (a `ghost` that lingers at 0.99) are wiped wherever the agent has walked, and smelled sources painted onto trodden ground lose most of their weight, while seen morsels keep full weight. Poisoned cells (`bad`) block the wave. This breaks the smell trap, where the bearing flips and leads the agent back and forth over the same cells. Ground the agent has already searched stops calling, so the wave goes to sources it has not checked yet and to the frontier, and the confinement damping keeps nooks from dominating.
+
+channel source
+channel solid
+channel thing
+channel bad
+channel here
+channel leak
+channel value
+channel trail
+channel ghost
+channel confinement
+channel injection
+
+# footprint memory: 1 where the agent stands, fading slowly, scrolls with the map
+rule walk:
+  when 1
+  set trail = max(here, 0.995 * trail)
+
+# sources linger, but are wiped wherever the agent has recently walked
+rule linger:
+  when 1
+  set ghost = max(source, 0.99 * ghost) * (1 - trail)
+
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+
+# seen morsels stay true; remembered/smelled sources lose weight on trodden ground and in nooks
+rule inject:
+  when 1
+  set injection = max(thing * (1 - bad), max(source, ghost) * (1 - 0.7 * trail)) * (1 - bad) / (1 + 0.5 * confinement)
+
+# Bellman wave; a burned cell does not pass the wave
+rule wave:
+  when 1
+  set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - leak)) * (1 - 0.9 * bad)

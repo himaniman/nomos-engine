@@ -1,8 +1,8 @@
 {
- "now": "2026-11-05T01:17:26",
- "elapsed_h": 12.47,
+ "now": "2026-11-05T01:44:59",
+ "elapsed_h": 12.929,
  "hours": 12.0,
- "doing": "final: #28 tuned 7x",
+ "doing": "done",
  "design_turns": 30,
  "islands": 33,
  "evals": {
@@ -19,5 +19,5 @@
   "train_meals": 29.7,
   "holdout_meals": 24.625
  },
- "done": false
+ "done": true
 }

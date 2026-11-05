@@ -2847,3 +2847,16 @@ UNTRIED: gating presses by `leak`; aiming presses only where `hope` is cut off b
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 152x: train 29.7 meals, holdout 24.6
 ```
+
+### FINAL worlds (never seen by selection or by the model)
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 152x              25.8 meals  immortal 30/32
+#30 tuned 5x                        30.7 meals  immortal 30/32
+#9 tuned 6x                         30.2 meals  immortal 31/32
+#28 tuned 7x                        30.2 meals  immortal 30/32
+#23 tuned 7x                        29.9 meals  immortal 30/32
+#9 as written                       31.8 meals  immortal 32/32
+```

@@ -2875,3 +2875,100 @@ rule wave:
 Load-bearing, each shown by a loss on removal: weighting frontier by the unknown space behind it (removed from the sweep law, #37: 21.7 vs 34.7; added to confinement, #3: +5), the sweep does not replace it; the far smell (#29 weakening it: 22.2); the max() wave (#23 potential field: 11.3); raw seen-morsel pull (#19: 26.1); dwell-frustration on wall faces (rescues worlds 110/118). Trust in known ground helps overall but starves world 112 (#32 removing it: 112 back, total -7); lifting it while frustrated evens lives out (#33, #36: all or most immortal) without raising the mean. Reshaping the frontier's distance (#16, #18, #34), orthogonal waves (#17, #28), memory variants (#21, #22) and additions to food value (#30 boost smell, #31 clumps, #35 chaining) were neutral or worse. Honest numbers: area-restricted search after meals (#25) holds 29.4 on holdout, tuned control 24.6; sweep (#10) is best on train only.
 
 > 00:10 model job `design` started
+
+> 00:11 model job `design` started
+
+---
+
+## Turn 36 -> island #38
+
+**Hypothesis:** The unknown-space weighting of the frontier is the night's most load-bearing mechanism (+5 when added, -13 when removed from the sweep law), but its blur only reaches a few cells: it says what a frontier opens onto right there, nothing about which side of the map is unexplored as a whole. A second, WIDE blur of the unknown (clamped at 0, reaching most of the 25-cell map) is added to the weight, so between two frontiers that open onto similar pockets the agent takes the one on the emptier side of its map. Built on #25 (area-restricted search) as tuned.
+
+Prediction 30.0, got **26.4** meals, fitness 534, per world [31, 31, 34, 32, 31, 43, 19, 20, 29, 33, 27, 10, 0, 17, 39, 14, 35, 36, 21, 25]; model 40.1 s, repairs 0; vocabulary twin of #35, #33, #32, #30, #29, #25
+
+value on the test map: max 0.11, mean 0.06, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel here
+channel value
+channel unknown
+channel vast
+channel confinement
+channel dwell
+channel frust
+channel ars
+channel far
+channel wide
+channel injection
+
+# what is neither known solid nor known free; its blur = unexplored space around a cell
+rule unknown:
+  when 1
+  set unknown = (0.8696 - free) * (1 - solid)
+
+rule vast:
+  when 0.9921
+  set vast = 0.3 * unknown + 0.8306 * avg8(vast)
+
+# a second, WIDE blur of the unknown (reaches most of the map): which side of the map is still
+# unexplored as a whole, beside `vast`, which says what a frontier opens onto right there
+rule wide:
+  when 1
+  set wide = 0.05 * max(0, unknown) + 0.95 * avg8(wide)
+
+rule confine:
+  when 1
+  set confinement = sum8(solid)
+
+# time spent on a cell grows under the agent and fades elsewhere (scrolls with the map)
+rule dwell:
+  when 0.7408
+  set dwell = where(here > 0, min(1, dwell + 0.005203), 0.7418 * dwell)
+
+# frustration: the dwell under the agent, broadcast over the map with a discount
+rule frust:
+  when 1
+  set frust = max(here * dwell, 0.95 * max8(frust))
+
+# AREA-RESTRICTED SEARCH: a meal (a morsel at the agent's ring) starts a pulse that fills the
+# map and fades over ~100 ticks; food grows in clumps (larders, trees), so search near a meal
+rule ars:
+  when 1
+  set ars = max(thing * max(here, max8(here)), 0.997 * max8(ars))
+
+rule far:
+  when 1
+  set far = 29 * sqrt((posx() - 0.5524) * (posx() - 0.4828) + (posy() - 0.4828) * (posy() - 0.4828))
+
+# frustrated: known wall faces (solid touching known free) become targets, likelier doors first
+rule inject:
+  when 1
+  set injection = max(max(thing, source * where(thing + scent > 0, 1.027, (0.4611 + 1.5 * vast + 1.5 * wide) * (0.8222 + 2 * ars * exp(0 - far / 4)))) / (0.9063 + 0.6266 * confinement), frust * solid * max8(free) * leak)
+
+# the wave trusts what is known: it crosses a known-free cell at full price, an unknown one dearer
+rule wave:
+  when 0.8649
+  set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
+```
+
+### Holdout checkpoint at 11.42 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 8x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #30  train 32.2 meals  holdout 25.7  (tuned 5x) | Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so 
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 5x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #12  train 31.4 meals  holdout  -    (tuned 5x) | The wave plans for a point but the agent is a round body of nearly a cell's width that steers with thrust and 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 181x: train 29.8 meals, holdout 24.6
+```

@@ -3156,3 +3156,5 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
 ```
+
+> 00:15 model job `design` started

@@ -2700,3 +2700,32 @@ rule wave:
   when 1
   set value = max(injection, 0.94 * max4(value), 0.916214 * max(shift(value, 1, 1) * min(shift(open, 1, 0), shift(open, 0, 1)), shift(value, -1, 1) * min(shift(open, -1, 0), shift(open, 0, 1)), shift(value, 1, -1) * min(shift(open, 1, 0), shift(open, 0, -1)), shift(value, -1, -1) * min(shift(open, -1, 0), shift(open, 0, -1)))) * (1 - solid * (1 - give)) * (1 - 0.5 * aversion) * (1 - pinched) * (1 - 0.15 * fog)
 ```
+
+### Holdout checkpoint at 12.05 h
+
+```
+  #26  train 33.7 meals  holdout 32.5  (tuned 5x) | Every frontier mark weighs the same 0.12 whether it borders a wide unexplored region or a one-cell crack betwe
+  #30  train 33.2 meals  holdout 30.6  (tuned 5x) | A smell is painted at the distance its strength implies, straight out along the walkable bearing, so in walled
+  #32  train 31.9 meals  holdout 29.0  (tuned 5x) | Information at two scales. #26's fog mass (the night's biggest gain, and #28 showed it is information, not rea
+  #29  train 33.5 meals  holdout 32.2  (tuned 5x) | #28 settled that #26's gain is information, not reach: weighting the frontier by plain distance fell back to 3
+  #33  train 32.5 meals  holdout 31.3  (tuned 2x) | The ballistic mute silences frontier near the walked path on the assumption that walked ground is known ground
+  #31  train 31.4 meals  holdout  -    (tuned 5x) | Occam's test of a part I added early (#11). The harness already silences every source within two cells of a re
+  #24  train 30.8 meals  holdout 31.0  (tuned 5x) | An untested wall is a guess treated as half a door. `leak` starts at an innate 0.5 for every hue, so until a h
+  #22  train 30.8 meals  holdout 30.1  (tuned 7x) | Unknown ground is a gamble the wave ignores. A cell nobody has seen passes value exactly like known floor, so 
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 159x: train 29.2 meals, holdout 28.2
+```
+
+### FINAL worlds (never seen by selection or by the model)
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 159x              25.9 meals  immortal 29/32
+#26 tuned 5x                        33.0 meals  immortal 32/32
+#29 tuned 5x                        32.8 meals  immortal 32/32
+#33 tuned 2x                        31.9 meals  immortal 32/32
+#30 tuned 5x                        30.7 meals  immortal 32/32
+```

@@ -2907,3 +2907,61 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-05 — cloud study FRESH-2
+
+Arm FRESH, replicate 2 (`--train 100-119 --holdout 120-135 --seed 1`), branch
+`cloud-lab-fresh-2`, run `runs/cloud-lab/fresh-2/`. 12 h (12.9 with the FINAL lives), 40
+requests: 30 DESIGN, 5 OBSERVE, 5 THEORY. Every request was answered by a NEW subagent that
+saw only the system text, that one request and its PNG; the dispatcher passed nothing on.
+The session's worker was restarted once at 10.9 h, which killed the lab; the same command
+resumed it from `state.json` ("resumed 1x" in the summary), and no request was lost.
+
+**FINAL** (seeds 36-67, the same 32 worlds for all six arms):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32
+confine, hand-written (#1)     24.5        28/32
+CONTROL: #1 tuned 152x         25.8        30/32
+#30 tuned 5x (champion)        30.7        30/32
+#9  tuned 6x                   30.2        31/32
+#28 tuned 7x                   30.2        30/32
+#23 tuned 7x                   29.9        30/32
+#9  as written                 31.8        32/32
+```
+
+**Champion vs control on FINAL: 30.7 vs 25.8 (+4.9, +19%).** All five model laws on the
+FINAL list beat the tuned control by 4.1-6.0 meals, so this is not one lucky law. The
+champion by holdout is #30 (a walk-only `hope` wave that silences wall-face probes while
+anything is still reachable on foot), built on #23 (a fixed random `grain` per cell,
+anchored to the world, picks which wall face wins).
+
+**Train -> holdout -> FINAL:** control 29.7 -> 24.6 -> 25.8; #30 34.5 -> 31.4 -> 30.7;
+#23 34.8 -> 29.9 -> 29.9; #28 34.4 -> 29.9 -> 30.2; #9 tuned 31.7 -> 29.8 -> 30.2. Every
+law loses 3-5 meals from train to holdout and then holds on FINAL, so holdout was an honest
+estimate. The night-1 lesson repeats: **#9 untuned (27.9 on train) is the best law on
+FINAL, 31.8 and 32/32 immortal**; six rounds of tuning took 1.6 meals off it. The
+constants overfit and the structure is what carries.
+
+**Prediction error** (|predicted - actual| before tuning): 4.9 in the first half, 4.7 in
+the second, over 30 predictions. The predictions were almost always too high (typically
++1..+4, with misses down to 3.0 and 20.3 meals). Fresh minds carried no calibration from
+turn to turn, and it shows.
+
+**What this arm's agent did differently.** With no memory, every subagent rebuilt its
+picture from the request: the board, the theory the lab carries, and the champion's text.
+So the lab's own notes WERE the mind. The result was a strongly incremental chain: nearly
+every design was "the current best law + one or two channels" (19/30 were flagged as
+vocabulary twins of earlier islands), and the arm never made a clean break. The
+observer's world-110 picture (a slot-born agent chipping two faces) set the agenda for 25
+turns; the turns that answered it moved the score (#7 effort on the aimed face, #9 crown,
+#13 thin walls, #23 grain tie-break, #30 hope gate). Three fresh subagents in a row (0016,
+0017, 0018) independently found the same bug in the champion, a futility exit that the
+tuned constants had made unreachable (`work` saturating near 0.09 against a 0.9
+threshold). Each re-derived it from the law's text alone, because none could know that
+the previous one had found it. Zero repairs, zero laws that failed to load, zero
+constants-only twins: the request format alone was enough for a cold model to write a
+valid law first time, 30/30. The theory stayed consistent with the board (it names #23
+and #30 as the leaders and lists the losers correctly), because each THEORY writer read
+only the evidence in front of it and had no conversation to drift from. Cross-arm
+comparison: to be written from all six branches.

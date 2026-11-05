@@ -2736,3 +2736,37 @@ rule wave:
 `{'meals': 15, 'ticks': 8000, 'alive': True, 'distance': 1580.0, 'cells_visited': 901, 'last500_box': '17x11', 'doors': 1, 'breaks': 3, 'idle_presses': 54, 'nightcaps': 1}`
 
 The agent starts top-centre and spends its cyan youth well: it runs south-west on long, purposeful strokes and collects four or five meals across the western rooms. Then it gets caught at the bottom-centre, where the grey-blue track turns into a dense scribble against one block of rock: it paces back and forth along that face for a long stretch and earns only a single meal there. It escapes north on a wide loop through the top rooms (three more meals). It spends its red old age wound into one small walled room right of centre, circling tightly around a spot where it has already eaten, with short excursions south-east that always come back. The 17x11 last-500 box and 54 idle presses say the same: late in life it is not exploring. It keeps tasting the same walls and the same patch while the whole east and south of the map, still dotted with growing food, stays unvisited. The mechanism I would fix first is a slow-fading "trodden" trace. Every cell the agent stands on would be marked, the mark would fade over a few hundred ticks, and it would divide both the injection and the frontier sources. Ground it has recently walked, and the walls it has recently pressed, would then go dim in th
+
+### Holdout checkpoint at 12.01 h
+
+```
+  #31  train 29.9 meals  holdout 28.5  (tuned 2x) | Digging should be a last resort that real food always vetoes. A food-only wave `fw` (seen morsels and smell, n
+  #21  train 29.1 meals  holdout 27.8  (tuned 7x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 7x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 7x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout  -    (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 157x: train 28.5 meals, holdout 27.0
+```
+
+### Holdout checkpoint at 12.09 h
+
+```
+  #31  train 29.9 meals  holdout 28.5  (tuned 2x) | Digging should be a last resort that real food always vetoes. A food-only wave `fw` (seen morsels and smell, n
+  #21  train 29.1 meals  holdout 27.8  (tuned 7x) | A dig is a CLAIM with its own clock. When the wave leads the agent into a wall face it touches (the face's val
+  #18  train 28.6 meals  holdout 27.8  (tuned 7x) | Every memory so far was a FOOTPRINT (where I walked) and repelled; this one is a LARDER — a memory of where I 
+  #17  train 28.4 meals  holdout 26.6  (tuned 7x) | Remove #16's self-feeding dig claim (it drew its own value, so the commit re-armed itself and went stale aroun
+  #25  train 28.6 meals  holdout 27.1  (tuned 5x) | Arbitration between two fields instead of a claim with a clock. A second wave, WALK, spreads the same sources 
+  #22  train 28.0 meals  holdout  -    (tuned 5x) | Two forms of memory that act on opposite things. GHOST: evidence of food (a seen morsel, a smell waypoint) LIN
+  #16  train 28.8 meals  holdout 32.6  (tuned 6x) | The agent presses walls but never COMMITS to one: every press changes the picture and the wave leads it elsewh
+  #19  train 28.2 meals  holdout  -    (tuned 5x) | Escape must be decided by TOPOLOGY, not by hope: a `reach` flood from the horizon ring through every non-solid
+  #0   train 14.8 meals  holdout 19.6  (hand-written) | the reference Bellman wave
+  #1   train 25.7 meals  holdout 25.7  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 158x: train 28.5 meals, holdout 27.0
+```

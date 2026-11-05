@@ -520,6 +520,8 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   session answering files, no API. Recipe + rules: `docs/cloud-lab.md`. Observer
   rotates over the 3 worst lives, vocabulary novelty (no embeddings), `--control-law`
   / `--anchor`, pacing for a fast model. Runs live in TRACKED `runs/cloud-lab/<date>/`.
+  Cloud study FRESH-1 (2026-11-05, fresh subagent per request): champion #6 (per-cell
+  step price) 28.6 vs tuned confine 26.2 on FINAL (+2.4, SE 2); prediction error flat 3.2.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

@@ -2907,3 +2907,69 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-05 — cloud study FRESH-1
+
+Arm FRESH (a NEW general-purpose subagent per mailbox request, never reused; it read only
+the system text, the request and the PNG, and could run `mailbox check`), replicate 1
+(`--train 0-19 --holdout 20-35 --seed 0`), 12 h, control = `atlas_confine` tuned.
+Run: `runs/cloud-lab/fresh-1/` (branch `cloud-lab-fresh-1`). 29 design turns, all
+valid on the first try, 0 twins, 6 observations, 4 theories.
+
+FINAL (32 sealed worlds, seeds 36-67; paired vs the control, SE of the paired mean):
+
+```
+                               FINAL  vs control   SE   wins/losses
+reference wave (#0)            18.8     -7.4      2.3     10/20
+confine, hand-written (#1)     24.5     -1.7      1.8     10/17
+CONTROL: #1 tuned 158x         26.2       —        —        —
+#6 tuned 7x  (summary champ)   28.6     +2.4      2.0     18/12
+#16 tuned 6x                   29.7     +3.4      2.0     19/12
+#11 tuned 6x                   30.2     +4.0      2.5     20/9
+#31 tuned 2x                   29.1     +2.8      2.1     18/12
+#21 tuned 7x                   27.8     +1.6      1.7     15/13
+#6 as written                  27.2     +1.0      2.1     16/12
+```
+
+**Champion vs control on FINAL: the model's structure wins, modestly.** #6 (chosen by
+holdout) beats the tuned confinement by +2.4 meals (~1.2 SE). Every model law on the
+board, tuned or not, beats the control, but they are all descendants of #6, so that is
+one result seen several times, not five. Night 1's bar was the ghost (17.1). This
+night's bar was night 1's champion, tuned 158x (26.2), and it was still cleared.
+
+Train -> holdout -> final: #6 28.5 -> 33.6 -> 28.6; #16 28.8 -> 32.6 -> 29.7; #11
+26.9 -> 30.1 -> 30.2; #31 29.9 -> 28.5 -> 29.1; #21 29.1 -> 27.8 -> 27.8; control
+28.5 -> 27.0 -> 26.2. The holdout-picked champion lost 5 meals on FINAL. 16 holdout
+worlds, looked at for every candidate, are themselves a selection surface: winner's
+curse one level up. The train leaders (#21, #31) did not drop on FINAL.
+
+Prediction error: 3.2 (first half) -> 3.3 (second half), no gain. 27 of 29
+predictions were too high, mean +3.2. Almost every prediction is "best so far + 1"
+(29.5 or 30.5 from turn 6 on). A fresh mind has no calibration memory, and the lab's
+prompt does not show it its own past errors.
+
+Champion mechanism (#6): a per-cell step price. Known-free ground is cheap (0.95),
+unknown dear (0.89), and wall-hugging dearer. Diagonals cost `step^sqrt2` and pass only if
+neither corner they squeeze past is solid. Frontier marks are weighted by the unknown
+behind them, on top of #1's confinement divisor. Theory (last at 9.8 h): "how the wave
+SPREADS helps; anything that outvalues real food hurts". That agrees with the board (#6
+holdout champion; #24/#26 grove/second-field losses), and unlike night 1's theory it does not
+contradict its own champion. Its "dig commitment helps" claim (#16 holdout 32.6) also held
+up on FINAL (29.7, second-best by holdout choice).
+
+What this arm's agent did differently: with no memory, every subagent rebuilt its
+picture from the request alone. The lab's own notes were enough for the agents to stay
+on topic for the whole night. From turn 7 on they marched down one line: sealed pocket
+on world 16 -> trapped gates (#9-#12) -> dig commitment (#13, #16) -> claim with a
+clock (#21) -> food veto (#31). The observer kept handing them world 16 (4 of 6
+pictures). Night 1's failure mode came back in a milder form: world 16 was not a 0
+for everyone (#5/#7/#13/#16/#23-#25/#31 ate 15-35 there), but ~20 turns went to
+escape/commit variants. The fresh minds were good AUDITORS: three separate subagents
+found from the tuned text alone that #21's `spent` habituation could never fire (age
+capped at 1, threshold 1.187), a dead term that tuning had created. Bookkeeping:
+(1) for request 0004 my dispatch prompt named the DESIGN system file instead of the
+observer one the request named. The reply was in shape and was kept; from 0010 on the
+prompt used the file the request names. (2) Three OBSERVE replies ran to six sentences.
+They were left as written, per protocol. (3) The session's worker restarted at 11.88 h
+and killed the lab. It was resumed with the same command (`resumed 1x`), and no answer
+was lost.

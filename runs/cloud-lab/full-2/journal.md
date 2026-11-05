@@ -3426,3 +3426,20 @@ rule wave:
   when 1
   set value = max(injection, max(0.94 * max4(value), 0.916214 * max8(value))) * (1 - solid * (1 - min(1, leak * (0.3 + 0.7 * thinwall) * (1 + 3 * crowd))))
 ```
+
+### Holdout checkpoint at 12.10 h
+
+```
+  #7   train 34.1 meals  holdout 28.4  (tuned 7x) | Evidence: #6 (ghost + a stigmergic trail) is the only law that ever escaped world 110's sealed slot (14 meals 
+  #26  train 34.7 meals  holdout 31.4  (tuned 6x) | Axis: what a meal should do to memory. Smell is painted at a slightly different spot each thought as the agent
+  #21  train 35.1 meals  holdout 34.6  (tuned 5x) | The course is the one structure that moved the mean (25-28 -> ~33), but its pull is proportional to how straig
+  #28  train 34.6 meals  holdout 35.7  (tuned 5x) | A flaw of the champion's course, read off its own algebra: on a unit course the frontier weight 1 + ahead is e
+  #18  train 33.7 meals  holdout 34.8  (tuned 6x) | Axis: doors as frontier. Most stocked food sits in rooms (three stocked rooms per chunk, two berries each) and
+  #15  train 33.5 meals  holdout 28.8  (tuned 6x) | Axis: the SCALE of exploration (my theory's open question: why open worlds plateau near 28). The map is only 2
+  #16  train 33.0 meals  holdout 33.8  (tuned 5x) | #15's long course broke the plateau (33.4 untuned vs 25-28, 20/20 immortal, worst world 27), but it acts on th
+  #19  train 33.8 meals  holdout  -    (tuned 5x) | Axis: reading MATERIAL by sight. The harness paints the brightness of every ray hit, and in this world brightn
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 153x: train 29.8 meals, holdout 25.1
+```

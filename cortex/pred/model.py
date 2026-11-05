@@ -231,6 +231,137 @@ class RetinaBrain(nn.Module):
         return torch.stack(preds, 1), None
 
 
+class FlowBrain(nn.Module):
+    """A ring of cells around the body whose MEMORY IS CARRIED BY THE BODY'S MOTION.
+
+    Columns are directions relative to the body. A ray always lands in, and is predicted
+    from, the columns it looks along: fixed wiring, as a retina is. A wall stays put in the
+    world while the body turns, so what a column holds has to move to the next column. With
+    `flow`, what the body does sets how much a cell takes from each of its nine neighbours,
+    a multiplicative input the plain perceptron does not have, and the perceptron adds to
+    the result. Nothing says which way or how far: only prediction teaches that.
+
+    Passes grow with the columns (side // 8), so a pass moves the same number of cells at
+    any size and the same weights run on a bigger ring: `load_state_dict` works across sizes.
+    """
+
+    N_RAYS, RAY_CH, D_RAY, D_RAY_OUT = 32, 6, 16, 16
+
+    def __init__(self, side=16, rows=4, ch=8, hidden=24, flow=True, conserve=False, mirror=False,
+                 once=False, stable=False, seed=0):
+        super().__init__()
+        self.mirror, self.stable = mirror, stable
+        self.once = once             # the cell's own rule fires once a frame, whatever the size
+        self.register_buffer("turn_back", torch.tensor([1.0, -1.0, 1.0]), persistent=False)
+        self.side, self.rows, self.ch, self.flow = side, rows, ch, flow
+        self.conserve = conserve     # the gain hears only the action and keeps what it carries
+        self.register_buffer("from_col", torch.empty(0), persistent=False)   # (rays, columns)
+        self.register_buffer("to_col", torch.empty(0), persistent=False)     # (columns, rays)
+        self.set_side(side)
+        ang = torch.linspace(-1, 1, self.N_RAYS)
+        self.register_buffer("ang", torch.stack([ang, torch.sin(1.57 * ang),
+                                                 torch.cos(1.57 * ang)], 1))
+        self.register_buffer("row_pos", torch.linspace(-1, 1, rows)[None, None, :, None])
+        self.register_buffer("around", torch.eye(9).reshape(9, 1, 3, 3).repeat(ch, 1, 1, 1))
+        n_static = N_SENS - self.N_RAYS * self.RAY_CH
+        self.static_in = nn.Sequential(nn.Linear(n_static + N_ACT + 1, D_PROJ), nn.Tanh())
+        self.ray_in = nn.Linear(self.RAY_CH + 3, self.D_RAY)
+        self.cell = nn.Sequential(nn.Conv2d(9 * ch + D_PROJ + 1 + self.D_RAY, hidden, 1), nn.ReLU(),
+                                  nn.Conv2d(hidden, ch, 1))
+        nn.init.zeros_(self.cell[-1].weight)
+        nn.init.zeros_(self.cell[-1].bias)
+        self.gain = nn.Sequential(nn.Linear(N_ACT + 1, 16), nn.Tanh(), nn.Linear(16, 9 * ch))
+        nn.init.zeros_(self.gain[-1].weight)            # at birth a cell just keeps what it has
+        nn.init.zeros_(self.gain[-1].bias)
+        keep = torch.zeros(9)
+        keep[4] = 1.0
+        self.register_buffer("keep", keep)
+        self.value = nn.Conv2d(ch, self.D_RAY_OUT, 1)
+        self.ray_dec = nn.Linear(self.D_RAY_OUT + 3, self.RAY_CH)
+        self.gate = nn.Conv2d(ch, 1, 1)
+        self.static_val = nn.Conv2d(ch, D_PROJ, 1)
+        self.static_dec = nn.Linear(D_PROJ, n_static)
+
+    def set_side(self, side: int) -> None:
+        """Grow or shrink the ring: only the wiring changes, never a weight."""
+        self.side, self.passes = side, max(1, side // 8)
+        fov = 2.0943951023931953
+        phi = -fov / 2 + (fov / 64) * (0.5 + 2 * torch.arange(self.N_RAYS).float())
+        at = (phi / (2 * 3.14159265358979) * side) % side
+        c0 = at.floor().long()
+        frac = at - c0
+        rays = torch.arange(self.N_RAYS)
+        share = torch.zeros(self.N_RAYS, side)
+        share[rays, c0 % side] += 1 - frac
+        share[rays, (c0 + 1) % side] += frac
+        self.from_col = share
+        self.to_col = (share / share.sum(0, keepdim=True).clamp(min=1e-6)).T
+
+    def core_weights(self) -> int:
+        return sum(p.numel() for m in (self.cell, self.gain) for p in m.parameters())
+
+    def neighbours(self, s):
+        p = F.pad(F.pad(s, (1, 1, 0, 0), mode="circular"), (0, 0, 1, 1), mode="replicate")
+        return F.conv2d(p, self.around, groups=self.ch)
+
+    def belief(self, s):
+        """(b, ch, rows, columns) -> what each column expects a central ray to see, normalised."""
+        v = self.value(s).mean(2).transpose(1, 2)
+        mid = self.ang[self.N_RAYS // 2].expand(*v.shape[:2], -1)
+        return self.ray_dec(torch.cat([v, mid], 2))
+
+    def run(self, sens, act, eyes, keep=None):
+        b, t = sens.shape[:2]
+        n, c_ray, h, w = self.N_RAYS, self.RAY_CH, self.rows, self.side
+        s = torch.zeros(b, self.ch, h, w, device=sens.device)
+        row = self.row_pos.expand(b, 1, h, w)
+        ang = self.ang.expand(b, -1, -1)
+        none = torch.zeros(b, self.D_RAY, h, w, device=sens.device)
+        preds = []
+        for i in range(t):
+            e = eyes[:, i, None]
+            rays = sens[:, i, :n * c_ray].reshape(b, n, c_ray) * e[:, None]
+            r = self.ray_in(torch.cat([rays, ang], 2))                  # (b, rays, D_RAY)
+            heard = (self.to_col @ r).transpose(1, 2)[:, :, None].expand(-1, -1, h, -1)
+            body = torch.cat([act[:, i], e], 1)
+            static = torch.cat([sens[:, i, n * c_ray:212] * e, sens[:, i, 212:], body], 1)
+            code = self.static_in(static)[:, :, None, None].expand(-1, -1, h, w)
+            if self.conserve:
+                one = torch.ones_like(e)
+                g = self.gain(torch.cat([act[:, i], one], 1)).reshape(b, self.ch, 9)
+                if self.mirror:      # turning left is turning right in a mirror, nothing more
+                    other = self.gain(torch.cat([act[:, i] * self.turn_back, one], 1))
+                    g = 0.5 * (g + other.reshape(b, self.ch, 3, 3).flip(3).reshape(b, self.ch, 9))
+                if self.stable:      # all shares >= 0 and sum to 1: no frequency can ever grow
+                    gain = torch.softmax(g + 4 * self.keep, 2)[:, :, :, None, None]
+                else:
+                    gain = (g - g.mean(2, keepdim=True) + self.keep)[:, :, :, None, None]
+            else:
+                g = self.gain(body).reshape(b, self.ch, 9)
+                gain = (g + self.keep)[:, :, :, None, None]
+            for p in range(self.passes):
+                if p == 0 or not self.once:
+                    x = torch.cat([self.neighbours(s), code, row, heard if p == 0 else none], 1)
+                    s = s + 0.3 * torch.tanh(self.cell(x))
+                if self.flow:
+                    s = (self.neighbours(s).reshape(b, self.ch, 9, h, w) * gain).sum(2)
+                s = s.clamp(-4, 4)
+            if keep is not None:
+                keep.append(s)
+            v = self.value(s).mean(2).transpose(1, 2)                   # (b, columns, D_RAY_OUT)
+            ray = self.ray_dec(torch.cat([self.from_col @ v, ang], 2)).reshape(b, n * c_ray)
+            g = torch.softmax(self.gate(s).flatten(1), 1)
+            st = (self.static_val(s).flatten(2) * g[:, None]).sum(2)
+            preds.append(torch.cat([ray, self.static_dec(st)], 1))
+        return torch.stack(preds, 1), None
+
+
+FLOW = {"flow": dict(flow=True), "ring": dict(flow=False),
+        "flowc": dict(flow=True, conserve=True),
+        "flowm": dict(flow=True, conserve=True, mirror=True),
+        "flowo": dict(flow=True, conserve=True, mirror=True, once=True),
+        "flows": dict(flow=True, conserve=True, mirror=True, once=True, stable=True)}
+
 ARMS = {
     "now":       lambda seed, side: Now(48),
     "gru16":     lambda seed, side: Rec(16),
@@ -252,6 +383,8 @@ PLAIN = ("now", "gru16", "gru128", "wide128", "wide512")
 
 
 def build(arm: str, seed: int, side: int) -> nn.Module:
+    if arm in FLOW:
+        return FlowBrain(side, seed=seed, **FLOW[arm])
     if arm in RETINA:
         return RetinaBrain(side, seed=seed, **RETINA[arm])
     return Brain(ARMS[arm](seed, side))

@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from cortex.pred.model import ARMS, PLAIN, RETINA, build
+from cortex.pred.model import ARMS, FLOW, PLAIN, RETINA, build
 
 DATA = Path("out/cortex/pred/data")
 RUNS = Path("out/cortex/pred/runs")
@@ -127,7 +127,7 @@ def exam(brain, data, burn=32, closed=32, stride=150, batch=64):
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--arm", required=True, choices=sorted(ARMS) + sorted(RETINA))
+    p.add_argument("--arm", required=True, choices=sorted(ARMS) + sorted(RETINA) + sorted(FLOW))
     p.add_argument("--side", type=int, default=16)
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--batch", type=int, default=8)

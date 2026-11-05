@@ -3379,3 +3379,112 @@ measure, this is engineering by trial and error, not a theory of the system.
 **Left open:** the tuner jitters `when` and `shift()` arguments (wasted tries, sometimes
 broken geometry); `mailbox check` truncates a bare law if its header comment contains
 "channel". Whole runs (mailboxes, laws, pictures) stay on branches `cloud-lab-*`.
+
+## 2026-11-05 — the spin exam: memory carried by the body's motion, and growth that pays
+
+Question: can a brain of perceptron cells get smarter by GROWING, the same weights on a
+bigger sheet? Exam (`cortex/pred/spin.py`, validation worlds only, test worlds still closed):
+stand, turn twice, second lap with the eyes closed, predict the view. Score = share of the
+road from MEAN (knows nothing, 0%) to a hand-made PANORAMA (100%).
+
+**Why the sheet stood still.** Sheet 16x16, 2 048 numbers: 15.8%, as good as "the average look
+of the place" (17%). GRU16 14%, GRU128 32%, GRU512 37% (1 029 000 weights). `cortex/pred/watch.py`
+looks inside: 81% of the sheet's change is shared by all cells at the end of training (99.9%
+at step 500), the read-out listens to nearly all of them, and over the closed lap its belief
+about a ray moves 4% of the truth (GRU512 54%). Every cell hears one code and the read-out
+averages, so there is nothing for size to do.
+
+**The idea.** A ring of columns around the body (`FlowBrain`, 4 rows, 6 381 weights). A ray
+lands in and is predicted from the columns it looks along: fixed wiring, like a retina. A wall
+stays put in the world while the body turns, so memory must move: the action sets how much a
+cell takes from each of its nine neighbours (a multiplicative input). Passes = columns // 8, so
+a pass moves the same number of cells at any size. Hand-made ceilings, no learning
+(known turn): world-fixed address 17/51/76/90/95% at 8/16/32/64/128 columns, upwind flow
+23/40/50/60/68%, Lax-Wendroff 28/46/57/67/76%. On this exam size can pay.
+
+**Each step, and what it taught** (share at 32 columns unless noted):
+
+| arm | what it adds | result |
+|---|---|---|
+| `ring` | columns, no multiplicative input | 16.5% at 16 |
+| `flow` | action sets the kernel | 14.9 / 9.2 / 0.4% at 8/16/32: WORSE WITH SIZE |
+| `flowc` | kernel hears only the action, sums to 1 | 25.4, 25.6% at 16; 37.4, 36.9% at 32 |
+| `flowc --sides 8,16,32` | trained across sizes | 36.7, 21.5, 32.1%: seeds disagree |
+| `flowm` | left turn = mirror of right turn | 38.5, 38.9, 38.7% |
+| `flowo` | cell rule once a frame, transport each pass | 36.9, 38.5%; EXPLODES beyond training |
+| `flows` | all kernel shares >= 0 | 43.6, 41.1, 42.2% |
+
+Findings, in order:
+1. `flow` learned to carry memory with the eyes open, then ERASED it when they closed (kernel
+   sum ~0.2): early on memory is unreliable and the mean is safer. Hence `flowc`.
+2. Two predictions written beforehand failed outright: `flow` lost to its control and got
+   worse with size. Everything that worked was found after looking at data.
+3. Weights from 16 alone did not transfer (25% -> 5% at 32 -> -25% at 64). I then credited
+   multi-size training; `flowc-32`, trained on 32 alone, transfers as well (16.5/29/37.4/39.7%
+   at 8/16/32/64), so that credit was wrong.
+4. **The prediction bench found the physical law itself.** Ideal shift = 0.92 cells per pass at
+   full turn, proportional to the turn. Runs that took off had channels at slope 0.94-0.95 with
+   offset ~0; runs that stalled stopped at 0.64-0.82, mostly with an offset. With the mirror,
+   both seeds examined grew the same anatomy: 3 channels at 0.93-0.96 (carry the world), 4 near 0.78
+   (role unknown), 1 near 0 (body-fixed).
+5. Too many cell-rule passes wear memory out: `flowm` fell at 128 columns (27%, 32%); with the
+   rule once a frame one seed rose to 49.0% at 128, unseen. But the other seed gave 10.9% at 64
+   and -230% at 128, and the good one later fell too (39.8% at 256, -80% at 512). All the learned
+   kernels amplify some frequency by 21-70% per pass at full turn, and bigger rings run more
+   passes. Non-negative shares make that impossible, and they also score better at every trained size.
+
+**`flows`, the same weights at every size (trained on 8/16/32):**
+
+| columns | 8 | 16 | 32 | 64 | 128 | 256 | 512 |
+|---|---|---|---|---|---|---|---|
+| seed 0 | 30.0 | 38.5 | 43.6 | 46.5 | 46.7 | 44.8 | 34.6 |
+| seed 1 | 29.9 | 37.9 | 41.1 | 38.6 | 30.5 | 23.2 | 17.5 |
+| seed 2 | 29.8 | 37.9 | 42.2 | 43.6 | 41.5 | 39.5 | 32.7 |
+
+Written beforehand: every seed rises to 128 and scores at least 40% there. **Not met**: only
+seed 0, and its 64->128 step is a tie. What holds: nothing explodes up to 512, trained sizes
+agree closely and rise on all three seeds, and at 32 columns all three beat GRU512 (error
+-0.039 to -0.064, se 0.005) on 161 times fewer weights. Beyond training it degrades gently, and
+the peak varies by seed (32, 64, 128). Why it declines is not known.
+
+**Honest limits.** The body stands still and the turn is felt. Wiring, conservation, mirror and
+non-negativity are design, all chosen after seeing data; only the speed and what cells do with
+memory are learned. The ceiling (upwind 60-68% at 64-128) is still far off. Nothing here acts in
+a world yet. Test worlds stay closed for a final exam.
+
+**Training up to 64 (`flows --sides 8,16,32,64`):**
+
+| columns | 8 | 16 | 32 | 64 | 128 | 256 | 512 |
+|---|---|---|---|---|---|---|---|
+| seed 0 | 27.7 | 36.5 | 42.2 | 45.5 | 46.0 | 44.1 | 37.8 |
+| seed 1 | 27.8 | 36.4 | 41.0 | 43.0 | 41.4 | 36.2 | 27.3 |
+| seed 2 | 28.3 | 38.1 | 43.5 | 47.4 | 50.0 | 51.6 | 46.3 |
+
+Written beforehand: on every seed 64 beats 32 and 128 is no worse than 64. **Not met**: 64 beats
+32 on all three, but seed 1 falls at 128 (and seed 0's gain there is -0.005 +- 0.002). What moved:
+the peak sizes went from 128/32/64 to 128/64/256, and the worst seed's best score from 41.1% to 43.0%,
+at a price of about two points at 8 columns. Growth now holds on every seed across the whole
+trained range; at 64 columns all three beat GRU512 (error -0.058 to -0.100, se ~0.007). Every
+seed still falls by 512. Best single figure 51.6%, still below the upwind ceiling.
+
+**On the walking data (`cortex/pred/bench.py`), one arm, one size, 3000 steps.** The ring can only
+carry rotation here: it has no way to express the body moving. Skill = 1 - error / best simple
+rival, 0 = no better than the best trick.
+
+| brain | weights | eyes open | h1 | h8 | h8, turned | h16 | h32 |
+|---|---|---|---|---|---|---|---|
+| `flows` 32, seed 0 | 6 381 | 0.573 | 0.222 | 0.093 | 0.091 | 0.059 | 0.006 |
+| `flows` 32, seed 1 | 6 381 | 0.563 | 0.203 | 0.097 | 0.080 | 0.050 | 0.011 |
+| `flows` 16 | 6 381 | 0.547 | 0.175 | 0.087 | 0.081 | 0.055 | 0.010 |
+| GRU128 | 117 000 | 0.473 | 0.072 | 0.077 | 0.076 | 0.049 | 0.042 |
+| wide128, 20 000 steps | 142 000 | 0.539 | 0.155 | 0.076 | 0.058 | 0.080 | 0.022 |
+| sheet 16 | 49 000 | 0.361 | -0.123 | 0.056 | 0.066 | 0.026 | 0.006 |
+
+Written beforehand: both 32-column runs above 0.076 on h8 turned. **Met, weakly**: errors 0.889
+and 0.899 against GRU128's 0.903 on 88 episodes, with no paired test, so memory at h8 may be
+a tie. The clear gain is SHORT range: eyes open and h1 beat every earlier brain, on far fewer
+weights. At h32 nothing beats simple rivals by much, and GRU128 is ahead. So walking memory
+is still almost absent, as expected of a ring that cannot express translation.
+
+Next: a 2-D sheet whose flow also carries translation, then replace the atlas's hand-written
+scroll with this rule and count meals.

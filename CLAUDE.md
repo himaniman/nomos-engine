@@ -527,6 +527,17 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   `laws/atlas_course.nomos` 32.8 meals vs confine 23.5. Eyes vs memory NOT answered.
   Tuning does help (+2.7 on fresh worlds); predictions do not improve. Summaries in
   `runs/cloud-lab/`, whole runs on branches `cloud-lab-*`.
+- Done (growth that pays, 2026-11-05, branch `predictive-sheet`, journal has it all): spin
+  exam `cortex/pred/spin.py`; `FlowBrain` in `cortex/pred/model.py` = a ring of columns around
+  the body, memory CARRIED by the action (the action sets each cell's nine neighbour shares),
+  fixed retina-like wiring, passes = columns // 8. `flows` (conserving, mirror, rule once a
+  frame, non-negative shares), 6 381 weights, the same at every size, trained with `--sides`:
+  28/36-38/41-44/43-47% at 8/16/32/64 columns on all 3 seeds, beats GRU512 (37%) from 32 up.
+  Beyond training it varies by seed and all fall by 512. Unconstrained kernels EXPLODE as
+  size adds passes. The learned shift matches the physics (0.93-0.96 vs ideal 0.92, `flowm`).
+  Viewers: `cortex/pred/watch.py`, `watch_flow.py`. Ring cannot express translation: on walking
+  (`bench.py`) short-range skill is the best yet, long-range memory is still almost absent.
+  Test worlds still closed. Next there: a 2-D sheet whose flow carries translation too.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

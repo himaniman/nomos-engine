@@ -27,7 +27,7 @@ import torch
 from cortex import atlas_lineage as L
 from cortex.pred.bench import COS_H, FOV, GEOM, SIN_H
 from cortex.pred.log import reduce_senses
-from cortex.pred.model import ARMS, PLAIN, RETINA, build
+from cortex.pred.model import ARMS, FLOW, PLAIN, RETINA, build
 from cortex.senses import ScentField, sense
 from cortex.world import World
 
@@ -158,6 +158,9 @@ def train(args) -> int:
     brain = build(args.arm, args.seed, args.side)
     plain = args.arm in PLAIN
     name = f"{args.arm}-s{args.seed}" if plain else f"{args.arm}-{args.side}-s{args.seed}"
+    sides = [int(x) for x in args.sides.split(",")] if args.sides else None
+    if sides:                      # every step on a random size, the same weights for all
+        name = f"{args.arm}-grow{'_'.join(map(str, sides))}-s{args.seed}"
     run = OUT / "runs" / name
     run.mkdir(parents=True, exist_ok=True)
     print(f"{name}: weights {sum(p.numel() for p in brain.parameters())}", flush=True)
@@ -178,6 +181,8 @@ def train(args) -> int:
         print(f"{name}: resumed at step {first}", flush=True)
     for step in range(first, args.steps + 1):
         idx = rng.integers(len(tr.sens), size=args.batch)
+        if sides:
+            brain.set_side(int(rng.choice(sides)))
         s, a = torch.tensor(tr.sens[idx]), torch.tensor(tr.act[idx])
         pred = brain.run(s[:, :-1], a[:, :-1], tr.eyes(idx)[:, :-1])[0]
         loss = ((pred - s[:, 1:]) ** 2).mean()
@@ -188,9 +193,16 @@ def train(args) -> int:
         sched.step()
         losses.append(loss.item())
         if step % args.every == 0 or step == args.steps:
+            if sides:
+                by_size = {}
+                for side in sides:
+                    brain.set_side(side)
+                    by_size[side] = round(share(brain_errors(brain, val), riv), 3)
             e = brain_errors(brain, val)
             curve.append({"step": step, "s": round(time.time() - t0), "err": round(float(e.mean()), 4),
                           "share": round(share(e, riv), 3), "loss": round(float(np.mean(losses[-100:])), 4)})
+            if sides:
+                curve[-1]["by_size"] = by_size
             print(name, curve[-1], flush=True)
             torch.save({"brain": brain.state_dict(), "opt": opt.state_dict(),
                         "sched": sched.state_dict(), "rng": rng.bit_generator.state,
@@ -227,8 +239,9 @@ def main(argv=None) -> int:
     p.add_argument("--make", action="store_true")
     p.add_argument("--table", action="store_true")
     p.add_argument("--jobs", type=int, default=8)
-    p.add_argument("--arm", choices=sorted(ARMS) + sorted(RETINA))
+    p.add_argument("--arm", choices=sorted(ARMS) + sorted(RETINA) + sorted(FLOW))
     p.add_argument("--side", type=int, default=16)
+    p.add_argument("--sides", default="", help="train across sizes, e.g. 8,16,32 (flow arms only)")
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--batch", type=int, default=8)
     p.add_argument("--lr", type=float, default=2e-3)

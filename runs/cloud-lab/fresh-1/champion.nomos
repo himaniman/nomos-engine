@@ -1,0 +1,56 @@
+# night lab champion #6: The wave stops spreading at one flat price: each cell now has its own step cost. Known-free ground is cheap (0.95), unknown ground is expensive (0.89, because it may hide a wall), and ground hugging walls costs more. Diagonal spreading is also blocked where it would cut a solid corner. Plans then follow corridors the agent has actually seen and go through door centres, instead of straight lines through imagined space into walls. This should cut the time lost bumping and re-planning when a guessed shortcut turns out to be stone. The agent turns to the unknown only when the frontier is worth it.
+
+channel source
+channel solid
+channel free
+channel thing
+channel scent
+channel bad
+channel leak
+channel value
+channel unknown
+channel openness
+channel frontier
+channel confinement
+channel injection
+channel step
+channel stepd
+
+# what is not yet known (neither seen free nor seen solid)
+rule known:
+  when 0.7089
+  set unknown = (1 - free) * (0.8013 - solid)
+
+# how much unknown lies around a cell, spread a few rings out (bounded below 1)
+rule spread:
+  when 1.087
+  set openness = 0.6435 * avg8(unknown) + 0.45 * avg8(openness)
+
+# the faint frontier marks: a source that is neither smell nor a seen morsel
+rule mark:
+  when 1.102
+  set frontier = where((source > 0) and (source < 0.1403) and (thing < 0.01) and (scent < 0.01), 1.21, 0)
+
+rule calc_conf:
+  when 1.124
+  set confinement = sum8(solid)
+
+# frontier weighted by the unknown behind it; burned cells inject nothing
+rule inject:
+  when 1.768
+  set injection = where(frontier > 0, source * (0.4183 + 2 * openness), max(thing, source)) * (1 - bad) / (1 + 0.5618 * confinement)
+
+# per-cell step price: seen-free ground is cheap, guessed ground dear, wall-hugging dearer
+rule price:
+  when 1
+  set step = (0.89 + 0.04745 * free) * (1 - 0.01066 * sum8(solid))
+
+# the diagonal price is the orthogonal one to the power sqrt 2
+rule priced:
+  when 1
+  set stepd = exp(1.4142 * log(0.0001 + step))
+
+# priced wave; a diagonal only passes if neither corner it squeezes past is solid
+rule wave:
+  when 1
+  set value = max(injection, step * max4(value), stepd * max(shift(value, -0.7359, -0.7829) * (0.8127 - max(shift(solid, -1, 0), shift(solid, 0, -0.8763)) * (1 - leak)), shift(value, 1, -1) * (1 - max(shift(solid, 0.9087, 0), shift(solid, 0, -1.052)) * (1 - leak)), shift(value, -1.472, 1.315) * (1 - max(shift(solid, -1.026, 0), shift(solid, 0, 1.361)) * (1 - leak)), shift(value, 1.212, 1) * (1 - max(shift(solid, 1, 0), shift(solid, 0, 0.9299)) * (1.73 - leak)))) * (1 - solid * (1.396 - leak)) * (0.981 - 0.9 * bad)

@@ -2770,3 +2770,17 @@ The agent starts top-centre and spends its cyan youth well: it runs south-west o
   #2   train 19.2 meals  holdout 18.6  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 158x: train 28.5 meals, holdout 27.0
 ```
+
+### FINAL worlds (never seen by selection or by the model)
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 158x              26.2 meals  immortal 29/32
+#6 tuned 7x                         28.6 meals  immortal 29/32
+#16 tuned 6x                        29.7 meals  immortal 30/32
+#11 tuned 6x                        30.2 meals  immortal 29/32
+#31 tuned 2x                        29.1 meals  immortal 30/32
+#21 tuned 7x                        27.8 meals  immortal 28/32
+#6 as written                       27.2 meals  immortal 29/32
+```

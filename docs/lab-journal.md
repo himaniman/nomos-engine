@@ -2944,9 +2944,9 @@ FINAL, 31.8 and 32/32 immortal**; six rounds of tuning took 1.6 meals off it. Th
 constants overfit and the structure is what carries.
 
 **Prediction error** (|predicted - actual| before tuning): 4.9 in the first half, 4.7 in
-the second, over 30 predictions. The predictions were almost always too high (typically
-+1..+4, with misses down to 3.0 and 20.3 meals). Fresh minds carried no calibration from
-turn to turn, and it shows.
+the second, over 30 predictions. 25 of the 30 were too high, typically by 1-4 meals, and
+the worst misses were +31.5 (a law that ate 3.0) and +13.7 (one that ate 20.3). Fresh
+minds carried no calibration from turn to turn, and it shows.
 
 **What this arm's agent did differently.** With no memory, every subagent rebuilt its
 picture from the request: the board, the theory the lab carries, and the champion's text.

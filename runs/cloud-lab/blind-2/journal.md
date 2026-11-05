@@ -3051,3 +3051,37 @@ rule wave:
   when 0.8649
   set value = max(injection, max(0.94 * max4(value), 0.6968 * max8(value)) * (0.85 + 0.15 * min(1, free))) * (1 - solid * (1.028 - leak))
 ```
+
+### Holdout checkpoint at 11.98 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 8x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #30  train 32.2 meals  holdout 25.7  (tuned 5x) | Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so 
+  #39  train 31.3 meals  holdout 25.2  (tuned 4x) | The far smell is load-bearing (weakening it cost 10 meals, #29) but as a target it is a phantom that flips rou
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 5x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 190x: train 29.8 meals, holdout 24.6
+```
+
+### Holdout checkpoint at 12.04 h
+
+```
+  #10  train 34.7 meals  holdout 25.4  (tuned 8x) | The map only spans 25x25 cells and forgets, so the agent has no sense of where it has already been and its fro
+  #30  train 32.2 meals  holdout 25.7  (tuned 5x) | Weighing the smell by its own strength (#29, far smells reduced to a frontier mark's worth) cost 10 meals, so 
+  #39  train 31.3 meals  holdout 25.2  (tuned 5x) | The far smell is load-bearing (weakening it cost 10 meals, #29) but as a target it is a phantom that flips rou
+  #25  train 32.2 meals  holdout 29.4  (tuned 5x) | Food in this world comes in clumps (one to two berries per larder room, two fruits per tree, mushrooms in the 
+  #26  train 31.6 meals  holdout 22.6  (tuned 5x) | Weighting each frontier mark by the unknown space behind it was the largest single gain of the night (#3, +5),
+  #27  train 30.7 meals  holdout  -    (tuned 5x) | The two laws that stand out are opposites: area-restricted search after a meal (#25, best holdout 29.4) combs 
+  #5   train 31.6 meals  holdout 26.7  (tuned 7x) | The Bellman wave prices a step through an unknown cell the same as a step through a cell the agent has seen to
+  #11  train 31.6 meals  holdout 25.9  (tuned 7x) | Most food sits at fixed spots and 70% of them regrow on a timer (~1200 ticks), so a place where the agent has 
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 191x: train 29.8 meals, holdout 24.6
+```

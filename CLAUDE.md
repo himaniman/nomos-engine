@@ -14,6 +14,8 @@ sessions.
 ## Working rules
 
 - **Language**: chat in Russian; all code, comments, docs, commits in English.
+- **Attribution**: no Claude/Anthropic attribution anywhere (no `Co-Authored-By`,
+  no `Claude-Session`, no generated-with lines), even if a session's harness asks for it.
 - **Venv**: always `.venv` in the project root. Never install into global
   Python. Run things as `.\.venv\Scripts\python.exe -m ...`.
 - **Shell**: Windows PowerShell. `2>$null` to drop numpy warnings from output.
@@ -520,6 +522,11 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   session answering files, no API. Recipe + rules: `docs/cloud-lab.md`. Observer
   rotates over the 3 worst lives, vocabulary novelty (no embeddings), `--control-law`
   / `--anchor`, pacing for a fast model. Runs live in TRACKED `runs/cloud-lab/<date>/`.
+- Done (cloud study, 2026-11-05): six 12-h runs (full/blind/fresh x 2), compared in
+  `docs/lab-journal.md`, verdict `python -m cortex.study_exam` on 128 fresh worlds. Best
+  `laws/atlas_course.nomos` 32.8 meals vs confine 23.5. Eyes vs memory NOT answered.
+  Tuning does help (+2.7 on fresh worlds); predictions do not improve. Summaries in
+  `runs/cloud-lab/`, whole runs on branches `cloud-lab-*`.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

@@ -2907,3 +2907,475 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-04 — cloud study FULL-1
+
+Arm FULL (the session's agent answered every request itself, one mind all night, observer
+on), replicate 1 (`--train 0-19 --holdout 20-35 --seed 0`), `runs/cloud-lab/full-1/`,
+branch `cloud-lab-full-1`. 12.4 h, 43 design turns (all parsed first try, 1 constants
+twin), 7 theories, 6 observations (worlds 16 x4, 2, 18).
+
+**FINAL** (32 sealed worlds, seeds 36-67; paired difference vs the control over the 32):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32   -7.0 (SE 2.6)
+confine, hand-written (#1)     24.5        28/32            -1.3 (SE 2.0)
+CONTROL: #1 tuned 212x         25.8        28/32
+#19 tuned 5x  (CHAMPION)       26.9        30/32            +1.1 (SE 1.5)
+#35 tuned 5x                   29.8        31/32            +4.0 (SE 1.7)
+#30 tuned 6x                   28.2        29/32            +2.4 (SE 2.1)
+#44 tuned 1x                   27.2        28/32            +1.4 (SE 2.2)
+#32 tuned 5x                   26.9        28/32            +1.1 (SE 2.5)
+#19 as written                 27.1        30/32            +1.2 (SE 1.8)
+```
+
+**Champion vs control:** the champion (picked by holdout, #19) beats tuned confinement by
++1.1 meals with SE 1.5 — not a win by itself. All five model laws that reached FINAL beat
+the control (+1.1 to +4.0) and the hand-written confine (+2.4 to +5.3); the best, #35, is
++4.0 (SE 1.7), but it is the holdout's SECOND pick (30.8 vs #19's 31.2), so that number is
+chosen after the fact.
+
+**train -> holdout -> final:** #19 27.1 -> 31.2 -> 26.9; #35 28.8 -> 30.8 -> 29.8;
+#32 30.5 -> 30.5 -> 26.9; #30 31.4 -> 27.2 -> 28.2; control 30.7 -> 24.2 -> 25.8. The
+control arm overfit its 212 jitters the most (-4.9 train -> final); the model laws were
+tuned only 5x and moved within about +-3, in both directions — the 16-world holdout cannot
+rank laws this close (its gaps are ~1 SE).
+
+**Prediction error** (|predicted - untuned train meals|): first half 4.8, second half 3.3.
+
+**Mechanism.** One idea carried the night: price every STEP of the wave by what the map
+knows. Unknown ground costs extra (#18, 25.6 -> 27.7 untuned), unknown cells continuing
+a seen wall line are guessed wall and pass half (#23, 29.6), cells continuing a line of
+open floor are guessed floor and pay no unknown price (#32, 30.5 untuned = holdout 30.5),
+walls pass by DOOR CONTRAST (taught per-hue leak minus the mean leak of the walls around
+it). On top: confinement, darkness-weighted frontier (frontier mark x smoothed unknown
+around it), a fading footprint trail that dims the read-out. #35 = #32 + the trail also
+charged as a step price. Ablations: without darkness + trail 24.6, without door contrast
+26.7, without the read-out dimming 25.1 — all load-bearing. Settled negatives (untuned):
+any new attracting source (leaves from `bright` 18.3, lingering food 21.5, compass 21.4,
+breach 23.2, larder 24.6, a room source that changed no decision at all), the same
+knowledge used as source WORTH instead of step price (22.1), changing distance pricing
+either way (additive 16.9, distance-steepened 21.9), the plan's speed either way (wipe each
+thought 12.8, express lanes 26.7, slower 28.4), harmonic relaxation 14.2, a momentum
+read-out 13.7. Train world 16 (a sealed pocket) scored 0 for every law; the observer described it
+four times and no law fixed it. Two FINAL worlds (seeds 61, 62) scored 0 for nearly every
+law (#35 got 18 on seed 62, the reference wave 30 on seed 61).
+
+**The theory** ended as "knowledge goes into step prices, not into source worth; every
+piece of #32 is load-bearing; tuning overfits" — consistent with its evidence and with
+FINAL (every knowledge-priced law beat the control). It called trail-as-price "neutral"
+(28.8 train, 30.8 holdout); FINAL makes that law the best, which the theory could not
+have known.
+
+**What this arm's agent did differently.** It kept one line of inquiry and climbed it:
+four successive knowledge priors, each built on the last, plus three explicit ablations to
+find what was load-bearing (night 1's entry records no ablation). It read harness code
+(`cortex/atlas.py`, `world.py`, `tiles.py`) for facts the prompt does not give (food
+regrows after 1200 ticks, the map forgets at 0.0015/tick, foliage brightness 0.58 vs
+ground 0.21) — these facts motivated the larder, seen-memory and leaves laws, and all
+three lost. Disclosure on rule 2: besides `mailbox check` it stepped `LawRule` by hand on
+a few hand-built test maps (one source, a sealed box, a wall line; no world lived, no
+score) to see a field; that is how it found a one-pass lag in its own early laws (a
+helper channel read before it was written injects a stale full-strength source for one
+pass). Compared with night 1 (deepseek, 6 h, ghost as control): night 1's champion IS this
+night's hand-written anchor (24.5 on the same FINAL worlds); this arm's champion adds
++2.4 and its best law +5.3 on top, against a control that was itself the stronger
+structure.
+
+## 2026-11-05 — cloud study FULL-2
+
+Arm FULL (the session's agent answers every request, observer on), replicate 2
+(`--train 100-119 --holdout 120-135 --seed 1`), 12 h + grace, 30 design turns (6 deep),
+4 observations, 5 theories; all 30 laws parsed first try, 0 constants-only twins. Run
+directory `runs/cloud-lab/full-2/` (branch `cloud-lab-full-2`).
+
+**FINAL worlds** (36-67, the same 32 as night 1):
+
+```
+                            train   holdout   FINAL   immortal (FINAL)
+reference wave (#0)          20.4    15.5     18.8    28/32
+confine, hand-written (#1)   23.2    23.6     24.5    28/32
+CONTROL: #1 tuned 153x       29.8    25.1     23.4    30/32
+#28 champion, tuned 5x       34.6    35.7     33.1    31/32
+#21 tuned 5x                 35.1    34.6     32.8    31/32
+#18 tuned 6x                 33.7    34.8     34.3    31/32
+#26 tuned 6x                 34.7    31.4     30.5    29/32
+#7  tuned 7x                 34.1    28.4     27.8    30/32
+```
+
+**Champion vs control on FINAL: 33.1 vs 23.4 (+9.7)**, and every course-law finalist
+beat the control by 7-11. Drops train -> holdout -> FINAL: the course laws hold
+(#28 34.6 -> 35.7 -> 33.1, #18 33.7 -> 34.8 -> 34.3, #21 35.1 -> 34.6 -> 32.8); the
+pre-course train leader #7 did not (34.1 -> 28.4 -> 27.8), nor did the control
+(29.8 -> 25.1 -> 23.4, below the untuned confine law's 24.5 — 153 rounds of constant
+tuning bought a train number and lost a meal on the exam). Night 1's lesson repeats:
+structure generalises, tuned constants do not. Against night 1 (deepseek, 6 h, same
+FINAL worlds): its champion 24.5, this one 33.1.
+
+**Prediction error** (|predicted - actual| before tuning): first half 2.8, second
+half 3.4 meals — no gain in prediction; I systematically over-predicted additions to a
+good law.
+
+**The champion's mechanism.** A LONG COURSE: a heading vector averaged over ~250 ticks,
+stored at the agent's own cell and gathered back from the ring after each scroll
+(`here * (c + sum8(c))`), normalised to a unit direction, broadcast over the map with
+max8, and used to weight frontier GOALS (`1 + ahead`, 0..2). It broke a plateau: every
+structure before it (memory, confinement, roominess, trail, frustration, momentum,
+geometry, area-restricted search) landed at 25-28 untuned, within noise of each other;
+the course alone took it to 33 (#15 on the step, #16 on goals), the unit version to 35.1
+(#21). The reason, from the observer (world 100: orbiting the home block for half a
+life): the 25-cell map forgets what scrolls off, so a frontier-greedy walker re-sweeps
+known districts; a persistent heading is the only large-scale memory this brain can
+keep. The stack under it matters (stripping #21 to course + roominess + memory, #25:
+28.8, -5 on ordinary worlds, 0 in the pocket world 110): confinement (night 1),
+frustration (dwell raises wall leak; with a symmetry breaker it escapes sealed pockets,
+110: 0 -> 29), leak only in thin walls (room town 117: 6 -> 33), doors-as-frontier.
+#28 = #21 + frustration fading the course's say + a 0.2 floor for frontier behind;
+per world nearly identical to #21.
+
+**Negative results worth keeping:** the course pays at the level of goals, not paths
+or steps — anisotropic discount #22 32.2, re-aiming by an information gradient #27 32.8,
+a chiral (spiralling) course #29 30.7, a hunger clock gating it #30 31.6, and BOTH
+levels at once #31 19.1 (they interfere badly). Commitment hurts: target lock via
+argmax8 ids #24 29.7, step momentum #9. A harmonic (mean-field) exploration potential
+#14 18.9. Larder clock, tree/canopy prior, area-restricted search: neutral or worse.
+
+**The theory** ended (9.2 h) as "one structural gain dominates: the course, at the level
+of goals; the stack is not insurance; commitment hurts; non-max exploration hurts" —
+consistent with the champion and the FINAL table (#28 is #21 plus a refinement the
+theory did not need). Unlike night 1, the last theory agrees with its champion.
+
+**What this arm's agent did differently.** The eyes contributed two of the champion's
+mechanisms directly: the world-110 picture (pacing a sealed slot) -> frustration, the
+world-117 picture (circling rooms full of food, 42 idle presses) -> the thin-wall leak;
+the world-100 picture confirmed the course's rationale after the fact. The course itself
+came from the NUMBERS: a theory line ("why do open worlds plateau at ~28?") plus the
+map's size. One disclosure that matters for the cross-arm comparison: this agent also
+READ the harness and world source (`cortex/atlas.py`, `atlas_law.py`, `world.py`,
+`tiles.py`, `senses.py`, `nomos/engine.py`) for facts the system text does not give —
+the 1200-tick regrowth, the frontier's exact definition (so `source - 0.12 * front`
+isolates food), material brightness (stone 0.50, door 0.77, trunk 0.41), `shift`/`posx`
+orientation and the lattice centre 14/29 = 0.4828. It lived no worlds itself (only
+`mailbox check`). A FRESH subagent is told to read nothing but the request; part of
+FULL's edge may be this, not memory.
+
+**What the run taught about the lab.** (1) The tuner jitters `shift()` offsets and the
+engine truncates them with `int()` (`shift(here, 0.998, 0)` = `shift(here, 0, 0)`), so
+tuning can silently break a law's geometry (tuned #15: holdout 33.0* -> 28.8); it also
+jitters `when` constants (harmless). Not fixed — it is the exam. (2) The vocabulary-twin
+note fired on 14 laws in a row once the course existed: a productive axis needs its
+substrate, so the note measures reuse, not stuckness. (3) The session's worker process
+was restarted twice and took the lab with it; the same command resumed from
+`state.json` with no lost turn ("resumed 2x").
+
+## 2026-11-05 — cloud study BLIND-1
+
+Arm BLIND (the session's own agent answers every request, observer OFF:
+`--observe-every 0`), replicate 1 (`--train 0-19 --holdout 20-35 --seed 0`), 12 h,
+control = confine (`laws/atlas_confine.nomos`) tuned by rng, anchor = ghost. Run:
+`runs/cloud-lab/blind-1/` (branch `cloud-lab-blind-1`). 31 design turns (6 deep), 31/31
+parsed first try, 0 constants-only twins, 5 theory rewrites, no OBSERVE turns.
+
+**FINAL worlds** (seeds 36-67, seen by nobody until the end):
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 159x              25.9 meals  immortal 29/32
+#26 tuned 5x  (champion)            33.0 meals  immortal 32/32
+#29 tuned 5x                        32.8 meals  immortal 32/32
+#33 tuned 2x                        31.9 meals  immortal 32/32
+#30 tuned 5x                        30.7 meals  immortal 32/32
+```
+
+**Champion vs control on FINAL: 33.0 vs 25.9 (+7.1, +27%), 32/32 immortal vs 29/32.**
+Every law of the model that reached FINAL beat the tuned control by >= 4.8.
+
+**Drops train -> holdout -> final:** champion #26 33.7 -> 32.5 -> 33.0 (none); #29
+33.5 -> 32.2 -> 32.8; #33 32.5 -> 31.3 -> 31.9; #30 33.2 -> 30.6 -> 30.7; CONTROL
+29.2 -> 28.2 -> 25.9 (-3.3, the only real drop — 159 accepted jitters, again). The
+champion was tuned 5x and as-written = tuned (33.7): the structure carried it.
+
+**Prediction error** (|predicted - actual| meals before tuning): first half 2.4, second
+half 2.7 over 31 predictions — no gain in prediction across the night.
+
+**The champion** (#26) is a stack of six mechanisms, each added in its own turn and kept
+only while it held up: honest appetite (morsels pull only through the want-weighted
+`source`, never `thing`=1) + a halo round refusals; ballistic exploration (frontier
+muted by `exp(-k*behind)`, a screened diffusion of the walked path); diagonals only where
+the body fits (both corner cells open; a diagonal neighbour the body cannot reach reads
+0); frustration (visit density under the agent rises -> smell-only lures muted for ~100
+thoughts); fog-discounted wave (unknown cells pass less) + sharpened wall trust (untaught
+walls pass ~1/3, stone ~0); and the last, largest step: **pure frontier marks weighted by
+the blurred fog mass around them** (+2.9 train). An ablation turn (#28: weight by plain
+distance from the agent instead) fell back to 30.1, so the gain is information, not reach.
+Two Occam turns showed parts do real work: confinement on seen morsels (#21, -2.4 without)
+and the aversion halo (#31, -2.3 without). Failures were as informative: invented lures on
+landmarks are catastrophic (foliage "groves" #25: 19.9, -10.9; probing every wall #12:
+-5.2), anything weakening ballistic search loses (area-restricted search #18), and costs on
+cells the body can still use lose (squeezes #19, turn cost #16).
+
+**The theory** ended as "meals come from exploring for information and from honest
+prices", with every claim pinned to a turn number; it agrees with the champion and the
+FINAL table. It corrected itself once on evidence: the first version read #8's -6.4
+(two-cell express wave) as "a slow wave is useful inertia"; #14 (a slower wave, -3.2)
+refuted that, and #20 (express hops in straight lines only, neutral) showed #8's loss was
+corner-cutting, which #15 had meanwhile fixed.
+
+**What this arm's agent did differently** (no pictures): with no lives to look at, it
+reasoned from the per-world meal vectors on the board and from reading the instrument's
+source (`cortex/world.py`, `cortex/atlas.py` — read only, never lived): that `thing` is 1
+on poison too, that `ate` counts nightcaps as meals, that sight reaches 22 cells while the
+map holds 12, that leak starts at 0.5 for every hue, that `source` is already hushed round
+`bad`. Most of its gains came from that reading — finding what the wave *misprices* (the
+body at corners, unknown ground, untaught walls, poison) rather than from watching a
+failure. It also used ablations and controlled re-tests as experiments (#20 vs #8, #28 vs
+#26, #21, #31). What it could not do: it never saw world 16 (fixed blind by #9's learned
+doors, then lost and won back by later laws without knowing why) and it had no way to tell
+a trap from a slow approach except through its own frustration channel. Night 1 (deepseek,
+6 h, with pictures): champion 24.5 on the same FINAL worlds; here 33.0.
+
+Instrument notes (bookkeeping only, nothing changed): `mailbox check` on a bare `.nomos`
+file goes through `extract_law`'s fallback, which starts the law at the first occurrence
+of the word "channel" — a header comment containing "channel" therefore truncates the law
+("expected channel name, got 'and'"). Replies are fenced, so the lab itself is unaffected.
+The tuner also perturbs `when` constants and `shift` offsets (e.g. `shift(open, 1.028, 0)`),
+knobs with no effect that dilute its 5-try budget.
+
+## 2026-11-05 — cloud study BLIND-2
+
+Arm BLIND (the session's own agent answered every request, no observer: `--observe-every 0`),
+replicate 2 (`--train 100-119 --holdout 120-135 --seed 1`), 12 h, `--control-law
+laws/atlas_confine.nomos`. Branch `cloud-lab-blind-2`, run `runs/cloud-lab/blind-2/`.
+38 design turns (7 deep), 1 repair-after-bounce, 1 behavioural twin, 0 parse failures,
+6 theory rewrites, 40 islands.
+
+**FINAL** (seeds 36-67, lived once at the end):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32
+confine, hand-written (#1)     24.5        28/32
+CONTROL: #1 tuned 191x         26.9        30/32
+#25 tuned 5x (CHAMPION)        26.9        30/32
+#25 as written                 27.5        30/32
+#5 tuned 7x                    27.0        30/32
+#4 as written / tuned          26.5 / 26.2 29/32
+#10 tuned 8x                   26.2        29/32
+#30 tuned 5x                   25.6        29/32
+```
+
+**Champion vs control on FINAL: a tie, 26.9 = 26.9.** The model's structures did not beat
+night 1's confinement tuned 191x; every stack law sits within ~1.5 meals of it on FINAL. Both
+beat the hand-written confinement (24.5, the same number night 1 measured on these worlds)
+and the reference wave (18.8). The best FINAL number is the champion AS WRITTEN (27.5) —
+its tuning added nothing that transferred.
+
+**Drops, train -> holdout -> final:** champion #25 (area-restricted search) 32.2 -> 29.4 ->
+26.9; control 29.8 -> 24.6 -> 26.9; #10 (the sweep, best on train all night) 34.7 -> 25.4 ->
+26.2. Train ranking predicted nothing: the train leader was 8 meals ahead of the control on
+train and 0.7 behind it on FINAL. Holdout (16 worlds) moved the right way but its 29.4 was
+also mostly luck.
+
+**Prediction error:** 3.7 meals first half, 5.3 second half (38 predictions) — no gain; I
+predicted ~31 for almost everything and most laws landed 22-31.
+
+**What this arm's agent did.** Without pictures it designed from the per-world meal vectors,
+the code (world.py's economy, atlas.py's painting and read-out) and ablations. The first five
+turns stacked onto confinement: frontier weighted by the unknown space behind it (`vast`,
++5 on train), dwell-frustration lighting known wall faces (rescued a 0-meal world, 0 -> 32),
+distrust of unknown cells in the wave. From then on every addition landed 26-31 on train,
+within the ~2-meal noise of a 20-world mean, so the second half turned to ablations and
+mirror tests, which produced the night's firm findings (each a loss when removed or bent):
+the max() wave (a mean-based potential field: 11.3), `vast` (removed from the sweep law:
+34.7 -> 21.7), the far smell (weighing it by its own faint strength: -10; boosting it: 0),
+the raw pull of seen morsels (`source` only: -4 — and a nightcap eaten still counts as a
+meal), the plain wave discount (far-sighted and near-sighted frontiers both lost 5-8), the
+8-way wave (orthogonal turn-aware and Manhattan waves lost). Distrust of unknown cells
+starves exactly one world (112: 0 meals with it, 26 without) but helps the rest; lifting it
+while frustrated made lives even (20/20 immortal, worst world 16) without raising the mean.
+The theory followed the evidence (each claim cites its island) and its last version agrees
+with the champion's mechanism, but the theory's honest conclusion — "nothing separates on
+holdout" — was also the morning's.
+
+Disclosures: I read the control's tuned law in `state.json["control"]` once at 4.8 h (its
+diagonal discount had been tuned to 0.76, below two straight steps; that motivated two
+designs, both of which lost), and checked one law's heading channel with `LawRule.step` on
+a hand-made test map (no world lived). The VM's worker was restarted twice near the end; the
+lab was restarted with the same command and resumed from `state.json` (one turn re-asked).
+
+## 2026-11-05 — cloud study FRESH-1
+
+Arm FRESH (a NEW general-purpose subagent per mailbox request, never reused; it read only
+the system text, the request and the PNG, and could run `mailbox check`), replicate 1
+(`--train 0-19 --holdout 20-35 --seed 0`), 12 h, control = `atlas_confine` tuned.
+Run: `runs/cloud-lab/fresh-1/` (branch `cloud-lab-fresh-1`). 29 design turns, all
+valid on the first try, 0 twins, 6 observations, 4 theories.
+
+FINAL (32 sealed worlds, seeds 36-67; paired vs the control, SE of the paired mean):
+
+```
+                               FINAL  vs control   SE   wins/losses
+reference wave (#0)            18.8     -7.4      2.3     10/20
+confine, hand-written (#1)     24.5     -1.7      1.8     10/17
+CONTROL: #1 tuned 158x         26.2       —        —        —
+#6 tuned 7x  (summary champ)   28.6     +2.4      2.0     18/12
+#16 tuned 6x                   29.7     +3.4      2.0     19/12
+#11 tuned 6x                   30.2     +4.0      2.5     20/9
+#31 tuned 2x                   29.1     +2.8      2.1     18/12
+#21 tuned 7x                   27.8     +1.6      1.7     15/13
+#6 as written                  27.2     +1.0      2.1     16/12
+```
+
+**Champion vs control on FINAL: the model's structure wins, modestly.** #6 (chosen by
+holdout) beats the tuned confinement by +2.4 meals (~1.2 SE). Every model law on the
+board, tuned or not, beats the control, but they are all descendants of #6, so that is
+one result seen several times, not five. Night 1's bar was the ghost (17.1). This
+night's bar was night 1's champion, tuned 158x (26.2), and it was still cleared.
+
+Train -> holdout -> final: #6 28.5 -> 33.6 -> 28.6; #16 28.8 -> 32.6 -> 29.7; #11
+26.9 -> 30.1 -> 30.2; #31 29.9 -> 28.5 -> 29.1; #21 29.1 -> 27.8 -> 27.8; control
+28.5 -> 27.0 -> 26.2. The holdout-picked champion lost 5 meals on FINAL. 16 holdout
+worlds, looked at for every candidate, are themselves a selection surface: winner's
+curse one level up. The train leaders (#21, #31) did not drop on FINAL.
+
+Prediction error: 3.2 (first half) -> 3.3 (second half), no gain. 27 of 29
+predictions were too high, mean +3.2. Almost every prediction is "best so far + 1"
+(29.5 or 30.5 from turn 6 on). A fresh mind has no calibration memory, and the lab's
+prompt does not show it its own past errors.
+
+Champion mechanism (#6): a per-cell step price. Known-free ground is cheap (0.95),
+unknown dear (0.89), and wall-hugging dearer. Diagonals cost `step^sqrt2` and pass only if
+neither corner they squeeze past is solid. Frontier marks are weighted by the unknown
+behind them, on top of #1's confinement divisor. Theory (last at 9.8 h): "how the wave
+SPREADS helps; anything that outvalues real food hurts". That agrees with the board (#6
+holdout champion; #24/#26 grove/second-field losses), and unlike night 1's theory it does not
+contradict its own champion. Its "dig commitment helps" claim (#16 holdout 32.6) also held
+up on FINAL (29.7, second-best by holdout choice).
+
+What this arm's agent did differently: with no memory, every subagent rebuilt its
+picture from the request alone. The lab's own notes were enough for the agents to stay
+on topic for the whole night. From turn 7 on they marched down one line: sealed pocket
+on world 16 -> trapped gates (#9-#12) -> dig commitment (#13, #16) -> claim with a
+clock (#21) -> food veto (#31). The observer kept handing them world 16 (4 of 6
+pictures). Night 1's failure mode came back in a milder form: world 16 was not a 0
+for everyone (#5/#7/#13/#16/#23-#25/#31 ate 15-35 there), but ~20 turns went to
+escape/commit variants. The fresh minds were good AUDITORS: three separate subagents
+found from the tuned text alone that #21's `spent` habituation could never fire (age
+capped at 1, threshold 1.187), a dead term that tuning had created. Bookkeeping:
+(1) for request 0004 my dispatch prompt named the DESIGN system file instead of the
+observer one the request named. The reply was in shape and was kept; from 0010 on the
+prompt used the file the request names. (2) Three OBSERVE replies ran to six sentences.
+They were left as written, per protocol. (3) The session's worker restarted at 11.88 h
+and killed the lab. It was resumed with the same command (`resumed 1x`), and no answer
+was lost.
+
+## 2026-11-05 — cloud study FRESH-2
+
+Arm FRESH, replicate 2 (`--train 100-119 --holdout 120-135 --seed 1`), branch
+`cloud-lab-fresh-2`, run `runs/cloud-lab/fresh-2/`. 12 h (12.9 with the FINAL lives), 40
+requests: 30 DESIGN, 5 OBSERVE, 5 THEORY. Every request was answered by a NEW subagent that
+saw only the system text, that one request and its PNG; the dispatcher passed nothing on.
+The session's worker was restarted once at 10.9 h, which killed the lab; the same command
+resumed it from `state.json` ("resumed 1x" in the summary), and no request was lost.
+
+**FINAL** (seeds 36-67, the same 32 worlds for all six arms):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32
+confine, hand-written (#1)     24.5        28/32
+CONTROL: #1 tuned 152x         25.8        30/32
+#30 tuned 5x (champion)        30.7        30/32
+#9  tuned 6x                   30.2        31/32
+#28 tuned 7x                   30.2        30/32
+#23 tuned 7x                   29.9        30/32
+#9  as written                 31.8        32/32
+```
+
+**Champion vs control on FINAL: 30.7 vs 25.8 (+4.9, +19%).** All five model laws on the
+FINAL list beat the tuned control by 4.1-6.0 meals, so this is not one lucky law. The
+champion by holdout is #30 (a walk-only `hope` wave that silences wall-face probes while
+anything is still reachable on foot), built on #23 (a fixed random `grain` per cell,
+anchored to the world, picks which wall face wins).
+
+**Train -> holdout -> FINAL:** control 29.7 -> 24.6 -> 25.8; #30 34.5 -> 31.4 -> 30.7;
+#23 34.8 -> 29.9 -> 29.9; #28 34.4 -> 29.9 -> 30.2; #9 tuned 31.7 -> 29.8 -> 30.2. Every
+law loses 3-5 meals from train to holdout and then holds on FINAL, so holdout was an honest
+estimate. The night-1 lesson repeats: **#9 untuned (27.9 on train) is the best law on
+FINAL, 31.8 and 32/32 immortal**; six rounds of tuning took 1.6 meals off it. The
+constants overfit and the structure is what carries.
+
+**Prediction error** (|predicted - actual| before tuning): 4.9 in the first half, 4.7 in
+the second, over 30 predictions. 25 of the 30 were too high, typically by 1-4 meals, and
+the worst misses were +31.5 (a law that ate 3.0) and +13.7 (one that ate 20.3). Fresh
+minds carried no calibration from turn to turn, and it shows.
+
+**What this arm's agent did differently.** With no memory, every subagent rebuilt its
+picture from the request: the board, the theory the lab carries, and the champion's text.
+So the lab's own notes WERE the mind. The result was a strongly incremental chain: nearly
+every design was "the current best law + one or two channels" (19/30 were flagged as
+vocabulary twins of earlier islands), and the arm never made a clean break. The
+observer's world-110 picture (a slot-born agent chipping two faces) set the agenda for 25
+turns; the turns that answered it moved the score (#7 effort on the aimed face, #9 crown,
+#13 thin walls, #23 grain tie-break, #30 hope gate). Three fresh subagents in a row (0016,
+0017, 0018) independently found the same bug in the champion, a futility exit that the
+tuned constants had made unreachable (`work` saturating near 0.09 against a 0.9
+threshold). Each re-derived it from the law's text alone, because none could know that
+the previous one had found it. Zero repairs, zero laws that failed to load, zero
+constants-only twins: the request format alone was enough for a cold model to write a
+valid law first time, 30/30. The theory stayed consistent with the board (it names #23
+and #30 as the leaders and lists the losers correctly), because each THEORY writer read
+only the evidence in front of it and had no conversation to drift from. Cross-arm
+comparison: to be written from all six branches.
+
+## 2026-11-05 — cloud study: the six runs compared, and an exam on fresh worlds
+
+Each run's FINAL (32 worlds, shared) was too coarse to compare runs: paired SE ~2.3, and
+finalists were looked at there. So the champions, controls and a few FINAL leaders lived
+128 worlds no run ever saw (seeds 1000-1127, `python -m cortex.study_exam`, SE ~1.1):
+
+```
+law                        meals  immortal  vs confine     vs own control
+reference                   18.5   99/128    -5.1 +- 1.2   
+confine                     23.5  108/128                  
+full-1 control              25.7  112/128    +2.2 +- 1.1   
+full-1 champion #19         26.5  113/128    +2.9 +- 1.1    +0.8 +- 0.9
+full-1 #35                  28.5  117/128    +4.9 +- 1.2    +2.8 +- 1.0
+full-2 control              27.8  118/128    +4.3 +- 1.0   
+full-2 champion #28         32.3  126/128    +8.7 +- 1.1    +4.4 +- 1.1
+full-2 #18                  32.8  125/128    +9.3 +- 1.1    +5.0 +- 1.2
+blind-1 control             26.7  115/128    +3.1 +- 1.1   
+blind-1 champion #26        31.0  122/128    +7.4 +- 1.1    +4.3 +- 1.1
+blind-2 control             26.2  115/128    +2.7 +- 1.1   
+blind-2 champion #25        25.2  118/128    +1.7 +- 1.2    -1.0 +- 1.1
+fresh-1 control             26.0  117/128    +2.4 +- 1.0   
+fresh-1 champion #6         27.2  115/128    +3.7 +- 1.0    +1.2 +- 1.0
+fresh-1 #11                 30.8  127/128    +7.2 +- 1.1    +4.8 +- 1.1
+fresh-2 control             24.6  111/128    +1.1 +- 1.0   
+fresh-2 champion #30        29.8  125/128    +6.2 +- 1.2    +5.1 +- 1.1
+fresh-2 #9 as written       28.9  124/128    +5.4 +- 1.2    +4.3 +- 1.1
+```
+
+**The arm question is not answered.** Champion means per arm: FULL 26.5 / 32.3, BLIND
+31.0 / 25.2, FRESH 27.2 / 29.8 — replicates differ by up to 5.8, arms by at most 1.3. A
+night's result looks like whether it hits a good idea, not which arm it is in. Two
+replicates cannot resolve this, and the arms were not clean either: FULL and BLIND agents
+read the world's source, FRESH subagents could not (`cloud-study.md` did not forbid it).
+
+**What is solid.** The agent found structures far above night 1's champion: `laws/
+atlas_course.nomos` 32.8 vs confine 23.5 (+9.3 +- 1.1). Three champions of six beat their
+tuned control by 4-5, three did not. FINAL over-stated the two biggest wins (FULL-2 +9.7
+-> +4.4, BLIND-1 +7.1 -> +4.3). Holdout picks imperfectly: FRESH-1's champion #6 27.2,
+its #11 30.8.
+
+**A correction: tuning does not hurt.** The pilot and several runs concluded that tuned
+constants do not generalise. On fresh worlds all six tuned controls beat untuned confine
+(+1.1 to +4.3, mean +2.7). Tuning over-states its gain on train, about half survives.
+"As written beats tuned" for single laws (BLIND-2 #25, FRESH-2 #9) was not re-tested.
+
+**The model does not learn to predict.** Prediction error fell clearly in one run of six
+(FULL-1 4.8 -> 3.3); all six over-predict, by +2.4 to +4.4 meals. By the project's own
+measure, this is engineering by trial and error, not a theory of the system.
+
+**Left open:** the tuner jitters `when` and `shift()` arguments (wasted tries, sometimes
+broken geometry); `mailbox check` truncates a bare law if its header comment contains
+"channel". Whole runs (mailboxes, laws, pictures) stay on branches `cloud-lab-*`.

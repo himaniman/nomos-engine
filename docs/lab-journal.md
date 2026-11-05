@@ -2907,3 +2907,77 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-05 — cloud study BLIND-1
+
+Arm BLIND (the session's own agent answers every request, observer OFF:
+`--observe-every 0`), replicate 1 (`--train 0-19 --holdout 20-35 --seed 0`), 12 h,
+control = confine (`laws/atlas_confine.nomos`) tuned by rng, anchor = ghost. Run:
+`runs/cloud-lab/blind-1/` (branch `cloud-lab-blind-1`). 31 design turns (6 deep), 31/31
+parsed first try, 0 constants-only twins, 5 theory rewrites, no OBSERVE turns.
+
+**FINAL worlds** (seeds 36-67, seen by nobody until the end):
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 159x              25.9 meals  immortal 29/32
+#26 tuned 5x  (champion)            33.0 meals  immortal 32/32
+#29 tuned 5x                        32.8 meals  immortal 32/32
+#33 tuned 2x                        31.9 meals  immortal 32/32
+#30 tuned 5x                        30.7 meals  immortal 32/32
+```
+
+**Champion vs control on FINAL: 33.0 vs 25.9 (+7.1, +27%), 32/32 immortal vs 29/32.**
+Every law of the model that reached FINAL beat the tuned control by >= 4.8.
+
+**Drops train -> holdout -> final:** champion #26 33.7 -> 32.5 -> 33.0 (none); #29
+33.5 -> 32.2 -> 32.8; #33 32.5 -> 31.3 -> 31.9; #30 33.2 -> 30.6 -> 30.7; CONTROL
+29.2 -> 28.2 -> 25.9 (-3.3, the only real drop — 159 accepted jitters, again). The
+champion was tuned 5x and as-written = tuned (33.7): the structure carried it.
+
+**Prediction error** (|predicted - actual| meals before tuning): first half 2.4, second
+half 2.7 over 31 predictions — no gain in prediction across the night.
+
+**The champion** (#26) is a stack of six mechanisms, each added in its own turn and kept
+only while it held up: honest appetite (morsels pull only through the want-weighted
+`source`, never `thing`=1) + a halo round refusals; ballistic exploration (frontier
+muted by `exp(-k*behind)`, a screened diffusion of the walked path); diagonals only where
+the body fits (both corner cells open; a diagonal neighbour the body cannot reach reads
+0); frustration (visit density under the agent rises -> smell-only lures muted for ~100
+thoughts); fog-discounted wave (unknown cells pass less) + sharpened wall trust (untaught
+walls pass ~1/3, stone ~0); and the last, largest step: **pure frontier marks weighted by
+the blurred fog mass around them** (+2.9 train). An ablation turn (#28: weight by plain
+distance from the agent instead) fell back to 30.1, so the gain is information, not reach.
+Two Occam turns showed parts do real work: confinement on seen morsels (#21, -2.4 without)
+and the aversion halo (#31, -2.3 without). Failures were as informative: invented lures on
+landmarks are catastrophic (foliage "groves" #25: 19.9, -10.9; probing every wall #12:
+-5.2), anything weakening ballistic search loses (area-restricted search #18), and costs on
+cells the body can still use lose (squeezes #19, turn cost #16).
+
+**The theory** ended as "meals come from exploring for information and from honest
+prices", with every claim pinned to a turn number; it agrees with the champion and the
+FINAL table. It corrected itself once on evidence: the first version read #8's -6.4
+(two-cell express wave) as "a slow wave is useful inertia"; #14 (a slower wave, -3.2)
+refuted that, and #20 (express hops in straight lines only, neutral) showed #8's loss was
+corner-cutting, which #15 had meanwhile fixed.
+
+**What this arm's agent did differently** (no pictures): with no lives to look at, it
+reasoned from the per-world meal vectors on the board and from reading the instrument's
+source (`cortex/world.py`, `cortex/atlas.py` — read only, never lived): that `thing` is 1
+on poison too, that `ate` counts nightcaps as meals, that sight reaches 22 cells while the
+map holds 12, that leak starts at 0.5 for every hue, that `source` is already hushed round
+`bad`. Most of its gains came from that reading — finding what the wave *misprices* (the
+body at corners, unknown ground, untaught walls, poison) rather than from watching a
+failure. It also used ablations and controlled re-tests as experiments (#20 vs #8, #28 vs
+#26, #21, #31). What it could not do: it never saw world 16 (fixed blind by #9's learned
+doors, then lost and won back by later laws without knowing why) and it had no way to tell
+a trap from a slow approach except through its own frustration channel. Night 1 (deepseek,
+6 h, with pictures): champion 24.5 on the same FINAL worlds; here 33.0.
+
+Instrument notes (bookkeeping only, nothing changed): `mailbox check` on a bare `.nomos`
+file goes through `extract_law`'s fallback, which starts the law at the first occurrence
+of the word "channel" — a header comment containing "channel" therefore truncates the law
+("expected channel name, got 'and'"). Replies are fenced, so the lab itself is unaffected.
+The tuner also perturbs `when` constants and `shift` offsets (e.g. `shift(open, 1.028, 0)`),
+knobs with no effect that dilute its 5-try budget.

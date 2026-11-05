@@ -2907,3 +2907,89 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-05 — cloud study FULL-2
+
+Arm FULL (the session's agent answers every request, observer on), replicate 2
+(`--train 100-119 --holdout 120-135 --seed 1`), 12 h + grace, 30 design turns (6 deep),
+4 observations, 5 theories; all 30 laws parsed first try, 0 constants-only twins. Run
+directory `runs/cloud-lab/full-2/` (branch `cloud-lab-full-2`).
+
+**FINAL worlds** (36-67, the same 32 as night 1):
+
+```
+                            train   holdout   FINAL   immortal (FINAL)
+reference wave (#0)          20.4    15.5     18.8    28/32
+confine, hand-written (#1)   23.2    23.6     24.5    28/32
+CONTROL: #1 tuned 153x       29.8    25.1     23.4    30/32
+#28 champion, tuned 5x       34.6    35.7     33.1    31/32
+#21 tuned 5x                 35.1    34.6     32.8    31/32
+#18 tuned 6x                 33.7    34.8     34.3    31/32
+#26 tuned 6x                 34.7    31.4     30.5    29/32
+#7  tuned 7x                 34.1    28.4     27.8    30/32
+```
+
+**Champion vs control on FINAL: 33.1 vs 23.4 (+9.7)**, and every course-law finalist
+beat the control by 7-11. Drops train -> holdout -> FINAL: the course laws hold
+(#28 34.6 -> 35.7 -> 33.1, #18 33.7 -> 34.8 -> 34.3, #21 35.1 -> 34.6 -> 32.8); the
+pre-course train leader #7 did not (34.1 -> 28.4 -> 27.8), nor did the control
+(29.8 -> 25.1 -> 23.4, below the untuned confine law's 24.5 — 153 rounds of constant
+tuning bought a train number and lost a meal on the exam). Night 1's lesson repeats:
+structure generalises, tuned constants do not. Against night 1 (deepseek, 6 h, same
+FINAL worlds): its champion 24.5, this one 33.1.
+
+**Prediction error** (|predicted - actual| before tuning): first half 2.8, second
+half 3.4 meals — no gain in prediction; I systematically over-predicted additions to a
+good law.
+
+**The champion's mechanism.** A LONG COURSE: a heading vector averaged over ~250 ticks,
+stored at the agent's own cell and gathered back from the ring after each scroll
+(`here * (c + sum8(c))`), normalised to a unit direction, broadcast over the map with
+max8, and used to weight frontier GOALS (`1 + ahead`, 0..2). It broke a plateau: every
+structure before it (memory, confinement, roominess, trail, frustration, momentum,
+geometry, area-restricted search) landed at 25-28 untuned, within noise of each other;
+the course alone took it to 33 (#15 on the step, #16 on goals), the unit version to 35.1
+(#21). The reason, from the observer (world 100: orbiting the home block for half a
+life): the 25-cell map forgets what scrolls off, so a frontier-greedy walker re-sweeps
+known districts; a persistent heading is the only large-scale memory this brain can
+keep. The stack under it matters (stripping #21 to course + roominess + memory, #25:
+28.8, -5 on ordinary worlds, 0 in the pocket world 110): confinement (night 1),
+frustration (dwell raises wall leak; with a symmetry breaker it escapes sealed pockets,
+110: 0 -> 29), leak only in thin walls (room town 117: 6 -> 33), doors-as-frontier.
+#28 = #21 + frustration fading the course's say + a 0.2 floor for frontier behind;
+per world nearly identical to #21.
+
+**Negative results worth keeping:** the course pays at the level of goals, not paths
+or steps — anisotropic discount #22 32.2, re-aiming by an information gradient #27 32.8,
+a chiral (spiralling) course #29 30.7, a hunger clock gating it #30 31.6, and BOTH
+levels at once #31 19.1 (they interfere badly). Commitment hurts: target lock via
+argmax8 ids #24 29.7, step momentum #9. A harmonic (mean-field) exploration potential
+#14 18.9. Larder clock, tree/canopy prior, area-restricted search: neutral or worse.
+
+**The theory** ended (9.2 h) as "one structural gain dominates: the course, at the level
+of goals; the stack is not insurance; commitment hurts; non-max exploration hurts" —
+consistent with the champion and the FINAL table (#28 is #21 plus a refinement the
+theory did not need). Unlike night 1, the last theory agrees with its champion.
+
+**What this arm's agent did differently.** The eyes contributed two of the champion's
+mechanisms directly: the world-110 picture (pacing a sealed slot) -> frustration, the
+world-117 picture (circling rooms full of food, 42 idle presses) -> the thin-wall leak;
+the world-100 picture confirmed the course's rationale after the fact. The course itself
+came from the NUMBERS: a theory line ("why do open worlds plateau at ~28?") plus the
+map's size. One disclosure that matters for the cross-arm comparison: this agent also
+READ the harness and world source (`cortex/atlas.py`, `atlas_law.py`, `world.py`,
+`tiles.py`, `senses.py`, `nomos/engine.py`) for facts the system text does not give —
+the 1200-tick regrowth, the frontier's exact definition (so `source - 0.12 * front`
+isolates food), material brightness (stone 0.50, door 0.77, trunk 0.41), `shift`/`posx`
+orientation and the lattice centre 14/29 = 0.4828. It lived no worlds itself (only
+`mailbox check`). A FRESH subagent is told to read nothing but the request; part of
+FULL's edge may be this, not memory.
+
+**What the run taught about the lab.** (1) The tuner jitters `shift()` offsets and the
+engine truncates them with `int()` (`shift(here, 0.998, 0)` = `shift(here, 0, 0)`), so
+tuning can silently break a law's geometry (tuned #15: holdout 33.0* -> 28.8); it also
+jitters `when` constants (harmless). Not fixed — it is the exam. (2) The vocabulary-twin
+note fired on 14 laws in a row once the course existed: a productive axis needs its
+substrate, so the note measures reuse, not stuckness. (3) The session's worker process
+was restarted twice and took the lab with it; the same command resumed from
+`state.json` with no lost turn ("resumed 2x").

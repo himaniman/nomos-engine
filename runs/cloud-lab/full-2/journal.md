@@ -3443,3 +3443,16 @@ rule wave:
   #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
   CONTROL: #1's law, constants tuned by random search 153x: train 29.8 meals, holdout 25.1
 ```
+
+### FINAL worlds (never seen by selection or by the model)
+
+```
+reference wave (#0)                 18.8 meals  immortal 28/32
+confine, hand-written (#1)          24.5 meals  immortal 28/32
+CONTROL: #1 tuned 153x              23.4 meals  immortal 30/32
+#28 tuned 5x                        33.1 meals  immortal 31/32
+#21 tuned 5x                        32.8 meals  immortal 31/32
+#18 tuned 6x                        34.3 meals  immortal 31/32
+#7 tuned 7x                         27.8 meals  immortal 30/32
+#26 tuned 6x                        30.5 meals  immortal 29/32
+```

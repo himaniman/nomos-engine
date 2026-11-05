@@ -520,6 +520,9 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   session answering files, no API. Recipe + rules: `docs/cloud-lab.md`. Observer
   rotates over the 3 worst lives, vocabulary novelty (no embeddings), `--control-law`
   / `--anchor`, pacing for a fast model. Runs live in TRACKED `runs/cloud-lab/<date>/`.
+- Done (cloud study BLIND-2, 2026-11-05, branch `cloud-lab-blind-2`): no observer, 12 h, 38
+  designs; champion (area-restricted search after meals) TIED the tuned control on FINAL, 26.9 =
+  26.9; train leader (sweep, 34.7) 26.2. Firm findings were ablations: `vast`, far smell, max-wave.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

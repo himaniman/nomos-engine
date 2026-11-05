@@ -2907,3 +2907,64 @@ A local smoke run (4 train worlds, 2000 ticks, Claude answering by hand) went th
 every path: a design that became an island and was tuned, an observe turn on its PNG, a
 theory, a design answer without a law sent back as REPAIR, an unanswered request
 abandoned after the grace period, FINAL table and summary written.
+
+## 2026-11-05 — cloud study BLIND-2
+
+Arm BLIND (the session's own agent answered every request, no observer: `--observe-every 0`),
+replicate 2 (`--train 100-119 --holdout 120-135 --seed 1`), 12 h, `--control-law
+laws/atlas_confine.nomos`. Branch `cloud-lab-blind-2`, run `runs/cloud-lab/blind-2/`.
+38 design turns (7 deep), 1 repair-after-bounce, 1 behavioural twin, 0 parse failures,
+6 theory rewrites, 40 islands.
+
+**FINAL** (seeds 36-67, lived once at the end):
+
+```
+reference wave (#0)            18.8 meals  immortal 28/32
+confine, hand-written (#1)     24.5        28/32
+CONTROL: #1 tuned 191x         26.9        30/32
+#25 tuned 5x (CHAMPION)        26.9        30/32
+#25 as written                 27.5        30/32
+#5 tuned 7x                    27.0        30/32
+#4 as written / tuned          26.5 / 26.2 29/32
+#10 tuned 8x                   26.2        29/32
+#30 tuned 5x                   25.6        29/32
+```
+
+**Champion vs control on FINAL: a tie, 26.9 = 26.9.** The model's structures did not beat
+night 1's confinement tuned 191x; every stack law sits within ~1.5 meals of it on FINAL. Both
+beat the hand-written confinement (24.5, the same number night 1 measured on these worlds)
+and the reference wave (18.8). The best FINAL number is the champion AS WRITTEN (27.5) —
+its tuning added nothing that transferred.
+
+**Drops, train -> holdout -> final:** champion #25 (area-restricted search) 32.2 -> 29.4 ->
+26.9; control 29.8 -> 24.6 -> 26.9; #10 (the sweep, best on train all night) 34.7 -> 25.4 ->
+26.2. Train ranking predicted nothing: the train leader was 8 meals ahead of the control on
+train and 0.7 behind it on FINAL. Holdout (16 worlds) moved the right way but its 29.4 was
+also mostly luck.
+
+**Prediction error:** 3.7 meals first half, 5.3 second half (38 predictions) — no gain; I
+predicted ~31 for almost everything and most laws landed 22-31.
+
+**What this arm's agent did.** Without pictures it designed from the per-world meal vectors,
+the code (world.py's economy, atlas.py's painting and read-out) and ablations. The first five
+turns stacked onto confinement: frontier weighted by the unknown space behind it (`vast`,
++5 on train), dwell-frustration lighting known wall faces (rescued a 0-meal world, 0 -> 32),
+distrust of unknown cells in the wave. From then on every addition landed 26-31 on train,
+within the ~2-meal noise of a 20-world mean, so the second half turned to ablations and
+mirror tests, which produced the night's firm findings (each a loss when removed or bent):
+the max() wave (a mean-based potential field: 11.3), `vast` (removed from the sweep law:
+34.7 -> 21.7), the far smell (weighing it by its own faint strength: -10; boosting it: 0),
+the raw pull of seen morsels (`source` only: -4 — and a nightcap eaten still counts as a
+meal), the plain wave discount (far-sighted and near-sighted frontiers both lost 5-8), the
+8-way wave (orthogonal turn-aware and Manhattan waves lost). Distrust of unknown cells
+starves exactly one world (112: 0 meals with it, 26 without) but helps the rest; lifting it
+while frustrated made lives even (20/20 immortal, worst world 16) without raising the mean.
+The theory followed the evidence (each claim cites its island) and its last version agrees
+with the champion's mechanism, but the theory's honest conclusion — "nothing separates on
+holdout" — was also the morning's.
+
+Disclosures: I read the control's tuned law in `state.json["control"]` once at 4.8 h (its
+diagonal discount had been tuned to 0.76, below two straight steps; that motivated two
+designs, both of which lost), and checked one law's heading channel with `LawRule.step` on
+a hand-made test map (no world lived). The VM's worker was restarted twice near the end; the
+lab was restarted with the same command and resumed from `state.json` (one turn re-asked).

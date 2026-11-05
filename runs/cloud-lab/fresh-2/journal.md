@@ -2723,3 +2723,110 @@ rule wave:
 ```
 
 > 00:11 model job `deep` started
+
+---
+
+## Turn 29 (DEEP) -> island #32
+
+**Hypothesis:** Every law so far is purely reactive: each thought re-picks the brightest neighbour, so two near-equal sources (two frontier cells, two berries, a frontier and a face) trade the lead as the agent moves and it dithers, paces, and spends ticks walking back and forth, which is the knot the observer saw. A new axis, a PLAN: `path` traces the decision's own ascent chain from the agent (a cell is on it if a neighbour on it would step into it), the real source where the chain ends becomes a fading `goal`, and the held source counts 1.5x, so the agent commits to a DESTINATION (not a heading: it releases when the source vanishes, on arrival, or when something clearly better appears), with #30's hope g
+
+Prediction 35.5, got **31.6** meals, fitness 648, per world [28, 29, 31, 40, 26, 32, 28, 35, 23, 37, 33, 30, 35, 34, 37, 37, 36, 30, 27, 25]; model 176.4 s, repairs 0; vocabulary twin of #30, #23, #26, #29, #31
+
+value on the test map: max 0.92, mean 0.43, 0% at the cap -> healthy: the best neighbour points at the source
+
+```nomos
+channel source
+channel solid
+channel free
+channel thing
+channel here
+channel bad
+channel leak
+channel value
+channel trail
+channel confinement
+channel injection
+channel hope
+channel nbmax
+channel aim
+channel work
+channel grain
+channel face
+channel crest
+channel probe
+channel path
+channel goal
+rule seed:
+  when grain <= 0
+  set grain = uniform(0.001, 1)
+rule walk:
+  when 1
+  set trail = max(here, 0.91 * max8(here), 0.997 * trail)
+rule calc_conf:
+  when 1
+  set confinement = sum8(solid)
+rule calc_face:
+  when 1
+  set face = solid * max(shift(free, 1, 0) * (1 - shift(solid, -1, 0)), shift(free, -1, 0) * (1 - shift(solid, 1, 0)), shift(free, 0, 1) * (1 - shift(solid, 0, -1)), shift(free, 0, -1) * (1 - shift(solid, 0, 1))) * leak * (1 - bad) * (0.4 + 0.6 * grain)
+rule calc_crest:
+  when 1
+  set crest = max(face, 0.93 * max8(crest))
+# Plan line: a cell is on it if a neighbour on it would step here (this cell is that neighbour's best).
+rule plan:
+  when 1
+  set path = max(here, 0.97 * where(value > 0, 1, 0) * max(shift(path, 1, 0) * where(value >= shift(max8(value), 1, 0) - 0.000001, 1, 0), shift(path, -1, 0) * where(value >= shift(max8(value), -1, 0) - 0.000001, 1, 0), shift(path, 0, 1) * where(value >= shift(max8(value), 0, 1) - 0.000001, 1, 0), shift(path, 0, -1) * where(value >= shift(max8(value), 0, -1) - 0.000001, 1, 0), shift(path, 1, 1) * where(value >= shift(max8(value), 1, 1) - 0.000001, 1, 0), shift(path, -1, 1) * where(value >= shift(max8(value), -1, 1) - 0.000001, 1, 0), shift(path, 1, -1) * where(value >= shift(max8(value), 1, -1) - 0.000001, 1, 0), shift(path, -1, -1) * where(value >= shift(max8(value), -1, -1) - 0.000001, 1, 0)))
+# Goal: the source where the plan line ends (a local peak fed by a real source); fades, erased on arrival.
+rule lock:
+  when 1
+  set goal = max(0.985 * goal, where(path > 0.001, 1, 0) * where(value >= max8(value) - 0.000001, 1, 0) * where(injection > 0.001, 1, 0)) * (1 - here)
+rule inject:
+  when 1
+  set injection = max(thing, source * (0.74 - 0.82 * trail)) * (0.83 - bad) / (1 + 0.83 * confinement) * (1 + 0.5 * max(goal, 0.7 * max8(goal)))
+rule calc_hope:
+  when 1
+  set hope = max(injection, 0.94 * max4(hope), 0.916214 * max8(hope)) * (1 - solid) * (1 - 0.9 * bad)
+rule calc_nbmax:
+  when 1
+  set nbmax = max8(value)
+rule calc_aim:
+  when 1
+  set aim = max8(here) * (1 - here) * where(value >= max8(here * nbmax) - 0.000001, 1, 0) * where(max8(here * nbmax) > 0, 1, 0)
+rule effort:
+  when 1
+  set work = min(1, 0.68 * work + 0.03 * aim * solid)
+rule calc_probe:
+  when 1
+  set probe = where(face > 0, 1, 0) * (face * (0.06 * clamp(1 - 1.4 * trail, 0, 0.56) + 0.3 * work) + 0.05 * where(face >= crest - 0.000001, 1, 0)) * clamp(1 - 6 * max8(hope), 0, 1)
+rule wave:
+  when 1
+  set value = max(injection, probe, 0.94 * max4(value), 0.8161 * max8(value)) * (1 - solid * (1.3 - leak)) * (1 - 0.9 * bad)
+```
+
+> 00:32 model job `theory` started
+
+### Holdout checkpoint at 11.72 h
+
+```
+  #23  train 34.8 meals  holdout 29.9  (tuned 7x) | Sealed-pocket lives starve because every wall face of the pocket looks equal, so effort is split and the agent
+  #30  train 34.5 meals  holdout 31.4  (tuned 5x) | A new axis — connectivity. A second, walk-only wave (`hope`) spreads the same sources but stops dead at every 
+  #28  train 34.4 meals  holdout 29.9  (tuned 7x) | The pocket-born agent chips several faces and breaks none because faces are ranked by a random grain, blind to
+  #26  train 32.9 meals  holdout 25.9  (tuned 5x) | Lives born in a sealed or spent pocket starve because the wall faces are only ever a faint pull, competing wit
+  #24  train 32.8 meals  holdout 28.4  (tuned 5x) | This adds a hard clock to each wall face, replacing the leaky `work` term that fades within a single thought. 
+  #27  train 33.2 meals  holdout  -    (tuned 5x) | Every law so far forgets food as soon as it leaves the senses, and once a feeding ground is eaten out the trai
+  #13  train 32.6 meals  holdout 26.9  (tuned 6x) | The observed life spent 115 presses on rock and opened no doors, because every solid face next to free ground 
+  #8   train 33.5 meals  holdout 24.9  (tuned 6x) | #7's commitment only reaches the wall face directly next to the agent. This law traces the decision's whole PA
+  #0   train 20.4 meals  holdout 15.5  (hand-written) | the reference Bellman wave
+  #1   train 23.2 meals  holdout 23.6  (hand-written) | Confinement suppression (night lab 2026-09-23, champion #35): a source hemmed in by solid counts less, so loca
+  #2   train 22.7 meals  holdout 17.9  (hand-written) | sources linger (ghost), erased under the agent
+  CONTROL: #1's law, constants tuned by random search 150x: train 29.7 meals, holdout 24.6
+```
+
+---
+
+## Theory (after 30 design turns)
+
+HELPS: small, sharp, local terms that rank neighbouring choices: inhibition of return (#3), keeping the wave alive on a spent map (#6), an efference copy on the aimed face (#7), competing faces (#9), confinement suppression (#1), the thin-wall filter (#13), and a fixed world-anchored random preference among faces (#23: train 34.8, holdout 29.9). A walk-only connectivity wave (#30) held up best on holdout (31.4).
+HURTS: global, directional or commitment terms: heading, inertia, frontier weighting, a reactive commitment latch (#32), committing by what a face gives back (#25, 3.0), louder wall pulls, per-face clocks, extra wear on a pressed face (#29), a burn field spread from `bad` (#31), regrowing an old trail (#27).
+WHY: tuning overfits, local ranking generalises. Pocket starvation is a tie, and a fixed bias breaks it.
+STILL FAILING: enclosures. The agent paces along the inner walls, ~40 idle presses, one break, no doors.
+UNTRIED: gating presses by `leak`; aiming presses only where `hope` is cut off but `value` is not.

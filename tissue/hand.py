@@ -209,9 +209,12 @@ THINK = ((0.5, True), (0.25, False), (0.125, False), (0.0625, False))     # shar
 
 
 class Index:
-    """A memory of what lies where, by hand. `cells` threshold cells with random innate
-    wires from the senses (the code of exam 0); from them a few motor-like cells learn, by
-    the delta rule, the place an item was seen at. The place is written in a Gray code, so
+    """A memory of what lies where, by hand. `cells` cells with random innate wires from
+    the senses, each saying a wave of its dendrite (cos of `wave` times the drive, at a
+    phase of its own): a code that is unlike for items that differ in a bit or two, which a
+    threshold is not when an item is twelve bits (the search of rung 0 found such a
+    non-monotonic code by itself). From them a few motor-like cells learn, by the delta
+    rule, the place an item was seen at. The place is written in a Gray code, so
     that neighbouring stretches of the ring differ in one bit, as fine as `grain` cells of a
     ring of `ring` cells. Asked with an item it says a place, right or wrong.
 
@@ -219,17 +222,17 @@ class Index:
     as without."""
 
     def __init__(self, batch: int, cells: int, d: int, ring: int, grain: int = 16,
-                 f: float = 0.1, seed: int = 77):
+                 wave: float = 4.0, seed: int = 77):
         g = torch.Generator().manual_seed(seed)
         self.wires = torch.randn(batch, cells, d, generator=g)
-        self.theta = math.sqrt(2) * torch.erfinv(torch.tensor(1 - 2 * f))
-        self.f, self.d = f, d
+        self.phase = torch.rand(batch, cells, generator=g) * 2 * math.pi
+        self.wave, self.d = wave, d
         self.bits = max(1, math.ceil(math.log2(max(2, ring / grain))))
         self.w = torch.zeros(batch, self.bits, cells)
 
     def code(self, item: torch.Tensor) -> torch.Tensor:
         drive = torch.einsum("bmd,bd->bm", self.wires, item) / math.sqrt(self.d)
-        return (drive > self.theta).float() - self.f
+        return torch.cos(self.wave * drive + self.phase)
 
     def learn(self, item: torch.Tensor, place: torch.Tensor) -> None:
         """`place` (B,) is a share of the way round the ring."""

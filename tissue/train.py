@@ -28,8 +28,9 @@ from tissue.kernel import RUNG0, RUNG1, Gru, Tissue
 TRAIN_SIZES = (8, 16, 32, 64)
 GRU_PAIRS = 64          # a GRU has no size: it is trained on 1..this many pairs
 CHAIN_TASK = Task(d_in=12, d_out=12)    # an item is 12 bits, seen and said alike
-ROOM = 1.0e8            # a sparse stream life: lives x ticks x cells x wires kept under this, by
-#                         living fewer lives at once (under 2 GB of memory for the search)
+ROOM = 1.0e8            # a sparse stream life: lives x ticks x cells x (wires + 32) kept under
+#                         this by living fewer lives at once: about 1.5 GB for the search. The
+#                         32 is what a cell costs apart from its wires (measured)
 
 
 def make(arm: str, **switches):
@@ -127,7 +128,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             closed = hops >> int(torch.rand(1, generator=gen) * 4) if vary else hops
             life = stream.Life(loops, length, laps, idle=idle, blinks=6 if closed <= 8 else 3,
                                open=3, closed=closed)
-            lives_now = batch if not fan else max(2, min(batch, int(ROOM / (life.ticks * m * wires))))
+            lives_now = batch if not fan else max(2, min(batch, int(ROOM / (life.ticks * m * (wires + 32)))))
             lived = stream.run_life(model.grow(m), task, stream.world(task, life, lives_now, gen),
                                     life, gen, places=field > 0, told=told)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)

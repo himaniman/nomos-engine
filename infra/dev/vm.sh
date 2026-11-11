@@ -18,7 +18,8 @@ push)
     ssh $VM "cd $HOME_DIR && echo $(git rev-parse --short HEAD) > .pushed && cat .pushed" ;;
 run)
     name=$2; shift 2
-    ssh $VM "cd $HOME_DIR && mkdir -p out/jobs && nohup setsid bash -c '$*' > out/jobs/$name.log 2>&1 < /dev/null & echo started $name" ;;
+    # the subshell is what detaches: without it the remote shell waits on the job and ssh never returns
+    ssh -n $VM "cd $HOME_DIR && mkdir -p out/jobs && (nohup setsid bash -c '$*' > out/jobs/$name.log 2>&1 < /dev/null &) && echo started $name" ;;
 jobs)
     ssh $VM "pgrep -af 'python -m tissue' | cut -c1-150 || echo 'nothing running'; free -g | sed -n 2p; uptime" ;;
 tail)

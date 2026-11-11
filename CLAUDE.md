@@ -95,7 +95,9 @@ tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded in
                   found · chain.py, stream.py exams 1 and 2 (links; one unbroken life) ·
                   drift.py, alone.py, where.py looks inside a life (loudness and pattern
                   through a closing; left alone; who speaks and learns by distance from
-                  the place). Design, ladder, rules, bars: docs/tissue-design.md
+                  the place) · grow.py exam 3 (growth in mid-life; a brain told nothing)
+                  · imitate.py a cell taught its own gate. Design, ladder, rules, bars:
+                  docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -639,6 +641,22 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   growth decided by the tissue. 3a DONE (exam 3, `tissue/grow.py`, `Grown.more`): a brain given
   new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new
   loops alike and 0.16-0.20 above one left at 512; by the examiner's hand so far.
+  2d FAILED (2026-11-12): with the hand gate taken away step by step the genomes go back to
+  placeless brains; the lives did not make the gate pay (at 128-512 cells a placeless brain
+  does nearly as well), and a cell can say its own gate only roughly (`python -m
+  tissue.imitate`). 2e DONE BY HAND, nothing searched: `hand.Index`, a memory of what lies
+  where (a wave code + the delta rule), lets the brain find the place from what it sees
+  (`--told index`: recall 0.82-0.88 of the world-told figure, holding the same); never told a
+  place at all (`--told self --runs`, each new place opened far from the last) it recalls
+  0.6-0.8 of the world-told figure and HOLDS x1.3-2.9 as much, because its places are spread
+  evenly where the world's were drawn at random. 3b DONE BY HAND (`python -m tissue.grow
+  --alone`, `grow.Places`): told nothing, the brain fills the emptiest stretch of its ring and
+  gives itself cells when every stretch is in use: x3 in a poor world, x8 in a rich one, level
+  with a brain born big there for 0.8 of the cost. WHAT IS STILL BY HAND, and is the work
+  ahead: the gate, the index, the latch, the rule of places, the rule of growth. Only the
+  cells' rule is found. METHOD: when a search will not find a thing, build it by hand to learn
+  what it is worth before asking again; never start a long-lived waiting shell on the desktop
+  (the harness reaps it when memory is short), poll the VM in short calls.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

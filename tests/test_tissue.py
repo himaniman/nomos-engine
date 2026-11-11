@@ -231,3 +231,53 @@ def test_a_sparse_brain_is_the_same_genome_and_lives_the_same_lives():
     assert torch.equal(out["closed"][0], stream.run_life(few.grow(32), ITEM, items, life, gen(5))["closed"][0])
     walked = chain.run_life(few.grow(32), ITEM, chain.worlds(ITEM, 3, 2, 2, gen(6)), gen(7))
     assert walked.shape == (2, 3, 3, 12)
+
+
+def test_a_thought_held_by_hand_follows_the_wires_and_falls_under_a_heavy_load():
+    light = hand.think(64, 16, 0.5, 8, signed=True, steps=200)
+    heavy = hand.think(64, 16, 0.5, 64, signed=True, steps=200)
+    assert light > 0.95 > 0.9 > heavy
+    assert light == hand.think(64, 16, 0.5, 8, signed=True, steps=200)      # a pure function
+    assert 0.0 <= hand.think(64, 16, 0.125, 8, steps=50) <= 1.0             # few cells speaking
+
+
+def test_wires_within_reach_come_from_neighbours_on_a_ring_and_never_from_the_cell_itself():
+    brain = Tissue(replace(RUNG1, fan=6, reach=3), ITEM).grow(40)
+    _, wires, sources = brain.born(4, gen(2))
+    away = (sources[1] - torch.arange(40).view(1, -1, 1)) % 40
+    away = torch.minimum(away, 40 - away)                   # distance round the ring
+    assert wires[1].shape == (4, 40, 6)
+    assert int(away.min()) >= 1 and int(away.max()) <= 3
+    assert all(len(set(cell.tolist())) == 6 for cell in sources[1][0])   # six different neighbours
+    # reach 0 is the shuffle: the same genome and seed give the wiring of a brain with no space
+    plain = Tissue(replace(RUNG1, fan=6), ITEM).grow(40).born(4, gen(2))[2][1]
+    assert torch.equal(plain, Tissue(replace(RUNG1, fan=6, reach=0), ITEM).grow(40).born(4, gen(2))[2][1])
+    assert int((plain - torch.arange(40).view(1, -1, 1)).abs().max()) > 3
+
+
+def test_a_sense_of_place_is_a_bell_round_the_place_and_silent_when_nothing_is_felt():
+    brain = Tissue(replace(RUNG1, fan=6, reach=3, field=4), ITEM).grow(40)
+    near = brain.near(40, torch.tensor([0.0, 0.5]))
+    assert near.shape == (2, 40)
+    assert near[0, 0] == 1.0 and near[1, 20] == 1.0
+    assert float(near[0, 39]) == pytest.approx(float(near[0, 1]))       # the ring closes
+    assert float(near[0, 20]) < 1e-5 and float(near[0, 4]) == pytest.approx(0.6065, abs=1e-3)
+
+
+def test_a_genome_adopted_into_a_plan_with_a_new_sense_begins_as_the_old_one_lived():
+    from tissue.train import adopt
+    torch.manual_seed(0)
+    old = Tissue(replace(RUNG1, fan=6), ITEM)
+    new = Tissue(replace(RUNG1, fan=6, field=4), ITEM)
+    assert new.cells["I"].a.weight.shape[1] == old.cells["I"].a.weight.shape[1] + 1
+    adopt(new, old.state_dict())
+    life = stream.Life(loops=2, length=4, laps=2, idle=4, blinks=2, open=2, closed=2)
+    items = stream.world(ITEM, life, 3, gen(4))
+    was = stream.run_life(old.grow(32), ITEM, items, life, gen(5))["closed"][0]
+    now = stream.run_life(new.grow(32), ITEM, items, life, gen(5))["closed"][0]
+    assert torch.allclose(was, now, atol=1e-5)              # the same up to the order of a sum
+    felt =stream.run_life(new.grow(32), ITEM, items, life, gen(5), places=True)["closed"][0]
+    assert felt.shape == was.shape
+    assert torch.equal(felt, stream.run_life(new.grow(32), ITEM, items, life, gen(5), places=True)["closed"][0])
+    with pytest.raises(ValueError):
+        adopt(old, new.state_dict())                        # a sense cannot be taken away so

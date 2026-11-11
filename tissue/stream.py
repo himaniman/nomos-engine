@@ -92,12 +92,19 @@ def script(life: Life, batch: int, gen: torch.Generator) -> list:
     return ticks
 
 
-def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Generator) -> dict:
+def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Generator,
+             places: bool = False) -> dict:
     """Live the stream. Returns {kind: (said, true)} for kind in "echo" | "closed" | "idle",
-    each (B, ticks of that kind, d); "closed" is ordered blink by blink, hop by hop."""
+    each (B, ticks of that kind, d); "closed" is ordered blink by blink, hop by hop.
+
+    `places`: every loop lies at a place of its own, drawn at random along a ring, and the
+    brain is told the place the world is at on every tick, eyes open or closed (a place is
+    felt, not seen). It says where, never what."""
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
     ticks = script(life, b, gen)                # the world first: the same for any brain
+    place_of = torch.rand(b, life.loops, generator=gen) if places else None
+    felt = None
     state = brain.born(b, gen)
     silent = torch.zeros(b, d)
     said: dict = {"echo": [], "closed": [], "idle": []}
@@ -105,8 +112,11 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     before, before_seen, before_kind = silent, False, "study"
     for kind, seen, loop, place in ticks + [("end", False, None, None)]:
         item = silent if loop is None else items[rows, loop, place]
+        if places and loop is not None:
+            felt = place_of[rows, loop]
         state, out = brain.tick(state, item if seen else silent,
-                                before if before_seen else silent, float(before_seen), float(seen))
+                                before if before_seen else silent, float(before_seen), float(seen),
+                                where=felt)
         if before_kind in said:                 # what is said now is about the tick before
             said[before_kind].append(out)
             true[before_kind].append(before)

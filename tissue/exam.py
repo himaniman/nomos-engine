@@ -1,6 +1,7 @@
 """Examine a found genome at every size, including the sizes its search never saw.
 
     python -m tissue.exam GENOME.pt ... [--length 4] [--stream] [--closed 4] [--idle 64]
+                                        [--fan 32] [--reach 32] [--nowhere]
                                         [--no-learn] [--taught-only] [--off 1]
 
 Rung 0 genomes ("tissue", "gru<h>"): pairs. Per size: K90 (pairs held at 90% of the bits),
@@ -36,18 +37,22 @@ def held(ks: list, idle: list, bar: float = 0.9) -> float:
 
 
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
-            quick: bool = False, **switches) -> dict:
+            quick: bool = False, nowhere: bool = False, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
     (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
-    "held". `quick` stops a size once hop 1 has fallen under 0.8."""
+    "held". `quick` stops a size once hop 1 has fallen under 0.8. A genome with a sense of
+    place lives in a world whose loops lie at places; `nowhere` takes the sense away (the
+    world is the same, the brain feels nothing)."""
     model, task, saved = load(path, **switches)
+    places = bool(getattr(model, "plan", None) and model.plan.field) and not nowhere
     out = {}
     if shape is not None:
         for m in sizes:
             brain = model.grow(m)
             ks = stream.k_grid(m, task, shape.length)
-            rows = stream.curve(lambda items, life, g: stream.run_life(brain, task, items, life, g),
+            rows = stream.curve(lambda items, life, g: stream.run_life(brain, task, items, life, g,
+                                                                       places=places),
                                 task, ks, shape, stop_below=0.8 if quick else None)
             ks = ks[:len(rows)]
             accs = [[r["echo"]] + r["hop"] for r in rows]
@@ -122,6 +127,10 @@ def main() -> None:
     p.add_argument("--laps", type=int, default=2, help="stream: times each loop is walked round")
     p.add_argument("--fan", type=int, default=None,
                    help="wires into each interneuron from other interneurons (0: from all of them)")
+    p.add_argument("--reach", type=int, default=None,
+                   help="those wires come from cells within this many places on a ring (0: anywhere)")
+    p.add_argument("--nowhere", action="store_true",
+                   help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--quick", action="store_true",
                    help="stream: stop a size once hop 1 has fallen under 0.8")
     p.add_argument("--sizes", type=int, nargs="*", default=list(SIZES))
@@ -137,6 +146,10 @@ def main() -> None:
         switches["off"], tag = tuple(a.off), tag + ".off" + "-".join(map(str, a.off))
     if a.fan is not None:
         switches["fan"], tag = a.fan, tag + f".fan{a.fan}"
+    if a.reach is not None:
+        switches["reach"], tag = a.reach, tag + f".reach{a.reach}"
+    if a.nowhere:
+        tag += ".nowhere"
     for path in a.genomes:
         streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
@@ -146,7 +159,7 @@ def main() -> None:
                     + (f".laps{a.laps}" if a.laps != 2 else "")
         elif length > 1:
             mark += f".len{length}"
-        res = examine(path, a.sizes, length, shape, a.quick, **switches)
+        res = examine(path, a.sizes, length, shape, a.quick, a.nowhere, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

@@ -16,7 +16,9 @@ A tick, for every cell at once, from a snapshot of the previous tick:
 So learning is local: a wire sees only the two cells it joins.
 
 By hand, not found: the cell types, which blocks exist, the average on a dendrite (so a
-cell's input does not depend on how many wires reach it), the product form of the wire rule.
+cell's input does not depend on how many wires reach it), the product form of the wire rule;
+and, where there is a space (`reach`, `field`), that it is a ring, that wires come from
+neighbours, and that the sense of place is laid out along it. What a cell does with them is found.
 """
 
 from __future__ import annotations
@@ -46,6 +48,11 @@ class Plan:
     mode: bool = False  # interneurons hear one global signal: are the senses on
     fan: int = 0        # wires INTO each interneuron from other interneurons, drawn at random
     #                     at birth; 0 (or more than there are cells): from every one of them
+    reach: int = 0      # space: interneurons sit on a ring and those few wires come from cells
+    #                     within `reach` places on either side; 0: from anywhere (the shuffle)
+    field: int = 0      # a sense of place: the world is somewhere along the ring and an
+    #                     interneuron feels how near that is to itself, a bell this many cells
+    #                     wide; 0: no such sense
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -83,7 +90,7 @@ class Tissue(nn.Module):
         self.incoming = {t: [i for i, b in enumerate(plan.blocks) if b.post == t]
                          for t in self.types}
         self.cells = nn.ModuleDict({
-            t: Cell(len(self.incoming[t]) + (2 if t == "O" else int(plan.mode)),
+            t: Cell(len(self.incoming[t]) + (2 if t == "O" else int(plan.mode) + int(plan.field > 0)),
                     1 + sum(plan.blocks[i].plastic for i in self.incoming[t]), plan.hidden)
             for t in self.types})
         self.gain = nn.ParameterDict({str(i): nn.Parameter(torch.zeros(()))
@@ -115,7 +122,16 @@ class Grown:
         for i, b in enumerate(self.t.plan.blocks):
             if self.sparse(b):
                 shape = (batch, self.n[b.post], self.t.plan.fan)
-                sources[i] = torch.randint(self.n[b.pre], shape, generator=gen)
+                reach = self.t.plan.reach
+                if reach and b.pre == b.post:       # neighbours on a ring, never the cell itself
+                    span = torch.cat([torch.arange(-reach, 0), torch.arange(1, reach + 1)])
+                    if shape[-1] <= len(span):      # each wire from a different neighbour
+                        pick = torch.rand(*shape[:2], len(span), generator=gen).argsort(-1)[..., :shape[-1]]
+                    else:
+                        pick = torch.randint(len(span), shape, generator=gen)
+                    sources[i] = (torch.arange(self.n[b.post]).view(1, -1, 1) + span[pick]) % self.n[b.pre]
+                else:
+                    sources[i] = torch.randint(self.n[b.pre], shape, generator=gen)
             else:
                 shape = (batch, self.n[b.post], self.n[b.pre])
             wires[i] = torch.zeros(shape) if b.plastic else torch.randn(shape, generator=gen)
@@ -126,9 +142,19 @@ class Grown:
         act, wires, sources = state
         return {t: torch.zeros_like(a) for t, a in act.items()}, wires, sources
 
-    def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float, on: float = 1.0):
+    def near(self, n: int, where: torch.Tensor) -> torch.Tensor:
+        """How near the world's place (B,), a share of the way round the ring, is to each
+        of `n` cells: a bell `plan.field` cells wide, 1 at the place itself."""
+        away = (torch.arange(n).unsqueeze(0) - where.unsqueeze(1) * n).abs()
+        away = torch.minimum(away, n - away)
+        return torch.exp(-0.5 * (away / self.t.plan.field) ** 2)
+
+    def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float, on: float = 1.0,
+             where: torch.Tensor | None = None):
         """One tick. `teach`/`flag`: what the teacher shows the motor cells and whether it
-        is there; `on`: whether the senses are on (heard by interneurons under `plan.mode`)."""
+        is there; `on`: whether the senses are on (heard by interneurons under `plan.mode`);
+        `where`: the world's place (B,) in [0, 1), felt by interneurons under `plan.field`
+        (None: nothing is felt)."""
         act, wires, sources = state
         plan = self.t.plan
         seen = {**act, "S": cue}                    # sensory cells carry the cue as it is
@@ -150,8 +176,12 @@ class Grown:
                     feats.append(reach * torch.exp(self.t.gain[str(i)]) / math.sqrt(n_wires))
             if t == "O":
                 feats += [teach, torch.full_like(teach, flag)]
-            elif plan.mode:
-                feats.append(torch.full_like(feats[0], on))
+            else:
+                if plan.mode:
+                    feats.append(torch.full_like(feats[0], on))
+                if plan.field:
+                    feats.append(torch.zeros_like(feats[0]) if where is None
+                                 else self.near(self.n[t], where))
             said = self.t.cells[t](torch.stack(feats, dim=-1))
             new_act[t] = said[..., 0]
             j = 1
@@ -180,6 +210,6 @@ class Gru(nn.Module):
     def born(self, batch: int, gen: torch.Generator):
         return torch.zeros(batch, self.hidden)
 
-    def tick(self, h, cue, teach, flag, on: float = 1.0):
+    def tick(self, h, cue, teach, flag, on: float = 1.0, where=None):
         h = self.cell(torch.cat([cue, teach, torch.full_like(teach[:, :1], flag)], dim=1), h)
         return h, self.out(h)

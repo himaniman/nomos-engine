@@ -124,7 +124,7 @@ My prediction: B1 met. The search finds an error-correcting rule and lands withi
 hand delta at 8-64. At 256-512 it falls behind hand delta (K90 per interneuron drops
 faster), and B2 is met narrowly or missed at 512. B3 met at trained sizes, open at 512.
 
-**Outcome (journal 2026-11-11):** B2 and B3 met on all seeds, about one pair per
+**Outcome (journal 2026-11-11, 10:18):** B2 and B3 met on all seeds, about one pair per
 interneuron up to 512. B1 missed by the letter (the bar was tighter than the exam resolves;
 the control is exact by a test). The prediction was wrong: the search found a hash-like
 code and beat hand delta 1.4-3.7x.
@@ -187,7 +187,7 @@ A question, no bar: the genome that only ever saw single links, examined on chai
 I expect hop 2 well above chance and a steep fall after: at M/4 links, hop 1 above 0.97,
 hop 2 about 0.85, hop 4 about 0.65.
 
-**Outcome (journal 2026-11-11):** one seed of three found the hop; two settled on a
+**Outcome (journal 2026-11-11, 10:44):** one seed of three found the hop; two settled on a
 constant code that says the bitwise majority of everything that ever came second. On the
 seed that worked: C1 met, C2 met narrowly (x2.8; per interneuron 0.74 at 64, 0.26 at 512),
 C3 met (and below the hand hop at 512). It stored both the links and the decoder with the
@@ -211,7 +211,7 @@ My prediction: 4 or 5 seeds of 5 leave the plateau (another flat spot may exist:
 right, hop still the majority). D3 met wherever D1 is. K90 per interneuron no better than
 this run's good seed, and the fall at 256-512 stays.
 
-**Outcome (journal 2026-11-11, night):** D1, D2, D3 met on five seeds of five, the
+**Outcome (journal 2026-11-11, 11:20):** D1, D2, D3 met on five seeds of five, the
 prediction held. Links per interneuron 0.68-0.74 at 64, 0.34-0.40 at 512. A chain of 4
 never shown is walked without the sign alternating; depth of a walk grows only weakly
 with size. A lesson for every later exam: score what the teacher teaches.
@@ -234,7 +234,7 @@ My prediction: E1 met. E2 open, hop 8 somewhere in 0.7-0.8. E3 missed: the exami
 the pace, one tick a hop, so a brain of any size has no time to clean a recalled code
 before it must hand it on.
 
-**Outcome (journal 2026-11-11, night):** E1 missed by one seed of five (0.913; the others
+**Outcome (journal 2026-11-11, 11:44):** E1 missed by one seed of five (0.913; the others
 0.92-0.93, up from 0.83-0.85). E2 met (0.82-0.87). E3 missed (x1.8-2.7), as predicted.
 Searching on chains doubles the links walked four hops and carries to twice the depth
 seen; it does not make size buy depth.
@@ -298,7 +298,7 @@ brain to hold its wires still while it wanders; I expect a fall of 0.03-0.08. F4
 my guess is near the bar: a loop closes on itself, so a walk round it could correct itself,
 but nothing in a 4-tick closing rewards that.
 
-**Outcome (journal 2026-11-12):** three seeds of five found the hop; two settled on a code
+**Outcome (journal 2026-11-11, 11:58):** three seeds of five found the hop; two settled on a code
 that is a linear copy of the cue (echo right, hops near chance). So F1, F2 and F4 are
 missed as written ("every seed"). On the three that worked: F1 met by two (hop 4 0.93-0.94)
 and missed by one (0.87); F2 met, and for two seeds growth is LINEAR for the first time on
@@ -320,7 +320,7 @@ five lineages instead of five seeds. Everything else as above.
 
 My prediction: G1 met by four or five of five. G2 met wherever G1 is.
 
-**Outcome (journal 2026-11-12):** no lineage got stuck, which was the point. By the letter
+**Outcome (journal 2026-11-11, 12:15):** no lineage got stuck, which was the point. By the letter
 both bars are missed: G1 by two lineages that sit 0.002 and 0.005 under hop 4 = 0.90 (hop
 1 is 0.986-0.996 on all five), G2 by two lineages (x5.0 and x6.0 against x8.9-9.5 on the
 other three). Growth without a fade is frequent, 5 of the 8 genomes that live in the
@@ -329,7 +329,7 @@ stream, not the rule. On loops of 16, never seen, with the eyes closed 12 ticks,
 
 **Kept as method:** a search for a new life starts from the genome of the life before.
 
-## A thought that holds (chosen with the user, 2026-11-12)
+## A thought that holds (chosen with the user, 2026-11-11)
 
 With the eyes closed the walk drifts within 8-16 ticks. The user chose this over "own
 pace" as the next thing to mend. Diagnosis first, on the genomes in hand (128 cells, a
@@ -367,7 +367,7 @@ and lap 8 will rise to 0.8-0.9, but capacity will fall, because of the false lin
 reopening. If so the next step is ONE mechanism that lets a cell tell its own thought
 from the world: private state in a cell, or a global signal a tick late.
 
-**Outcome (journal 2026-11-12, night):** H1, H2, H3 met on all five lineages; my
+**Outcome (journal 2026-11-11, 12:49):** H1, H2, H3 met on all five lineages; my
 prediction was wrong on every count. No new mechanism was needed: asked, the brain stops
 whispering (loudness 0.57 through the closing, pattern 0.98 at every lap), loses no
 capacity, and the best lineage walks its loop for 256 ticks, eight times the longest
@@ -376,7 +376,7 @@ closing it was searched on. Items held in thought grow x6-7 from 64 to 512 cells
 **Kept as method:** ask before adding a mechanism. The private state of a cell stays
 unbuilt until an exam needs it.
 
-## Rung 2: wiring (started 2026-11-12, the user's choice)
+## Rung 2: wiring (started 2026-11-11, the user's choice)
 
 Until now every interneuron was wired from every other one (M^2 wires) and there was one
 kind of interneuron. The user's idea is the opposite: cells of several kinds, joined by
@@ -410,7 +410,7 @@ is the real obstacle to "grown bigger, smarter" under wiring a body could afford
 2b has its job: a kind of cell that keeps few cells speaking per item, so that different
 items live in different cells.
 
-**Outcome (journal 2026-11-13):** half right. Recall one step ahead still grows with the
+**Outcome (journal 2026-11-11, 13:21):** half right. Recall one step ahead still grows with the
 cells at a fixed fan, about x1.3 per doubling: the motor cells read every interneuron, so
 recall is a vote. A thought that HOLDS does not grow with the cells at all: about 0.55
 items per wire (18 at 32 wires, 35 at 64, 70 at 128) at 512, 1024 and 2048 cells alike.
@@ -433,7 +433,7 @@ My prediction: K1 met, a gain by a constant factor from a code better suited to 
 wires. K2 missed: one kind of cell cannot make fewer cells speak per item as the brain
 grows, because a cell has no way to know how big the brain is.
 
-**Outcome (journal 2026-11-13, later):** K1 missed (x0.69-1.05, no gain), K2 missed
+**Outcome (journal 2026-11-11, 15:22):** K1 missed (x0.69-1.05, no gain), K2 missed
 (x1.05-1.26). Recall one step ahead did improve (+15-43%). But the search asked the wrong
 thing: 62% of its lives carried more than any of these brains can hold in thought (0.55
 items per wire), so only recall was left to earn. K1 is not a fair verdict.
@@ -451,6 +451,108 @@ My prediction: K1 met modestly, x1.2-1.5, now that holding is what the lives pay
 missed again: the reason I gave does not depend on how well the search is asked.
 
 **A lesson for every search:** put the loads where the thing being asked for is possible.
+
+### Step 2b, decided by a yardstick before any search: no kind of cell for sparse codes
+
+The plan for 2b was a second kind of cell that keeps few cells speaking per item, "so that
+different items live in different cells" and holding grows with the brain. Three cheap
+checks came first (journal 2026-11-11, evening). They say not to build it.
+
+1. **The found brains use a dense code.** The share of interneurons that speak for an item
+   (`python -m tissue.drift`, the row "speak") is 0.81-0.89 in every brain looked at: eyes
+   open or closed, all-to-all or 32 wires per cell, 128 to 2048 cells.
+2. **The ceiling by hand** (`python -m tissue.hand --think`). Fixed codes; every cell fits
+   its own K wires for as long as it likes; an inhibition that never errs picks who speaks.
+   Items held for 64 ticks alone:
+
+   | wires per cell | half the cells speak | 1/4 | 1/8 | 1/16 | cells |
+   |---|---|---|---|---|---|
+   | 32 | 32 | 32 | 24-32 | 0-8 | the same at 64, 128, 512, 2048 |
+   | 64 | 72 | 72 | 72 | 48 | the same at 128, 512, 2048 |
+   | 128 | 168 | - | 168 | 256 | 1024 |
+
+   About one item per wire, whatever the share of cells that speak and whatever the number
+   of cells. The found brains hold 0.55 per wire: half of that ceiling, with a rule that
+   sees each link two or three times. Few cells speaking per item pays only from about 128
+   wires per cell (x1.5), and never with the cells.
+3. **What a wire buys.** At the same number of wires in all, a small brain wired
+   all-to-all beats a big one with 32 wires per cell on both counts (five lineages each):
+
+   | wires in all | all-to-all: cells | held | K90 hop 1 | 32 per cell: cells | held | K90 hop 1 |
+   |---|---|---|---|---|---|---|
+   | 4 096 | 64 | 13-24 | 40-42 | 128 | 10-11 | 36-38 |
+   | 16 384 | 128 | 24-50 | 90-98 | 512 | 12-18 | 65-80 |
+   | 65 536 | 256 | 63-95 | 120-213 | 2048 | 16-19 | 75-112 |
+
+Why, by counting. A cell can be taught only through its own K wires. If every cell speaks
+for every item, every cell must learn every link: about K of them, however many cells there
+are. If few cells speak per item, a cell has fewer links to learn but hears fewer of its
+sources speak, and the two cancel until K is large. And in a brain wired at random two
+small groups of cells have hardly a wire between them (K x group / cells), so "different
+items in different cells" could not be linked at all. My expectation in step 2a was wrong.
+
+So with wires drawn at random, what a thought can hold is a matter of wires per cell and of
+nothing else. Three roads are left:
+
+- **More wires per cell as the brain grows.** That is rung 1, all-to-all: it works, and it
+  costs cells squared.
+- **Hubs.** A few cells that hear everyone outvote the noise; the motor cells already do,
+  which is why recall grows with the cells. A thought could pass through them ("the brain
+  hears its own voice": a kind of cell that hears the motor cells and is read back by
+  them). Counted through, not built: such a loop takes two ticks, so it must learn links
+  two steps apart, and the stream shows enough to tell such a link from a coincidence only
+  from the third lap on. It would also move the thought out of the tissue into twelve
+  cells. An option for the user, not the plan.
+- **Places.** Wires to neighbours, and each loop kept in one small patch of cells. By
+  arithmetic on the table above, where a patch of 64 cells with 32 wires each holds as
+  much as 2048 cells do: 2048 cells in 32 patches could hold about 1000 items where they
+  now hold 18. What it needs is something that says which patch. That is what step 2c,
+  cells in a space, is really about.
+
+### Step 2c: cells in a space. Plan, bars and predictions, written before any run
+
+Interneurons sit on a ring (the simplest space; a sheet comes later). Two dials, both set by
+hand for now, both statistics of the wiring that a genome could carry:
+
+- `Plan.reach`: a cell's few wires come from cells within `reach` places on either side.
+  `reach` 0 is step 2a, wires from anywhere, and it is the SHUFFLE control: the same number
+  of wires, drawn without regard to place.
+- `Plan.field`: a sense of place. The world is somewhere along the ring and every
+  interneuron feels how near that is to itself (a bell `field` cells wide). In the stream
+  every loop then lies at a place of its own, drawn at random, felt on every tick with the
+  eyes open or closed. The sense says where, never what.
+
+By hand: the ring, wires to neighbours, the sense of place laid out along the ring. Found:
+what a cell does with the sense (whether it speaks, whether it learns) and everything else.
+
+**2c-1, neighbours alone. No search, no sense of place.** The five genomes of step 2a'
+grown with 32 wires per cell from within 32 places, against 32 wires from anywhere, at 512
+and 2048 cells. Prediction: nothing changes. Holding stays within a quarter of the
+shuffled figure, recall one step ahead is the same or a little lower (neighbours share
+sources, so their errors agree and a vote gains less). A code that knows no place cannot
+use wiring that does.
+
+**2c-2, a sense of place. A search.** From the five genomes of step 2a' (the new input of
+a cell starts at zero, so each begins exactly as it lived): `--fan 16 --reach 32 --field 12
+--sizes 128 256 512`, closings up to 32 ticks as before. Loads are counted per wire and
+per patch of the ring (a patch = 2 x reach cells), 1/8 to 1 item per wire per patch, so
+that about 70% of the lives are at or under what a brain that kept each loop in its own
+patch could hold. Exam: 32 wires, reach 32, 128 to 4096 cells, a closing of 64 ticks.
+
+- **P1, growth returns.** Items held in thought at 2048 cells are at least 2x those at
+  512 cells, on every lineage (placeless: x1.0-1.3). 1024 and up are sizes never searched.
+- **P2, above the ceiling of a placeless brain.** At 2048 cells at least 100 items are
+  held (the hand ceiling with 32 wires and no places is 32; the found brains hold 16-19).
+- **P3, the shuffle.** The same genomes with their wires drawn from anywhere (`--reach 0`)
+  hold less than half of that at 2048 cells: it is the wiring by place that pays.
+- **P4, the sense off.** With nothing felt (`--nowhere`) holding falls back to what a
+  placeless brain holds (at most 32).
+
+My prediction: P1-P4 met on at least three lineages of five, with 0.1-0.25 items per cell
+at 2048 (200-500 items). By arithmetic a patch holds what its wires allow and patches
+multiply with the ring, so like rung 0 this would be an instrument, not a discovery. What
+I am least sure of is the search: every cell now speaks for every item, and a cell that
+falls silent away from its place costs recall before it pays in holding.
 
 ## Where the ladder stands
 

@@ -3616,7 +3616,7 @@ atlas's pose for its own scroll is true; the sheet counts its own. It was never 
 A latent crash surfaced on the way: `Atlas._read` faced `last_target` when food lay exactly under the
 body and the wave pointed nowhere (None). Fixed for that case only, every other path is unchanged.
 
-## 2026-11-11 — tissue: a restart, and rung 0: 76 numbers hold a pair per interneuron at sizes never seen
+## 2026-11-11 (10:18) — tissue: a restart, and rung 0: 76 numbers hold a pair per interneuron at sizes never seen
 
 **Why a restart.** The user's read: the evolving brains of vivarium/aqua improved by growing their
 perceptrons, not their tissue, and everything since followed from that. The saved pools fit it: rule
@@ -3721,7 +3721,7 @@ then, one tick later and with no teacher, take part of it back in proportion to 
 produced. Caveat: this removes a part the rest of the genome was tuned around; a genome searched
 without it might recover some of the loss.
 
-## 2026-11-11 (later) — tissue rung 1a: a hop through the brain's own wires, found by one seed of three
+## 2026-11-11 (10:44) — tissue rung 1a: a hop through the brain's own wires, found by one seed of three
 
 **The mechanism added** (`RUNG1` in `tissue/kernel.py`): one block of plastic wires among the
 interneurons, from zero. An interneuron reads two dendrites (innate from the senses, plastic from
@@ -3795,7 +3795,7 @@ hop), and both failures live in that gap: a code that cannot echo, and a decoder
 upside down. Next, one change to the exam and none to the brain: the echo is scored too. Bars in
 the design note. 13 tests.
 
-## 2026-11-11 (night) — tissue rung 1a': the echo is scored, and five seeds of five find a hop that composes
+## 2026-11-11 (11:20) — tissue rung 1a': the echo is scored, and five seeds of five find a hop that composes
 
 One change, to the exam: the echo of the first item (hop 0) joins the error and the score
 (`python -m tissue.train --arm chain --echo`). The brain and the search are the same; 5 seeds.
@@ -3869,7 +3869,7 @@ signal and the rest between episodes.
 Next: step 1b, search ON chains (does a walk get longer when asked for), then a brain that says
 when it is done.
 
-## 2026-11-11 (night) — left alone, the brain does not stop
+## 2026-11-11 (11:25) — left alone, the brain does not stop
 
 The user objected to "a brain that says when it is done": that is how a perceptron or an LLM is
 used, a question in and an answer out, and the idea here is a brain whose thinking never stops.
@@ -3900,7 +3900,7 @@ What the objection exposed in the exams themselves: I silence every cell between
 are the habits of calling a function. The second may be why depth does not grow with size: a
 brain of any size gets no time to clean a recalled code before it must hand it on.
 
-## 2026-11-11 (night) — tissue step 1b: searched on chains, a walk goes twice as deep; size still does not buy depth
+## 2026-11-11 (11:44) — tissue step 1b: searched on chains, a walk goes twice as deep; size still does not buy depth
 
 Nothing changed in the brain or the exam. The search saw chains of 1-4 links instead of single
 links (`--arm chain --hops 4 --echo`, 5 seeds, all five converge). Bars and prediction were in the
@@ -3951,7 +3951,7 @@ against 0.95), as hop 3 beat hop 2 at 16 cells before. A parity effect of some k
 
 Genomes in `runs/tissue/rung1b/`. Next: the stream.
 
-## 2026-11-12 — tissue: the stream. One unbroken life, and for the first time on this rung growth does not fade
+## 2026-11-11 (11:58) — tissue: the stream. One unbroken life, and for the first time on this rung growth does not fade
 
 **Why.** The user's objection (previous entry but two): a brain whose thinking never stops, not a
 function that is called. Agreed, and the step "says when it is done" is replaced by four
@@ -4028,7 +4028,7 @@ and the shape of a blink are the examiner's.
 so half the load on the decoder) or the genome. Cross-exams are running. Next: the stream search
 started from the step 1b genomes instead of random numbers (five lineages; bars in the note).
 
-## 2026-11-12 (later) — the stream, five lineages: none stuck; growth without a fade on three; what a long closing is really worth
+## 2026-11-11 (12:15) — the stream, five lineages: none stuck; growth without a fade on three; what a long closing is really worth
 
 One change, to the search: it starts from the five chain genomes of step 1b (`--init`, the same
 brain plan) instead of random numbers. All five are at 0.89-0.91 after 100 steps and 0.93-0.95 at
@@ -4085,7 +4085,7 @@ found in the stream lives in the stream.
 **Kept as method:** a search for a new life starts from the genome of the life before. It cost
 nothing and removed the flat spot. Genomes in `runs/tissue/stream/`. 16 tests.
 
-## 2026-11-12 (night) — a thought that holds: asked for long closings, the brain stops whispering and walks its loop for 256 ticks
+## 2026-11-11 (12:49) — a thought that holds: asked for long closings, the brain stops whispering and walks its loop for 256 ticks
 
 The user chose "a walk that does not drift" over "own pace". I expected to need a new mechanism
 (private state in a cell). It needed none.
@@ -4146,7 +4146,7 @@ to go. By hand as before; the loops and the closings are the examiner's.
 **Method, again:** ask before adding. Twice now (depth on step 1b, holding here) the brain in hand
 could do what I was about to build a mechanism for. Genomes in `runs/tissue/hold/`.
 
-## 2026-11-13 — rung 2a: a few wires per cell. Recall is a vote and more cells help; a thought that holds follows the wires alone
+## 2026-11-11 (13:21) — rung 2a: a few wires per cell. Recall is a vote and more cells help; a thought that holds follows the wires alone
 
 Rung 2 is the user's choice and the core of the original idea: cells of several kinds joined by
 axons a genotype lays down. Three steps hide in it (the design note): a few wires per cell; a
@@ -4202,7 +4202,7 @@ rung 2, and it gives step 2b a job with a number on it.
 Not searched for: these genomes never knew a sparse brain. Before any new kind of cell, the next
 step asks: a search that lives with few wires.
 
-## 2026-11-13 (later) — rung 2a': a search that lives with few wires improves recall and not holding; my loads were lopsided; and the runs move to a VM
+## 2026-11-11 (15:22) — rung 2a': a search that lives with few wires improves recall and not holding; my loads were lopsided; and the runs move to a VM
 
 **Where the runs go now.** The desktop has 16 GB shared with everything else. Five parallel
 searches in sparse brains were paged out (working sets of 12 MB, a second a step), the harness

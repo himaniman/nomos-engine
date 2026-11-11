@@ -1,6 +1,6 @@
 # Operations — where the heavy runs go
 
-The desktop has 16 GB of RAM shared with everything else on it. On 2026-11-13 five parallel
+The desktop has 16 GB of RAM shared with everything else on it. On 2026-11-11 five parallel
 searches in sparse brains were paged out and crawled, the harness reaped a waiting shell for low
 memory, and the runs were stopped at a third of their steps. Since then the searches and exams of
 the `tissue` line run on their own VM on the user's Proxmox host.
@@ -16,12 +16,12 @@ nomos 10.99.0.70 ──vmbr1──▶ pve 10.99.0.1 ──NAT via vmbr0──▶
   node 1 preferred: the whole half the stopped `llm` VM used; 16 vCPU and 8 GB for its first run), **16 GB no
   balloon**, no swap, 40 GB (thin,
   `local-lvm`, `discard`), **`onboot 0`**, MAC pinned `BC:24:11:5E:5E:70`, IP `10.99.0.70` on stb's
-  isolated bridge `vmbr1`. No GPU. Created 2026-11-13 by `infra/pve/create-vm.sh`.
+  isolated bridge `vmbr1`. No GPU. Created 2026-11-11 by `infra/pve/create-vm.sh`.
 - **Nothing depends on it.** Stop it any time: `ssh root@pve.pgs.dom qm stop 1094`. It does not
   start by itself after a host reboot: `qm start 1094`. It is in no backup job: the code is in git
   and results are copied back to the desktop.
 - Sizing against the host's own alerts. `pve.cpu` warns at 70 % and the host idles near 16 %, so
-  20 busy threads of 40 put it at about 66 %, on the edge: the user chose that on 2026-11-13 and
+  20 busy threads of 40 put it at about 66 %, on the edge: the user chose that on 2026-11-11 and
   accepts the warnings. The VM stays inside socket 1 so that socket 0 is left to production; more
   than 20 would take CPU from the platform, not just ring a bell. `pve.ram` warns at 90 % and
   clears under 85 %; the host was

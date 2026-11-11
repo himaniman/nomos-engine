@@ -1,6 +1,8 @@
 """Hand-made memories for exam 0: what each size can hold when the rule is written by hand.
 
     python -m tissue.hand
+    python -m tissue.hand --hop
+    python -m tissue.hand --think [--cells 512 2048] [--wires 32 64]
 
 Nothing here is searched for. They are the yardstick a found genome is read against:
 
@@ -12,6 +14,11 @@ Nothing here is searched for. They are the yardstick a found genome is read agai
            the ceiling for this kind of interneuron.
 
 Each uses the sparseness (share of interneurons a cue lights) that serves it best.
+
+`--think` is the ceiling for a thought that holds (exam 2) when a cell has only K wires, drawn
+at random from the other cells: every cell learns by itself, and long, to say its bit of the
+next item's code from what its K sources said; then the brain is left alone for 64 ticks. It
+is run with every cell speaking for every item and with few cells speaking per item.
 """
 
 from __future__ import annotations
@@ -85,6 +92,61 @@ def lstsq(c: torch.Tensor, answers: torch.Tensor) -> torch.Tensor:
     return c @ (torch.linalg.pinv(c) @ answers)
 
 
+def think(n: int, k: int, f: float, items: int, signed: bool = False, seed: int = 0,
+          steps: int = 400, closing: int = 64) -> float:
+    """A thought held by hand. N cells, K wires into each from random others, `items` on
+    loops of 8. An item's code is fixed: the share `f` of cells with the largest random
+    drive speak (1), the rest are silent (0, or -1 when `signed`: then silence is heard too,
+    which is what a code where half the cells speak needs). Each cell fits its own K wires
+    (logistic regression, `steps` passes over all the links: near the best any rule local
+    to a cell could do). Left alone from an item's code for `closing` ticks, each tick the
+    share `f` of cells driven hardest speak: an inhibition that never errs.
+
+    Returns how much of the last lap's speaking cells are the right ones (1: all)."""
+    g = torch.Generator().manual_seed(seed)
+    a, loops = max(1, round(f * n)), items // 8
+    p = loops * 8
+    code = torch.zeros(p, n).scatter_(1, torch.randn(p, n, generator=g).topk(a, dim=1).indices, 1.0)
+    after = torch.arange(p).view(loops, 8).roll(-1, dims=1).flatten()   # what follows on its loop
+    sources = torch.randint(n, (n, k), generator=g)
+
+    def heard(c):
+        return (c * 2 - 1 if signed else c)[:, sources]                 # (items, n, k)
+
+    with torch.enable_grad():
+        w = torch.zeros(n, k, requires_grad=True)
+        b = torch.zeros(n, requires_grad=True)
+        opt = torch.optim.Adam([w, b], lr=0.05)
+        x, y, rare = heard(code), code[after], torch.tensor((n - a) / a)
+        for _ in range(steps):
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                (x * w).sum(-1) + b, y, pos_weight=rare)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+    w, b = w.detach(), b.detach()
+    at = torch.arange(0, p, 8)[:32]                                     # one start on each loop
+    state, right = code[at], []
+    for t in range(closing):
+        drive = (heard(state) * w).sum(-1) + b
+        state = torch.zeros_like(drive).scatter_(1, drive.topk(a, dim=1).indices, 1.0)
+        at = after[at]
+        if t >= closing - 8:
+            right.append(float((state * code[at]).sum(1).mean() / a))
+    return sum(right) / len(right)
+
+
+def held_by_hand(n: int, k: int, f: float, signed: bool = False, bar: float = 0.9) -> int:
+    """The largest load, on a grid growing by half, that `think` still holds at `bar`."""
+    best, items = 0, 8
+    while items <= 2 ** 13 and think(n, k, f, items, signed) >= bar:
+        best, items = items, 8 * max(items // 8 + 1, round(items * 1.5 / 8))
+    return best
+
+
+THINK = ((0.5, True), (0.25, False), (0.125, False), (0.0625, False))     # share speaking, signed
+
+
 RULES = {
     "hebb": {"hebb": hebb},
     "delta": {f"rate {r}": (lambda c, a, r=r: delta(c, a, r)) for r in (1.0, 0.5, 0.25)},
@@ -136,9 +198,22 @@ def main() -> None:
     import argparse
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--hop", action="store_true", help="the yardstick for exam 1 (one hop)")
+    p.add_argument("--think", action="store_true",
+                   help="the ceiling for a thought that holds with a few wires per cell")
+    p.add_argument("--cells", type=int, nargs="*", default=[512, 2048])
+    p.add_argument("--wires", type=int, nargs="*", default=[32, 64])
     p.add_argument("--sizes", type=int, nargs="*", default=list(SIZES))
     a = p.parse_args()
     torch.set_num_threads(8)
+    if a.think:
+        print("items held in thought by hand (64 ticks alone), by the share of cells that speak")
+        print(f"{'cells':>6} {'wires':>6} | " + " | ".join(
+            f"{'half, signed' if signed else f'1/{round(1 / f)}':>12}" for f, signed in THINK))
+        for k in a.wires:
+            for n in a.cells:
+                print(f"{n:>6} {k:>6} | " + " | ".join(
+                    f"{held_by_hand(n, k, f, signed):>12}" for f, signed in THINK), flush=True)
+        return
     if a.hop:
         y = yardstick_hop(Task(d_in=12, d_out=12), a.sizes)
         print(f"{'M':>5} | {'delta, one pass':>26} | {'least squares':>20}")

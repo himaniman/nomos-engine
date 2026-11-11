@@ -19,7 +19,7 @@ sessions.
 - **Venv**: always `.venv` in the project root. Never install into global
   Python. Run things as `.\.venv\Scripts\python.exe -m ...`.
 - **Shell**: Windows PowerShell. `2>$null` to drop numpy warnings from output.
-- **Heavy runs go to the VM, not the desktop** (since 2026-11-13, `docs/operations.md`): the
+- **Heavy runs go to the VM, not the desktop** (since 2026-11-11, `docs/operations.md`): the
   desktop has 16 GB shared with everything else; five parallel searches were paged out and the
   harness reaped a shell for low memory. VM 1094 `nomos` on the user's pve (20 threads, 16 GB,
   ssh alias `nomos`), driven by `infra/dev/vm.sh push|run|jobs|tail|pull`; at most twelve
@@ -591,13 +591,13 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   when it is done" was dropped as perceptron/LLM thinking. Found brains left alone keep wandering
   along learned links (`python -m tissue.alone`). Replaced by THE STREAM (`tissue/stream.py`):
   one unbroken life, no resets, the only teacher is the senses a tick late; a world of loops;
-  the eyes close and the brain must go on. DONE (2026-11-12): eight genomes live it (3 of 5
+  the eyes close and the brain must go on. DONE (2026-11-11): eight genomes live it (3 of 5
   random starts, 5 of 5 started from the step 1b genomes: keep `--init` as method); on five of
   them capacity keeps pace with size to 512 (0.7 items per interneuron, x9 from 64), the first
   rung-1 result with no fade; idleness costs nothing; a walk through loops never seen holds
   hop 12 at 0.67-0.79 and drifts after 8-16 ticks. Exam trap: on a loop, hops that return to
   what was just seen are flattered (recency), use loops longer than the closing.
-  A THOUGHT THAT HOLDS, DONE (2026-11-12): the walk drifted because in silence the brain
+  A THOUGHT THAT HOLDS, DONE (2026-11-11): the walk drifted because in silence the brain
   WHISPERED (activity 0.37 -> 0.15, on the straight part of a cell's curve nothing saturates, so
   nothing restores a pattern; `python -m tissue.drift`). No mechanism was needed: asked for
   closings up to 32 ticks (`--hops 32 --vary`, from the lineage genomes) all five lineages hold

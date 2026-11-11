@@ -41,12 +41,28 @@ def make(arm: str, **switches):
     return Gru(task, int(arm[3:])), task
 
 
+def adopt(model, genome: dict) -> None:
+    """Take a genome found for a plan whose cells had fewer inputs: what it has is copied
+    and a new input starts at zero, so the brain begins exactly as the old one lived."""
+    mine = model.state_dict()
+    for name, old in genome.items():
+        new = mine[name]
+        if new.shape != old.shape:
+            if new.dim() != 2 or new.shape[0] != old.shape[0] or new.shape[1] < old.shape[1]:
+                raise ValueError(f"{name}: {tuple(old.shape)} does not fit {tuple(new.shape)}")
+            old = torch.cat([old, torch.zeros(new.shape[0], new.shape[1] - old.shape[1])], dim=1)
+        mine[name] = old
+    model.load_state_dict(mine)
+
+
 def load(path: str, **switches):
-    """A found genome as (model, task, what was saved). It is grown with the fan it was
-    searched with unless `fan` says otherwise; other switches are the plan's off-switches."""
+    """A found genome as (model, task, what was saved). It is grown with the fan, reach and
+    field it was searched with unless a switch says otherwise; other switches are the plan's
+    off-switches."""
     saved = torch.load(path, weights_only=True)
-    if saved.get("fan") and "fan" not in switches:
-        switches["fan"] = saved["fan"]
+    for dial in ("fan", "reach", "field"):
+        if saved.get(dial) and dial not in switches:
+            switches[dial] = saved[dial]
     model, task = make(saved["arm"], **switches)
     model.load_state_dict(saved["genome"])
     return model, task, saved
@@ -55,7 +71,7 @@ def load(path: str, **switches):
 def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float = 3e-3,
           hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
           vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES,
-          load: tuple = (0.25, 2.0)) -> None:
+          load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -64,12 +80,15 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     from random numbers. `fan`: wires into each interneuron from other interneurons (0: all);
     a stream life then draws its fan from `fan` / 2, `fan`, 2 `fan` and its load between
     `load[0]` and `load[1]` items per wire (log-uniform), since wires are what a sparse brain's
-    capacity follows. `sizes`: the brain sizes a life is drawn from."""
+    capacity follows. `sizes`: the brain sizes a life is drawn from. `reach`: those wires
+    come from neighbours on a ring. `field`: every loop lies at a place and interneurons
+    feel how near it is; the load is then counted per wire AND per patch of the ring (2 x
+    `reach` cells), since a patch is what such a brain can keep a loop in."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model, task = make(arm, fan=fan) if fan else make(arm)
+    model, task = make(arm, fan=fan, reach=reach, field=field) if fan else make(arm)
     if init:
-        model.load_state_dict(torch.load(init, weights_only=True)["genome"])
+        adopt(model, torch.load(init, weights_only=True)["genome"])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, steps, eta_min=lr / 10)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -86,14 +105,17 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             if fan:                     # a sparse brain: its load is counted per wire
                 wires = fan * 2 ** (int(torch.rand(1, generator=gen) * 3) - 1)
                 model.plan = replace(model.plan, fan=int(wires))
-                loops = max(1, round(wires * load[0] * (load[1] / load[0]) ** float(u[1]) / length))
+                patches = max(1.0, m / (2 * reach)) if field and reach else 1.0
+                loops = max(1, round(patches * wires * load[0] * (load[1] / load[0]) ** float(u[1])
+                                     / length))
             else:
                 loops = max(1, round(m * 2 ** (float(u[1]) * 3 - 4) / length))
             laps = 2 + int(torch.rand(1, generator=gen) * 2)        # 2 or 3 times round
             closed = hops >> int(torch.rand(1, generator=gen) * 4) if vary else hops
             life = stream.Life(loops, length, laps, idle=idle, blinks=6 if closed <= 8 else 3,
                                open=3, closed=closed)
-            lived = stream.run_life(model.grow(m), task, stream.world(task, life, batch, gen), life, gen)
+            lived = stream.run_life(model.grow(m), task, stream.world(task, life, batch, gen), life,
+                                    gen, places=field > 0)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
             answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
         elif arm == "chain":            # 1/8 .. 1 link per interneuron, chains of 1..hops links
@@ -128,6 +150,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
+                        "reach": reach, "field": field,
                         "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
     log.close()
 
@@ -150,12 +173,17 @@ def main() -> None:
                    help="brain sizes a life is drawn from")
     p.add_argument("--load", type=float, nargs=2, default=[0.25, 2.0],
                    help="with --fan: items per wire, lowest and highest (log-uniform)")
+    p.add_argument("--reach", type=int, default=0,
+                   help="with --fan: those wires come from cells within this many places on a ring")
+    p.add_argument("--field", type=int, default=0,
+                   help="with --fan: a sense of place this many cells wide; loops lie at places")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
-          vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load))
+          vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
+          field=a.field)
 
 
 if __name__ == "__main__":

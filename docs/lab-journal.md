@@ -3899,3 +3899,54 @@ What the objection exposed in the exams themselves: I silence every cell between
 `rest`, by hand), and I set the pace of a walk from outside (hop h is due at tick h + 2). Both
 are the habits of calling a function. The second may be why depth does not grow with size: a
 brain of any size gets no time to clean a recalled code before it must hand it on.
+
+## 2026-11-11 (night) — tissue step 1b: searched on chains, a walk goes twice as deep; size still does not buy depth
+
+Nothing changed in the brain or the exam. The search saw chains of 1-4 links instead of single
+links (`--arm chain --hops 4 --echo`, 5 seeds, all five converge). Bars and prediction were in the
+design note first.
+
+**Chains of 4 at M/4 links, bit accuracy by hop** (range over five seeds; * = size never seen):
+
+| M | searched on | hop 1 | hop 2 | hop 3 | hop 4 |
+|---|---|---|---|---|---|
+| 64 | chains | 0.99 | 0.94-0.95 | 0.92-0.94 | 0.91-0.93 |
+| 64 | single links | 0.99 | 0.90-0.91 | 0.88-0.90 | 0.83-0.85 |
+| 128* | chains | 0.98-0.99 | 0.91-0.93 | 0.88-0.90 | 0.85-0.88 |
+| 128* | single links | 0.98 | 0.87-0.88 | 0.81-0.83 | 0.74-0.77 |
+| 512* | chains | 0.92-0.94 | 0.82-0.85 | 0.76-0.81 | 0.68-0.74 |
+| 512* | single links | 0.94 | 0.78-0.81 | 0.69-0.73 | 0.62-0.66 |
+
+**Links held at 90% by hop** (K90, chains of 4):
+
+| M | searched on | hop 1 | hop 2 | hop 3 | hop 4 |
+|---|---|---|---|---|---|
+| 64 | chains | 47-48 | 22-27 | 18-21 | 17-19 |
+| 64 | single links | 46-48 | 17-18 | 15-16 | 9-10 |
+| 256* | chains | 115-123 | 51-63 | 39-47 | 34-39 |
+| 256* | single links | 121-140 | 38-40 | 30-33 | 17-21 |
+| 512* | chains | 146-161 | 73-90 | 51-70 | 32-51 |
+| 512* | single links | 170-216 | 49-62 | 27-31 | 21-24 |
+
+**A depth never seen: chains of 8** (the search saw 4 at most), 64 cells, 16 links: hop 1 / 2 / 4 /
+6 / 8 = 0.99-1.00 / 0.95 / 0.97-0.98 / 0.92-0.95 / 0.82-0.87. Single-link genomes: 0.99 / 0.90-0.93
+/ 0.92-0.96 / 0.80-0.84 / 0.67-0.68.
+
+- **E1 (hop 4 at 64 cells at least 0.92 on every seed): missed by one seed.** 0.928 0.913 0.921
+  0.930 0.933. Up from 0.83-0.85, so the walk did get longer for being asked; the bar was a guess
+  and one seed is under it by 0.007.
+- **E2 (hop 8 at least 0.75): met**, 0.82-0.87 on every seed. I had guessed 0.7-0.8.
+- **E3 (links walked 4 hops: 512 cells at least 4x 64 cells): missed**, x1.8 to x2.7, the same as
+  the single-link genomes (x2.4-2.8). Predicted.
+- A price: at 512 cells the chain genomes hold FEWER links at hop 1 (146-161 against 170-216).
+  Depth was bought with breadth at the sizes nobody searched.
+
+**What it says.** Asking for depth doubles the links a brain can walk four hops (9-10 -> 17-19 at
+64 cells) and carries to twice the depth it saw. What it does not change is the shape of the
+problem: at the same relative load a bigger brain walks worse (hop 4: 0.92 at 64, 0.71 at 512),
+so size does not buy depth while the examiner sets the pace, one tick a hop.
+
+Unexplained: accuracy is not monotone in the hop. Hop 4 beats hop 2 on chains of 8 (0.97-0.98
+against 0.95), as hop 3 beat hop 2 at 16 cells before. A parity effect of some kind.
+
+Genomes in `runs/tissue/rung1b/`. Next: the stream.

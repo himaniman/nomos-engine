@@ -234,6 +234,11 @@ My prediction: E1 met. E2 open, hop 8 somewhere in 0.7-0.8. E3 missed: the exami
 the pace, one tick a hop, so a brain of any size has no time to clean a recalled code
 before it must hand it on.
 
+**Outcome (journal 2026-11-11, night):** E1 missed by one seed of five (0.913; the others
+0.92-0.93, up from 0.83-0.85). E2 met (0.82-0.87). E3 missed (x1.8-2.7), as predicted.
+Searching on chains doubles the links walked four hops and carries to twice the depth
+seen; it does not make size buy depth.
+
 ## A brain that never stops (decided with the user, 2026-11-11)
 
 The plan had a step "the brain says when it is done". The user objected: a question in,
@@ -299,7 +304,7 @@ but nothing in a 4-tick closing rewards that.
 |---|---|
 | 0 pairs | done, 3 seeds: about 1 pair per interneuron to 512 |
 | 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
-| 1b search on chains | running |
+| 1b search on chains | done, 5 seeds: links walked 4 hops doubled (17-19 at 64 cells), depth carries to 8 hops; size still does not buy depth |
 | 1c the stream: no resets, idleness | built, bars written, next |
 | 1d own pace | after 1c |
 | 2 wiring from the genome | not started |

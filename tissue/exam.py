@@ -2,6 +2,7 @@
 
     python -m tissue.exam GENOME.pt ... [--length 4] [--stream] [--closed 4] [--idle 64]
                                         [--fan 32] [--reach 32] [--nowhere]
+                                        [--field 12] [--gate 0.3] [--spoken]
                                         [--no-learn] [--taught-only] [--off 1]
 
 Rung 0 genomes ("tissue", "gru<h>"): pairs. Per size: K90 (pairs held at 90% of the bits),
@@ -129,6 +130,12 @@ def main() -> None:
                    help="wires into each interneuron from other interneurons (0: from all of them)")
     p.add_argument("--reach", type=int, default=None,
                    help="those wires come from cells within this many places on a ring (0: anywhere)")
+    p.add_argument("--field", type=int, default=None,
+                   help="give the genome a sense of place this many cells wide (it starts unused)")
+    p.add_argument("--gate", type=float, default=None,
+                   help="by hand: an interneuron less near the place than this is silent")
+    p.add_argument("--spoken", action="store_true",
+                   help="plastic dendrites are scaled by what was said, not by their wires")
     p.add_argument("--nowhere", action="store_true",
                    help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--quick", action="store_true",
@@ -148,6 +155,12 @@ def main() -> None:
         switches["fan"], tag = a.fan, tag + f".fan{a.fan}"
     if a.reach is not None:
         switches["reach"], tag = a.reach, tag + f".reach{a.reach}"
+    if a.field is not None:
+        switches["field"], tag = a.field, tag + f".field{a.field}"
+    if a.gate is not None:
+        switches["gate"], tag = a.gate, tag + f".gate{a.gate:g}"
+    if a.spoken:
+        switches["spoken"], tag = True, tag + ".spoken"
     if a.nowhere:
         tag += ".nowhere"
     for path in a.genomes:

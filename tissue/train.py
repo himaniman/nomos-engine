@@ -62,11 +62,11 @@ def load(path: str, **switches):
     field it was searched with unless a switch says otherwise; other switches are the plan's
     off-switches."""
     saved = torch.load(path, weights_only=True)
-    for dial in ("fan", "reach", "field", "spoken"):
+    for dial in ("fan", "reach", "field", "spoken", "gate"):
         if saved.get(dial) and dial not in switches:
             switches[dial] = saved[dial]
     model, task = make(saved["arm"], **switches)
-    model.load_state_dict(saved["genome"])
+    adopt(model, saved["genome"])           # a switch may give the cells a sense they never had
     return model, task, saved
 
 
@@ -74,7 +74,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
           hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
           vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES,
           load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0,
-          spoken: bool = False) -> None:
+          spoken: bool = False, gate: float = 0.0) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -87,10 +87,12 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     come from neighbours on a ring. `field`: every loop lies at a place and interneurons
     feel how near it is; the load is then counted per wire AND per patch of the ring (2 x
     `reach` cells), since a patch is what such a brain can keep a loop in. `spoken`: plastic
-    dendrites are scaled by what was said to them, not by their wires."""
+    dendrites are scaled by what was said to them, not by their wires. `gate`: by hand, an
+    interneuron less near the place than this is silent and does not learn."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model, task = make(arm, fan=fan, reach=reach, field=field, spoken=spoken) if fan else make(arm)
+    model, task = (make(arm, fan=fan, reach=reach, field=field, spoken=spoken, gate=gate)
+                   if fan else make(arm))
     if init:
         adopt(model, torch.load(init, weights_only=True)["genome"])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
@@ -155,7 +157,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
-                        "reach": reach, "field": field, "spoken": spoken,
+                        "reach": reach, "field": field, "spoken": spoken, "gate": gate,
                         "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
     log.close()
 
@@ -184,13 +186,15 @@ def main() -> None:
                    help="with --fan: a sense of place this many cells wide; loops lie at places")
     p.add_argument("--spoken", action="store_true",
                    help="with --fan: plastic dendrites are scaled by what was said, not by their wires")
+    p.add_argument("--gate", type=float, default=0.0,
+                   help="with --field: by hand, an interneuron less near the place than this is silent")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
           vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
-          field=a.field, spoken=a.spoken)
+          field=a.field, spoken=a.spoken, gate=a.gate)
 
 
 if __name__ == "__main__":

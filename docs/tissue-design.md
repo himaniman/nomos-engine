@@ -596,6 +596,43 @@ every cell fitting its own 32 wires, each loop spoken for by the 36 cells at its
 A third to a half of an item per cell (with a patch of 64 cells: 48, 168, 576). So the
 arithmetic holds by simulation too, places drawn at random and overlapping included.
 
+**Outcome (journal 2026-11-11, 19:00):** P1, P2, P3 missed on all five lineages; my
+prediction was wrong and my fear was right. The search did not find a use for the sense of
+place: its genomes hold 10/14/0/11/17 items at 2048 cells (the 2a' genomes they started
+from: 18/19/18/16/19), the same with the wires shuffled or the sense off, and inside a life
+(`python -m tissue.where`) a cell is as loud and learns as much far from the place as at
+it. Recall one step ahead is where it was. The lives were loaded for a brain that keeps
+each loop in its own patch, far above what the brain it started as can hold, so there was
+nothing to climb: the lesson of step 2a' again, in a new coat.
+
+### Step 2c-3: the gate by hand. Plan, bars and predictions, written before any run
+
+The search did not find "a cell away from its place is silent". Before asking again, the
+question it could not answer: IF cells are silent away from their place, does holding grow
+with the brain, with the rule found so far? `Plan.gate`: an interneuron whose nearness to
+the place is under the gate says nothing and its wires do not change (by hand; 0: off;
+with nothing felt there is no gate). At 0.3 with a field of 12 cells the patch that speaks
+is about 37 cells.
+
+**(a) No search.** The five 2a' genomes with `--field 12 --reach 32 --spoken --gate 0.3`,
+32 wires, 128 to 4096 cells. They were found for a brain in which every cell speaks, so
+this asks what gating alone buys. Prediction: holding at 2048 cells above the placeless 18
+but far under the hand ceiling of 864: between 30 and 150.
+
+**(b) A search with the gate on**, from the same genomes: `--fan 16 --reach 32 --field 12
+--spoken --gate 0.3 --sizes 128 256 512`, loads of 1/16 to 1/2 item per wire per patch
+(what a patch of that many cells can hold with the rule as it is, so that the lives start
+where the brain already works). Bars, on 32 wires, exam sizes 128 to 4096:
+
+- **Q1, growth returns.** Held at 2048 cells at least 2x held at 512, every lineage.
+- **Q2, above the ceiling of a placeless brain.** At least 100 items held at 2048 cells.
+- **Q3, the shuffle.** With wires from anywhere (`--reach 0`) less than half of that.
+- **Q4, the gate off** (nothing felt, `--nowhere`): at most 32 items.
+
+Prediction: Q1-Q4 met on at least four lineages; 100-400 items at 2048 cells. If so the
+honest reading is: places make growth pay, the gate is by hand, and finding the gate is an
+open task for the search.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -54,6 +54,9 @@ class Plan:
     field: int = 0      # a sense of place: the world is somewhere along the ring and an
     #                     interneuron feels how near that is to itself, a bell this many cells
     #                     wide; 0: no such sense
+    gate: float = 0.0   # by hand: an interneuron whose nearness to the place is under this
+    #                     says nothing and its wires do not change; 0: no gate. With nothing
+    #                     felt there is no gate either
     spoken: bool = False    # a plastic dendrite is scaled by what was SAID to it (the squares
     #                     of what its sources said, summed, plus one) and not by the number of
     #                     its wires: then neither what it reads nor how far one lesson moves it
@@ -189,6 +192,8 @@ class Grown:
                     feats.append(torch.zeros_like(feats[0]) if where is None
                                  else self.near(self.n[t], where))
             said = self.t.cells[t](torch.stack(feats, dim=-1))
+            if t != "O" and plan.field and plan.gate and where is not None:
+                said = said * (feats[-1] >= plan.gate).unsqueeze(-1)    # asleep away from the place
             new_act[t] = said[..., 0]
             j = 1
             for i in self.t.incoming[t]:

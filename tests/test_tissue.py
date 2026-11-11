@@ -316,3 +316,20 @@ def test_a_thought_held_by_hand_in_places_grows_with_the_ring():
     crowded = hand.think_in_places(128, 16, 64, reach=16, patch=32, steps=200)
     roomy = hand.think_in_places(1024, 16, 64, reach=16, patch=32, steps=200)
     assert crowded < 0.9 < roomy                            # the same load, eight times the ring
+
+
+def test_the_gate_by_hand_silences_and_stills_the_cells_away_from_the_place():
+    torch.manual_seed(0)
+    brain = Tissue(replace(RUNG1, fan=6, reach=4, field=3, gate=0.3), ITEM).grow(40)
+    state = brain.born(2, gen(1))
+    cue, where = torch.ones(2, 12), torch.tensor([0.0, 0.5])
+    for _ in range(3):
+        state, _ = brain.tick(state, cue, cue, 1.0, 1.0, where=where)
+    act, wires, _ = state
+    awake = brain.near(40, where) >= 0.3
+    assert 3 <= int(awake[0].sum()) <= 12
+    assert not act["I"][~awake].any() and act["I"][awake].abs().min() > 0
+    assert not wires[1][~awake].any() and wires[1][awake].any()
+    # with nothing felt there is no gate
+    state, _ = brain.tick(brain.born(2, gen(1)), cue, cue, 1.0, 1.0)
+    assert state[0]["I"].abs().min() > 0

@@ -28,8 +28,8 @@ from tissue.kernel import RUNG0, RUNG1, Gru, Tissue
 TRAIN_SIZES = (8, 16, 32, 64)
 GRU_PAIRS = 64          # a GRU has no size: it is trained on 1..this many pairs
 CHAIN_TASK = Task(d_in=12, d_out=12)    # an item is 12 bits, seen and said alike
-ROOM = 1.5e8            # a sparse stream life: lives x ticks x cells x wires kept under this, by
-#                         living fewer lives at once (about 1.5 GB of memory for the search)
+ROOM = 1.0e8            # a sparse stream life: lives x ticks x cells x wires kept under this, by
+#                         living fewer lives at once (under 2 GB of memory for the search)
 
 
 def make(arm: str, **switches):

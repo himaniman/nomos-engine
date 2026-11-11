@@ -4967,3 +4967,55 @@ every bit of a place for a thousand items.
 So the claim has its cleanest form yet on rung 2: the same genome, in a brain with 32 wires per
 cell that is told nothing about where anything lies, holds in thought in proportion to its size,
 from 512 to 4096 cells. By hand: the gate, the index, the latch, the rule of places.
+
+## 2026-11-12 (02:28) — step 2d', the gate asked for a second time: a leaky gate of the cell's own on two lineages, and the bars missed
+
+The second attempt at the first thing on the user's vector, with the two things the first lacked.
+The cell was first taught its gate by imitation (`python -m tissue.imitate`: asleep cells a tenth
+as loud, 8-16% of an awake cell's speech wrong), and the lives made places pay: 256, 512 and 1024
+cells, 1/8 to 3/4 item per wire per patch. The hand gate was taken away over the first 3000 steps
+of 4000 as before. Two changes at once, said so beforehand. 113 minutes a lineage. Exam with no
+hand gate at all (`--lean 0`), field 24, sixteen lives, the third set of worlds:
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| K90 hop 1, no hand gate | 62/48/52/48/43 | 110/64/74/68/71 | 160/103/85/85/95 | 163/9/88/91/115 | 0/0/88/87/127 |
+| K90 hop 1, the gate by hand (2c-5) | 93/106/103/115/105 | 193/213/207/207/208 | 386/432/406/428/427 | 785/853/845/898/867 | 1530/1710/1648/1779/1706 |
+| held, no hand gate | 17/0/0/0/0 | 26/0/0/0/0 | 31/0/0/0/0 | 52/0/0/0/0 | 47/0/0/0/0 |
+
+| at 2048 cells, K90 hop 1 | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| as found | 163 | 9 | 88 | 91 | 115 |
+| wires shuffled | 0 | 0 | 79 | 53 | 129 |
+| the sense off | 0 | 0 | 80 | 0 | 109 |
+
+- **U1 (recall at 4096 cells at least half of the hand gate's): missed**, 0.00-0.07.
+- **U2 (at least 100 items held at 4096): missed**, 47 / 0 / 0 / 0 / 0.
+- **U3 (far cells at most a tenth as loud): missed.** At 2048 cells a cell more than 64 from the
+  place is 0.36, 0.26 and 0.40 as loud as one at it (lineages 0, 1, 2) with the eyes open and
+  0.28-0.49 with them closed; it learns 0.09, 0.06 and 0.22 as much. After the imitation it had
+  been 0.10 as loud: the search loosened the gate it was given.
+- **U4 (the controls): met on lineages 0 and 1**, which recall nothing without the sense or with
+  their wires shuffled. Lineages 2 and 4 are placeless brains again.
+
+I had predicted U3 and U4 met and U1 on three lineages or more. Wrong again about a search.
+
+What is new against the first attempt: on two lineages the gate IS the cell's own, and on one of
+them (lineage 0) a thought holds 17, 26, 31, 52 items at 256, 512, 1024, 2048 cells. That is more
+than a placeless brain holds (18) and it grows with the brain: the first holding that grew in a
+brain whose gate nobody put in by hand. It is a quarter to a half of what the hand gate gives, and
+it breaks at 4096 cells, where a third of a voice in each of four thousand far cells is too much.
+
+The searches were unstable without the hand gate: lineage 3 stopped at step 2204 with 401 steps
+that had no finite slope (the cap I had set), a quarter of the hand gate still on; lineages 2 and
+4 skipped 388 and 206 steps of 4000, lineages 0 and 1 only 5 and 45, and those are the two that
+kept their gate.
+
+**Reading it.** The gate is within a cell's reach but a perceptron of 8 hidden units says it
+loosely (a tenth of a voice left at best), a search without the scaffold loosens it further, and
+the brain is at its most unstable exactly while the scaffold comes down. Asking a third time is
+not what it wants. A cell that can say "asleep" sharply is: a wider perceptron in the cell (32
+hidden got the imitation to 5%), or a second kind of cell whose only work is to put its
+neighbours to sleep. Either changes what a cell is, which the user fixed at the start (small and
+the same at every size), so it is his to decide. Until then the gate stays by hand.
+Genomes and exams: `runs/tissue/own/`.

@@ -891,6 +891,39 @@ it. U4 met. U1 met on three lineages or more. U2, holding, on fewer than U1: no 
 today has bought holding, and a tenth of a voice left in every far cell is four hundred
 voices among 4096.
 
+**Outcome (journal 2026-11-12, 02:28):** U1, U2 and U3 missed; my prediction was wrong
+again. But it is not the plain failure of the first attempt.
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| K90 hop 1, no hand gate | 62/48/52/48/43 | 110/64/74/68/71 | 160/103/85/85/95 | 163/9/88/91/115 | 0/0/88/87/127 |
+| K90 hop 1, the gate by hand (2c-5) | 93-115 | 193-213 | 386-432 | 785-898 | 1530-1779 |
+| held, no hand gate | 17/0/0/0/0 | 26/0/0/0/0 | 31/0/0/0/0 | 52/0/0/0/0 | 47/0/0/0/0 |
+
+| at 2048 cells, K90 hop 1 | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| as found | 163 | 9 | 88 | 91 | 115 |
+| wires shuffled | 0 | 0 | 79 | 53 | 129 |
+| the sense off | 0 | 0 | 80 | 0 | 109 |
+
+- Lineages 0 and 1 kept a gate of their own: without the sense, or with the wires
+  shuffled, they recall nothing. Lineage 0 holds 17, 26, 31, 52 items at 256 to 2048
+  cells, more than a placeless brain (18) and growing, the first holding that grew with a
+  brain whose gate is its own; it breaks at 4096. Lineage 1 breaks from 2048 on.
+- Lineages 2 and 4 are placeless brains again (neither control changes them).
+- Lineage 3 stopped at step 2204 of 4000 (401 steps without a finite slope, the cap), with
+  a quarter of the hand gate still on; lineages 2 and 4 skipped 388 and 206 steps.
+- U3: the gate the cells were taught has leaked. A cell more than 64 from the place is 0.26
+  to 0.40 as loud as one at it (it was 0.10 after the imitation), and learns 0.06-0.22 as
+  much. Among 4096 cells that is too many voices.
+
+So the gate can be the cell's own, in part and on some lineages, and what it does then is
+of the right kind; but a perceptron of 8 hidden units says it too loosely, a search living
+without the hand gate loosens it further, and the search itself is unstable there. The gate
+stays by hand. What would mend it is most likely not asking a third time but a cell that
+can say it sharply: a wider perceptron, or a kind of cell whose only work is to put its
+neighbours to sleep. That is a change to what a cell is, and the user's to decide.
+
 ### Step 3a: growth within one life. Plan, bars and prediction, written before the run
 
 Until now "grown bigger" has meant "born bigger". Exam 3 (`tissue/grow.py`): one unbroken
@@ -1246,7 +1279,7 @@ room is "enough" is the one number in the rule (`--full`), and it is by hand.
 | 2c cells in a space | done, 5 lineages. Wires from neighbours alone change nothing. A search given a sense of place found no use for it. With a gate BY HAND (cells silent away from their place) and 32 wires per cell: recall one step ahead in proportion to the cells, 0.4 items per cell to 4096; a thought held 24-30 items at 256 cells and 160-287 at 4096 (placeless: 18 at any size). Shuffle the wires: nothing. Sense off: a placeless brain. Open: the search finding the gate; the dials in the genome |
 | 2c-6 a search living with the wider field | done: holds less, not more (T1, T2 missed); the genomes of 2c-3b stay the best with a gate |
 | 3a growth within one life, the size turned by the examiner | done, 5 lineages, no search: a brain given new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new loops alike, and 0.16-0.20 above one left at 512 |
-| 2d the search finds the gate | first attempt failed: with the hand gate taken away the genomes go back to placeless brains (the lives did not make the gate pay). Second attempt running: the cell taught its gate by imitation first, and lives where places pay |
+| 2d the search finds the gate | not found. First attempt: with the hand gate taken away the genomes go back to placeless brains (the lives did not make the gate pay). Second attempt (the cell taught its gate by imitation, lives where places pay): two lineages of five keep a gate of their own and one of them holds more as it grows, to 2048 cells; but the gate leaks (far cells 0.26-0.40 as loud) and the bars are missed. The gate stays by hand |
 | 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-3.9 of it (63-86 items at 512 cells, 269-308 at 2048, 573-627 at 4096: in proportion to the cells) |
 | 3b growth decided by the tissue | done by hand, 5 lineages, nothing searched and nothing told: places chosen by the brain, cells added when every stretch of the ring is in use. It grows x3 in a poor world and x8 in a rich one; in the rich world it is level with a brain born big for four fifths of the cost, in the poor one 0.06-0.07 under it for a third of the cost |
 

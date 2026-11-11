@@ -107,6 +107,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     n_genome = sum(p.numel() for p in model.parameters())
     print(f"{arm} seed {seed}: genome of {n_genome} numbers", flush=True)
     ema_loss = ema_acc = None
+    skipped = 0
     t0 = time.time()
     for step in range(1, steps + 1):
         u = torch.rand(3, generator=gen)
@@ -146,18 +147,26 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             logits = run_life(model.grow(m), task, cues, answers, gen)
         loss = F.softplus(-answers * logits).mean()
         opt.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        opt.step()
-        sched.step()
         acc, cost = accuracy(logits, answers), loss.item()
-        if not math.isfinite(cost):
-            raise RuntimeError(f"loss is not finite at step {step} (m={m}, k={k})")
-        ema_loss = cost if ema_loss is None else 0.98 * ema_loss + 0.02 * cost
-        ema_acc = acc if ema_acc is None else 0.98 * ema_acc + 0.02 * acc
+        norm = float("nan")
+        if math.isfinite(cost):
+            loss.backward()
+            norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0))
+        if math.isfinite(norm):
+            opt.step()
+        else:       # a life whose error or whose slope is not a number teaches nothing: an
+            skipped += 1            # endless slope, clipped, would turn the genome into NaN
+            if skipped > max(20, steps // 10):
+                raise RuntimeError(f"{skipped} steps of {step} had no finite error or slope (m={m})")
+        sched.step()
+        if math.isfinite(cost):
+            ema_loss = cost if ema_loss is None else 0.98 * ema_loss + 0.02 * cost
+            ema_acc = acc if ema_acc is None else 0.98 * ema_acc + 0.02 * acc
         if step % 100 == 0 or step == steps:
             row = {"step": step, "loss": round(ema_loss, 4), "acc": round(ema_acc, 4),
                    "sec": round(time.time() - t0, 1)}
+            if skipped:
+                row["skipped"] = skipped
             log.write(json.dumps(row) + "\n")
             log.flush()
             print(row, flush=True)

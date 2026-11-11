@@ -16,7 +16,8 @@ A tick, for every cell at once, from a snapshot of the previous tick:
 So learning is local: a wire sees only the two cells it joins.
 
 By hand, not found: the cell types, which blocks exist, the average on a dendrite (so a
-cell's input does not depend on how many wires reach it), the product form of the wire rule;
+cell's input does not depend on how many wires reach it; under `spoken`, on how many of its
+sources speak), the product form of the wire rule;
 and, where there is a space (`reach`, `field`), that it is a ring, that wires come from
 neighbours, and that the sense of place is laid out along it. What a cell does with them is found.
 """
@@ -53,6 +54,10 @@ class Plan:
     field: int = 0      # a sense of place: the world is somewhere along the ring and an
     #                     interneuron feels how near that is to itself, a bell this many cells
     #                     wide; 0: no such sense
+    spoken: bool = False    # a plastic dendrite is scaled by what was SAID to it (the squares
+    #                     of what its sources said, summed, plus one) and not by the number of
+    #                     its wires: then neither what it reads nor how far one lesson moves it
+    #                     depends on how many of its sources speak. False: by the wires
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -171,7 +176,8 @@ class Grown:
                     heard[i] = seen[b.pre].unsqueeze(1)
                     reach, n_wires = torch.einsum("bij,bj->bi", wires[i], seen[b.pre]), self.n[b.pre]
                 if b.plastic:
-                    feats.append(reach / n_wires)
+                    feats.append(reach / ((heard[i] ** 2).sum(-1) + 1) if plan.spoken
+                                 else reach / n_wires)
                 else:
                     feats.append(reach * torch.exp(self.t.gain[str(i)]) / math.sqrt(n_wires))
             if t == "O":

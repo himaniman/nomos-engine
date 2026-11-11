@@ -566,6 +566,24 @@ multiply with the ring, so like rung 0 this would be an instrument, not a discov
 I am least sure of is the search: every cell now speaks for every item, and a cell that
 falls silent away from its place costs recall before it pays in holding.
 
+**Amended before any result** (a first start was stopped at step 200 of 4000). Counting
+through what a brain with places would look like, I found a by-hand choice of the kernel
+that would have decided the outcome. A plastic dendrite is an average over its wires, and a
+motor cell is wired from every interneuron. If only a patch speaks, what the motor cells
+read, and how far one lesson moves them, shrink as patch / cells: 0.29 at 128 cells, 0.07
+at 512, 0.018 at 2048. A genome found at 128-512 cells could not carry to 2048 for that
+reason alone, and the bars would have tested my normalisation, not places.
+
+`Plan.spoken`: a plastic dendrite is scaled by what was SAID to it (the squares of what its
+sources said, summed, plus one) instead of by the number of its wires. Then neither what
+it reads nor how far one lesson moves it depends on how many of its sources speak. For a
+code where every cell speaks it is the old average up to a constant, and the 2a' genomes
+still live under it before any search (lineage 0 at 256 cells: 9 items held against 14, K90
+at hop 1 52 against 54). The search is the one above plus `--spoken`. Bars P1-P4 unchanged.
+The shuffle (P3) and the sense off (P4) are run on the same genomes, so they carry the same
+dendrite; if the bars are met I owe one more control, a search with `spoken` alone, to show
+what the new dendrite does without places.
+
 ## Where the ladder stands
 
 | rung | state |

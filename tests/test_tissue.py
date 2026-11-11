@@ -286,3 +286,24 @@ def test_a_genome_adopted_into_a_plan_with_a_new_sense_begins_as_the_old_one_liv
     assert torch.equal(felt, stream.run_life(new.grow(32), ITEM, items, life, gen(5), places=True)["closed"][0])
     with pytest.raises(ValueError):
         adopt(old, new.state_dict())                        # a sense cannot be taken away so
+
+
+def test_a_dendrite_scaled_by_what_was_said_does_not_care_how_many_sources_are_silent():
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, spoken=True), ITEM)
+    cue, teach = torch.ones(2, 12), -torch.ones(2, 12)
+
+    def motor_reads(m, speaking):
+        brain = genome.grow(m)
+        act, wires, sources = brain.born(2, gen(1))
+        act["I"][:, :speaking] = 1.0                        # the first cells speak, the rest are silent
+        wires[2][:, :, :speaking] = 0.5                     # and the motor wires from them are set
+        seen = []
+        hook = genome.cells["O"].register_forward_hook(lambda mod, inp, out: seen.append(inp[0]))
+        brain.tick((act, wires, sources), cue, teach, 1.0, 1.0)
+        hook.remove()
+        return seen[0][..., 0]                              # the motor cells' dendrite from interneurons
+
+    small, big = motor_reads(16, 8), motor_reads(64, 8)
+    assert torch.allclose(small, big)                       # eight speakers in 16 cells or in 64
+    assert torch.allclose(small, torch.full_like(small, 8 * 0.5 / (8 + 1)))

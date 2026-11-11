@@ -1204,6 +1204,25 @@ Prediction: Y1 and Y3 met. Y2 met in the poor world; in the rich one I expect th
 brain a little under the one born big, 0.03-0.08: what it learnt while small it learnt
 crowded, and nothing moves a thing out once there is room.
 
+**Outcome (journal 2026-11-12, 01:21):** Y1 and Y3 met on all five lineages; Y2 met in the
+rich world and missed in the poor one, the opposite of what I predicted.
+
+| five lineages | hop 1 | hop 8 | cells at the end | cost, million cell-ticks |
+|---|---|---|---|---|
+| poor world (192 items), grows by itself | 0.93-0.94 | 0.76-0.79 | 768 | 0.6 |
+| poor world, born big | 0.99-1.00 | 0.98-1.00 | 2048 | 2.0 |
+| poor world, small | 0.78-0.81 | 0.55-0.57 | 256 | 0.2 |
+| rich world (768 items), grows by itself | 0.82-0.84 | 0.65-0.66 | 2048 | 6.3 |
+| rich world, born big | 0.83-0.84 | 0.67-0.69 | 2048 | 7.9 |
+| rich world, small | 0.58-0.61 | 0.50-0.53 | 256 | 1.0 |
+
+The brain grows to three times its size in the poor world and eight times in the rich
+one, by its own rule. In the rich world it is level with a brain born big (within 0.01) for
+four fifths of the cost. In the poor world it stops at 768 cells and is 0.06-0.07 under the
+brain born big, which has ten cells for every item and costs three times as much. The rule
+stops growing the moment the ring is no longer crowded; it does not buy comfort. How much
+room is "enough" is the one number in the rule (`--full`), and it is by hand.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -1222,7 +1241,7 @@ crowded, and nothing moves a thing out once there is room.
 | 3a growth within one life, the size turned by the examiner | done, 5 lineages, no search: a brain given new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new loops alike, and 0.16-0.20 above one left at 512 |
 | 2d the search finds the gate | first attempt failed: with the hand gate taken away the genomes go back to placeless brains (the lives did not make the gate pay). Second attempt running: the cell taught its gate by imitation first, and lives where places pay |
 | 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-2.9 of it (63-86 items at 512 cells, 269-308 at 2048) |
-| 3b growth decided by the tissue | planned |
+| 3b growth decided by the tissue | done by hand, 5 lineages, nothing searched and nothing told: places chosen by the brain, cells added when every stretch of the ring is in use. It grows x3 in a poor world and x8 in a rich one; in the rich world it is level with a brain born big for four fifths of the cost, in the poor one 0.06-0.07 under it for a third of the cost |
 
 Open questions carried along: what separates the lineages that scale without a fade from
 those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed

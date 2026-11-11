@@ -4887,3 +4887,53 @@ about where anything lies: a memory of what lies where, a latch, and a rule for 
 Not one of the three is a cell of the genome yet, and the gate is still by hand as well. That is
 the work left on this step: an index made of cells and found by a search.
 Exams: `runs/tissue/told/`.
+
+## 2026-11-12 (01:21) — step 3b: a brain that is told nothing chooses its places and decides to grow, by hand
+
+The last thing on the user's vector, in its by-hand form. Exam 3 with `--alone`: nothing is told,
+neither where a thing lies nor when to grow. Loops come in eight equal batches, each walked round
+twice, and then the eyes close on every loop. `grow.Places`, by hand: a run of new things is put
+at the stretch of the ring least in use (its neighbours counted, then itself, then the furthest
+from the last place); a known thing is found by the hand-made index; after a batch, if every
+stretch of the ring is in use at least twice, the brain gives itself 256 more cells, up to 2048.
+It starts with 256. The store is the five genomes of step 2c-3b with their hand gate; eight
+lives; nothing is searched. Bars Y1-Y3 first.
+
+| five lineages | hop 1 | hop 8 | cells at the end | cost, million cell-ticks |
+|---|---|---|---|---|
+| poor world (192 items), grows by itself | 0.925/0.936/0.934/0.930/0.933 | 0.76-0.79 | 768 | 0.6 |
+| poor world, born big | 0.993/0.994/0.994/0.990/0.996 | 0.98-1.00 | 2048 | 2.0 |
+| poor world, small | 0.782/0.790/0.803/0.810/0.796 | 0.55-0.57 | 256 | 0.2 |
+| rich world (768 items), grows by itself | 0.822/0.834/0.830/0.835/0.837 | 0.65-0.66 | 2048 | 6.3 |
+| rich world, born big | 0.833/0.835/0.829/0.835/0.837 | 0.67-0.69 | 2048 | 7.9 |
+| rich world, small | 0.576/0.585/0.594/0.605/0.580 | 0.50-0.53 | 256 | 1.0 |
+
+- **Y1 (it grows as much as the world asks): met** on all five. 768 cells in the poor world,
+  2048 in the rich one.
+- **Y2 (within 0.05 of the brain born big at hop 1): met in the rich world** (within 0.011)
+  **and missed in the poor one** (0.058-0.068 under). I had predicted the opposite.
+- **Y3 (growth pays): met.** In the poor world it costs 0.3 of the brain born big; in the rich
+  one it is 0.23-0.26 above the small brain.
+
+In the poor world the brain born big has ten cells for every item, every loop a stretch to
+itself, and is all but perfect; the brain that grows itself stops the moment its ring is no
+longer crowded and so lives a little crowded all its life. It does not buy comfort. How much room
+is enough is the one number in the rule and it is by hand.
+
+**The user's vector, where it stands after one night.** Of the three things:
+
+1. *The search finds the gate*: not yet. With the hand gate taken away step by step the cells did
+   not take it over (2d). A second attempt, with the cell first taught its gate by imitation and
+   lives in which places pay, is still running.
+2. *The brain chooses the place*: yes, by hand. A hand-made index of what lies where, a latch, and
+   a rule for opening places (a run of new things shares one, the next is opened far from the
+   last): never told a place, the brain recalls 0.6-0.8 of what a world-told brain recalls and
+   holds x1.3-2.9 as much in thought.
+3. *Growth from a seed*: yes, by hand. A brain given new cells in mid-life is as good as one born
+   big (3a), and a brain that is told nothing grows itself as much as its world asks (3b).
+
+What all three still lack is the same thing: the genome. The gate, the index, the latch, the rule
+of places and the rule of growth are mine; the cells' rule is the only thing found. The by-hand
+versions say what each is worth and that the whole chain holds together; turning them, one at a
+time, into cells that a search finds is the work ahead.
+Exams: `runs/tissue/grow/`.

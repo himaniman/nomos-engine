@@ -845,6 +845,52 @@ Prediction: U3 and U4 met. U1 and U2 met on three lineages or more, with a plain
 against the hand gate at 4096 cells: a whisper of the far cells that does no harm among 512
 cells is eight times as many voices among 4096, and no search has seen that size.
 
+**Outcome (journal 2026-11-12, 00:01):** every bar missed on every lineage; my prediction
+was wrong. As the scaffold went, the genomes did not take the gate over, they went back to
+being placeless brains:
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| K90 hop 1, no hand gate | 53-64 | 66-91 | 70-123 | 73-153 | 79-191 |
+| K90 hop 1, the gate by hand (2c-5) | 93-115 | 193-213 | 386-432 | 785-898 | 1530-1779 |
+| held, no hand gate | 9-12 | 9-13 | 9-17 | 9-17 | 9-17 |
+
+U1: 0.04-0.11 of the hand gate's recall at 4096 cells (bar 0.5). U2: 9-17 items held (bar
+100). U3: a cell is as loud at any distance from the place. U4: shuffling the wires or
+taking the sense away changes nothing, since nothing uses them. Lineage 3 died half way
+(its error stopped being a number as the gate weakened; the search now skips such a step,
+159 of its 4000).
+
+Why, looked into before asking again:
+
+1. **The lives did not make the gate pay.** The error of the search did not rise as the
+   gate went (0.35 with it, 0.30-0.41 without). At the sizes searched, 128 to 512 cells,
+   a placeless brain recalls nearly as much as one with places (35-38 against 40-53 items
+   at 128 cells, 77-91 against 157-183 at 512), and most lives were loaded under that. The
+   loads lesson a third time: a life has to pay for the wanted thing more than for what
+   the brain can do without it.
+2. **A cell can say its own gate, roughly.** Its perceptron (8 hidden) fitted to its own
+   speech under the hand gate (`python -m tissue.imitate`) leaves a cell that should be
+   asleep at a tenth of an awake cell's loudness and gets 8-16% of an awake cell's speech
+   wrong (23-33% of its learning signal). So the gate is within the cell's reach, but
+   imitation alone is not a brain: without the hand gate and without a search the five
+   taught genomes recall 0-39 items at 512 cells.
+
+### Step 2d', asked again with what 2d lacked. Bars U1-U4 unchanged
+
+Two changes, and they are two, said plainly. (1) The cell is first taught its own gate by
+imitation, so the search starts with the gate already in the genome and has to keep it and
+mend the rest. (2) The lives make places pay: 256, 512 and 1024 cells, 1/8 to 3/4 item per
+wire per patch, so that about half the lives lie beyond what a placeless brain recalls and
+within what a brain with places does. The hand gate is taken away over the first 3000
+steps of 4000 as before. If it works, one more search, with the loads and without the
+imitation, says which of the two was needed.
+
+Prediction: U3 met, the gate is the cell's own from the first step and now it pays to keep
+it. U4 met. U1 met on three lineages or more. U2, holding, on fewer than U1: no search
+today has bought holding, and a tenth of a voice left in every far cell is four hundred
+voices among 4096.
+
 ### Step 3a: growth within one life. Plan, bars and prediction, written before the run
 
 Until now "grown bigger" has meant "born bigger". Exam 3 (`tissue/grow.py`): one unbroken

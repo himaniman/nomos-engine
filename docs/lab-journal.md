@@ -4656,3 +4656,50 @@ step); 3a growth within one life, the size turned by the examiner; 2e the brain 
 in rungs; 3b growth decided by the tissue. 2d is running; exam 3 (`tissue/grow.py`,
 `Grown.more`) is written, with a unit test that says growing costs nothing by itself: the grown
 brain says, on its next tick, what the small one would have said.
+
+## 2026-11-11 (22:15) — step 3a: growth within one life. A brain given new cells in mid-life is as good as one born big
+
+Until today "grown bigger" meant "born bigger". Exam 3 (`tissue/grow.py`) is one unbroken life in
+two halves: the first loops are learnt, the brain is given new cells, the second loops are learnt,
+then the eyes close on loops of either half. `Grown.more` adds the cells where the ring closes,
+after the last one, with innate wires of their own and nothing learnt; an old cell keeps its
+number, its wires and what they hold. A place is counted in cells, so it stays where it was. Three
+arms live the same world tick for tick. No search: the five genomes of step 2c-3b as they are
+(the gate by hand, field 24, 32 wires per cell). By hand: when the brain grows and by how much.
+
+512 cells, then 2048; 96 items before the growth, 480 after; sixteen lives; accuracy at hop 1 and
+(in brackets) at hop 8 of a closing:
+
+| lineage | grown, first loops | born big, first | small, first | grown, second loops | born big, second | small, second |
+|---|---|---|---|---|---|---|
+| 0 | 0.822 (0.618) | 0.839 (0.641) | 0.663 (0.518) | 0.930 (0.761) | 0.930 (0.766) | 0.732 (0.532) |
+| 1 | 0.835 (0.602) | 0.835 (0.599) | 0.651 (0.522) | 0.942 (0.765) | 0.941 (0.768) | 0.749 (0.529) |
+| 2 | 0.829 (0.623) | 0.840 (0.630) | 0.656 (0.535) | 0.937 (0.753) | 0.935 (0.766) | 0.754 (0.538) |
+| 3 | 0.836 (0.592) | 0.834 (0.608) | 0.666 (0.528) | 0.937 (0.750) | 0.938 (0.761) | 0.779 (0.539) |
+| 4 | 0.838 (0.642) | 0.847 (0.635) | 0.666 (0.528) | 0.942 (0.767) | 0.939 (0.768) | 0.748 (0.536) |
+
+- **G1 (on the first loops the grown brain is within 0.03 of the one born big): met**, the
+  largest gap is 0.023.
+- **G2 (the same on the second loops): met**, the largest gap is 0.013.
+- **G3 (on the second loops the grown brain is at least 0.10 above the small one at hop 1):
+  met**, 0.16-0.20.
+
+Predicted, and said beforehand to be close to a consequence of step 2c: with places an old cell is
+not touched by a newcomer. A unit test shows the mechanism itself: on its next tick the grown brain
+says what the small one would have said. What the exam adds is that nothing in the kernel quietly
+depended on the size a brain was born with, a whole life long, on five lineages. (One reason it
+would not have been so before today: a dendrite that averaged over its wires would have read every
+old lesson more faintly the moment new cells arrived. `Plan.spoken` was put in for another reason
+and pays here.)
+
+Two things the table also says, neither about growth. The first loops are recalled worse than the
+second by both big brains: the exam puts them all on the first 512 cells and a quarter of the
+second loops land there as well, so that stretch is the crowded one. And hop 8 is poor everywhere:
+576 items is well beyond what these brains hold in thought at 2048 cells (about 105-200).
+
+To test the code I had run the exam once on lineage 0 at 128 to 512 cells before the bars were
+written; that is on record in the design note. Exams: `runs/tissue/grow/`.
+
+So the claim in its literal form now has a first answer: the same genome, grown bigger in the
+middle of a life, is smarter, and loses nothing it knew. By the examiner's hand so far: the
+tissue did not decide to grow (step 3b).

@@ -633,6 +633,12 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   first result, then tested in new worlds), gate, dendrite scaling. The world tells the brain
   where it is. METHOD: a heavy load measured on four lives is not measured (`--lives 16`).
   Genomes `runs/tissue/gate/`. Open: the search finding the gate; the dials in the genome.
+  AFTER RUNG 2 the user's vector (2026-11-11): try all three, in my order: 2d the search finds
+  the gate (the hand gate as a scaffold taken away, `Plan.lean`, `--anneal`); 3a growth within
+  one life; 2e the brain chooses the place (`--told seen|study`: when the world tells it); 3b
+  growth decided by the tissue. 3a DONE (exam 3, `tissue/grow.py`, `Grown.more`): a brain given
+  new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new
+  loops alike and 0.16-0.20 above one left at 512; by the examiner's hand so far.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

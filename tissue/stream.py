@@ -98,13 +98,18 @@ def script(life: Life, batch: int, gen: torch.Generator) -> list:
 
 
 def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Generator,
-             places: bool = False) -> dict:
+             places: bool = False, told: str = "always") -> dict:
     """Live the stream. Returns {kind: (said, true)} for kind in "echo" | "closed" | "idle",
     each (B, ticks of that kind, d); "closed" is ordered blink by blink, hop by hop.
 
     `places`: every loop lies at a place of its own, drawn at random along a ring, and the
     brain is told the place the world is at on every tick, eyes open or closed (a place is
-    felt, not seen). It says where, never what."""
+    felt, not seen). It says where, never what. `told`: when the brain is told the place:
+    "always"; "seen", only while the eyes are open, so that with the eyes closed it has to
+    keep the place itself; "study", only while the loops are first walked round, so that in
+    the test it has to find where a thing lives from what it sees."""
+    if told not in ("always", "seen", "study"):
+        raise ValueError(f"told must be always, seen or study, not {told!r}")
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
     ticks = script(life, b, gen)                # the world first: the same for any brain
@@ -119,6 +124,10 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
         item = silent if loop is None else items[rows, loop, place]
         if places and loop is not None:
             felt = place_of[rows, loop]
+            if (told == "seen" and not seen) or (told == "study" and kind != "study"):
+                felt = None
+        elif told != "always":
+            felt = None
         state, out = brain.tick(state, item if seen else silent,
                                 before if before_seen else silent, float(before_seen), float(seen),
                                 where=felt)

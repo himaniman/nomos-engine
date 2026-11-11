@@ -74,7 +74,8 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
           hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
           vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES,
           load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0,
-          spoken: bool = False, gate: float = 0.0, anneal: int = 0) -> None:
+          spoken: bool = False, gate: float = 0.0, anneal: int = 0,
+          told: str = "always") -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -90,7 +91,9 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     dendrites are scaled by what was said to them, not by their wires. `gate`: by hand, an
     interneuron less near the place than this is silent and does not learn. `anneal`: that
     gate is taken away evenly over this many steps and the rest are lived without it (the
-    genome is then saved as one that needs no gate)."""
+    genome is then saved as one that needs no gate). `told`: when a life tells the brain
+    the place ("always", "seen": only with the eyes open, "study": only while a loop is
+    first walked round)."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model, task = (make(arm, fan=fan, reach=reach, field=field, spoken=spoken, gate=gate)
@@ -125,7 +128,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                                open=3, closed=closed)
             lives_now = batch if not fan else max(4, min(batch, int(ROOM / (life.ticks * m * wires))))
             lived = stream.run_life(model.grow(m), task, stream.world(task, life, lives_now, gen),
-                                    life, gen, places=field > 0)
+                                    life, gen, places=field > 0, told=told)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
             answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
         elif arm == "chain":            # 1/8 .. 1 link per interneuron, chains of 1..hops links
@@ -162,6 +165,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
                         "reach": reach, "field": field, "spoken": spoken, "gate": gate,
                         "anneal": anneal, "lean": model.plan.lean if arm == "stream" else 1.0,
+                        "told": told,
                         "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
     log.close()
 
@@ -194,13 +198,15 @@ def main() -> None:
                    help="with --field: by hand, an interneuron less near the place than this is silent")
     p.add_argument("--anneal", type=int, default=0,
                    help="with --gate: take the gate away evenly over this many steps")
+    p.add_argument("--told", choices=("always", "seen", "study"), default="always",
+                   help="with --field: when a life tells the brain the place")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
           vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
-          field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal)
+          field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal, told=a.told)
 
 
 if __name__ == "__main__":

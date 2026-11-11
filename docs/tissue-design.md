@@ -875,6 +875,21 @@ lineage 0, and seen the grown brain level with the one born big, 0.84 and 0.87 a
 the first loops, 0.93 and 0.93 on the second, the small one at 0.60 and 0.72. The bars are
 for sizes and lineages not yet looked at.)
 
+**Outcome (journal 2026-11-11, 22:15):** G1, G2 and G3 met on all five lineages, as
+predicted. Accuracy at hop 1 (and at hop 8), five lineages:
+
+| | the first loops (96 items) | the second loops (480 items) |
+|---|---|---|
+| grown, 512 then 2048 cells | 0.82-0.84 (0.59-0.64) | 0.93-0.94 (0.75-0.77) |
+| born big, 2048 cells | 0.83-0.85 (0.60-0.64) | 0.93-0.94 (0.76-0.77) |
+| small, 512 cells | 0.65-0.67 (0.52-0.54) | 0.73-0.78 (0.53-0.54) |
+
+The grown brain is within 0.02 of the one born big everywhere; on the second loops it is
+0.16-0.20 above the small one at hop 1. Growing in mid-life costs nothing and buys what
+being born big buys. (The first loops are recalled worse than the second by both big
+brains: the exam puts them all on the first 512 cells and a quarter of the second loops
+land there too, so that stretch of the ring is the crowded one. Not an effect of growth.)
+
 ## Where the ladder stands
 
 | rung | state |
@@ -889,7 +904,10 @@ for sizes and lineages not yet looked at.)
 | 2a' a search that lives with few wires | done twice, the second asked properly: recall +11-51%, holding unchanged (K1, K2 missed) |
 | 2b a second kind of cell | not built. A hand-made ceiling decided it: one item per wire whatever the share of cells that speak and whatever the number of cells. Roads left: wires that grow with the brain, hubs, places |
 | 2c cells in a space | done, 5 lineages. Wires from neighbours alone change nothing. A search given a sense of place found no use for it. With a gate BY HAND (cells silent away from their place) and 32 wires per cell: recall one step ahead in proportion to the cells, 0.4 items per cell to 4096; a thought held 24-30 items at 256 cells and 160-287 at 4096 (placeless: 18 at any size). Shuffle the wires: nothing. Sense off: a placeless brain. Open: the search finding the gate; the dials in the genome |
-| 3 growth from a seed | not started |
+| 2c-6 a search living with the wider field | done: holds less, not more (T1, T2 missed); the genomes of 2c-3b stay the best with a gate |
+| 3a growth within one life, the size turned by the examiner | done, 5 lineages, no search: a brain given new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new loops alike, and 0.16-0.20 above one left at 512 |
+| 2d the search finds the gate | running |
+| 2e the brain chooses the place; 3b growth decided by the tissue | planned, in that order |
 
 Open questions carried along: what separates the lineages that scale without a fade from
 those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed

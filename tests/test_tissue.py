@@ -400,3 +400,23 @@ def test_a_life_in_two_halves_is_the_same_world_for_every_arm_and_a_pure_functio
         assert set(lived[arm]) == {"first", "second"} and len(lived[arm]["first"]) == 3
         assert all(0.0 <= x <= 1.0 for half in lived[arm].values() for x in half)
     assert lived["grown"] == grow.run_life(genome, ITEM, h, 48, 96, "grown", lives=3, seed=7)
+
+
+def test_a_place_can_be_told_always_or_only_with_the_eyes_open_or_only_in_study():
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, fan=6, reach=4, field=3), ITEM)
+    brain = genome.grow(32)
+    life = stream.Life(loops=2, length=4, laps=1, idle=3, blinks=2, open=2, closed=2)
+    items = stream.world(ITEM, life, 2, gen(4))
+    felt = []
+    tick = brain.tick
+    brain.tick = lambda *a, where=None, **k: (felt.append(where is not None), tick(*a, where=where, **k))[1]
+    kinds = [kind for kind, *_ in stream.script(life, 2, gen(5))] + ["end"]
+    seen = [k in ("study", "echo") for k in kinds]
+    for told, expect in (("always", [True] * len(kinds)), ("seen", seen),
+                         ("study", [k == "study" for k in kinds])):
+        felt.clear()
+        stream.run_life(brain, ITEM, items, life, gen(5), places=True, told=told)
+        assert felt[:-1] == expect[:-1], told               # the last tick has no world left
+    with pytest.raises(ValueError):
+        stream.run_life(brain, ITEM, items, life, gen(5), places=True, told="never")

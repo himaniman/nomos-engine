@@ -4937,3 +4937,33 @@ of places and the rule of growth are mine; the cells' rule is the only thing fou
 versions say what each is worth and that the whole chain holds together; turning them, one at a
 time, into cells that a search finds is the work ahead.
 Exams: `runs/tissue/grow/`.
+
+## 2026-11-12 (01:49) — step 2e-3c at 4096 cells: never told a place, a thought holds in proportion to the brain
+
+The run that was owed. The five genomes of 2c-3b, no place ever told (`--told self --runs`, each
+new place 0.382 of the ring from the last, an index of four times the ring), the fourth set of
+worlds, sixteen lives:
+
+| cells | 512 | 2048 | 4096 |
+|---|---|---|---|
+| held, never told a place | 63/86/74/75/84 | 308/298/293/269/296 | 588/627/573/589/590 |
+| held, told by the world (2c-5) | 47/48/32/30/44 | 108/114/105/106/203 | 217/160/220/268/287 |
+| K90 hop 1, never told | 151/159/157/160/160 | 541/549/546/543/553 | 981/1002/986/986/1014 |
+| K90 hop 1, told by the world | 193/213/207/207/208 | 785/853/845/898/867 | 1530/1710/1648/1779/1706 |
+
+- **X5 (holds at least what the world-told brain holds): met at all three sizes on all five
+  lineages**, x1.3-2.5, x1.5-2.9, x2.1-3.9.
+- **X4 (recall at least 0.7 of the world-told figure): met at 512 cells only**; 0.60-0.69 at 2048
+  and 0.55-0.64 at 4096. I had predicted X4 met throughout and had my doubt about X5 at 4096: the
+  wrong way round.
+
+Holding is 0.14-0.15 items per cell at every size, x2 from 2048 to 4096 cells. With places told
+by the world it thinned out with size (0.09 items per cell at 256 cells, 0.05 at 4096); with
+places the brain spreads itself it does not. Recall thins instead (0.31, 0.27, 0.24 items per
+cell), all five lineages stopping at the same load, which says the limit is in the hand-made
+part: most likely the index, which with four cells per cell of the ring is asked to be sure of
+every bit of a place for a thousand items.
+
+So the claim has its cleanest form yet on rung 2: the same genome, in a brain with 32 wires per
+cell that is told nothing about where anything lies, holds in thought in proportion to its size,
+from 512 to 4096 cells. By hand: the gate, the index, the latch, the rule of places.

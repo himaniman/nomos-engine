@@ -1181,6 +1181,13 @@ fell on top of one another here and there, while a rule that opens each new plac
 the last spreads them evenly. The cost is some recall. All of it is by hand: the index,
 the latch, the rule of runs, the stride.
 
+**4096 cells, added 01:49:** K90 at hop 1 is 981/1002/986/986/1014 (0.55-0.64 of the
+world-told 1530-1779: X4 missed there too), and 588/627/573/589/590 items are held (the
+world-told brain: 217/160/220/268/287: X5 met, x2.1-3.9). So X5 is met at all three sizes
+on all five lineages and X4 at 512 cells only. Never told a place, a thought holds 63-86
+items at 512 cells, 269-308 at 2048 and 573-627 at 4096: 0.14-0.15 items per cell, in
+proportion to the brain, which is the first time holding has done that on this rung.
+
 ### Step 3b: a brain that decides to grow, by hand. Bars written before the run
 
 Exam 3 with `--alone`. Nothing is told: neither where a thing lies nor when to grow. Loops
@@ -1240,7 +1247,7 @@ room is "enough" is the one number in the rule (`--full`), and it is by hand.
 | 2c-6 a search living with the wider field | done: holds less, not more (T1, T2 missed); the genomes of 2c-3b stay the best with a gate |
 | 3a growth within one life, the size turned by the examiner | done, 5 lineages, no search: a brain given new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new loops alike, and 0.16-0.20 above one left at 512 |
 | 2d the search finds the gate | first attempt failed: with the hand gate taken away the genomes go back to placeless brains (the lives did not make the gate pay). Second attempt running: the cell taught its gate by imitation first, and lives where places pay |
-| 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-2.9 of it (63-86 items at 512 cells, 269-308 at 2048) |
+| 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-3.9 of it (63-86 items at 512 cells, 269-308 at 2048, 573-627 at 4096: in proportion to the cells) |
 | 3b growth decided by the tissue | done by hand, 5 lineages, nothing searched and nothing told: places chosen by the brain, cells added when every stretch of the ring is in use. It grows x3 in a poor world and x8 in a rich one; in the rich world it is level with a brain born big for four fifths of the cost, in the poor one 0.06-0.07 under it for a third of the cost |
 
 Open questions carried along: what separates the lineages that scale without a fade from

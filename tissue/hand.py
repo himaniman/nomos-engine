@@ -223,16 +223,23 @@ class Index:
 
     `pace` is for a brain that is never told a place and chooses one itself (`tape`): a
     thing never seen before is put `pace` cells further along the ring than the last new
-    thing, like writing on a tape; a thing the index knows is where the index says."""
+    thing, like writing on a tape; a thing the index knows is where the index says. With
+    `runs` the tape moves on only when a new thing comes right after a known one: new
+    things in a row share a place, and something new after something familiar opens the
+    next. With `follow`, in the dark the place goes after the thought: it is where the
+    index says the thing the brain has just said lives, if the index is sure of it
+    (`after`)."""
 
     def __init__(self, batch: int, cells: int, d: int, ring: int, grain: int = 16,
-                 wave: float = 4.0, seed: int = 77, pace: int = 8):
+                 wave: float = 4.0, seed: int = 77, pace: int = 8, follow: bool = False,
+                 runs: bool = False):
         g = torch.Generator().manual_seed(seed)
         self.wires = torch.randn(batch, cells, d, generator=g)
         self.phase = torch.rand(batch, cells, generator=g) * 2 * math.pi
         self.wave, self.d = wave, d
-        self.pace = pace / ring
+        self.pace, self.follow, self.runs = pace / ring, follow, runs
         self.head = torch.zeros(batch)              # where the last new thing was put
+        self.knew = torch.ones(batch, dtype=torch.bool)     # was the last thing seen a known one
         self.bits = max(1, math.ceil(math.log2(max(2, ring / grain))))
         self.w = torch.zeros(batch, self.bits, cells)
 
@@ -254,10 +261,19 @@ class Index:
         where the index says if it is sure of every bit, else a little further along."""
         out = torch.einsum("bom,bm->bo", self.w, self.code(item))
         sure = (out.abs() > 0.5).all(dim=1)
-        self.head = torch.where(sure, self.head, (self.head + self.pace) % 1.0)
+        move = ~sure & self.knew if self.runs else ~sure
+        self.head = torch.where(move, (self.head + self.pace) % 1.0, self.head)
         here = torch.where(sure, self.say(item), self.head)
         self.learn(item, here)
+        self.knew = sure
         return here
+
+    def after(self, said: torch.Tensor, here: torch.Tensor) -> torch.Tensor:
+        """With the eyes closed: the place of the thing just said (its bits by their signs),
+        if the index is sure of every bit of it; else the place the brain is at."""
+        item = torch.sign(said)
+        out = torch.einsum("bom,bm->bo", self.w, self.code(item))
+        return torch.where((out.abs() > 0.5).all(dim=1), self.say(item), here)
 
     def say(self, item: torch.Tensor) -> torch.Tensor:
         on = (torch.einsum("bom,bm->bo", self.w, self.code(item)) > 0).long()

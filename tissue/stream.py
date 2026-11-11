@@ -119,7 +119,7 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     rows = torch.arange(b)
     ticks = script(life, b, gen)                # the world first: the same for any brain
     place_of = torch.rand(b, life.loops, generator=gen) if places else None
-    felt = None
+    felt = voice = None
     state = brain.born(b, gen)
     silent = torch.zeros(b, d)
     said: dict = {"echo": [], "closed": [], "idle": []}
@@ -130,7 +130,9 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
         if places and loop is not None:
             if told == "self":
                 if seen:
-                    felt = index.tape(item)     # and with the eyes closed: the place felt last
+                    felt = index.tape(item)     # and with the eyes closed: the place felt last,
+                elif index.follow and voice is not None:
+                    felt = index.after(voice, felt)     # or the place of the thing just said
             elif told == "index":
                 if kind == "study":
                     felt = place_of[rows, loop]
@@ -146,6 +148,7 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
         state, out = brain.tick(state, item if seen else silent,
                                 before if before_seen else silent, float(before_seen), float(seen),
                                 where=felt)
+        voice = out.detach()
         if before_kind in said:                 # what is said now is about the tick before
             said[before_kind].append(out)
             true[before_kind].append(before)

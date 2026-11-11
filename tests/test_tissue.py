@@ -475,3 +475,19 @@ def test_a_brain_never_told_a_place_writes_new_things_along_a_tape_and_finds_kno
                     index=hand.Index(2, 256, 12, 32, pace=2))
     assert all(w is not None for w in felt)
     assert len({round(float(w[0]), 4) for w in felt}) >= 4  # eight things seen, several places
+
+
+def test_with_runs_new_things_in_a_row_share_a_place_and_a_new_one_after_a_known_opens_the_next():
+    index = hand.Index(batch=1, cells=256, d=12, ring=256, pace=32, runs=True)
+    things = [torch.ones(1, 12)]
+    for k in range(3):
+        t = torch.ones(1, 12)
+        t[0, k] = -1
+        things.append(t)
+    a, b, c, d = things
+    first = [float(index.tape(x)) for x in (a, b)]         # two new things in a row
+    assert first[0] == first[1] == pytest.approx(32 / 256)
+    back = float(index.tape(a))                             # a known one: where it was put
+    assert abs(back - first[0]) <= 8 / 256
+    then = [float(index.tape(x)) for x in (c, d)]           # new after known: the next place
+    assert then[0] == then[1] == pytest.approx(64 / 256)

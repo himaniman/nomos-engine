@@ -1093,6 +1093,40 @@ neighbours on both sides and the chance link from the last item of one loop to t
 the next is now always between neighbouring cells, where with places drawn at random it
 seldom was. Both cost holding more than recall.
 
+**Outcome (journal 2026-11-12, 01:30):** X1 met on all five lineages, X2 missed on all five
+(I had predicted "on some").
+
+| 512 cells, an index of 2048 cells | K90 hop 1 | held in thought |
+|---|---|---|
+| told by the world on every tick (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| never told, a new thing 8 cells further on | 138/139/136/145/142 | 0/0/0/0/0 |
+| never told, 4 cells further on | 148/152/150/157/153 | 10/9/0/9/12 |
+| never told, 2 cells further on | 58/72/74/67/73 | 10/10/9/10/12 |
+| 4 cells, and in the dark the place goes after the thing just said | 129/129/128/132/130 | 9/0/0/8/9 |
+
+A brain that is never told a place recalls 0.65-0.78 of what a brain told by the world
+recalls. It holds next to nothing in thought: on a tape every item of a loop has a place of
+its own, so a place that stands still in the dark fits only part of the loop, and letting
+the place go after the thought makes it worse, not better.
+
+### Step 2e-3b: new things in a row share a place. Prediction written before the run
+
+One change to the rule by hand (`--runs`): the tape moves on only when a new thing comes
+right after a known one. New things in a row are put at the same place; something new
+after something familiar opens the next place, `--pace` cells on. In this world a loop
+walked round for the first time is a run of new things that ends on a known one (the item
+it began with), so each loop gets one place, as when the world told it, with the places
+laid side by side instead of drawn at random. That fit to the shape of this world is by
+hand and is said here: the rule is "a new thing after a familiar one starts something
+new", and whether it is a good rule in other worlds is not shown by this.
+
+- **X3.** With no place ever told and `--runs`, at 512 cells K90 at hop 1 and the items
+  held are each at least half of the world-told figures, on at least four lineages.
+
+Prediction: met, at 0.8-0.9 of the world-told figures for recall and about the same for
+holding, at a pace of 20 cells (about the spacing of the world's places at the load it
+recalls): it rebuilds what the world's telling gave.
+
 ## Where the ladder stands
 
 | rung | state |

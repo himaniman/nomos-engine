@@ -39,7 +39,8 @@ def held(ks: list, idle: list, bar: float = 0.9) -> float:
 
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
             quick: bool = False, nowhere: bool = False, worlds: int = 0, lives: int = 4,
-            told: str | None = None, index_cells: int = 0, pace: int = 8, **switches) -> dict:
+            told: str | None = None, index_cells: int = 0, pace: int = 8, follow: bool = False,
+            runs: bool = False, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
     (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
@@ -60,8 +61,8 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
             brain = model.grow(m)
             ks = stream.k_grid(m, task, shape.length)
             def live(items, life, g, m=m, brain=brain):
-                index = (Index(items.shape[0], index_cells or m, task.d_in, m, pace=pace)
-                         if told in ("index", "self") else None)
+                index = (Index(items.shape[0], index_cells or m, task.d_in, m, pace=pace,
+                               follow=follow, runs=runs) if told in ("index", "self") else None)
                 return stream.run_life(brain, task, items, life, g, places=places, told=told,
                                        index=index)
 
@@ -159,6 +160,11 @@ def main() -> None:
                    help="when the place is told: always, only with the eyes open, only in study,"
                         " in study and afterwards by a hand-made memory of what lies where, or"
                         " never (self: the brain chooses, a new thing a little further along)")
+    p.add_argument("--runs", action="store_true",
+                   help="--told self: new things in a row share a place; a new thing after a"
+                        " known one opens the next place, --pace cells on")
+    p.add_argument("--follow", action="store_true",
+                   help="--told self: in the dark the place goes after the thing just said")
     p.add_argument("--pace", type=int, default=8,
                    help="--told self: cells between one new thing and the next")
     p.add_argument("--index", type=int, default=0,
@@ -198,7 +204,8 @@ def main() -> None:
         tag += f".lives{a.lives}"
     if a.told:
         tag += f".told-{a.told}" + (f"{a.index}" if a.index else "") + (
-            f".pace{a.pace}" if a.told == "self" else "")
+            f".pace{a.pace}" if a.told == "self" else "") + (".follow" if a.follow else "") + (
+            ".runs" if a.runs else "")
     for path in a.genomes:
         streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
@@ -209,7 +216,7 @@ def main() -> None:
         elif length > 1:
             mark += f".len{length}"
         res = examine(path, a.sizes, length, shape, a.quick, a.nowhere, a.worlds, a.lives,
-                      a.told, a.index, a.pace, **switches)
+                      a.told, a.index, a.pace, a.follow, a.runs, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

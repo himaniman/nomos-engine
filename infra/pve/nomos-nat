@@ -1,0 +1,64 @@
+#!/bin/sh
+# /usr/local/sbin/nomos-nat up|down|status — internet for the nomos VM (10.99.0.70) on pve's
+# isolated bridge vmbr1, independent of stb's switch.
+#
+# vmbr1 (10.99.0.0/24) belongs to the stb sandbox (repo simply-the-best, /usr/local/sbin/stb-nat).
+# stb-nat's "internet off" empties STB_WEB, which applies to the whole subnet — nomos would lose
+# apt and pip (the only things it needs from outside). So nomos gets its own chains, jumped to *before*
+# STB_* (Сусеки's suseki-nat does the same for 10.99.0.20; the two never meet):
+#   out:   nomos -> internet only (masqueraded as pve on vmbr0); every private range is dropped,
+#          so it never reaches phil (10.202.10.0/24), the office (192.168.51.0/24), pve or
+#          Сусеки (stb / Сусеки <-> nomos on the same bridge is plain L2 — bridge-nf-call-iptables is 0 — so it
+#          is not seen here; stb -> nomos is closed on the VM by ufw, infra/vm/setup.sh)
+#   in:    only replies; pve itself may connect (OUTPUT is not filtered: ssh -J pve works)
+# Matched by IP *and* the MAC pinned in infra/pve/create-vm.sh, so stb cannot ride this opening by
+# taking 10.99.0.70 alone. stb-nat never touches these chains: its up/down/internet leave them be.
+# Called by two lines added to the vmbr1 stanza in /etc/network/interfaces (install-nat.sh).
+set -e
+IP=10.99.0.70
+MAC=BC:24:11:5E:5E:70
+PRIVATE="10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4"
+CHAINS="NOMOS_OUT NOMOS_IN NOMOS_HOST"
+
+hook() {  # -I|-D  table chain match... -> target; -I inserts at the top, idempotent
+    op=$1; t=$2; c=$3; shift 3
+    if iptables -t "$t" -C "$c" "$@" 2>/dev/null; then
+        [ "$op" = -D ] && iptables -t "$t" -D "$c" "$@"
+    else
+        [ "$op" = -I ] && iptables -t "$t" -I "$c" 1 "$@"
+    fi
+    return 0
+}
+
+links() {
+    hook "$1" filter FORWARD -i vmbr1 -s $IP -m mac --mac-source $MAC -j NOMOS_OUT
+    hook "$1" filter FORWARD -o vmbr1 -d $IP -j NOMOS_IN
+    hook "$1" filter INPUT -i vmbr1 -s $IP -j NOMOS_HOST
+    hook "$1" nat POSTROUTING -s $IP -o vmbr0 -j MASQUERADE
+}
+
+case "$1" in
+up)
+    sysctl -q -w net.ipv4.ip_forward=1
+    # hold the VM's traffic while the chains are rebuilt (FORWARD's policy is ACCEPT)
+    iptables -I FORWARD 1 -s $IP -j DROP
+    for c in $CHAINS; do iptables -N $c 2>/dev/null || iptables -F $c; done
+    for n in $PRIVATE; do iptables -A NOMOS_OUT -d "$n" -j DROP; done
+    iptables -A NOMOS_OUT -o vmbr0 -j ACCEPT
+    iptables -A NOMOS_OUT -j DROP
+    iptables -A NOMOS_IN -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    iptables -A NOMOS_IN -j DROP
+    iptables -A NOMOS_HOST -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    iptables -A NOMOS_HOST -j DROP
+    links -I
+    iptables -D FORWARD -s $IP -j DROP ;;
+down)
+    links -D
+    for c in $CHAINS; do iptables -F $c 2>/dev/null || true; done
+    for c in $CHAINS; do iptables -X $c 2>/dev/null || true; done ;;
+status)
+    iptables -S | grep -E 'NOMOS_' || echo "no NOMOS_ rules (down)"
+    iptables -t nat -S POSTROUTING | grep "$IP" || true
+    sysctl net.ipv4.ip_forward ;;
+*) echo "usage: $0 up|down|status"; exit 1 ;;
+esac

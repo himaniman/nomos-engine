@@ -890,6 +890,33 @@ being born big buys. (The first loops are recalled worse than the second by both
 brains: the exam puts them all on the first 512 cells and a quarter of the second loops
 land there too, so that stretch of the ring is the crowded one. Not an effect of growth.)
 
+### Step 2e: the brain chooses the place. The rungs
+
+The world has told the brain where it is on every tick. It is taken away in three rungs
+(`--told` in the exam and the search says when the place is told):
+
+| rung | the place is told | what the brain has to do |
+|---|---|---|
+| 2e-1 | only while the eyes are open (`--told seen`) | keep the place through a closing |
+| 2e-2 | only while a loop is first walked round (`--told study`) | in the test, find where a thing lives from what it sees |
+| 2e-3 | never | choose where a new thing shall live |
+
+### Step 2e-1, asked first: no search, no mechanism. Prediction written before the run
+
+The five genomes of step 2c-3b (the gate by hand, field 24), examined with `--told seen`
+at 512 cells on sixteen lives in the third set of worlds. With the eyes closed nothing is
+felt, and by the gate's own rule there is then no gate: every cell is free to speak.
+
+- **V1.** K90 at hop 1 and the items held in thought are each at least half of what the
+  same genome has when it is told the place throughout (2c-5 at 512 cells: K90 193-213,
+  held 30-48), on at least four lineages.
+
+Prediction: missed. A cell far from the place hears nothing with the eyes closed, and
+its rule was never asked what to say then; I expect the far cells to hum and the motor
+cells to drown. If so, the next thing is to ask (a search that lives with `--told seen`),
+and only if that fails a mechanism: a cell that remembers its last nearness, the private
+state held back since rung 1.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -538,6 +538,11 @@ shuffled figure, recall one step ahead is the same or a little lower (neighbours
 sources, so their errors agree and a vote gains less). A code that knows no place cannot
 use wiring that does.
 
+**Outcome (journal 2026-11-11, evening):** nothing changes, as predicted. Held x0.93-1.02
+of the shuffled figure at 512 and at 2048 cells, recall one step ahead x0.99-1.05. (A
+preview with wires drawn with repeats had shown a loss; a third of those wires were
+duplicates, and the wiring now takes every wire from a different neighbour.)
+
 **2c-2, a sense of place. A search.** From the five genomes of step 2a' (the new input of
 a cell starts at zero, so each begins exactly as it lived): `--fan 16 --reach 32 --field 12
 --sizes 128 256 512`, closings up to 32 ticks as before. Loads are counted per wire and

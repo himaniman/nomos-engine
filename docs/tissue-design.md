@@ -660,6 +660,29 @@ Prediction: Q1-Q4 met on at least four lineages; 100-400 items at 2048 cells. If
 honest reading is: places make growth pay, the gate is by hand, and finding the gate is an
 open task for the search.
 
+**Outcome of (b) (journal 2026-11-11, 20:00):** by the letter Q1 and Q2 are missed on four
+lineages of five, and my prediction with them. What the search did buy is recall, and it
+grows in proportion to the brain to 4096 cells (1024 and up never searched):
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| K90 hop 1, searched with the gate | 40-53 | 97-113 | 157-183 | 347-413 | 669-850 | 1500-1835 |
+| K90 hop 1, gate, no search | 20-32 | 16-53 | 95-125 | 171-255 | 357-507 | 707-1009 |
+| K90 hop 1, no places (2a') | 35-38 | 52-60 | 75-91 | 91-126 | 99-169 | - |
+
+0.33-0.45 items per cell at 2048 and at 4096 cells, on all five lineages. Q3: with the
+wires shuffled recall is 0 at every size. Q4: with the sense off the same genomes are
+placeless brains again (K90 hop 1 65-127 and 13-18 items held at 2048 cells).
+
+Holding: a thought no longer drifts to chance, it walks on a plateau, but the plateau lies
+at 0.82-0.95 of the bits, around the bar and mostly under it, even with a single loop in
+the whole brain. "Held" as defined (the last lap at 0.9 from the lightest load up) is
+therefore 0 on four lineages (lineage 1: 9, 11, 58 at 512, 1024, 2048 cells). The largest
+load whose last lap is still at 0.8 does grow with the brain: 48-128 items at 512 cells,
+184-512 at 2048, 256-728 at 4096, where a placeless brain stops at 16 at any size. But
+that is a looser bar than the one I set, read off after the fact, and the closing is
+measured on four lives at those loads. It is a lead, not a result.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -619,7 +619,7 @@ is about 37 cells.
 this asks what gating alone buys. Prediction: holding at 2048 cells above the placeless 18
 but far under the hand ceiling of 864: between 30 and 150.
 
-**Outcome of (a) (journal 2026-11-11, evening):** not what I predicted, in both directions.
+**Outcome of (a) (journal 2026-11-11, 19:45):** not what I predicted, in both directions.
 Holding is 0 at every size: with the gate on, the rule found for a brain where every cell
 speaks lets a walk fade (0.94, 0.87, 0.83, 0.79 over four hops, even at a light load). But
 recall one step ahead grows in proportion to the cells, with no search at all:

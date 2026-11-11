@@ -4444,3 +4444,81 @@ must also be where the brain in hand can begin to earn.
 Kept: `runs/tissue/place/` (the genomes and their three exams, and the 2c-1 exams). Next, the
 question this search could not answer: if cells ARE silent away from their place, by hand, does
 holding grow with the brain? `Plan.gate`; plan and bars in the design note.
+
+## 2026-11-11 (19:45) — step 2c-3: a gate by hand. With places, recall grows in proportion to the brain; a thought walks on a plateau just under the bar
+
+The search of step 2c-2 did not find "a cell away from its place is silent", so it could not say
+what that would be worth. `Plan.gate` puts it in by hand: an interneuron whose nearness to the
+place is under the gate (0.3; with a field of 12 cells that leaves a patch of about 37 cells
+awake) says nothing and its wires do not change. With nothing felt there is no gate. Plan, bars
+and predictions were in the design note first.
+
+**(a) No search at all.** The five 2a' genomes, found for brains in which every cell speaks, with
+`--field 12 --reach 32 --spoken --gate 0.3`, 32 wires per cell:
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| K90 hop 1, gate by hand | 25/20/26/32/27 | 50/38/41/16/53 | 108/125/95/123/112 | 171/178/179/255/251 | 442/387/357/468/507 | 878/920/870/707/1009 |
+| K90 hop 1, no places | 35/38/38/37/38 | 54/59/57/52/60 | 77/88/83/75/91 | 104/117/109/91/126 | 118/149/149/99/169 | - |
+| held in thought, gate by hand | 0 | 0 | 0 | 0 | 0 | 0 |
+
+I had predicted 30-150 items HELD at 2048 cells. Wrong both ways: nothing is held (a walk fades,
+0.94, 0.87, 0.83, 0.79 over four hops, even at a light load), and recall one step ahead grows in
+proportion to the cells, 0.17-0.25 items per cell at 2048 and at 4096, on all five lineages, at
+sizes no search ever saw, with a gate no search ever saw.
+
+Two controls on lineages 0 and 4 (K90 at hop 1 at 2048 cells): the new dendrite alone, no place
+and no gate, 154 and 195 (it was 118 and 169); with the sense, the gate and wires from neighbours
+442 and 507; the same with wires from anywhere, 0 and 0. A gate without wiring by place is worse
+than no gate: a cell of the patch then hears next to none of its own patch.
+
+**(b) A search with the gate on**, from the same genomes: `--fan 16 --reach 32 --field 12 --spoken
+--gate 0.3 --sizes 128 256 512`, loads of 1/16 to 1/2 item per wire per patch, so that the lives
+begin where the brain already works. 4000 steps, 72 minutes a lineage.
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| K90 hop 1 | 40/45/42/43/53 | 97/107/102/113/107 | 157/172/163/183/180 | 347/372/375/413/401 | 669/793/711/850/790 | 1500/1650/1561/1835/1637 |
+| held in thought | 0 | 0 | 0/9/0/0/0 | 0/11/0/0/0 | 0/58/0/0/0 | 0/0/0/0/22 |
+
+| at 2048 cells | held | K90 hop 1 |
+|---|---|---|
+| as found | 0/58/0/0/0 | 669/793/711/850/790 |
+| wires shuffled (`--reach 0`) | 0 | 0 |
+| the sense off (`--nowhere`) | 18/17/17/13/18 | 105/127/97/65/114 |
+
+- **Q1 (held at 2048 at least 2x held at 512) and Q2 (at least 100 held at 2048): missed** on four
+  lineages of five. I had predicted both met on at least four.
+- **Q3 (the shuffle) and Q4 (the sense off): as predicted.** Shuffled, nothing is recalled. With
+  the sense off the same genome is a placeless brain again, about as good as the one it started
+  from: one genome, two brains, and the sense of place switches between them.
+- **Recall one step ahead: 0.33-0.45 items per cell**, in proportion to the brain from 128 to 4096
+  cells on all five lineages; 1024 and up were never searched. At 2048 cells that is five to
+  seven times a placeless brain with the same 32 wires per cell.
+
+**Why nothing is "held".** A thought no longer drifts to chance. It settles on a plateau, but the
+plateau lies at 0.82-0.95 of the bits, around the bar of 0.9 and mostly under it, even when a
+single loop of 8 items is all the brain has ever seen. Held is counted from the lightest load up,
+so it is 0. Read with a looser bar after the fact (the last lap still at 0.8) the load a thought
+survives grows with the brain, 48-128 items at 512 cells, 184-512 at 2048, 256-728 at 4096, where
+a placeless brain stops at 16 at any size; but the closing is measured on four lives at such
+loads, and a bar chosen afterwards is a lead, not a result.
+
+**Where the plateau comes from (exploration).** The same five genomes, nothing searched anew, at
+512 and 2048 cells:
+
+| at 2048 cells | held | K90 hop 1 | last lap at 8-48 items |
+|---|---|---|---|
+| as searched: field 12, two laps of study | 0/58/0/0/0 | 669-850 | 0.85-0.94 |
+| three laps of study | 178/221/0/55/175 | 956-1216 | 0.93-1.00 |
+| a field twice as wide (a patch of about 75 cells) | 249/250/230/270/239 | 739-880 | 0.96-1.00 |
+
+At 512 cells the wider field holds 48/43/48/26/48. The plateau was the patch: 37 cells are too
+few to say a 12-bit item cleanly after two lessons. That was a dial turned after seeing a result;
+bars for its confirmation (other sizes, other worlds, the shuffle, the sense off) are in the
+design note and the runs are next.
+
+What is by hand in all this, so that nobody reads more into it than there is: the ring, wires
+from neighbours, the sense of place and its bell, the gate, the scaling of a dendrite by what was
+said. What is found: the cells' rule, by a search that never saw a brain over 512 cells.
+Genomes and exams: `runs/tissue/gate/`.

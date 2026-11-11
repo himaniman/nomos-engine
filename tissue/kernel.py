@@ -43,7 +43,15 @@ class Plan:
     """Which mechanisms exist. Their numbers are the genome."""
     blocks: tuple[Block, ...] = (Block("S", "I", False), Block("I", "O", True))
     hidden: int = 8     # the perceptron inside a cell: fixed, the same at every brain size
-    learn: bool = True  # off-switch: plastic wires never change
+    mode: bool = False  # interneurons hear one global signal: are the senses on
+    # off-switches, for controls and ablations
+    learn: bool = True              # False: no plastic wire ever changes
+    off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
+    taught_only: bool = False       # motor wires change only on a tick the teacher is on
+
+
+RUNG0 = Plan()
+RUNG1 = Plan(blocks=(Block("S", "I", False), Block("I", "I", True), Block("I", "O", True)), mode=True)
 
 
 class Cell(nn.Module):
@@ -73,7 +81,7 @@ class Tissue(nn.Module):
         self.incoming = {t: [i for i, b in enumerate(plan.blocks) if b.post == t]
                          for t in self.types}
         self.cells = nn.ModuleDict({
-            t: Cell(len(self.incoming[t]) + (2 if t == "O" else 0),
+            t: Cell(len(self.incoming[t]) + (2 if t == "O" else int(plan.mode)),
                     1 + sum(plan.blocks[i].plastic for i in self.incoming[t]), plan.hidden)
             for t in self.types})
         self.gain = nn.ParameterDict({str(i): nn.Parameter(torch.zeros(()))
@@ -99,14 +107,22 @@ class Grown:
             wires[i] = torch.zeros(shape) if b.plastic else torch.randn(shape, generator=gen)
         return act, wires
 
-    def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float):
+    def rest(self, state):
+        """An episode ends: every cell falls silent, every wire stays as it is."""
         act, wires = state
+        return {t: torch.zeros_like(a) for t, a in act.items()}, wires
+
+    def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float, on: float = 1.0):
+        """One tick. `teach`/`flag`: what the teacher shows the motor cells and whether it
+        is there; `on`: whether the senses are on (heard by interneurons under `plan.mode`)."""
+        act, wires = state
+        plan = self.t.plan
         seen = {**act, "S": cue}                    # sensory cells carry the cue as it is
         new_act, new_wires = {}, dict(wires)
         for t in self.t.types:
             feats = []
             for i in self.t.incoming[t]:
-                b = self.t.plan.blocks[i]
+                b = plan.blocks[i]
                 reach = torch.einsum("bij,bj->bi", wires[i], seen[b.pre])
                 if b.plastic:
                     feats.append(reach / self.n[b.pre])
@@ -114,14 +130,17 @@ class Grown:
                     feats.append(reach * torch.exp(self.t.gain[str(i)]) / math.sqrt(self.n[b.pre]))
             if t == "O":
                 feats += [teach, torch.full_like(teach, flag)]
+            elif plan.mode:
+                feats.append(torch.full_like(feats[0], on))
             said = self.t.cells[t](torch.stack(feats, dim=-1))
             new_act[t] = said[..., 0]
             j = 1
             for i in self.t.incoming[t]:
-                b = self.t.plan.blocks[i]
+                b = plan.blocks[i]
                 if b.plastic:
-                    if self.t.plan.learn:
-                        new_wires[i] = wires[i] + said[..., j].unsqueeze(-1) * seen[b.pre].unsqueeze(1)
+                    if plan.learn and i not in plan.off:
+                        signal = said[..., j] * flag if plan.taught_only and t == "O" else said[..., j]
+                        new_wires[i] = wires[i] + signal.unsqueeze(-1) * seen[b.pre].unsqueeze(1)
                     j += 1
         return (new_act, new_wires), new_act["O"]
 
@@ -141,6 +160,6 @@ class Gru(nn.Module):
     def born(self, batch: int, gen: torch.Generator):
         return torch.zeros(batch, self.hidden)
 
-    def tick(self, h, cue, teach, flag):
+    def tick(self, h, cue, teach, flag, on: float = 1.0):
         h = self.cell(torch.cat([cue, teach, torch.full_like(teach[:, :1], flag)], dim=1), h)
         return h, self.out(h)

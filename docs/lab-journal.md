@@ -3703,3 +3703,94 @@ found a blunter code and loses most at 512. Why any of them lose there is not kn
 
 Next: rung 1, chains (A->B, B->C, asked A->C), where the answer must be fed back and time to answer
 should grow with the chain. 8 tests in `tests/test_tissue.py`.
+
+**The retraction, switched off** (same day; `python -m tissue.exam ... --taught-only`: motor wires
+change only on a tick the teacher is on; the same three genomes, nothing searched again). My guess
+was a 10-30% loss, held in my head and not written down first, which breaks my own rule.
+
+| K90 | seed 0 | seed 1 | seed 2 | hand delta on the found code |
+|---|---|---|---|---|
+| 64, as found | 67.8 | 63.4 | 66.1 | |
+| 64, no retraction | 43.9 | 39.6 | 42.5 | 46-50 |
+| 512, as found | 461.2 | 390.6 | 450.7 | |
+| 512, no retraction | 290.1 | 207.6 | 287.9 | 263-335 |
+
+A loss of 35-38% at 64 and 36-47% at 512. Without the retraction the found rule holds what hand
+delta holds on the same code, so the retraction IS the found rule's edge: teach with a large step,
+then, one tick later and with no teacher, take part of it back in proportion to what the step
+produced. Caveat: this removes a part the rest of the genome was tuned around; a genome searched
+without it might recover some of the loss.
+
+## 2026-11-11 (later) — tissue rung 1a: a hop through the brain's own wires, found by one seed of three
+
+**The mechanism added** (`RUNG1` in `tissue/kernel.py`): one block of plastic wires among the
+interneurons, from zero. An interneuron reads two dendrites (innate from the senses, plastic from
+the other interneurons) and one global signal, whether the senses are on. The wire rule is the
+same product. Genome 101 numbers. I had planned to feed the motor answer back to the sensory cells
+over hand-drawn one-to-one wires and dropped that before building: wires among interneurons are
+the tissue's own recurrence, need no teacher, grow as M^2, and are what rung 2 will have to shape.
+
+**Exam 1** (`tissue/chain.py`). Items of 12 bits. A link a->b is a 3-tick episode (a; b; silence),
+cells silenced between episodes. The teacher teaches the motor cells only the ECHO of what was
+just seen, so what follows what can sit only in the wires among interneurons. Test: the first item
+for one tick, then silence; hop h is read at tick h + 2. Search on single links, sizes 8-64, 1/8 to
+1 link per interneuron, 6000 steps (11 minutes a seed).
+
+**K90 at hop 1, single links** (* = never seen by the search):
+
+| M | seed 0 | seeds 1, 2 | hand delta hop | least squares |
+|---|---|---|---|---|
+| 8 | 3.7 | 0 | 4.0 | 7.3 |
+| 16 | 8.7 | 0 | 7.7 | 19.8 |
+| 32 | 20.6 | 0 | 12.5 | 48.7 |
+| 64 | 47.5 | 0 | 24.8 | 113.6 |
+| 128* | 83.6 | 0 | 47.7 | 270.8 |
+| 256* | 115.2 | 0 | 98.5 | 598.1 |
+| 512* | 134.3 | 0 | 183.2 | 1337.1 |
+
+- **Two seeds of three found nothing.** All three reach accuracy 0.64 within 500 steps; seed 0
+  leaves at step ~1200, the others never. The flat spot is a real answer of a degenerate kind:
+  the interneuron's code no longer depends on the cue (its activity is -0.35 .. -0.6 whatever the
+  senses say), so every walk recalls the same blend, the bitwise majority of everything that ever
+  came second. Measured 0.74 / 0.69 / 0.63 / 0.59 at 2 / 4 / 8 / 16 links; a majority vote gives
+  0.75 / 0.69 / 0.64 / 0.60. It pays most in the smallest lives and needs nothing to cooperate,
+  while a real hop needs the code, the wire rule and the decoder to fit each other.
+- **C1 met** on seed 0: with the wires among interneurons frozen, hop 1 is 0.472 .. 0.506 at 16
+  links and more, every size.
+- **C2 (growth) met by the letter on seed 0, missed as written** (the bar said every seed). It
+  rises at every doubling and K90(512) / K90(64) = 2.8, but links per interneuron go 0.74 at 64
+  -> 0.65 -> 0.45 -> 0.26 at 512. Growth pays to twice the largest size seen and then fades.
+- **C3 met on seed 0** at 16-256 (1.1-1.9x the hand hop); at 512 it is BELOW the hand hop.
+- My predictions: 0.4-0.8 per interneuron at 8-64, right (0.47-0.74). K90(512) / K90(64) between 4
+  and 6, wrong (2.8). A code less like a hash, right: two cues one bit apart correlate 0.45
+  (rung 0: 0.28-0.37).
+
+**Inside seed 0** (`python -m tissue.inside`). The code is a sawtooth with one sharp jump at zero
+(input gain 10). With the senses silent an interneuron passes its other dendrite through a
+saturating curve. And the trick: with the senses on, what it teaches its wires is MINUS what the
+senses make it say, and the motor cell stores the echo with the sign turned over as well. Two
+inversions cancel for one hop. Nothing scored the echo, so nothing objected.
+
+**So along a chain the sign alternates.** The same genome, never shown a chain, on chains of 4,
+bit accuracy by hop at M/4 links:
+
+| M | hop 1 | hop 2 | hop 3 | hop 4 |
+|---|---|---|---|---|
+| 16 | 0.992 | 0.083 | 0.948 | 0.057 |
+| 64 | 0.995 | 0.087 | 0.888 | 0.152 |
+| 128* | 0.993 | 0.103 | 0.857 | 0.193 |
+| 512* | 0.971 | 0.156 | 0.777 | 0.311 |
+
+Read as distance from 0.5 it walks four links it was never asked to walk: 0.92, 0.91 (inverted),
+0.95, 0.94 (inverted) at 16 cells; 0.97, 0.84, 0.78, 0.69 at 512. My prediction (hop 2 about 0.85)
+was wrong as written and right about the knowledge being there. The links are composable; the
+sign convention is not.
+
+**The decoder is the bottleneck at large sizes.** In chains of 4, K links are 1.25 K items to
+decode instead of 2 K, and K90 at hop 1 rises to 54 / 104 / 177 / 259 at 64 / 128 / 256 / 512
+(single links: 48 / 84 / 115 / 134).
+
+**What this says about the method.** The exam taught one thing (the echo) and scored another (the
+hop), and both failures live in that gap: a code that cannot echo, and a decoder that echoes
+upside down. Next, one change to the exam and none to the brain: the echo is scored too. Bars in
+the design note. 13 tests.

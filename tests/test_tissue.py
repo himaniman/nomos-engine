@@ -81,3 +81,70 @@ def test_the_ordinary_net_lives_the_same_exam():
     task = Task(dwell=1)
     cues, answers = lives(task, 5, 3, gen(1))
     assert run_life(Gru(task, 8), task, cues, answers, gen(2)).shape == answers.shape
+
+
+# ---- rung 1: links and chains ------------------------------------------------------------
+
+from tissue import chain                                            # noqa: E402
+from tissue.kernel import RUNG1                                     # noqa: E402
+from dataclasses import replace                                     # noqa: E402
+
+ITEM = Task(d_in=12, d_out=12)
+
+
+def test_chain_worlds_hold_distinct_items_and_fit_the_item_space():
+    items = chain.worlds(ITEM, 5, 3, 4, gen(1))
+    assert items.shape == (4, 5, 4, 12)
+    for life in items.reshape(4, 20, 12):
+        assert len({tuple(i.tolist()) for i in life}) == 20
+    with pytest.raises(ValueError):
+        chain.worlds(ITEM, 2049, 1, 1, gen(1))
+    assert chain.k_grid(64, ITEM, 4)[0] == 4 and chain.k_grid(64, ITEM, 4)[-1] <= 256
+    assert all(k % 4 == 0 for k in chain.k_grid(64, ITEM, 4))
+
+
+def test_the_teacher_never_says_what_follows_what():
+    """The control arm of exam 1. With the wires between interneurons frozen, once the
+    senses fall silent no cell can tell which item the walk began from: every walk in a
+    life says exactly the same thing. So a right answer can only come through those wires.
+    (Motor wires are held still outside teaching here, or their drift during the test,
+    which knows nothing of the links either, would blur the equality.)"""
+    torch.manual_seed(0)
+    brain = Tissue(replace(RUNG1, off=(1,), taught_only=True), ITEM).grow(16)
+    items = chain.worlds(ITEM, 6, 2, 3, gen(2))
+    said = chain.run_life(brain, ITEM, items, gen(3))
+    assert said.shape == (3, 6, 3, 12)         # the echo, then two hops
+    for c in range(1, 6):                           # hop 0 is the echo: it may differ
+        assert torch.equal(said[:, c, 1:], said[:, 0, 1:])
+    live = chain.run_life(Tissue(RUNG1, ITEM).grow(16), ITEM, items, gen(3))
+    assert not torch.equal(live[:, 1, 1:], live[:, 0, 1:])
+
+
+def test_a_walk_is_a_pure_function_and_reads_as_many_hops_as_asked():
+    torch.manual_seed(0)
+    tissue = Tissue(RUNG1, ITEM)
+    items = chain.worlds(ITEM, 3, 4, 2, gen(4))
+    a = chain.run_life(tissue.grow(16), ITEM, items, gen(5))
+    assert a.shape == (2, 3, 5, 12)                 # the echo (hop 0), then hops 1..4
+    assert torch.equal(a, chain.run_life(tissue.grow(16), ITEM, items, gen(5)))
+    assert chain.run_life(tissue.grow(16), ITEM, items, gen(5), hops=2).shape == (2, 3, 3, 12)
+    assert len(chain.by_hop(a, items)) == 5
+
+
+def test_the_hand_made_hop_recalls_a_light_load():
+    items = chain.worlds(ITEM, 3, 1, 8, gen(6))
+    said = hand.hop(items, 256, 0.1, gen(7))
+    assert min(chain.by_hop(said, items)) > 0.95            # the echo and the hop
+    assert min(chain.by_hop(hand.hop(items, 256, 0.1, gen(7), exact=True), items)) > 0.95
+
+
+def test_rest_silences_cells_and_keeps_wires():
+    torch.manual_seed(0)
+    brain = Tissue(RUNG1, ITEM).grow(8)
+    state = brain.born(2, gen(1))
+    cue = torch.ones(2, 12)
+    state, _ = brain.tick(state, cue, torch.zeros(2, 12), 0.0, 1.0)
+    state, _ = brain.tick(state, -cue, cue, 1.0, 1.0)
+    act, wires = brain.rest(state)
+    assert not any(a.any() for a in act.values())
+    assert wires[1].any() and torch.equal(wires[1], state[1][1])

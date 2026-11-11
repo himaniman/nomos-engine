@@ -210,3 +210,22 @@ before, 5 seeds.
 My prediction: 4 or 5 seeds of 5 leave the plateau (another flat spot may exist: echo
 right, hop still the majority). D3 met wherever D1 is. K90 per interneuron no better than
 this run's good seed, and the fall at 256-512 stays.
+
+**Outcome (journal 2026-11-11, night):** D1, D2, D3 met on five seeds of five, the
+prediction held. Links per interneuron 0.68-0.74 at 64, 0.34-0.40 at 512. A chain of 4
+never shown is walked without the sign alternating; depth of a walk grows only weakly
+with size. A lesson for every later exam: score what the teacher teaches.
+
+## Where the ladder stands
+
+| rung | state |
+|---|---|
+| 0 pairs | done, 3 seeds: about 1 pair per interneuron to 512 |
+| 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
+| 1b search on chains | next |
+| 1c the brain says when it is done | after 1b |
+| 2 wiring from the genome | not started |
+| 3 growth from a seed | not started |
+
+Open questions carried along: why capacity per interneuron fades beyond the searched sizes
+on rung 1 (rung 0 did not fade); why echo capacity stops growing near 128 cells.

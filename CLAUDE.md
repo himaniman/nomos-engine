@@ -570,8 +570,17 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   one pair per interneuron up to 512 (K90 461/391/451 on 3 seeds; hand delta 123, least squares
   848). It found a hash-like non-monotonic code (the larger part of the gain) and a saturating
   error-correcting rule. Expected by theory, so it is the instrument and the positive control,
-  not a discovery. Next: rung 1 chains (thinking), rung 2 wiring from the genome, rung 3 growth
-  from a seed. The lines below are the OLD plan, kept as history.
+  not a discovery.
+  Rung 1a DONE: one block of plastic wires AMONG interneurons, taught by no teacher; a link
+  a->b is a short episode, then the senses go silent and the brain runs on its own wires, one
+  tick one hop (`tissue/chain.py`). Five seeds of five hold 0.7 links per interneuron at 64 and
+  0.35 at 512 (fades beyond the searched sizes, unexplained), and walk chains of 4 they were
+  never shown (hop 4: 0.84 at 64 cells, 0.64 at 512). LESSON: score what the teacher teaches.
+  With the echo unscored only 1 seed of 3 found the hop, the rest fell to a constant code, and
+  the one that worked stored everything sign-flipped so a chain alternated. Next: 1b search on
+  chains, 1c the brain says when it is done, rung 2 wiring from the genome, rung 3 growth from
+  a seed; the table in the design note says where the ladder stands. Commits go to branch
+  `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

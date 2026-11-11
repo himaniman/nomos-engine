@@ -3794,3 +3794,77 @@ decode instead of 2 K, and K90 at hop 1 rises to 54 / 104 / 177 / 259 at 64 / 12
 hop), and both failures live in that gap: a code that cannot echo, and a decoder that echoes
 upside down. Next, one change to the exam and none to the brain: the echo is scored too. Bars in
 the design note. 13 tests.
+
+## 2026-11-11 (night) — tissue rung 1a': the echo is scored, and five seeds of five find a hop that composes
+
+One change, to the exam: the echo of the first item (hop 0) joins the error and the score
+(`python -m tissue.train --arm chain --echo`). The brain and the search are the same; 5 seeds.
+
+**The search.** All five leave the flat spot by step 700 (before: one of three, at step 1200) and
+end at 0.94-0.95.
+
+**K90 at hop 1, single links** (* = never seen):
+
+| M | five seeds | per interneuron | hand delta hop |
+|---|---|---|---|
+| 8 | 3.4-4.0 | 0.42-0.50 | 4.0 |
+| 16 | 8.2-8.8 | 0.51-0.55 | 7.7 |
+| 32 | 19.3-23.0 | 0.60-0.72 | 12.5 |
+| 64 | 43.4-47.1 | 0.68-0.74 | 24.8 |
+| 128* | 85.0-88.4 | 0.66-0.69 | 47.7 |
+| 256* | 134-147 | 0.52-0.57 | 98.5 |
+| 512* | 176-206 | 0.34-0.40 | 183.2 |
+
+- **D1 met**: every seed holds links at every size.
+- **D2 met**: rises at every doubling on every seed; K90(512) / K90(64) = 3.9-4.7 (the first run's
+  one working seed: 2.8). Still not linear: links per interneuron peak at 64, the largest size
+  searched, and fall to half of that at 512, where the genome only equals the hand hop.
+- **D3 met**: never shown a chain, on chains of 4 at M/4 links hop 2 is 0.91-0.95 / 0.95-0.97 /
+  0.91 / 0.87-0.88 at 16 / 32 / 64 / 128 on every seed. No alternation.
+- My predictions held: 5 of 5 out, D3 wherever D1, no better per interneuron than the first run's
+  good seed, the fall at 256-512 stays (milder).
+
+**Inside** (seeds 0 and 3). The code is now plainly two-level: one value below the threshold, one
+above, with an overshoot beside the jump; two cues one bit apart correlate 0.53-0.55, like a hand
+threshold unit. Seed 0 stores links and echoes with the sign as it is. Seed 3 stores both turned
+over AND its cells invert what comes over those wires, so the sign is restored inside every hop.
+The exam fixes the function, not the convention. The retraction of rung 0 is there again in the
+motor cell (no teacher: opposes its own answer).
+
+**Walking a chain nobody showed it**, bit accuracy by hop at M/4 links, the range over five seeds:
+
+| M | echo | hop 1 | hop 2 | hop 3 | hop 4 |
+|---|---|---|---|---|---|
+| 16 | 0.94-0.98 | 0.98-1.00 | 0.91-0.95 | 0.96-1.00 | 0.92-0.96 |
+| 64 | 0.98-0.99 | 0.99 | 0.91 | 0.88-0.90 | 0.83-0.85 |
+| 128* | 1.00 | 0.98 | 0.87-0.88 | 0.81-0.83 | 0.74-0.77 |
+| 512* | 1.00 | 0.94 | 0.78-0.81 | 0.69-0.73 | 0.62-0.66 |
+
+Links held at 90% by hop (chains of 4, K90, typical of five seeds):
+
+| M | hop 1 | hop 2 | hop 3 | hop 4 |
+|---|---|---|---|---|
+| 16 | 9-10 | 4-6 | 5-6 | 4-5 |
+| 64 | 46-48 | 17-18 | 15-16 | 9-10 |
+| 128* | 86-90 | 25-28 | 24-26 | 14-15 |
+| 256* | 121-140 | 38-40 | 30-33 | 17-21 |
+| 512* | 170-216 | 49-63 | 27-31 | 21-24 |
+
+**What it says.**
+1. A walk through learned links, with the senses silent, exists and was not trained: each tick the
+   brain's state is the next item, produced by its own wires. Cutting the walk short gives the
+   earlier item, so more ticks do buy further items.
+2. Size pays for the DEPTH of a walk only weakly. From 64 to 512 cells the links that can be walked
+   4 hops go 9-10 -> 21-24, and at the same relative load a bigger brain walks worse (hop 4: 0.84
+   at 64, 0.64 at 512). Every hop hands on a slightly wrong code and nothing restores it.
+3. Echo capacity stops growing near 128 (K90 262-512 at 128, 277-616 at 512) on a seed-dependent
+   level. Unexplained.
+
+**Not known.** Why capacity per interneuron fades beyond the searched sizes. A guess, untested: a
+two-level code keeps similar items similar (0.53 at one bit), which more cells cannot average
+away, and below 64 links the search never met that limit; rung 0 escaped it with a hash-like code,
+which a recalled-and-cleaned code cannot afford. By hand as before, plus the global senses-on
+signal and the rest between episodes.
+
+Next: step 1b, search ON chains (does a walk get longer when asked for), then a brain that says
+when it is done.

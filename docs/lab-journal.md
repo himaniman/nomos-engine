@@ -3486,5 +3486,132 @@ a tie. The clear gain is SHORT range: eyes open and h1 beat every earlier brain,
 weights. At h32 nothing beats simple rivals by much, and GRU128 is ahead. So walking memory
 is still almost absent, as expected of a ring that cannot express translation.
 
-Next: a 2-D sheet whose flow also carries translation, then replace the atlas's hand-written
-scroll with this rule and count meals.
+The paired oracle check (`cortex/pred/oracle.py`, rays whose answer is a wall already seen) settles
+it: at h8 flows vs gru16 is +0.002 to +0.012 +- 0.013, no gain. Error there: mean 0.463, all
+brains 0.43-0.46, hand memory with the true pose 0.172. Nobody remembers while walking, and there
+is 2.5x to win.
+
+**The polar sheet (`PolarBrain`, `polar`).** Columns = directions, rows = distances (columns // 4),
+rays land on whole columns, a ray is read through attention over the rows. A step moves near things
+across many columns and far ones across few, so the shares depend on the cell's place as well as
+on the motion. Hand ceilings with the true pose (scratch, crude read) did not separate polar from
+a north-aligned square, both improve with size; polar kept as agreed, half the cells.
+
+Written beforehand: at 32 columns every seed under 0.38 on answerable rays at h8. **Not met,
+narrowly**: 0.389, 0.404, 0.385. Against gru16 -0.035, -0.018, -0.036 (+- 0.014), so one seed is
+inside the noise. Yet it is the best brain so far at every horizon up to h8, on 7 119 weights:
+
+| answerable rays | h1 | h2 | h4 | h8 | h16 | h32 |
+|---|---|---|---|---|---|---|
+| polar, three seeds | 0.243-0.259 | 0.268-0.292 | 0.305-0.320 | 0.385-0.404 | 0.383-0.412 | 0.487-0.511 |
+| flows 32 | 0.268-0.287 | 0.308-0.331 | 0.356-0.368 | 0.430-0.435 | 0.399-0.407 | 0.476-0.502 |
+| GRU128 | 0.340 | 0.363 | 0.392 | 0.431 | 0.405 | 0.499 |
+| hand memory | 0.120 | 0.110 | 0.131 | 0.172 | 0.185 | 0.240 |
+
+Skill rises with size on all seeds at h8: 0.078-0.096 / 0.112-0.130 / 0.127-0.143 at 8/16/32.
+**Is the law found?** Turning, yes: 6 of 8 channels at 0.90-0.92 against the ideal 0.92, all seeds.
+The step only partly: shape correlates (columns ~0.8, up to 0.97 on rows), size is 0.1-1.5 of the
+physics, some channels flow the opposite way, and the memory drifts at rest. (My first read of
+this was wrong: I fed the speed sense in cells per tick, it is a fraction of the top speed.)
+
+The memory-pressure reaper stopped three parallel runs at step 500 on 2026-11-06; resumed one at
+a time, resumable as designed.
+
+**Three more shapes for the flow, same bar, none met it (answerable rays, h8, 32 columns):**
+`polarl` (flow = motion x a learned map of the place, nothing flows at rest, learned sharpness)
+0.398-0.413. It did NOT raise the sharpness: a cell keeps only 83-90% per pass at rest. I took
+that blur for the culprit, so `polarv` learns a SPEED and derives the exact shares, keeping 100% at
+rest: 0.401-0.421, slightly worse. That hypothesis was wrong. Many channels flow along rows at
+correlation about -1 to the physics. Perhaps rows have no fixed meaning and a channel may hold
+distance upside down; not tested.
+
+**A false verdict, caught.** `polarp`: true physics by hand, writing and reading learned: 0.399-0.429.
+I concluded "transport is not the bottleneck". Then the same grid and flow entirely by hand scored
+0.71 at 16 columns and 2.64 at 64, far worse than the mean and worse with size. So that flow was
+not a fair stand-in: it clamps at one cell a pass, and near the body a passing wall needs many
+(the polar singularity, a guess that fits). The ablation answered nothing.
+
+**The real finding: smoothness itself loses the memory.** Hand-made memory with the TRUE pose and the
+same crude read, answerable rays:
+
+| h8 error | 16 | 32 | 64 | 128 |
+|---|---|---|---|---|
+| polar, smooth rigid resampling | 0.798 | 0.569 | 0.651 | 0.612 |
+| compass square, smooth | 0.815 | 0.785 | 0.677 | 0.564 |
+| compass square, WHOLE-CELL jumps | **0.326** | **0.263** | not finished | not finished |
+
+Mean 0.463, dictionary memory 0.172. Every bilinear step blurs; a jump does not. The dictionary and
+the atlas's scroll never had this problem. My earlier plan "replace the atlas's scroll with a
+smooth learned flow" would have been a step back.
+
+**`north`: compass square, whole-cell jumps by hand, writing and reading learned.** A cell knows its
+direction relative to the body, so which ray it hears changes as the body turns (live wiring). A ray
+is read by marching along it, cells may stop it. 5 167 weights, path counted from commands and felt
+heading. Written beforehand: every seed under 0.30 at 32 and better than at 16. **Not met**: 0.371,
+0.371, 0.353; 16 gives 0.381, 0.372, 0.359, so size barely pays. 64 (unseen) is worse (0.400-0.409).
+But it is reliably the best learned memory so far, skill at h8 0.204-0.211 (polar 0.127-0.154, GRU128
+0.077), h32 0.092-0.094 (GRU128 0.042), against gru16 at h8 -0.036 to -0.055 (+- 0.018).
+
+**Counting the path.** Turning is exact, speed is not: commands promise 1.27 cells a frame, the body
+moves 1.01, and about 9% of moving frames go nowhere. Path error at 8 / 32 frames: commands 2.44 /
+7.35, true distance along the heading 0.57 / 1.30. A small perceptron on commands and body senses
+gets 1.64 / 3.96, with the current view 1.16 / 2.68, but it was fitted on the true pose, which a
+brain does not have. So the signal is there; how to get it without a teacher is open.
+
+`north --true-walk` (the real distance as the thrust, an ablation, 2 seeds): answerable h8 still
+0.348, but long range improves a lot: answerable h16 0.331-0.339 (was 0.374-0.396), h32 0.412-0.458
+(was 0.513-0.532); all rays skill h8 0.261-0.276, h32 0.151-0.158. So the path count limits the long
+range, and writing and reading limit h8 (hand read with a true pose: 0.263).
+
+**Where this leaves the question.** Learned perceptron cells hold a memory that beats every other
+learned brain here, on 5 167 weights. But what makes it work is structure the atlas already had by
+hand: the compass grid and the jump. Learning a smooth flow, which is what paid on the spin ring,
+did not carry over to walking. Growth paid clearly on the ring and barely here.
+
+## 2026-11-07 — the sheet gets a body: a map nobody showed it feeds it
+
+Goal: a brain that acts. `cortex/pred/act.py` hands the atlas's idea of SOLID to the sheet and changes
+nothing else: wave, frontier, appetite, FREE and the other channels stay hand-made. Wall belief =
+`NorthBrain.believed_solid`, the chance a ray stops within a cell, learned from predicting senses only.
+
+**The belief was not a map at first.** `north`: 0.167 on walls, 0.135 off, AUC 0.65-0.69 (hand
+dictionary with the true pose 0.78-0.81). Nothing forced it: distance could be read out of the state
+without ever stopping the ray. `northr` forbids that: nearness and hit come ONLY from where the
+cells stopped the ray, as in a renderer. Bar written first: out-of-view AUC at least 0.75. Met,
+0.758-0.771 on all three seeds. Memory on answerable rays jumped: h8 0.267-0.292 (was 0.353-0.371; hand
+read with a true pose 0.263), -0.161 to -0.183 (+-0.015) against gru16. The price: over ALL rays it is
+worse, h8 0.88 against 0.77, eyes-open skill 0.35 against 0.60. A renderer cannot hedge about the unseen.
+
+**In the world, three wrong turns** (32 worlds, 8000 ticks; hand 18.4, blank 16.2):
+1. Belief alone 12.0-14.7, worse than BLANK, and the ladder drops at `maze` (0.17-0.22, others 1.00).
+   Written bar missed. Stricter cut (false walls at 10%, set on training lives) worse still, 7.1-10.0.
+2. I concluded "knowing walls is worth almost nothing, even a perfect map". WRONG. Wiping parts of the
+   hand atlas every thought: forget solid 4.0 (-14.4 +- 2.0), forget free 16.3, forget things 19.8,
+   forget ghost 17.8, forget all 4.8. Remembering walls is essential; BLANK was never blank, it keeps
+   every wall it bumped. Seeing walls by rays is what adds little.
+3. So my belief arm was unfair: each frame it replaced the map and forgot what the body had bumped.
+
+**Fixed:** `beliefV` = belief + remembered touch + no wall where a ray has been seen to pass. 32 worlds:
+17.3-18.1, bar missed vs blank (+1.1 to +1.9, +-2). Chosen after looking, so confirmed on 128 FRESH worlds
+(1032-1159), same bar written before running:
+
+| arm | meals | immortal | vs blank | vs hand |
+|---|---|---|---|---|
+| hand | 19.5 | 105/128 | +5.2 +- 1.0 | |
+| `beliefV` s0 | 17.6 | 102/128 | +3.4 +- 0.8 | -1.8 +- 0.9 |
+| `beliefV` s1 | 18.2 | 104/128 | +4.0 +- 0.9 | -1.2 +- 1.0 |
+| `beliefV` s2 | 17.8 | 103/128 | +3.6 +- 0.9 | -1.7 +- 0.9 |
+| blank | 14.2 | 82/128 | | -5.2 +- 1.0 |
+
+**Met on all seeds.** A wall map no one showed it, learned only by predicting senses, earns 65-77% of
+what hand-painted walls add over bumping, and lives about as long as hand. First learned sheet that
+acts and is paid for it.
+
+**What is NOT learned here:** the compass grid, the whole-cell jump, reading by marching, the wave,
+frontier, appetite, FREE (hand-painted, and it vetoes the belief, so part of this credit is the eyes'),
+touch memory, the cut (set on training lives against the true map, which is a hand calibration). The
+atlas's pose for its own scroll is true; the sheet counts its own. It was never tried on the best law
+(`atlas_course`, 32.8 with hand walls). Nothing of this has met the test worlds.
+
+A latent crash surfaced on the way: `Atlas._read` faced `last_target` when food lay exactly under the
+body and the wave pointed nowhere (None). Fixed for that case only, every other path is unchanged.

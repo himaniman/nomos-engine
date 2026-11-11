@@ -537,7 +537,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   size adds passes. The learned shift matches the physics (0.93-0.96 vs ideal 0.92, `flowm`).
   Viewers: `cortex/pred/watch.py`, `watch_flow.py`. Ring cannot express translation: on walking
   (`bench.py`) short-range skill is the best yet, long-range memory is still almost absent.
-  Test worlds still closed. Next there: a 2-D sheet whose flow carries translation too.
+  Test worlds still closed.
+  WALKING (2026-11-06): smooth learned flow does NOT carry over. Polar sheets (`polar`, `polarl`,
+  `polarv`) stall at 0.385-0.42 on answerable rays at h8 (mean 0.463, dictionary 0.172): every
+  bilinear step blurs. Whole-cell jumps by hand give 0.263 with a hand read and a true pose, so do
+  not replace the atlas's scroll with a smooth flow. `NorthBrain` (`north`): compass square, jumps by
+  hand, writing and reading learned, 5 167 weights: 0.353-0.371, best learned memory so far, growth
+  barely pays there. Path count from commands is the long-range limit (`--true-walk`). Still only
+  predicts. `polarp`'s "true physics" flow is unfair near the body: do not cite it.
+  ACTING (2026-11-07, `cortex/pred/act.py`): `northr` makes nearness come only from where cells stop a
+  ray (a renderer), so opacity becomes a wall map no one showed it (AUC out of view 0.76-0.77). As the
+  atlas's SOLID, with touch memory and a veto where rays passed (`beliefV`), on 128 fresh worlds: 17.6-18.2
+  meals, hand 19.5, touch-only 14.2 (+3.4 to +4.0 +- 0.9, all 3 seeds). Wall memory is essential (wiped:
+  4.0 meals); seeing walls adds little beyond bumping. Everything else in the atlas stays hand-made.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

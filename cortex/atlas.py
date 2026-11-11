@@ -533,8 +533,10 @@ class Atlas:
             # E into a rubble pile with the berry behind its back.)
             if near_thing is not None and near_thing[2] > 1e-6:
                 want = math.atan2(near_thing[0], near_thing[1])
-            else:
+            elif self.last_target is not None:
                 want = math.atan2(*self.last_target)
+            else:                       # under the nose and the wave points nowhere: just press
+                want = heading
             err = (want - heading + math.pi) % (2 * math.pi) - math.pi
             turn = max(-1.0, min(1.0, err * c.turn_gain))
             return (0.25 if abs(err) < c.slow_angle else 0.0), turn, 1.0

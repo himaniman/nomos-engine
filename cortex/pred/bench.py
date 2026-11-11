@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from cortex.pred.model import ARMS, FLOW, PLAIN, RETINA, build
+from cortex.pred.model import ARMS, FLOW, NORTH, PLAIN, POLAR, RETINA, build
 
 DATA = Path("out/cortex/pred/data")
 RUNS = Path("out/cortex/pred/runs")
@@ -31,10 +31,24 @@ HORIZONS = [1, 2, 4, 8, 16, 32]
 FOV = 2.0943951023931953
 
 
+def true_walk(act, pose, lens):
+    """An ablation: the thrust replaced by the distance really moved along the heading, in units
+    of the top speed, as if the body could feel exactly how far it went. Bumps count at last."""
+    out = act.copy()
+    starts = np.concatenate([[0], np.cumsum(lens)[:-1]])
+    for s, n in zip(starts, lens):
+        step = pose[s + 1:s + n, :2] - pose[s:s + n - 1, :2]
+        mid = pose[s:s + n - 1, 2] + act[s:s + n - 1, 1] * 0.72 / 2
+        out[s:s + n - 1, 0] = (step[:, 0] * np.sin(mid) + step[:, 1] * np.cos(mid)) / 2.1
+    return out
+
+
 class Data:
-    def __init__(self, split, mean=None, std=None):
+    def __init__(self, split, mean=None, std=None, truth=False):
         d = np.load(DATA / f"{split}.npz")
         self.raw, self.act, self.lens = d["sens"], d["act"], d["lens"]
+        if truth:
+            self.act = true_walk(self.act, d["pose"], self.lens)
         self.mean = self.raw.mean(0) if mean is None else mean
         self.std = np.maximum(self.raw.std(0), 0.05) if std is None else std
         self.sens = (self.raw - self.mean) / self.std
@@ -127,8 +141,10 @@ def exam(brain, data, burn=32, closed=32, stride=150, batch=64):
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--arm", required=True, choices=sorted(ARMS) + sorted(RETINA) + sorted(FLOW))
+    p.add_argument("--arm", required=True,
+                   choices=sorted(ARMS) + sorted(RETINA) + sorted(FLOW) + sorted(POLAR) + sorted(NORTH))
     p.add_argument("--side", type=int, default=16)
+    p.add_argument("--sides", default="", help="train across sizes, e.g. 8,16,32 (flow and polar arms)")
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--batch", type=int, default=8)
     p.add_argument("--length", type=int, default=64)
@@ -138,16 +154,24 @@ def main(argv=None) -> int:
     p.add_argument("--threads", type=int, default=4)
     p.add_argument("--every", type=int, default=500)
     p.add_argument("--final", action="store_true", help="also sit the TEST worlds (once!)")
+    p.add_argument("--true-walk", action="store_true", help="ablation: feel the real distance moved")
     args = p.parse_args(argv)
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
-    train = Data("train")
+    train = Data("train", truth=args.true_walk)
     del train.raw                  # training reads only the normalised copy
-    val = Data("val", train.mean, train.std)
+    val = Data("val", train.mean, train.std, truth=args.true_walk)
     brain = build(args.arm, args.seed, args.side)
+    if hasattr(brain, "set_norm"):
+        brain.set_norm(train.mean, train.std)
     plain = args.arm in PLAIN
     name = f"{args.arm}-s{args.seed}" if plain else f"{args.arm}-{args.side}-s{args.seed}"
+    sides = [int(x) for x in args.sides.split(",")] if args.sides else None
+    if sides:                      # every step on a random size, the same weights for all
+        name = f"{args.arm}-grow{'_'.join(map(str, sides))}-s{args.seed}"
+    if args.true_walk:
+        name += "-truewalk"
     run = RUNS / name
     run.mkdir(parents=True, exist_ok=True)
     ckpt = run / "ckpt.pt"
@@ -169,6 +193,8 @@ def main(argv=None) -> int:
         first = c["step"] + 1
         print(f"{name}: resumed at step {first}", flush=True)
     for step in range(first, args.steps + 1):
+        if sides:
+            brain.set_side(int(rng.choice(sides)))
         s, a = train.batch(rng, args.batch, args.length)
         e = blinks(rng, args.batch, args.length, args.burn)
         pred = brain.run(s[:, :-1], a[:, :-1], e)[0]
@@ -180,8 +206,15 @@ def main(argv=None) -> int:
         sched.step()
         losses.append(loss.item())
         if step % args.every == 0 or step == args.steps:
-            r = exam(brain, val)
-            row = {"step": step, "s": round(time.time() - t0),
+            by_size = {}
+            if sides:
+                for side in sides:          # the largest is left in place for the full row
+                    brain.set_side(side)
+                    r = exam(brain, val)
+                    by_size[side] = {"open": round(r["open"]["skill"], 3), "h8": round(r["h8"]["skill"], 3)}
+            else:
+                r = exam(brain, val)
+            row = {"step": step, "s": round(time.time() - t0), **({"by_size": by_size} if sides else {}),
                    "loss": round(float(np.mean(losses[-100:])), 4),
                    "open": round(r["open"]["skill"], 3),
                    **{f"h{h}": round(r[f"h{h}"]["skill"], 3) for h in HORIZONS},

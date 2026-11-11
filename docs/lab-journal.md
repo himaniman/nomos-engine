@@ -4765,3 +4765,57 @@ cell that hears nothing and sees nothing says something; its rule was never aske
 there, the hand gate did that for it. A search can be asked for that (bars V2, V3 in the note).
 
 Kept: `runs/tissue/free/` (the 2d genomes and exams), `runs/tissue/told/`.
+
+## 2026-11-12 (00:40) — step 2e-2a: an index by hand. A brain that knows what lies where finds the place from what it sees
+
+The second rung of "the brain chooses the place": the world tells the place only while a loop is
+first walked round (`--told study`). Asked without a search or a mechanism, the genomes of 2c-3b
+recall nothing (K90 at hop 1 is 0 on four lineages, 8 on the fifth), as predicted: with nothing
+felt there is no gate, every cell answers what is seen, and the three items seen wake the whole
+ring.
+
+Before building any kind of cell for it: what would a memory of what lies where be worth?
+`hand.Index` is one by hand. Cells with random innate wires from the senses; from them a few
+motor-like cells learn by the delta rule the place an item was seen at, written in a Gray code as
+fine as 16 cells of the ring. It is taught during study, when the world tells the place. In the
+test the eyes see an item and the index says where it lives; with the eyes closed the brain goes on
+feeling the place it felt last. The store is the five genomes of 2c-3b with their hand gate.
+
+**The index by itself** (`python -m tissue.hand --index`: the most items placed within 12 cells
+nine times in ten). My first index used a threshold code and placed about a hundred items whatever
+its size, 72-112 with 512 to 32768 cells: twelve-bit items look alike to a threshold. With a wave
+of the dendrite for a code (cos of four times the drive, at a phase of each cell's own), which is
+the kind of non-monotonic code the search of rung 0 found by itself, it grows with its cells:
+
+| cells of the index | 512 | 1024 | 2048 | 4096 | 8192 |
+|---|---|---|---|---|---|
+| items placed, ring of 512 (5 bits) | 256 | 576 | 864 | 1944 | - |
+| items placed, ring of 2048 (7 bits) | - | - | 864 | 1944 | 2912 |
+| items placed, ring of 4096 (8 bits) | - | - | - | 1944 | 2912 |
+
+About 0.45 items per cell of the index. I had predicted 0.1-0.2, and that for the code that did
+not work.
+
+**The brain told its places by the index** (sixteen lives, the third set of worlds, field 24):
+
+| | K90 hop 1 | held in thought |
+|---|---|---|
+| 512 cells, told by the world on every tick (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| 512 cells, told by an index of 2048 cells | 167/188/179/170/181 | 48/48/49/29/44 |
+| 512 cells, told by an index of 512 cells | 166/187/177/171/181 | 48/48/49/29/44 |
+| 2048 cells, told by the world (lineages 0 and 4) | 785, 867 | 108, 203 |
+| 2048 cells, told by an index of 2048 cells | 642, 717 | 108, 196 |
+
+- **W1 (recall at least half of the world-told figure at 512 cells, index four times the ring,
+  four lineages): met on all five**, 0.86-0.88. Predicted.
+- With an index only as big as the ring it is the same (0.86-0.88). I had predicted that would
+  not be enough. At 2048 cells, 0.82 and 0.83 on the two lineages run, and holding is the same.
+
+So the place need not be told when a thing is met again: a memory of what lies where finds the
+patch that knows it from a single item seen, and a latch keeps the brain there in the dark. An
+index cell has 12 innate wires and 5-8 plastic ones; an index the size of the ring costs about a
+fifth of the store's wires.
+
+By hand: the index, its wave code, the Gray code of a place and its grain, the latch. Found:
+nothing new. The world still says where a thing lies while it is first learnt; the next rung is a
+brain that chooses that place itself. And the index and the latch are not cells of the genome yet.

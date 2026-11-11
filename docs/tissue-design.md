@@ -1043,6 +1043,34 @@ of a place must be right). W1 met with an index four times the ring, not with on
 ring's size. An index cell has 12 innate wires and 5-8 plastic ones, so an index several
 times the ring still costs fewer wires than the store.
 
+**Outcome (journal 2026-11-12, 00:40):** W1 met on all five lineages, and with an index no
+bigger than the ring, which I had predicted it would not be.
+
+The index by itself, first: as I had written it, with a threshold code, it placed about a
+hundred items whatever its size (72-112 with 512 to 32768 cells). Twelve-bit items look
+alike to a threshold, and one pass of the delta rule cannot tell them apart. With a wave of
+the dendrite for a code (cos of four times the drive: the non-monotonic code the search of
+rung 0 found by itself) it places 0.45 items per cell of its own: 256, 864, 1944 items for
+an index the size of a ring of 512, 2048, 4096 cells. I had predicted 0.1-0.2, for the code
+that did not work.
+
+The brain told its places by that index (`--told index`), against the same brain told by
+the world on every tick:
+
+| | K90 hop 1 | held in thought |
+|---|---|---|
+| 512 cells, told by the world (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| 512 cells, told by an index of 2048 cells | 167/188/179/170/181 | 48/48/49/29/44 |
+| 512 cells, told by an index of 512 cells | 166/187/177/171/181 | 48/48/49/29/44 |
+| 2048 cells, told by the world (lineages 0, 4) | 785, 867 | 108, 203 |
+| 2048 cells, told by an index of 2048 cells | 642, 717 | 108, 196 |
+
+Recall is 0.82-0.88 of what the world's telling gives, holding the same. So a memory of
+what lies where is enough for the brain to find, from what it sees, the patch that knows
+it, and a latch is enough to stay there in the dark. All of it by hand: the index, its
+code, the Gray code of a place, the latch. What is asked of the world now is only to say
+the place while a thing is first learnt.
+
 ## Where the ladder stands
 
 | rung | state |

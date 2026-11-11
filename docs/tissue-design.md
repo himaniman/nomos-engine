@@ -1013,6 +1013,13 @@ patch that knows them. What I want to see is whether anything in the numbers say
 right patch answers differently from the rest, since that is what a search would have to
 build on.
 
+**Outcome (2026-11-12, 00:21):** as predicted, K90 at hop 1 is 0 on four lineages (8 on
+the fifth) and nothing is held. At 128 items the first hop is right on 0.74-0.79 of the bits
+and the walk fades from there: about what a placeless brain of that size does. Nothing in
+these figures tells the patch that knows a loop from the rest of the ring; that will take
+a look inside, and most likely a mechanism (a kind of cell that says where a thing lives:
+see the plan when 2e-1 is done).
+
 ## Where the ladder stands
 
 | rung | state |

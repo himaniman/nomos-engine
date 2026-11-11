@@ -357,3 +357,46 @@ def test_a_gate_leaned_away_turns_the_far_cells_down_and_at_nothing_is_no_gate()
     grown = ungated.grow(40)
     state, _ = grown.tick(grown.born(2, gen(1)), cue, cue, 1.0, 1.0, where=where)
     assert torch.equal(none, state[0]["I"])
+
+
+def test_a_brain_that_grows_in_mid_life_keeps_every_old_cell_and_says_the_same_at_first():
+    torch.manual_seed(0)
+    plan = replace(RUNG1, fan=6, reach=4, field=3, gate=0.3, spoken=True)
+    small = Tissue(plan, ITEM).grow(40)
+    state = small.born(2, gen(1))
+    cue = torch.ones(2, 12)
+    place = torch.tensor([10.0, 25.0])                      # in cells: it does not move as the ring grows
+    for _ in range(4):
+        state, _ = small.tick(state, cue, cue, 1.0, 1.0, where=place / 40)
+    big, grown = small.more(state, 24, gen(2))
+    assert big.n["I"] == 64 and grown[0]["I"].shape == (2, 64)
+    assert grown[1][0].shape == (2, 64, 12) and grown[1][1].shape == (2, 64, 6) and grown[1][2].shape == (2, 12, 64)
+    assert torch.equal(grown[1][1][:, :40], state[1][1]) and torch.equal(grown[2][1][:, :40], state[2][1])
+    assert torch.equal(grown[1][2][:, :, :40], state[1][2])
+    assert not grown[1][1][:, 40:].any() and not grown[1][2][:, :, 40:].any()      # new plastic wires: zero
+    assert grown[1][0][:, 40:].any()                                               # new innate wires: their own
+    away = (grown[2][1][:, 40:] - torch.arange(40, 64).view(1, -1, 1)) % 64
+    assert int(torch.minimum(away, 64 - away).max()) <= 4                          # wired within the new ring
+    # growing costs nothing by itself: the next tick says what the small brain would have said
+    _, was = small.tick(state, -cue, cue, 1.0, 1.0, where=place / 40)
+    _, now = big.tick(grown, -cue, cue, 1.0, 1.0, where=place / 64)
+    assert torch.allclose(was, now, atol=1e-5)
+    with pytest.raises(ValueError):
+        Tissue(RUNG1, ITEM).grow(16).more(Tissue(RUNG1, ITEM).grow(16).born(1, gen(0)), 8, gen(1))
+
+
+def test_a_life_in_two_halves_is_the_same_world_for_every_arm_and_a_pure_function():
+    from tissue import grow
+    h = grow.Halves(first=2, second=3, length=4, laps=2, open=2, closed=3)
+    before, after = grow.script(h, 3, gen(0))
+    assert len(before) == 2 * 2 * 5 and len(after) == 2 * 3 * 5 + 2 * 5 * (2 + 3)
+    assert all(int(loop.max()) < 2 for _, _, loop, _ in before)             # only the first loops
+    assert all(int(loop.min()) >= 2 for kind, _, loop, _ in after if kind == "study")
+    assert sum(kind == "closed" for kind, *_ in after) == 2 * 5 * 3
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, fan=6, reach=8, field=4, gate=0.3, spoken=True), ITEM)
+    lived = {arm: grow.run_life(genome, ITEM, h, 48, 96, arm, lives=3, seed=7) for arm in grow.ARMS}
+    for arm in grow.ARMS:
+        assert set(lived[arm]) == {"first", "second"} and len(lived[arm]["first"]) == 3
+        assert all(0.0 <= x <= 1.0 for half in lived[arm].values() for x in half)
+    assert lived["grown"] == grow.run_life(genome, ITEM, h, 48, 96, "grown", lives=3, seed=7)

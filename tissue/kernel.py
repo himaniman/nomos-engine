@@ -153,6 +153,32 @@ class Grown:
         act, wires, sources = state
         return {t: torch.zeros_like(a) for t, a in act.items()}, wires, sources
 
+    def more(self, state, extra: int, gen: torch.Generator):
+        """The brain grows in mid-life: `extra` interneurons are born where the ring closes,
+        after the last cell, with innate wires of their own and every plastic wire at zero.
+        An old cell keeps its number, its wires and what they hold; nothing else changes.
+        Returns (the grown brain, its state). Only for a brain with one type of interneuron
+        and a few wires per cell: wired from every cell, the old cells would need new wires."""
+        act, wires, sources = state
+        old = self.n["I"]
+        grown = Grown(self.t, {"I": old + extra})
+        plan = self.t.plan
+        if any(b.pre == b.post and not (self.sparse(b) and grown.sparse(b)) for b in plan.blocks):
+            raise ValueError("only a brain with a few wires per cell can grow in mid-life")
+        new_act, new_wires, new_sources = grown.born(act["I"].shape[0], gen)   # take its new cells
+        new_act["I"] = torch.cat([act["I"], new_act["I"][:, old:]], dim=1)
+        new_act.update({t: a for t, a in act.items() if t != "I"})
+        for i, b in enumerate(plan.blocks):
+            if b.post == "I":                       # rows are interneurons: the old ones stay
+                new_wires[i] = torch.cat([wires[i], new_wires[i][:, old:]], dim=1)
+                if i in sources:
+                    new_sources[i] = torch.cat([sources[i], new_sources[i][:, old:]], dim=1)
+            elif b.pre == "I":                      # columns are interneurons
+                new_wires[i] = torch.cat([wires[i], new_wires[i][:, :, old:]], dim=2)
+            else:
+                new_wires[i] = wires[i]
+        return grown, (new_act, new_wires, new_sources)
+
     def near(self, n: int, where: torch.Tensor) -> torch.Tensor:
         """How near the world's place (B,), a share of the way round the ring, is to each
         of `n` cells: a bell `plan.field` cells wide, 1 at the place itself."""

@@ -839,6 +839,31 @@ Prediction: U3 and U4 met. U1 and U2 met on three lineages or more, with a plain
 against the hand gate at 4096 cells: a whisper of the far cells that does no harm among 512
 cells is eight times as many voices among 4096, and no search has seen that size.
 
+### Step 3a: growth within one life. Plan, bars and prediction, written before the run
+
+Until now "grown bigger" has meant "born bigger". Exam 3 (`tissue/grow.py`): one unbroken
+life in two halves. The first loops are learnt, the brain is given new cells
+(`Grown.more`: born after the last cell, innate wires of their own, nothing learnt; every
+old cell keeps its number, its wires and what they hold), the second loops are learnt, and
+then the eyes close on loops of either half. A place is counted in cells, so it does not
+move when the ring grows. Three arms live the same world tick for tick: GROWN (512 cells,
+then 2048), BORN BIG (2048 from the first tick), SMALL (512 to the end). 96 items before
+the growth, 480 after, on sixteen lives; closings of 8 ticks. No search: the best genomes
+with a gate, as they are (field 24, 32 wires, reach 32). By hand: when the brain grows and
+by how much.
+
+- **G1, nothing is lost by growing.** On the first loops the grown brain is within 0.03 of
+  the brain born big, at hop 1 and at hop 8, on every lineage.
+- **G2, the new room is used.** The same on the second loops.
+- **G3, the growth was worth it.** On the second loops the grown brain is at least 0.10
+  above the small one at hop 1, on every lineage.
+
+Prediction: all three met on all five lineages. With places an old cell is not touched by
+a newcomer (a unit test shows the grown brain says, on its next tick, what the small one
+would have said), so the grown brain and the one born big differ only at the seam where the
+ring opened. That makes it close to a consequence of step 2c rather than a discovery; what
+it tests is that nothing in the kernel quietly depends on the size a brain was born with.
+
 ## Where the ladder stands
 
 | rung | state |

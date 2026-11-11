@@ -441,9 +441,11 @@ items per wire), so only recall was left to earn. K1 is not a fair verdict.
 ### Step 2a', asked properly: the same bars, written before the second search
 
 One change, to the lives of the search: 1/8 to 1 item per wire (71% of lives at or under
-what can be held), and bigger brains in the search, 128-512 cells with 16, 32 or 64 wires
-(`--fan 32 --sizes 128 256 512 --load 0.125 1`). Five lineages from the "hold" genomes,
-on the VM. Bars K1 and K2 as above, unchanged.
+what can be held), and bigger brains in the search, 128-512 cells with 8, 16 or 32 wires,
+so that most of its lives are in brains with many more cells than wires per cell
+(`--fan 16 --sizes 128 256 512 --load 0.125 1`, 4000 steps). Five lineages from the
+"hold" genomes, on the VM. Bars K1 and K2 as above, unchanged; 64 wires per cell is a
+fan the search never saw.
 
 My prediction: K1 met modestly, x1.2-1.5, now that holding is what the lives pay for. K2
 missed again: the reason I gave does not depend on how well the search is asked.

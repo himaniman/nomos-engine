@@ -713,6 +713,42 @@ gate 0.3). Seen so far: 512 and 2048 cells in the usual worlds, nothing else.
 
 Prediction: all four met on all five lineages; 400-550 items held at 4096 cells.
 
+**Outcome (journal 2026-11-11, 20:05):** R3 and R4 met; R1 missed on all five lineages and
+R2 half missed. My prediction was wrong, and the 230-270 of the exploration did not
+replicate at that height.
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| held, the usual worlds | 12-15 | 24-27 | 26-48 | 56-76 | 230-270 | 230-347 |
+| held, other worlds | - | - | 28-58 | - | 85-148 | 142-200 |
+| held, no places (2a') | 10-11 | 10-17 | 14-18 | 16-19 | 16-19 | - |
+| K90 hop 1, the usual worlds | 46-51 | 95-113 | 176-223 | 385-434 | 739-880 | 1594-1815 |
+
+- R1 (held at 4096 at least 1.5x held at 2048): x1.40 / 0.96 / 1.40 / 0.85 / 1.24.
+- R2 (other worlds): held at 2048 is 129/148/138/85/113 against a bar of 150, missed;
+  held at 2048 over held at 512 is x2.0-3.4, met.
+- R3: wires shuffled, nothing is held and nothing recalled. R4: the sense off, 13-18.
+
+What stands: with places a thought holds more in a bigger brain, about tenfold from 128 to
+4096 cells where a placeless brain is flat from 512 on; and recall one step ahead is in
+proportion to the cells in both sets of worlds. What does not stand: the size of it. The
+figure at 2048 cells in the usual worlds was a lucky one, and my measure is to blame: a
+heavy load is measured on four lives, a long closing is one loop per life, and a loop
+either holds or derails, so "the last lap at 0.9" there means "all four loops held".
+
+### Step 2c-5: the same exam measured on sixteen lives. Bars written before the runs
+
+Nothing about the brains changes: the five genomes of 2c-3b, `--field 24`, a third set of
+worlds (`--worlds 2`), and every load measured on at least sixteen lives (`--lives 16`),
+256 to 4096 cells.
+
+- **S1, growth at every doubling.** Held grows by at least x1.3 at each doubling of the
+  cells from 256 to 4096, on at least four lineages of five.
+- **S2.** At least 150 items held at 4096 cells on every lineage.
+
+Prediction: S1 met on three or four lineages (one doubling in four will fall short
+somewhere), S2 met; 150-300 items at 4096 cells.
+
 ## Where the ladder stands
 
 | rung | state |

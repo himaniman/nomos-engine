@@ -186,11 +186,13 @@ def k_grid(m: int, task: Task, length: int = 8) -> list[int]:
 
 
 def curve(live: Callable, task: Task, ks: list[int], shape: Life, seed: int = 30_000,
-          stop_below: float | None = None):
+          stop_below: float | None = None, lives: int = 4):
     """`live(items, life, gen) -> out` at each K: [{"echo", "hop": [...], "idle": [...]}].
     `shape` gives everything about a life but the number of loops. With `stop_below` the
     loads beyond the first one whose hop 1 falls under it are not examined (K90 and the
-    items held in thought are both decided before that)."""
+    items held in thought are both decided before that). `lives`: the fewest lives a load is
+    measured on (a heavy load is otherwise measured on four, and a long closing is one loop
+    per life: four loops are a coarse measure of what is held)."""
     rows = []
     for k in ks:
         if stop_below is not None and rows and rows[-1]["hop"][0] < stop_below:
@@ -199,7 +201,7 @@ def curve(live: Callable, task: Task, ks: list[int], shape: Life, seed: int = 30
         loops = k // shape.length
         life = Life(loops, shape.length, shape.laps, shape.idle, max(shape.blinks, 2 * loops),
                     shape.open, shape.closed)
-        items = world(task, life, max(4, min(32, 1024 // k)), gen)
+        items = world(task, life, max(lives, min(32, 1024 // k)), gen)
         with torch.no_grad():
             out = live(items, life, gen)
         rows.append({"echo": acc(out, "echo"), "hop": by_hop(out, life),

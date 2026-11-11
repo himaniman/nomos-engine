@@ -4563,3 +4563,64 @@ lap at 0.9" at a heavy load means "all four loops held", and the load at which t
 jumps about: 2048 cells in the usual worlds was a lucky draw. The exam can now measure every load
 on more lives (`--lives`), and the same genomes sit it on sixteen, in a third set of worlds, with
 bars written first.
+
+## 2026-11-11 (20:35) — step 2c-5: measured on sixteen lives, a thought holds nine times more at sixteen times the cells. Where rung 2 stands
+
+The same five genomes, the wider field, a third set of worlds, and every load measured on at
+least sixteen lives (`--lives 16`). Bars S1 and S2 were written first.
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| held in thought | 24/28/27/25/30 | 47/48/32/30/44 | 88/104/92/89/95 | 108/114/105/106/203 | 217/160/220/268/287 |
+| K90 hop 1 | 93/106/103/115/105 | 193/213/207/207/208 | 386/432/406/428/427 | 785/853/845/898/867 | 1530/1710/1648/1779/1706 |
+| K90 hop 4 | 18/31/27/0/32 | 0/63/55/0/61 | 0/124/113/0/114 | 0/231/208/0/224 | 0/477/432/0/462 |
+| held, no places (2a') | 14/16/17/10/16 | 18/18/18/14/18 | 18/18/18/16/19 | 18/19/18/16/19 | - |
+
+- **S1 (held grows by at least x1.3 at every doubling, on four lineages): missed**, met on one.
+  The doublings give x2.0 1.9 1.2 2.0 / x1.7 2.2 1.1 1.4 / x1.2 2.9 1.1 2.1 / x1.2 3.0 1.2 2.5 /
+  x1.5 2.2 2.1 1.4: the step from 1024 to 2048 cells falls short on four lineages.
+- **S2 (at least 150 items held at 4096 cells on every lineage): met**, 217/160/220/268/287.
+
+Predicted: S1 on three or four lineages, S2 met, 150-300 items at 4096 cells. Right about the
+size, wrong about how evenly it comes.
+
+From 256 to 4096 cells a thought holds x9.0 / 5.7 / 8.1 / 10.7 / 9.6 as much, x1.5-1.8 per
+doubling on average. Per cell it thins out: 0.09-0.12 items at 256 cells, 0.04-0.07 at 4096.
+Recall one step ahead does not thin out at all, 0.36-0.45 items per cell at every size, and on the
+three lineages that walk four hops cleanly that too doubles with every doubling of the brain.
+
+**Where rung 2 stands, the whole of it in one place.**
+
+| | at 2048 cells, 32 wires per cell | grows with the cells? |
+|---|---|---|
+| wires at random, the rule as found (2a, 2a') | 16-19 held, 99-169 recalled | held: no. Recalled: as a vote, x1.3 per doubling |
+| ceiling by hand, wires at random, any code (2b) | 32 held | no |
+| wires from neighbours alone (2c-1) | 17-19 held | no |
+| a sense of place, searched for (2c-2) | 0-17 held | no: the search ignored it |
+| places with a gate by hand, searched (2c-3, 2c-5) | 105-203 held, 785-898 recalled | held: x1.5-1.8 per doubling. Recalled: in proportion |
+| the same, wires shuffled | 0 | - |
+| the same, the sense off | 13-18 held, 65-127 recalled | - |
+| ceiling by hand with places | 864 held | in proportion |
+
+So under wiring a body could afford, "the same genome, grown bigger, is smarter" holds again, on
+one condition: the brain has places, and what is learned at a place stays in the cells of that
+place. Three things about that condition are not to be passed over:
+
+1. **It is by hand.** The ring, the wires to neighbours, the sense of place and the width of its
+   bell, the gate, the scaling of a dendrite by what was said. The search was given the chance to
+   find the gate and did not (2c-2). What is found is the cells' rule.
+2. **The world tells the brain where it is.** Every loop lies at a place and the place is felt on
+   every tick, eyes open or closed. A brain that had to work out for itself which thought belongs
+   where has not been asked for yet.
+3. **The width of the field was set after seeing a first result** (12 cells as planned gave a
+   patch too small to say an item cleanly; 24 was tried, and then tested in two sets of worlds it
+   had not been tried on). The figures above are from those tests, not from the trial.
+
+What was found is an eighth to a third of the hand ceiling, so the wires allow more. A search that
+lives with the wider field is running (bars T1, T2 in the design note).
+
+Method, added today and each paid for: build the ceiling by hand before the mechanism (it decided
+2b without a search and said what 2c was worth); put the loads where the brain in hand can begin
+to earn, not only where the wanted brain could live; when a search does not find a thing, put it
+in by hand once to learn what it would be worth; a load measured on four lives is not measured;
+and check the clock before dating a page.

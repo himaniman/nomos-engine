@@ -621,7 +621,18 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   at random holding is a matter of wires per cell; the roads left are hubs (the brain hearing
   its own voice: counted through, not built, an option for the user) and PLACES, which is 2c:
   cells on a ring, wires from neighbours (`Plan.reach`, 0 = the shuffle control), a sense of
-  place (`Plan.field`) so that each loop can live in its own patch. Bars in the design note.
+  place (`Plan.field`: every loop of the stream lies at a place, felt on every tick).
+  2c DONE: neighbours alone change nothing; a search given the sense found NO use for it (my
+  loads were set for the brain I wanted, not where the brain in hand could begin to earn);
+  with a gate BY HAND (`Plan.gate`: a cell away from its place is silent and does not learn)
+  and a dendrite scaled by what was said (`Plan.spoken`) a search finds a rule under which, at
+  32 wires per cell, recall one step ahead is in proportion to the cells (0.4 items per cell
+  to 4096) and a thought holds 24-30 items at 256 cells and 160-287 at 4096 (placeless: 18 at
+  any size; hand ceiling with places 864 at 2048). Shuffle the wires: nothing. Sense off: a
+  placeless brain. BY HAND: ring, neighbours, sense and width of its bell (24, set after a
+  first result, then tested in new worlds), gate, dendrite scaling. The world tells the brain
+  where it is. METHOD: a heavy load measured on four lives is not measured (`--lives 16`).
+  Genomes `runs/tissue/gate/`. Open: the search finding the gate; the dials in the genome.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

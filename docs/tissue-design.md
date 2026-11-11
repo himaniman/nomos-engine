@@ -56,6 +56,10 @@ Three signs, each with the control that could deny it:
 - Every mechanism has an off-switch, and its ablation is run when it is added.
 - A size the search never saw is the only evidence of growth. Trained sizes prove nothing.
 - What is by hand and what was found is stated for every result.
+- Paid for on rung 2: build the ceiling by hand before the mechanism. Put the loads where
+  the brain in hand can begin to earn, not only where the wanted brain could live. When a
+  search does not find a thing, put it in by hand once to learn what it would be worth.
+  A load measured on four lives is not measured. Check the clock before dating a page.
 
 ## The ladder
 
@@ -749,6 +753,48 @@ worlds (`--worlds 2`), and every load measured on at least sixteen lives (`--liv
 Prediction: S1 met on three or four lineages (one doubling in four will fall short
 somewhere), S2 met; 150-300 items at 4096 cells.
 
+**Outcome (journal 2026-11-11, 20:35):** S2 met, S1 missed (met on one lineage of five).
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| held in thought, sixteen lives | 24/28/27/25/30 | 47/48/32/30/44 | 88/104/92/89/95 | 108/114/105/106/203 | 217/160/220/268/287 |
+| K90 hop 1 | 93-115 | 193-213 | 386-432 | 785-898 | 1530-1779 |
+| held, no places (2a') | 10-17 | 14-18 | 16-19 | 16-19 | - |
+
+From 256 to 4096 cells, sixteen times the cells, a thought holds x9.0 / 5.7 / 8.1 / 10.7 /
+9.6 as much: x1.5-1.8 per doubling on average, but not at every doubling (1024 to 2048 is
+x1.1-1.2 on four lineages). Per cell it thins out, 0.09-0.12 items at 256 cells and
+0.04-0.07 at 4096. Three lineages also walk four hops cleanly and that grows in proportion
+(K90 at hop 4: 31, 63, 124, 231, 477 on lineage 1).
+
+**Where step 2c ends.** With a place for every loop, wires from neighbours and cells that
+are silent away from their place, 32 wires per cell are enough for a bigger brain to be
+smarter: recall one step ahead in proportion to the cells (0.4 items per cell to 4096),
+a thought held about nine times more at sixteen times the cells. A placeless brain with
+the same wires is flat at 18 items; the hand ceiling with places is 864 at 2048 cells, so
+what was found is an eighth to a third of what the wires allow. Take away the wiring by
+place and nothing is recalled; take away the sense and the same genome is a placeless
+brain. By hand: the ring, wires from neighbours, the sense of place and the width of its
+bell (set after seeing a first result, then tested in two sets of new worlds), the gate,
+the scaling of a dendrite by what was said. Found: the cells' rule, in brains of at most
+512 cells. Open: a search that finds the gate itself (2c-2 did not); the dials (reach,
+field, gate) as numbers of the genome; a search that lives with the wider field.
+
+### Step 2c-6: a search that lives with the wider field. Bars written before the run
+
+The exam's field (24) is not the one the rule was searched with (12). One change: the
+search of step 2c-3b again, from its own genomes, with `--field 24`. Exam as in 2c-5:
+sixteen lives, the third set of worlds, 256 to 4096 cells.
+
+- **T1.** Held at 4096 cells at least 1.5x the figure of 2c-5 (217/160/220/268/287), on at
+  least four lineages.
+- **T2.** Held at 4096 cells at least 8x held at 256, on at least four lineages (2c-5:
+  x9.0 / 5.7 / 8.1 / 10.7 / 9.6).
+
+Prediction: an even chance for T1. Every search today that I expected to gain in holding
+did not (K1 twice, P, Q); what speaks for it is that three laps of study and four clean
+hops both showed headroom. T2 met if T1 is.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -762,7 +808,7 @@ somewhere), S2 met; 150-300 items at 4096 cells.
 | 2a a few wires per cell, drawn at random | done, 5 lineages, no search: recall one step ahead still grows with the cells (a vote, x1.3 per doubling); a thought that holds follows the wires per cell alone, 0.55 items per wire, flat from 512 to 2048 cells |
 | 2a' a search that lives with few wires | done twice, the second asked properly: recall +11-51%, holding unchanged (K1, K2 missed) |
 | 2b a second kind of cell | not built. A hand-made ceiling decided it: one item per wire whatever the share of cells that speak and whatever the number of cells. Roads left: wires that grow with the brain, hubs, places |
-| 2c cells in a space | running: wires from neighbours on a ring (alone: predicted to change nothing), then a sense of place so that each loop can live in its own patch |
+| 2c cells in a space | done, 5 lineages. Wires from neighbours alone change nothing. A search given a sense of place found no use for it. With a gate BY HAND (cells silent away from their place) and 32 wires per cell: recall one step ahead in proportion to the cells, 0.4 items per cell to 4096; a thought held 24-30 items at 256 cells and 160-287 at 4096 (placeless: 18 at any size). Shuffle the wires: nothing. Sense off: a placeless brain. Open: the search finding the gate; the dials in the genome |
 | 3 growth from a seed | not started |
 
 Open questions carried along: what separates the lineages that scale without a fade from

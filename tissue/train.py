@@ -127,7 +127,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             closed = hops >> int(torch.rand(1, generator=gen) * 4) if vary else hops
             life = stream.Life(loops, length, laps, idle=idle, blinks=6 if closed <= 8 else 3,
                                open=3, closed=closed)
-            lives_now = batch if not fan else max(4, min(batch, int(ROOM / (life.ticks * m * wires))))
+            lives_now = batch if not fan else max(2, min(batch, int(ROOM / (life.ticks * m * wires))))
             lived = stream.run_life(model.grow(m), task, stream.world(task, life, lives_now, gen),
                                     life, gen, places=field > 0, told=told)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)

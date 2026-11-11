@@ -4247,3 +4247,122 @@ I still expect it, but it was tested by the same lopsided search.
 
 Next, the same step asked properly: loads of 1/8 to 1 item per wire (71% of lives at or under what
 can be held), bigger brains in the search (128-512 cells, 16-64 wires), the same bars.
+
+## 2026-11-11 (16:15) — rung 2a', asked properly: the search finds nothing more to hold; half an item per wire is what this rule gives
+
+The second search of step 2a' (bars K1 and K2 unchanged). The five "hold" genomes live in brains
+of 128-512 cells with 8, 16 or 32 wires per cell and 1/8 to 1 item per wire, so that 71% of the
+lives are at or under what such a brain can hold in thought. 4000 steps, 44 minutes a lineage on
+the VM, five at once.
+
+Items held in thought at 32 wires per cell, five lineages:
+
+| cells | asked properly | first search | unsearched |
+|---|---|---|---|
+| 128 | 10/11/11/10/11 | 9/10/12/9/10 | 11/11/11/10/10 |
+| 256 | 14/16/17/10/16 | 10/14/18/9/12 | 14/16/17/12/13 |
+| 512 | 18/18/18/14/18 | 12/17/18/11/17 | 17/17/18/12/17 |
+| 1024 | 18/18/18/16/19 | 13/17/20/14/19 | 18/18/18/17/18 |
+| 2048 | 18/19/18/16/19 | 13/17/23/13/20 | 18/19/18/16/19 |
+
+K90 at hop 1:
+
+| cells | asked properly | first search | unsearched |
+|---|---|---|---|
+| 512 | 77/88/83/75/91 | 83/95/89/75/94 | 69/77/75/65/80 |
+| 2048 | 118/149/149/99/169 | 122/151/151/91/160 | 96/108/108/75/112 |
+
+At 64 wires per cell, a fan the search never saw: 32/29/33/25/34 items held at 512 cells and
+37/35/36/28/37 at 2048; K90 at hop 1 197/269/238/131/301 at 2048.
+
+- **K1 (held at 512 cells at least 1.5x the unsearched): missed.** x1.02 / 1.01 / 1.00 / 1.13 /
+  1.03. I had predicted x1.2-1.5, now that holding was what the lives paid for. Wrong. Asked
+  properly the search loses nothing (the first one lost on two lineages) and gains nothing.
+- **K2 (held at 2048 at least 1.5x held at 512): missed**, x1.04-1.15. Predicted.
+- Recall one step ahead improves again: +11-15% at 512 cells, +23-51% at 2048.
+
+The verdict on K1 is now a fair one. With one kind of cell and wires drawn at random, a search
+that lives with few wires finds no way to hold more per wire: 0.51-0.60 items per wire at 32
+wires and 0.43-0.57 at 64, at every size from 512 cells up. Genomes and exams:
+`runs/tissue/few2/`.
+
+## 2026-11-11 (16:20) — step 2b is decided by a yardstick: a thought holds one item per wire at best, whatever the code, so no cell for sparse codes is built
+
+**A correction first: the dates.** The entries above headed 2026-11-12 and 2026-11-13 were all
+written on 2026-11-11. I had been moving the date forward with every stage of one long session;
+the commit times say otherwise. The headings now carry the day and the time of the commit, and the
+design note, `CLAUDE.md` and `docs/operations.md` point at them.
+
+**The plan for 2b** was a second kind of cell, an inhibitory one, to keep few cells speaking per
+item, "so that different items live in different cells" and a bigger brain holds more in thought.
+Before building it I asked three cheap questions. None needed a search.
+
+*1. How many cells speak per item now?* `python -m tissue.drift` has a new row, "speak": the
+share of interneurons that speak for an item, (sum |a|)^2 / (M sum a^2), which is 1 if all are
+equally loud, 0.64 for a bell-shaped spread and f if a share f speak and the rest are silent.
+It is 0.81-0.89 in every brain I looked at: eyes open or closed, all-to-all or 32 wires per cell,
+128 to 2048 cells, the genomes of both searches of step 2a' included (0.78-0.87). The found
+code is dense: nearly every cell speaks for every item.
+
+*2. What could any code hold?* `python -m tissue.hand --think` is the ceiling by hand. N cells, K
+wires into each from random others, items on loops of 8 with fixed codes in which a chosen share of
+the cells speak. Every cell fits its own K wires by logistic regression, run long (near the best
+any rule local to a cell can do), and when the brain is left alone an inhibition that never errs
+lets exactly the right number of cells speak each tick. Items held for 64 ticks:
+
+| wires per cell | half the cells speak | 1/4 | 1/8 | 1/16 | cells |
+|---|---|---|---|---|---|
+| 32 | 32 | 32 | 24-32 | 0-8 | the same at 64, 128, 512, 2048 |
+| 64 | 72 | 72 | 72 | 48 | the same at 128, 512, 2048 (64 cells: 48, 48, 72, 24) |
+| 128 | 168 | - | 168 | 256 | 1024 |
+
+(The grid of loads grows by half, so 32 means "32 held, 48 not".) About one item per wire. It does
+not move with the number of cells, from 64 to 2048, and it does not move with the share of cells
+that speak until there are about 128 wires per cell, where a sparse code gains x1.5. The found
+brains hold 0.55 per wire: half of this ceiling, with a rule that sees each link two or three
+times instead of four hundred.
+
+*3. What does a wire buy?* The same number of wires in all, spent two ways (five lineages each,
+from the exams already in `runs/tissue/`):
+
+| wires in all | all-to-all: cells | held | K90 hop 1 | 32 per cell: cells | held | K90 hop 1 |
+|---|---|---|---|---|---|---|
+| 4 096 | 64 | 13-24 | 40-42 | 128 | 10-11 | 36-38 |
+| 16 384 | 128 | 24-50 | 90-98 | 512 | 12-18 | 65-80 |
+| 65 536 | 256 | 63-95 | 120-213 | 2048 | 16-19 | 75-112 |
+
+With wires drawn at random a small brain wired all-to-all beats a big sparse one with the same
+wires, on holding (x4-5 at 65 thousand wires) and on recall (up to x2). Sparse wiring lets a brain
+be big; being big, by itself, buys less than nothing per wire.
+
+**Why, by counting.** A cell can be taught only through its own K wires. If every cell speaks for
+every item, every cell must learn every link, about K of them, however many cells there are. If
+few cells speak per item, a cell has fewer links to learn but hears fewer of its sources speak, and
+the two cancel until K is large. And in a brain wired at random two small groups of cells have
+hardly a wire between them (K x group / cells), so different items living in different cells could
+not be linked to each other at all. The expectation I wrote into step 2a, and carried into the
+plan for 2b, was wrong, and the hand-made ceiling shows it without a search.
+
+**So step 2b builds nothing.** A kind of cell for sparse codes has nothing to win at 32 or 64
+wires per cell. What a thought can hold, with wires drawn at random, is a matter of wires per cell
+and of nothing else. Three roads are left, and they are in the design note:
+
+- more wires per cell as the brain grows (rung 1, all-to-all: works, costs cells squared);
+- hubs: a thought passing through a few cells that hear everyone, as the motor cells do ("the
+  brain hears its own voice"). Counted through and not built: the loop takes two ticks, so it has
+  to learn links two steps apart, and the stream gives enough to tell such a link from a
+  coincidence only from the third lap on; and the thought would live in twelve cells, not in the
+  tissue. Left as an option for the user;
+- places: wires to neighbours, and each loop kept in one small patch of cells. A patch of 64
+  cells with 32 wires each holds as much as 2048 cells do, so 2048 cells in 32 patches could hold
+  about a thousand items where they now hold 18. It needs something that says which patch.
+
+The third road is step 2c, which was next in the plan anyway, and it now has its real question.
+`Plan.reach` (wires from neighbours on a ring; 0 is the shuffle) and `Plan.field` (a sense of
+place) are in the kernel; the plan, the bars and my predictions are in the design note, written
+before any run.
+
+One thing I got wrong on the way and fixed before the run that counts: my first wiring by distance
+drew a cell's wires with repeats, and with 32 wires from 64 neighbours a third of them were
+duplicates. A preview on one genome showed holding fall from 17 to 11; with every wire from a
+different neighbour it is 17.5 against 17.3, which is what the prediction for 2c-1 says.

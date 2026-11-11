@@ -450,13 +450,19 @@ fan the search never saw.
 My prediction: K1 met modestly, x1.2-1.5, now that holding is what the lives pay for. K2
 missed again: the reason I gave does not depend on how well the search is asked.
 
+**Outcome (journal 2026-11-11, 16:15):** K1 missed, x1.00-1.13: asked properly the search
+loses nothing and gains nothing in holding; my prediction was wrong. K2 missed, x1.04-1.15,
+as predicted. Recall one step ahead improves again (+11-15% at 512 cells, +23-51% at 2048).
+Half an item per wire (0.51-0.60 at 32 wires, 0.43-0.57 at 64 wires never searched) is what
+this rule gives with wires drawn at random. Genomes: `runs/tissue/few2/`.
+
 **A lesson for every search:** put the loads where the thing being asked for is possible.
 
 ### Step 2b, decided by a yardstick before any search: no kind of cell for sparse codes
 
 The plan for 2b was a second kind of cell that keeps few cells speaking per item, "so that
 different items live in different cells" and holding grows with the brain. Three cheap
-checks came first (journal 2026-11-11, evening). They say not to build it.
+checks came first (journal 2026-11-11, 16:20). They say not to build it.
 
 1. **The found brains use a dense code.** The share of interneurons that speak for an item
    (`python -m tissue.drift`, the row "speak") is 0.81-0.89 in every brain looked at: eyes
@@ -537,7 +543,8 @@ a cell starts at zero, so each begins exactly as it lived): `--fan 16 --reach 32
 --sizes 128 256 512`, closings up to 32 ticks as before. Loads are counted per wire and
 per patch of the ring (a patch = 2 x reach cells), 1/8 to 1 item per wire per patch, so
 that about 70% of the lives are at or under what a brain that kept each loop in its own
-patch could hold. Exam: 32 wires, reach 32, 128 to 4096 cells, a closing of 64 ticks.
+patch could hold. (Such a life is up to a thousand ticks long, so the search lives fewer
+of them at once: `ROOM` in `tissue/train.py`.) Exam: 32 wires, reach 32, 128 to 4096 cells, a closing of 64 ticks.
 
 - **P1, growth returns.** Items held in thought at 2048 cells are at least 2x those at
   512 cells, on every lineage (placeless: x1.0-1.3). 1024 and up are sizes never searched.
@@ -564,7 +571,10 @@ falls silent away from its place costs recall before it pays in holding.
 | 1c the stream: no resets, idleness | done: 8 genomes live an unbroken life (3 of 5 random starts, 5 of 5 lineages); on 5 of them capacity keeps pace with size to 512 (0.7 items per interneuron); idleness costs nothing; a walk holds 8-16 ticks, then drifts |
 | 1d a thought that holds | done, 5 lineages, no new mechanism: a stable cycle through learned items for 64 ticks on all five and 256 on the best; items held in thought x6-7 from 64 to 512 cells; capacity kept |
 | own pace; a world with forks (a choice, then a goal) | open, the user decides the order |
-| 2 wiring from the genome | not started |
+| 2a a few wires per cell, drawn at random | done, 5 lineages, no search: recall one step ahead still grows with the cells (a vote, x1.3 per doubling); a thought that holds follows the wires per cell alone, 0.55 items per wire, flat from 512 to 2048 cells |
+| 2a' a search that lives with few wires | done twice, the second asked properly: recall +11-51%, holding unchanged (K1, K2 missed) |
+| 2b a second kind of cell | not built. A hand-made ceiling decided it: one item per wire whatever the share of cells that speak and whatever the number of cells. Roads left: wires that grow with the brain, hubs, places |
+| 2c cells in a space | running: wires from neighbours on a ring (alone: predicted to change nothing), then a sense of place so that each loop can live in its own patch |
 | 3 growth from a seed | not started |
 
 Open questions carried along: what separates the lineages that scale without a fade from

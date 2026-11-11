@@ -605,8 +605,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   grow x6-7 from 64 to 512 cells. I had predicted a capacity loss and a need for private cell
   state: wrong. METHOD: ask before adding a mechanism. Best genomes: `runs/tissue/hold/`.
   It is a limit cycle, not a decision: every item has one successor. Open, the user decides
-  the order: own pace; a world with forks (choice, then a goal); rung 2 wiring from the genome;
-  rung 3 growth from a seed. The table in the design note says where the ladder stands.
+  the order: own pace; a world with forks (choice, then a goal); rung 3 growth from a seed.
+  RUNG 2, WIRING (2026-11-11, the user's choice). 2a: a few wires per cell drawn at random
+  (`Plan.fan`, cost cells x fan instead of cells squared). Recall one step ahead still grows
+  with the cells (a vote); a thought that HOLDS follows the wires per cell alone, 0.55 items
+  per wire, flat from 512 to 2048 cells. 2a': a search living with few wires, run twice (the
+  first with lopsided loads: put the loads where the thing asked for is possible), improves
+  recall and not holding. 2b, a second kind of cell for sparse codes, was NOT built: a ceiling
+  by hand (`python -m tissue.hand --think`) says one item per wire whatever the share of cells
+  that speak and whatever the number of cells, and at equal wires a small all-to-all brain
+  beats a big sparse one. METHOD: build the ceiling by hand before the mechanism. With wires
+  at random holding is a matter of wires per cell; the roads left are hubs (the brain hearing
+  its own voice: counted through, not built, an option for the user) and PLACES, which is 2c:
+  cells on a ring, wires from neighbours (`Plan.reach`, 0 = the shuffle control), a sense of
+  place (`Plan.field`) so that each loop can live in its own patch. Bars in the design note.
+  The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell

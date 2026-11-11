@@ -1093,7 +1093,7 @@ neighbours on both sides and the chance link from the last item of one loop to t
 the next is now always between neighbouring cells, where with places drawn at random it
 seldom was. Both cost holding more than recall.
 
-**Outcome (journal 2026-11-12, 01:30):** X1 met on all five lineages, X2 missed on all five
+**Outcome (journal 2026-11-12, 01:00):** X1 met on all five lineages, X2 missed on all five
 (I had predicted "on some").
 
 | 512 cells, an index of 2048 cells | K90 hop 1 | held in thought |
@@ -1126,6 +1126,37 @@ new", and whether it is a good rule in other worlds is not shown by this.
 Prediction: met, at 0.8-0.9 of the world-told figures for recall and about the same for
 holding, at a pace of 20 cells (about the spacing of the world's places at the load it
 recalls): it rebuilds what the world's telling gave.
+
+**Outcome (journal 2026-11-12, 01:00):** half met, and my prediction wrong: recall
+126/149/139/126/141 (0.61-0.70 of the world-told figure), held 16/11/11/13/15 (0.23-0.43).
+One place per loop is not enough when the places lie side by side: a loop then shares its
+cells with its neighbours on both sides, and the chance link from the end of one loop to
+the start of the next is learnt, since the two patches overlap. The world's places, drawn
+at random, had kept consecutive loops far apart without my noticing it was a help.
+
+**Exploration, after the fact:** the same rule with the next place opened far from the
+last (`--pace 196` on a ring of 512, a share of 0.382 of the ring, which fills a ring
+evenly however long one goes on). Recall 157/163/158/160/168, and HELD 95/78/91/88/96, two
+to three times what the same genomes hold when the world tells them places drawn at random
+(47/48/32/30/44); four hops walked cleanly at 92-99 items on four lineages. A dial turned
+after seeing results, on one size and one set of worlds.
+
+### Step 2e-3c: places chosen far apart, confirmed or not. Bars written before the runs
+
+The five genomes of step 2c-3b with their hand gate, unchanged. No place is ever told.
+`--told self --runs`, the next place 0.382 of the ring further on (196, 782, 1565 cells on
+rings of 512, 2048, 4096), an index of four times the ring. A fourth set of worlds
+(`--worlds 3`), sixteen lives. Seen so far: 512 cells in the third set of worlds only.
+
+- **X4, recall.** K90 at hop 1 is at least 0.7 of what the same lineage recalls when the
+  world tells it the place on every tick (2c-5), at 512, 2048 and 4096 cells, on at least
+  four lineages.
+- **X5, holding.** The items held in thought are at least the world-told figure (2c-5:
+  30-48, 105-203, 160-287), at each of the three sizes, on at least four lineages.
+
+Prediction: X4 met. X5 met at 512 and 2048 cells; at 4096 I am less sure, since the index
+then has to place some thousands of items to within 12 cells and one wrong place moves a
+whole loop.
 
 ## Where the ladder stands
 

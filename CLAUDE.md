@@ -644,7 +644,12 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   2d FAILED (2026-11-12): with the hand gate taken away step by step the genomes go back to
   placeless brains; the lives did not make the gate pay (at 128-512 cells a placeless brain
   does nearly as well), and a cell can say its own gate only roughly (`python -m
-  tissue.imitate`). 2e DONE BY HAND, nothing searched: `hand.Index`, a memory of what lies
+  tissue.imitate`). Asked again (2d': the cell taught its gate by imitation, lives where
+  places pay): two lineages of five keep a gate of their own and one holds more as it grows,
+  to 2048 cells, but the gate leaks (far cells 0.26-0.40 as loud) and every bar is missed.
+  THE GATE STAYS BY HAND; what would mend it is a cell that can say "asleep" sharply (a wider
+  perceptron, or a kind of cell that puts its neighbours to sleep): the user's to decide.
+  2e DONE BY HAND, nothing searched: `hand.Index`, a memory of what lies
   where (a wave code + the delta rule), lets the brain find the place from what it sees
   (`--told index`: recall 0.82-0.88 of the world-told figure, holding the same); never told a
   place at all (`--told self --runs`, each new place opened far from the last) it recalls

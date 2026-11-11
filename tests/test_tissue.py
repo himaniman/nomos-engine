@@ -491,3 +491,30 @@ def test_with_runs_new_things_in_a_row_share_a_place_and_a_new_one_after_a_known
     assert abs(back - first[0]) <= 8 / 256
     then = [float(index.tape(x)) for x in (c, d)]           # new after known: the next place
     assert then[0] == then[1] == pytest.approx(64 / 256)
+
+
+def test_places_by_hand_fill_the_emptiest_stretch_and_say_when_the_ring_is_crowded():
+    from tissue import grow
+    places = grow.Places(batch=1, cells=512, d=12, ring=256, most=512, full=1.0)
+    new = lambda k: torch.tensor([[1.0 if (k >> j) & 1 else -1.0 for j in range(12)]])
+    seen = []
+    for k in range(6):                                      # six runs: a new thing, then a known one
+        seen.append(float(places.tape(new(k))) * 512)
+        places.tape(new(k))
+    assert len({round(x) for x in seen}) == 6 and max(seen) < 256    # six stretches of the small ring
+    assert bool(places.crowded())                           # every stretch has a place within reach
+    places.ring = 512                                       # the ring grows: there is room again
+    assert not bool(places.crowded())
+    assert float(places.tape(new(9))) * 512 >= 256          # and the next new thing goes there
+
+
+def test_a_life_told_nothing_runs_for_every_arm_and_the_one_that_grows_ends_between_the_others():
+    from tissue import grow
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, fan=6, reach=8, field=4, gate=0.3, spoken=True), ITEM)
+    lived = {arm: grow.alone(genome, ITEM, loops=8, batches=4, small=64, big=128, arm=arm, lives=2,
+                             step=32, full=0.4, closed=3) for arm in ("grows", "born big", "small")}
+    assert lived["small"]["cells"] == 64 and lived["born big"]["cells"] == 128
+    assert 64 < lived["grows"]["cells"] <= 128
+    assert lived["small"]["cost"] < lived["grows"]["cost"] < lived["born big"]["cost"]
+    assert all(len(r["hop"]) == 3 for r in lived.values())

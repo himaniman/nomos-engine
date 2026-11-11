@@ -1181,6 +1181,29 @@ fell on top of one another here and there, while a rule that opens each new plac
 the last spreads them evenly. The cost is some recall. All of it is by hand: the index,
 the latch, the rule of runs, the stride.
 
+### Step 3b: a brain that decides to grow, by hand. Bars written before the run
+
+Exam 3 with `--alone`. Nothing is told: neither where a thing lies nor when to grow. Loops
+come in 8 equal batches, each walked round twice; then the eyes close on every loop. By hand
+(`grow.Places`): a run of new things is put at the stretch of the ring least in use; a
+known thing is found by the index; after a batch, if every stretch of the ring is in use at
+least twice (its neighbours counted), the brain gives itself 256 more cells, up to 2048. It
+starts with 256. Two worlds, a poor one (24 loops, 192 items) and a rich one (96 loops, 768
+items). Three arms: GROWS, BORN BIG (2048 cells from the first tick), SMALL (256 to the
+end). The store is the five genomes of step 2c-3b with their hand gate; eight lives.
+Nothing is searched; the rule of growth is by hand.
+
+- **Y1, it grows as much as the world asks.** In the poor world the brain ends with at most
+  1024 cells, and in the rich world with more than in the poor one, on every lineage.
+- **Y2, and loses little by it.** In both worlds its accuracy at hop 1 is within 0.05 of
+  the brain born big, on at least four lineages.
+- **Y3, growth pays.** In the poor world it costs at most half the cell-ticks of the brain
+  born big; in the rich world it is at least 0.10 above the small brain at hop 1.
+
+Prediction: Y1 and Y3 met. Y2 met in the poor world; in the rich one I expect the grown
+brain a little under the one born big, 0.03-0.08: what it learnt while small it learnt
+crowded, and nothing moves a thing out once there is room.
+
 ## Where the ladder stands
 
 | rung | state |

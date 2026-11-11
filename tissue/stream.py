@@ -98,7 +98,7 @@ def script(life: Life, batch: int, gen: torch.Generator) -> list:
 
 
 def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Generator,
-             places: bool = False, told: str = "always") -> dict:
+             places: bool = False, told: str = "always", index=None) -> dict:
     """Live the stream. Returns {kind: (said, true)} for kind in "echo" | "closed" | "idle",
     each (B, ticks of that kind, d); "closed" is ordered blink by blink, hop by hop.
 
@@ -107,9 +107,12 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     felt, not seen). It says where, never what. `told`: when the brain is told the place:
     "always"; "seen", only while the eyes are open, so that with the eyes closed it has to
     keep the place itself; "study", only while the loops are first walked round, so that in
-    the test it has to find where a thing lives from what it sees."""
-    if told not in ("always", "seen", "study"):
-        raise ValueError(f"told must be always, seen or study, not {told!r}")
+    the test it has to find where a thing lives from what it sees; "index", the same, but a
+    memory of what lies where (`index`, with `learn(item, place)` and `say(item)`) is taught
+    during study and says the place of whatever is seen afterwards, and with the eyes closed
+    the brain goes on feeling the place it felt last."""
+    if told not in ("always", "seen", "study", "index"):
+        raise ValueError(f"told must be always, seen, study or index, not {told!r}")
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
     ticks = script(life, b, gen)                # the world first: the same for any brain
@@ -123,10 +126,17 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     for kind, seen, loop, place in ticks + [("end", False, None, None)]:
         item = silent if loop is None else items[rows, loop, place]
         if places and loop is not None:
-            felt = place_of[rows, loop]
-            if (told == "seen" and not seen) or (told == "study" and kind != "study"):
-                felt = None
-        elif told != "always":
+            if told == "index":
+                if kind == "study":
+                    felt = place_of[rows, loop]
+                    index.learn(item, felt)
+                elif seen:
+                    felt = index.say(item)      # and with the eyes closed: the place felt last
+            else:
+                felt = place_of[rows, loop]
+                if (told == "seen" and not seen) or (told == "study" and kind != "study"):
+                    felt = None
+        elif told not in ("always", "index"):
             felt = None
         state, out = brain.tick(state, item if seen else silent,
                                 before if before_seen else silent, float(before_seen), float(seen),

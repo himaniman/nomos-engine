@@ -26,7 +26,7 @@ import torch
 
 from tissue import chain, stream
 from tissue.assoc import curve, k90, k_grid, run_life
-from tissue.hand import SIZES
+from tissue.hand import SIZES, Index
 from tissue.train import load
 
 
@@ -39,7 +39,7 @@ def held(ks: list, idle: list, bar: float = 0.9) -> float:
 
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
             quick: bool = False, nowhere: bool = False, worlds: int = 0, lives: int = 4,
-            told: str | None = None, **switches) -> dict:
+            told: str | None = None, index_cells: int = 0, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
     (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
@@ -47,8 +47,9 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
     place lives in a world whose loops lie at places; `nowhere` takes the sense away (the
     world is the same, the brain feels nothing). `worlds`: another set of stream worlds
     than the one every exam so far was sat in (0). `lives`: the fewest lives a load is
-    measured on. `told`: when the place is told ("always", "seen", "study"; default: as the
-    genome was searched)."""
+    measured on. `told`: when the place is told ("always", "seen", "study", or "index": by a
+    hand-made memory of what lies where with `index_cells` cells, default as many as there
+    are interneurons; default: as the genome was searched)."""
     model, task, saved = load(path, **switches)
     places = bool(getattr(model, "plan", None) and model.plan.field) and not nowhere
     told = told or saved.get("told", "always")
@@ -57,8 +58,13 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
         for m in sizes:
             brain = model.grow(m)
             ks = stream.k_grid(m, task, shape.length)
-            rows = stream.curve(lambda items, life, g: stream.run_life(brain, task, items, life, g,
-                                                                       places=places, told=told),
+            def live(items, life, g, m=m, brain=brain):
+                index = (Index(items.shape[0], index_cells or m, task.d_in, m)
+                         if told == "index" else None)
+                return stream.run_life(brain, task, items, life, g, places=places, told=told,
+                                       index=index)
+
+            rows = stream.curve(live,
                                 task, ks, shape, seed=30_000 + 1_000_000 * worlds,
                                 stop_below=0.8 if quick else None, lives=lives)
             ks = ks[:len(rows)]
@@ -148,8 +154,11 @@ def main() -> None:
                    help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--worlds", type=int, default=0,
                    help="stream: sit the exam in another set of worlds (0: the usual ones)")
-    p.add_argument("--told", choices=("always", "seen", "study"), default=None,
-                   help="when the place is told: always, only with the eyes open, or only in study")
+    p.add_argument("--told", choices=("always", "seen", "study", "index"), default=None,
+                   help="when the place is told: always, only with the eyes open, only in study,"
+                        " or in study and afterwards by a hand-made memory of what lies where")
+    p.add_argument("--index", type=int, default=0,
+                   help="cells of that memory (default: as many as interneurons)")
     p.add_argument("--lives", type=int, default=4,
                    help="stream: the fewest lives a load is measured on (default 4)")
     p.add_argument("--quick", action="store_true",
@@ -184,7 +193,7 @@ def main() -> None:
     if a.lives != 4:
         tag += f".lives{a.lives}"
     if a.told:
-        tag += f".told-{a.told}"
+        tag += f".told-{a.told}" + (f"{a.index}" if a.index else "")
     for path in a.genomes:
         streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
@@ -195,7 +204,7 @@ def main() -> None:
         elif length > 1:
             mark += f".len{length}"
         res = examine(path, a.sizes, length, shape, a.quick, a.nowhere, a.worlds, a.lives,
-                      a.told, **switches)
+                      a.told, a.index, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

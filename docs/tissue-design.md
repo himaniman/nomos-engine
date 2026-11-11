@@ -1020,6 +1020,29 @@ these figures tells the patch that knows a loop from the rest of the ring; that 
 a look inside, and most likely a mechanism (a kind of cell that says where a thing lives:
 see the plan when 2e-1 is done).
 
+### Step 2e-2a: an index by hand. Plan and prediction, written before the run
+
+Before any new kind of cell: what would it be worth if the brain had a memory of what lies
+where? `hand.Index`: threshold cells with random innate wires from the senses (the code of
+exam 0), and from them a few cells that learn by the delta rule the place an item was seen
+at, written in a Gray code as fine as 16 cells of the ring. It is taught while a loop is
+first walked round, when the world tells the place. In the test the eyes see an item and
+the index says its place; with the eyes closed the brain goes on feeling the place it felt
+last (a latch, by hand). The store is the five genomes of step 2c-3b with their hand gate,
+unchanged (`--told index`). Everything about the index is by hand; nothing is searched.
+
+- The yardstick by itself (`python -m tissue.hand --index`): the most items whose place the
+  index says within 12 cells nine times in ten, by the number of its own cells.
+- **W1.** With the place told by the index, K90 at hop 1 at 512 cells is at least half of
+  what the same genome recalls when the world tells it the place throughout (2c-5:
+  193-213), on at least four lineages, for an index of four times as many cells as the ring.
+
+Prediction: by itself the index places 0.1-0.2 items per cell of its own (the delta rule
+of rung 0 held 0.24 pairs per interneuron at nine bits in ten; here all five to eight bits
+of a place must be right). W1 met with an index four times the ring, not with one of the
+ring's size. An index cell has 12 innate wires and 5-8 plastic ones, so an index several
+times the ring still costs fewer wires than the store.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -420,3 +420,36 @@ def test_a_place_can_be_told_always_or_only_with_the_eyes_open_or_only_in_study(
         assert felt[:-1] == expect[:-1], told               # the last tick has no world left
     with pytest.raises(ValueError):
         stream.run_life(brain, ITEM, items, life, gen(5), places=True, told="never")
+
+
+def test_a_hand_made_index_says_where_a_thing_was_seen_and_is_wrong_when_overloaded():
+    index = hand.Index(batch=2, cells=64, d=12, ring=256)
+    assert index.bits == 4                                  # sixteen stretches of sixteen cells
+    item = torch.ones(2, 12)
+    item[1, :6] = -1
+    place = torch.tensor([0.30, 0.71])
+    index.learn(item, place)
+    assert torch.allclose(index.say(item), torch.tensor([4.5 / 16, 11.5 / 16]))    # the stretch it lay in
+    assert hand.index_right(256, 256, 16) > 0.95 > 0.6 > hand.index_right(256, 16, 256)
+    assert hand.index_right(256, 256, 16) == hand.index_right(256, 256, 16)
+
+
+def test_a_life_told_its_places_by_an_index_is_the_same_world_and_feels_what_the_index_says():
+    torch.manual_seed(0)
+    brain = Tissue(replace(RUNG1, fan=6, reach=4, field=3), ITEM).grow(32)
+    life = stream.Life(loops=2, length=4, laps=2, idle=3, blinks=2, open=2, closed=2)
+    items = stream.world(ITEM, life, 2, gen(4))
+    felt = []
+    tick = brain.tick
+    brain.tick = lambda *a, where=None, **k: (felt.append(where), tick(*a, where=where, **k))[1]
+    stream.run_life(brain, ITEM, items, life, gen(5), places=True, told="always")
+    always = [None if w is None else w.clone() for w in felt]
+    felt.clear()
+    index = hand.Index(2, 64, 12, 32)
+    stream.run_life(brain, ITEM, items, life, gen(5), places=True, told="index", index=index)
+    kinds = [kind for kind, *_ in stream.script(life, 2, gen(5))]
+    for k, (kind, a, b) in enumerate(zip(kinds, always, felt)):
+        assert b is not None                                # a place is always felt
+        if kind == "study":
+            assert torch.equal(a, b)                        # in study it is the world's
+    assert index.w.any()

@@ -3,6 +3,7 @@
     python -m tissue.hand
     python -m tissue.hand --hop
     python -m tissue.hand --think [--cells 512 2048] [--wires 32 64] [--patch 64 --reach 32]
+    python -m tissue.hand --index [--cells 512 2048 4096]
 
 Nothing here is searched for. They are the yardstick a found genome is read against:
 
@@ -19,6 +20,9 @@ Each uses the sparseness (share of interneurons a cue lights) that serves it bes
 at random from the other cells: every cell learns by itself, and long, to say its bit of the
 next item's code from what its K sources said; then the brain is left alone for 64 ticks. It
 is run with every cell speaking for every item and with few cells speaking per item.
+
+`--index` is a memory of what lies where, by hand (`Index`): how many items it can tell the
+place of, per cell of its own, on a ring of a given size.
 """
 
 from __future__ import annotations
@@ -204,6 +208,67 @@ def held_by_hand(n: int, k: int, f: float = 0.5, signed: bool = False, bar: floa
 THINK = ((0.5, True), (0.25, False), (0.125, False), (0.0625, False))     # share speaking, signed
 
 
+class Index:
+    """A memory of what lies where, by hand. `cells` threshold cells with random innate
+    wires from the senses (the code of exam 0); from them a few motor-like cells learn, by
+    the delta rule, the place an item was seen at. The place is written in a Gray code, so
+    that neighbouring stretches of the ring differ in one bit, as fine as `grain` cells of a
+    ring of `ring` cells. Asked with an item it says a place, right or wrong.
+
+    Its random numbers are its own (`seed`), so that a world lived with it is the same world
+    as without."""
+
+    def __init__(self, batch: int, cells: int, d: int, ring: int, grain: int = 16,
+                 f: float = 0.1, seed: int = 77):
+        g = torch.Generator().manual_seed(seed)
+        self.wires = torch.randn(batch, cells, d, generator=g)
+        self.theta = math.sqrt(2) * torch.erfinv(torch.tensor(1 - 2 * f))
+        self.f, self.d = f, d
+        self.bits = max(1, math.ceil(math.log2(max(2, ring / grain))))
+        self.w = torch.zeros(batch, self.bits, cells)
+
+    def code(self, item: torch.Tensor) -> torch.Tensor:
+        drive = torch.einsum("bmd,bd->bm", self.wires, item) / math.sqrt(self.d)
+        return (drive > self.theta).float() - self.f
+
+    def learn(self, item: torch.Tensor, place: torch.Tensor) -> None:
+        """`place` (B,) is a share of the way round the ring."""
+        q = (place * 2 ** self.bits).long().clamp(max=2 ** self.bits - 1)
+        gray = q ^ (q >> 1)
+        want = ((gray.unsqueeze(1) >> torch.arange(self.bits)) & 1).float() * 2 - 1
+        c = self.code(item)
+        err = want - torch.einsum("bom,bm->bo", self.w, c)
+        self.w = self.w + err.unsqueeze(-1) * (c / (c * c).sum(-1, keepdim=True)).unsqueeze(1)
+
+    def say(self, item: torch.Tensor) -> torch.Tensor:
+        on = (torch.einsum("bom,bm->bo", self.w, self.code(item)) > 0).long()
+        q = (on << torch.arange(self.bits)).sum(1)
+        shift = 1
+        while shift < self.bits:                    # out of the Gray code
+            q = q ^ (q >> shift)
+            shift *= 2
+        return (q.float() + 0.5) / 2 ** self.bits
+
+
+def index_right(ring: int, cells: int, items: int, laps: int = 2, lives: int = 8,
+                within: int = 12, seed: int = 0) -> float:
+    """The share of `items` whose place the index says within `within` cells, after it has
+    been shown every item at its place `laps` times (loops of 8 items share a place)."""
+    g = torch.Generator().manual_seed(seed)
+    task = Task(d_in=12, d_out=12)
+    loops = max(1, items // 8)
+    idx = torch.rand(lives, 2 ** task.d_in, generator=g).argsort(dim=1)[:, :loops * 8]
+    what = ((idx.unsqueeze(-1) >> torch.arange(task.d_in)) & 1).float() * 2 - 1     # (lives, items, d)
+    where = torch.rand(lives, loops, generator=g).repeat_interleave(8, dim=1)
+    index = Index(lives, cells, task.d_in, ring)
+    for _ in range(laps):
+        for k in torch.randperm(loops * 8, generator=g).tolist():
+            index.learn(what[:, k], where[:, k])
+    off = torch.stack([(index.say(what[:, k]) - where[:, k]).abs() for k in range(loops * 8)], dim=1)
+    off = torch.minimum(off, 1 - off) * ring
+    return float((off <= within).float().mean())
+
+
 RULES = {
     "hebb": {"hebb": hebb},
     "delta": {f"rate {r}": (lambda c, a, r=r: delta(c, a, r)) for r in (1.0, 0.5, 0.25)},
@@ -255,6 +320,8 @@ def main() -> None:
     import argparse
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--hop", action="store_true", help="the yardstick for exam 1 (one hop)")
+    p.add_argument("--index", action="store_true",
+                   help="a hand-made memory of what lies where: how many items per cell")
     p.add_argument("--think", action="store_true",
                    help="the ceiling for a thought that holds with a few wires per cell")
     p.add_argument("--cells", type=int, nargs="*", default=[512, 2048])
@@ -266,6 +333,20 @@ def main() -> None:
     p.add_argument("--sizes", type=int, nargs="*", default=list(SIZES))
     a = p.parse_args()
     torch.set_num_threads(8)
+    if a.index:
+        print("a memory of what lies where, by hand: the most items whose place it says within"
+              " 12 cells, nine times in ten")
+        print(f"{'ring':>6} {'bits':>5} | " + " | ".join(f"{x:>4} x ring" for x in (1, 2, 4, 8)) + "   (cells of the index)")
+        for n in a.cells:
+            row = []
+            for x in (1, 2, 4, 8):
+                best, items = 0, 8
+                while items <= 4096 and index_right(n, x * n, items) >= 0.9:
+                    best, items = items, 8 * max(items // 8 + 1, round(items * 1.5 / 8))
+                row.append(best)
+            bits = Index(1, 8, 12, n).bits
+            print(f"{n:>6} {bits:>5} | " + " | ".join(f"{b:>11}" for b in row), flush=True)
+        return
     if a.think and a.patch:
         print(f"items held in thought by hand in a brain with places: wires from within {a.reach}"
               f" places, a loop spoken for by a patch of {a.patch} cells")

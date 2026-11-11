@@ -917,6 +917,17 @@ cells to drown. If so, the next thing is to ask (a search that lives with `--tol
 and only if that fails a mechanism: a cell that remembers its last nearness, the private
 state held back since rung 1.
 
+**Outcome (journal 2026-11-11, 22:16):** V1 missed, as predicted: K90 at hop 1 is 0 on four
+lineages (65 on the fifth) and nothing is held. But not the way I pictured it. The far
+cells do not drown the thought at once: through the first lap of the long closing, at 64
+items, the brain is right on 0.96-0.99 of the bits (lineages 0-3), then 0.90-0.95, 0.78-0.85,
+and it is down to 0.55-0.66 by the eighth lap. The thought stays where it was to begin
+with and is lost by degrees, as cells that nothing silences join in and, with no gate on
+their learning either, write into their wires. Every later closing then starts from a
+brain already muddied, which is why hop 1 fails even at a light load. So a brain can keep
+its place for a while with nothing but its own wires; what it lacks is something that
+keeps the others out. That is a thing a search can be asked for.
+
 ## Where the ladder stands
 
 | rung | state |

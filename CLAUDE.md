@@ -19,6 +19,13 @@ sessions.
 - **Venv**: always `.venv` in the project root. Never install into global
   Python. Run things as `.\.venv\Scripts\python.exe -m ...`.
 - **Shell**: Windows PowerShell. `2>$null` to drop numpy warnings from output.
+- **Heavy runs go to the VM, not the desktop** (since 2026-11-13, `docs/operations.md`): the
+  desktop has 16 GB shared with everything else; five parallel searches were paged out and the
+  harness reaped a shell for low memory. VM 1094 `nomos` on the user's pve (16 threads, 8 GB,
+  ssh alias `nomos`), driven by `infra/dev/vm.sh push|run|jobs|tail|pull`; at most TEN
+  processes there at one thread each. On the desktop: tests, quick looks, at most two heavy
+  processes. The host is the user's live infrastructure: follow `phil-architecture`'s rules,
+  change nothing there beyond this VM without asking.
 - **This is a fast research playground** — favour small playable iterations
   and visible results (GIF/PNG) over heavy architecture. No CI yet.
 - **Reproducibility is load-bearing**: a run is a pure function of

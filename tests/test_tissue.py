@@ -307,3 +307,12 @@ def test_a_dendrite_scaled_by_what_was_said_does_not_care_how_many_sources_are_s
     small, big = motor_reads(16, 8), motor_reads(64, 8)
     assert torch.allclose(small, big)                       # eight speakers in 16 cells or in 64
     assert torch.allclose(small, torch.full_like(small, 8 * 0.5 / (8 + 1)))
+
+
+def test_a_thought_held_by_hand_in_places_grows_with_the_ring():
+    light = hand.think_in_places(128, 16, 16, reach=16, patch=32, steps=200)
+    assert light > 0.95
+    assert light == hand.think_in_places(128, 16, 16, reach=16, patch=32, steps=200)
+    crowded = hand.think_in_places(128, 16, 64, reach=16, patch=32, steps=200)
+    roomy = hand.think_in_places(1024, 16, 64, reach=16, patch=32, steps=200)
+    assert crowded < 0.9 < roomy                            # the same load, eight times the ring

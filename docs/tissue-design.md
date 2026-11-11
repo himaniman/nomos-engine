@@ -999,6 +999,20 @@ nothing is heard and nothing is seen, and the thought already keeps its place fo
 without it. My doubt is the usual one: a hum that is harmless among 512 cells may not be
 among 4096.
 
+### Step 2e-2, asked first: no search, no mechanism. Prediction written before the run
+
+The five genomes of step 2c-3b (the gate by hand, field 24) examined with `--told study`
+at 512 cells: the place is told while a loop is first walked round and never again. In the
+test the world jumps to a loop, the eyes see three items of it, and nobody says where it
+lives; with nothing felt there is no gate.
+
+Prediction: nothing is recalled (K90 at hop 1 is 0 on every lineage), and worse than in
+2e-1, because here the cells are ungated with the eyes OPEN as well: every cell answers what
+is seen, writes it into its wires, and the three items seen wake the whole ring and not the
+patch that knows them. What I want to see is whether anything in the numbers says the
+right patch answers differently from the rest, since that is what a search would have to
+build on.
+
 ## Where the ladder stands
 
 | rung | state |

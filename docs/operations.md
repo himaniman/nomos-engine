@@ -23,7 +23,8 @@ nomos 10.99.0.70 ──vmbr1──▶ pve 10.99.0.1 ──NAT via vmbr0──▶
   `pve.cpu` warns at 70 % and the host idles near 16 %, so 16 busy threads of 40 keep it near 56 %
   while 20 would sit on the threshold. `pve.ram` warns at 90 % and clears under 85 %; the host was
   at 80 % (38 GB available of 187) before this VM, and 8 GB keep it under 85. A search process
-  takes about 0.6 GB (measured: five took 3.0 GB), so 8 GB is room for ten at once. More RAM
+  in sparse brains of up to 256 cells takes 0.8-1.2 GB (measured), an exam about half that, so 8 GB
+  is room for six searches or ten exams at once. More RAM
   (`qm set 1094 --memory N --numa0 cpus=0-15,hostnodes=1,memory=N,policy=preferred`) only after
   something is freed on the host; more threads only with the alert in mind.
 - Own NAT `/usr/local/sbin/nomos-nat` on pve (chains `NOMOS_*`, internet only, every private range
@@ -49,7 +50,7 @@ infra/dev/vm.sh pull out/tissue/v2         # copy results back to the desktop
 ```
 
 `push` sends exactly what is committed, so a run can be named by a commit; the VM holds no
-credentials. Rules of the house: at most TEN processes at one thread each (memory, not CPU, is the
+credentials. Rules of the house: at most six searches or ten exams at one thread each (memory, not CPU, is the
 limit; more threads per process buy little: 50 steps took 32 s at one thread and 26 s at three);
 start them a few seconds apart; a run is still a pure function of its command line.
 Numbers from the VM and from the desktop agree only as far as two CPUs' floating point does:

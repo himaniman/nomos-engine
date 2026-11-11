@@ -148,3 +148,52 @@ def test_rest_silences_cells_and_keeps_wires():
     act, wires = brain.rest(state)
     assert not any(a.any() for a in act.values())
     assert wires[1].any() and torch.equal(wires[1], state[1][1])
+
+
+# ---- the stream: one unbroken life ---------------------------------------------------------
+
+from tissue import stream                                           # noqa: E402
+
+
+def test_the_script_walks_every_loop_round_and_is_the_same_for_any_brain():
+    life = stream.Life(loops=3, length=4, laps=2, idle=5, blinks=4, open=3, closed=2)
+    ticks = stream.script(life, 6, gen(1))
+    again = stream.script(life, 6, gen(1))
+    assert len(ticks) == 2 * 3 * 5 + 5 + 4 * (3 + 2)
+    assert all(torch.equal(a[2], b[2]) and torch.equal(a[3], b[3]) for a, b in zip(ticks, again))
+    kinds = [t[0] for t in ticks]
+    assert kinds.count("study") == 30 and kinds.count("idle") == 5 and kinds.count("closed") == 8
+    assert all(seen == (kind in ("study", "echo")) for kind, seen, _, _ in ticks)
+    # a study visit starts somewhere and comes back to it after `length` steps
+    assert torch.equal(ticks[0][3], ticks[4][3]) and torch.equal(ticks[0][2], ticks[4][2])
+    # within a visit and through closed eyes the world only ever steps to the next place
+    for a, b in zip(ticks[30:34], ticks[31:35]):
+        assert torch.equal(b[3], (a[3] + 1) % 4) and torch.equal(a[2], b[2])
+    # every loop is visited once per lap in every life
+    first_lap = torch.stack([ticks[i * 5][2] for i in range(3)], 1)
+    assert all(sorted(row.tolist()) == [0, 1, 2] for row in first_lap)
+
+
+def test_a_perfect_memory_of_the_stream_is_right_at_every_hop_and_through_idleness():
+    life = stream.Life(loops=4, length=4, laps=2, idle=12, blinks=6, open=2, closed=5)
+    items = stream.world(ITEM, life, 8, gen(2))
+    out = stream.ideal(items, life, gen(3))
+    assert stream.by_hop(out, life) == [1.0] * 5
+    assert stream.acc(out, "echo") == 1.0 and stream.idle_curve(out, 4) == [1.0] * 3
+
+
+def test_a_stream_is_lived_without_a_reset_and_is_a_pure_function():
+    torch.manual_seed(0)
+    tissue = Tissue(RUNG1, ITEM)
+    life = stream.Life(loops=2, length=4, laps=1, idle=3, blinks=3, open=2, closed=2)
+    items = stream.world(ITEM, life, 3, gen(4))
+    out = stream.run_life(tissue.grow(16), ITEM, items, life, gen(5))
+    assert out["closed"][0].shape == (3, 6, 12) and out["echo"][0].shape == (3, 6, 12)
+    assert out["idle"][0].shape == (3, 3, 12)
+    same = stream.run_life(tissue.grow(16), ITEM, items, life, gen(5))
+    assert torch.equal(out["closed"][0], same["closed"][0])
+    # the targets are the world's own items, whoever lives the life
+    told = stream.ideal(items, life, gen(5))
+    assert torch.equal(out["closed"][1], told["closed"][1])
+    assert torch.equal(out["echo"][1], told["echo"][1])
+    assert len(stream.by_hop(out, life)) == 2

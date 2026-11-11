@@ -234,14 +234,74 @@ My prediction: E1 met. E2 open, hop 8 somewhere in 0.7-0.8. E3 missed: the exami
 the pace, one tick a hop, so a brain of any size has no time to clean a recalled code
 before it must hand it on.
 
+## A brain that never stops (decided with the user, 2026-11-11)
+
+The plan had a step "the brain says when it is done". The user objected: a question in,
+an answer out, then stop, is how a perceptron or an LLM is used; the idea here is a brain
+whose thinking never stops. The brains already found agree: left alone for 60 silent
+ticks, four of five keep running and wander along learned links (`tissue.alone`). And the
+objection named two habits of the exams themselves: every cell was silenced between
+episodes, by hand, and the examiner set the pace of a walk.
+
+Not stopping is different from acting: a brain that runs for ever still commits to an act
+at some moment, and the time it takes is the measurable sign of thinking. And not stopping
+is not a virtue in itself: thinking that wears out what was learned is worse than rest.
+So "says when it is done" is replaced by THE STREAM, four properties, each an exam:
+
+1. No resets. A life is one stream, and the score holds on streams longer than the
+   search saw.
+2. In silence the brain is neither dead nor noise.
+3. Idle thinking does not wear memory out; better, it mends it.
+4. Its own pace: the order of what is said is scored, not the tick.
+
+Order agreed: 1 and 3 first.
+
+## Exam 2: the stream (`tissue/stream.py`)
+
+The world is a few loops of items; after an item comes the next on its loop, for ever.
+Study: eyes open, each loop walked round `laps` times, loops in random order (leaving one
+loop for another shows a pair that is not a link, once). Test: `blinks` times the world
+jumps, the eyes see 3 items and close for `closed` ticks while the world goes on. Every
+tick the motor cells are read as "what the world showed a tick ago"; while the eyes were
+open a tick ago the teacher shows exactly that, so the only teacher is the senses a tick
+late. The brain is never reset. K = items = links. A perfect memory of the stream (the
+most frequent successor of each item) scores 1.000 at every hop with two laps; with one
+lap a link and a coincidence have each been seen once and nothing tells them apart.
+
+The brain is the same `RUNG1`; only the life changes. The 1a' genomes, made for rested
+episodes, in the stream at 64 cells and 16 items: echo 0.94-0.99, hops 1-4 0.93 / 0.84-0.88
+/ 0.77-0.83 / 0.71-0.76 (rested: 0.99 / 0.91 / 0.89 / 0.84). After an idle closing of 32
+ticks hop 1 is 0.89.
+
+### Bars for the stream, written before the search
+
+Search: `--arm stream`, sizes 8-64, 1/16 to 1/2 item per interneuron, loops of 4 or 8,
+2-3 laps, eyes closed 4 ticks, no idle closing, 6000 steps, 5 seeds. Exam: loops of 8, 2
+laps, sizes to 512.
+
+- **F1, made for the stream, it lives in it.** 64 cells, 16 items: hop 1 at least 0.97 and
+  hop 4 at least 0.90, on every seed.
+- **F2, growth pays.** K90 at hop 1 rises at every doubling 8 to 512 and K90(512) is at
+  least 2.5x K90(64), on every seed.
+- **F3, idleness does no harm (never asked for).** After an idle closing of 64 ticks, hop 1
+  at 64 cells and 16 items falls by no more than 0.02, on every seed.
+- **F4, a closing longer than any it saw.** Eyes closed 16 ticks (the search: 4), 64 cells,
+  16 items: hop 16 at least 0.75 on every seed.
+
+My prediction: F1 met. F2 met with the usual fade (x3 to x5). F3 missed: nothing asked the
+brain to hold its wires still while it wanders; I expect a fall of 0.03-0.08. F4 open,
+my guess is near the bar: a loop closes on itself, so a walk round it could correct itself,
+but nothing in a 4-tick closing rewards that.
+
 ## Where the ladder stands
 
 | rung | state |
 |---|---|
 | 0 pairs | done, 3 seeds: about 1 pair per interneuron to 512 |
 | 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
-| 1b search on chains | next |
-| 1c the brain says when it is done | after 1b |
+| 1b search on chains | running |
+| 1c the stream: no resets, idleness | built, bars written, next |
+| 1d own pace | after 1c |
 | 2 wiring from the genome | not started |
 | 3 growth from a seed | not started |
 

@@ -4522,3 +4522,44 @@ What is by hand in all this, so that nobody reads more into it than there is: th
 from neighbours, the sense of place and its bell, the gate, the scaling of a dendrite by what was
 said. What is found: the cells' rule, by a search that never saw a brain over 512 cells.
 Genomes and exams: `runs/tissue/gate/`.
+
+## 2026-11-11 (20:05) — step 2c-4: the wider field, put to the test. A thought holds more in a bigger brain; the height I first saw does not replicate
+
+The exploration of the last entry said: the same five genomes with a field twice as wide hold
+230-270 items at 2048 cells. A dial turned after seeing a result, on two sizes. Bars R1-R4 went
+into the design note before anything else was looked at: other sizes, a second set of worlds
+(`--worlds 1`, a new switch of the exam), the shuffle, the sense off.
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| held, the usual worlds | 14/15/12/12/15 | 24/24/25/24/27 | 48/43/48/26/48 | 68/76/70/56/68 | 249/250/230/270/239 | 347/241/322/230/298 |
+| held, other worlds | - | - | 58/52/41/28/56 | - | 129/148/138/85/113 | 165/155/142/200/146 |
+| held, no places (2a') | 10/11/11/10/11 | 14/16/17/10/16 | 18/18/18/14/18 | 18/18/18/16/19 | 18/19/18/16/19 | - |
+| K90 hop 1, the usual worlds | 46/51/48/50/51 | 95/108/109/113/107 | 176/180/177/223/206 | 385/421/426/434/427 | 739/858/835/880/850 | 1594/1800/1742/1815/1752 |
+| K90 hop 1, other worlds | - | - | 196/209/210/218/210 | - | 779/901/868/907/870 | 1493/1686/1639/1730/1711 |
+
+| at 2048 cells | held | K90 hop 1 |
+|---|---|---|
+| wires shuffled (`--reach 0`) | 0 | 0 |
+| the sense off (`--nowhere`) | 18/17/17/13/18 | 105/127/97/65/114 |
+
+- **R1 (held at 4096 at least 1.5x held at 2048): missed** on all five, x1.40 / 0.96 / 1.40 /
+  0.85 / 1.24.
+- **R2 (other worlds): half missed.** Held at 2048 cells is 129/148/138/85/113 against a bar of
+  150. Held at 2048 over held at 512 is x2.2 / 2.9 / 3.4 / 3.1 / 2.0, met.
+- **R3 (the shuffle) and R4 (the sense off): met.**
+
+I had predicted all four met and 400-550 items at 4096 cells. Wrong.
+
+**What stands.** With places a thought holds more in a bigger brain: 12-15 items at 128 cells,
+24-27 at 256, 26-58 at 512, 56-76 at 1024, 85-270 at 2048, 142-347 at 4096, where a placeless
+brain is flat at 18 from 512 cells on and the hand ceiling without places is 32. Take the wiring
+by place away, or the sense, and it is gone. Recall one step ahead is in proportion to the cells
+in both sets of worlds, 0.4 items per cell.
+
+**What does not stand: the size of it,** and my measure is to blame. A heavy load is measured on
+four lives, a long closing is one loop per life, and a loop either holds or derails. So "the last
+lap at 0.9" at a heavy load means "all four loops held", and the load at which that first fails
+jumps about: 2048 cells in the usual worlds was a lucky draw. The exam can now measure every load
+on more lives (`--lives`), and the same genomes sit it on sixteen, in a third set of worlds, with
+bars written first.

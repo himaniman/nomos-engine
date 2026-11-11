@@ -660,7 +660,7 @@ Prediction: Q1-Q4 met on at least four lineages; 100-400 items at 2048 cells. If
 honest reading is: places make growth pay, the gate is by hand, and finding the gate is an
 open task for the search.
 
-**Outcome of (b) (journal 2026-11-11, 20:00):** by the letter Q1 and Q2 are missed on four
+**Outcome of (b) (journal 2026-11-11, 19:45):** by the letter Q1 and Q2 are missed on four
 lineages of five, and my prediction with them. What the search did buy is recall, and it
 grows in proportion to the brain to 4096 cells (1024 and up never searched):
 
@@ -682,6 +682,36 @@ load whose last lap is still at 0.8 does grow with the brain: 48-128 items at 51
 184-512 at 2048, 256-728 at 4096, where a placeless brain stops at 16 at any size. But
 that is a looser bar than the one I set, read off after the fact, and the closing is
 measured on four lives at those loads. It is a lead, not a result.
+
+**Looking for where the plateau comes from (exploration, after the fact).** Two exams of
+the same five genomes at 512 and 2048 cells, nothing searched anew:
+
+| at 2048 cells | held | K90 hop 1 | last lap at 8-48 items |
+|---|---|---|---|
+| as searched: field 12, two laps of study | 0/58/0/0/0 | 669-850 | 0.85-0.94 |
+| three laps of study (`--laps 3`) | 178/221/0/55/175 | 956-1216 | 0.93-1.00 |
+| a wider field (`--field 24`: a patch of about 75 cells, not 37) | 249/250/230/270/239 | 739-880 | 0.96-1.00 |
+
+At 512 cells the wider field gives 48/43/48/26/48. So the plateau was the patch: 37 cells
+are too few to say a 12-bit item cleanly after two lessons. With a patch twice as wide the
+same genomes hold in thought thirteen times what a placeless brain holds at 2048 cells and
+five times more at 2048 cells than at 512.
+
+That was a dial turned after seeing a result, on two sizes. It has to earn its keep on
+things not yet looked at.
+
+### Step 2c-4: the wider field, confirmed or not. Bars written before the runs
+
+The five genomes of step 2c-3b, unchanged, examined with `--field 24` (32 wires, reach 32,
+gate 0.3). Seen so far: 512 and 2048 cells in the usual worlds, nothing else.
+
+- **R1, growth goes on.** Held at 4096 cells at least 1.5x held at 2048, every lineage.
+- **R2, in worlds never used.** A second set of worlds (`--worlds 1`): at least 150 items
+  held at 2048 cells and held at 2048 at least 2x held at 512, every lineage.
+- **R3, the shuffle.** Wires from anywhere (`--reach 0`): less than half at 2048 cells.
+- **R4, the sense off** (`--nowhere`): at most 32 items at 2048 cells.
+
+Prediction: all four met on all five lineages; 400-550 items held at 4096 cells.
 
 ## Where the ladder stands
 

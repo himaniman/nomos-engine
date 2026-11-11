@@ -92,7 +92,10 @@ tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded in
                   hand-made yardstick · kernel.py cell types, blocks of wires, one
                   synchronous tick · train.py the genome found by gradient through
                   whole lives · exam.py every size incl. unseen · inside.py what was
-                  found. Design, ladder, rules, bars: docs/tissue-design.md
+                  found · chain.py, stream.py exams 1 and 2 (links; one unbroken life) ·
+                  drift.py, alone.py, where.py looks inside a life (loudness and pattern
+                  through a closing; left alone; who speaks and learns by distance from
+                  the place). Design, ladder, rules, bars: docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +

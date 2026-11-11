@@ -12,21 +12,24 @@ nomos 10.99.0.70 ──vmbr1──▶ pve 10.99.0.1 ──NAT via vmbr0──▶
 
 ## VM 1094 `nomos` on pve
 
-- Ubuntu 24.04 cloud image, **16 vCPU `host` pinned to socket 1** (host cpus `10-17,30-37`, NUMA
-  node 1 preferred: the half the stopped `llm` VM used), **8 GB no balloon**, no swap, 40 GB (thin,
+- Ubuntu 24.04 cloud image, **20 vCPU `host` pinned to socket 1** (host cpus `10-19,30-39`, NUMA
+  node 1 preferred: the whole half the stopped `llm` VM used; 16 vCPU for its first hours), **8 GB
+  no balloon**, no swap, 40 GB (thin,
   `local-lvm`, `discard`), **`onboot 0`**, MAC pinned `BC:24:11:5E:5E:70`, IP `10.99.0.70` on stb's
   isolated bridge `vmbr1`. No GPU. Created 2026-11-13 by `infra/pve/create-vm.sh`.
 - **Nothing depends on it.** Stop it any time: `ssh root@pve.pgs.dom qm stop 1094`. It does not
   start by itself after a host reboot: `qm start 1094`. It is in no backup job: the code is in git
   and results are copied back to the desktop.
-- Why 16 threads and 8 GB, when the user said not to be shy with the CPU: the host's own alerts.
-  `pve.cpu` warns at 70 % and the host idles near 16 %, so 16 busy threads of 40 keep it near 56 %
-  while 20 would sit on the threshold. `pve.ram` warns at 90 % and clears under 85 %; the host was
+- Sizing against the host's own alerts. `pve.cpu` warns at 70 % and the host idles near 16 %, so
+  20 busy threads of 40 put it at about 66 %, on the edge: the user chose that on 2026-11-13 and
+  accepts the warnings. The VM stays inside socket 1 so that socket 0 is left to production; more
+  than 20 would take CPU from the platform, not just ring a bell. `pve.ram` warns at 90 % and
+  clears under 85 %; the host was
   at 80 % (38 GB available of 187) before this VM, and 8 GB keep it under 85. A search process
   in sparse brains of up to 256 cells takes 0.8-1.2 GB (measured), an exam about half that, so 8 GB
   is room for six searches or ten exams at once. More RAM
-  (`qm set 1094 --memory N --numa0 cpus=0-15,hostnodes=1,memory=N,policy=preferred`) only after
-  something is freed on the host; more threads only with the alert in mind.
+  (`qm set 1094 --memory N --numa0 cpus=0-19,hostnodes=1,memory=N,policy=preferred`) only after
+  something is freed on the host. Memory, not threads, is what limits the VM.
 - Own NAT `/usr/local/sbin/nomos-nat` on pve (chains `NOMOS_*`, internet only, every private range
   dropped, matched on IP + MAC), hooked into the `vmbr1` stanza after the last `*-nat` lines
   (`infra/pve/install-nat.sh`, backup `/root/interfaces.bak-before-nomos`). The same recipe as

@@ -9,9 +9,10 @@
 # code is in git and results are copied back).
 #
 # Sizing, from what the host carried on 2026-11-13:
-#   - 16 vCPU `host`, pinned to socket 1 (host cpus 10-17,30-37, the half the stopped llm VM used).
-#     Not 20: the host idles at ~16 % CPU and its `pve.cpu` alert warns at 70 %; 16 busy threads
-#     of 40 add 40 %, 20 would sit on the threshold.
+#   - 20 vCPU `host`, pinned to socket 1 (host cpus 10-19,30-39: the whole half the stopped llm VM
+#     used, and no more, so socket 0 stays with production). The host idles at ~16 % CPU and its
+#     `pve.cpu` alert warns at 70 %; 20 busy threads of 40 put it at about 66 %, on the edge. It was
+#     made with 16 for that reason; the user raised it the same day and accepts the warnings.
 #   - 8 GB, no balloon. The host was at 80 % RAM (38 GB available of 187) and its `pve.ram` alert
 #     warns at 90 %, clears under 85 %; 8 GB keeps it under 85. A search process takes about half a
 #     gigabyte, so this is room for a dozen at once. Raise with `qm set 1094 --memory N` (and the
@@ -28,8 +29,8 @@ if ! iptables -L NOMOS_OUT -n >/dev/null 2>&1; then echo "run install-nat.sh fir
 [ -f $IMG ] || wget -q -O $IMG https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
 
 qm create $ID --name $NAME --ostype l26 --machine q35 \
-    --cpu host --sockets 1 --cores 16 --affinity 10-17,30-37 \
-    --numa 1 --numa0 cpus=0-15,hostnodes=1,memory=$MEM,policy=preferred \
+    --cpu host --sockets 1 --cores 20 --affinity 10-19,30-39 \
+    --numa 1 --numa0 cpus=0-19,hostnodes=1,memory=$MEM,policy=preferred \
     --memory $MEM --balloon 0 \
     --scsihw virtio-scsi-single \
     --scsi0 local-lvm:0,import-from=$IMG,discard=on,iothread=1,ssd=1 \

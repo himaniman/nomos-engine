@@ -155,6 +155,11 @@ def test_rest_silences_cells_and_keeps_wires():
 from tissue import stream                                           # noqa: E402
 
 
+def test_a_life_knows_how_many_ticks_it_is():
+    life = stream.Life(loops=3, length=4, laps=2, idle=5, blinks=2, open=3, closed=4)
+    assert len(stream.script(life, 2, gen(0))) == life.ticks == 2 * 3 * 5 + 5 + 2 * 7
+
+
 def test_the_script_walks_every_loop_round_and_is_the_same_for_any_brain():
     life = stream.Life(loops=3, length=4, laps=2, idle=5, blinks=4, open=3, closed=2)
     ticks = stream.script(life, 6, gen(1))

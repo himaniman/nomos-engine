@@ -44,6 +44,11 @@ class Life:
     def items(self) -> int:
         return self.loops * self.length
 
+    @property
+    def ticks(self) -> int:
+        return (self.laps * self.loops * (self.length + 1) + self.idle
+                + self.blinks * (self.open + self.closed))
+
 
 def world(task: Task, life: Life, batch: int, gen: torch.Generator) -> torch.Tensor:
     """`batch` worlds: items (B, loops, length, d), all distinct within a world."""

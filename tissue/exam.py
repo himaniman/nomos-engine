@@ -2,7 +2,7 @@
 
     python -m tissue.exam GENOME.pt ... [--length 4] [--stream] [--closed 4] [--idle 64]
                                         [--fan 32] [--reach 32] [--nowhere]
-                                        [--field 12] [--gate 0.3] [--spoken]
+                                        [--field 12] [--gate 0.3] [--lean 0] [--spoken]
                                         [--no-learn] [--taught-only] [--off 1]
 
 Rung 0 genomes ("tissue", "gru<h>"): pairs. Per size: K90 (pairs held at 90% of the bits),
@@ -138,6 +138,8 @@ def main() -> None:
                    help="give the genome a sense of place this many cells wide (it starts unused)")
     p.add_argument("--gate", type=float, default=None,
                    help="by hand: an interneuron less near the place than this is silent")
+    p.add_argument("--lean", type=float, default=None,
+                   help="how much of the hand gate is left (1: all of it, 0: none)")
     p.add_argument("--spoken", action="store_true",
                    help="plastic dendrites are scaled by what was said, not by their wires")
     p.add_argument("--nowhere", action="store_true",
@@ -167,6 +169,8 @@ def main() -> None:
         switches["field"], tag = a.field, tag + f".field{a.field}"
     if a.gate is not None:
         switches["gate"], tag = a.gate, tag + f".gate{a.gate:g}"
+    if a.lean is not None:
+        switches["lean"], tag = a.lean, tag + f".lean{a.lean:g}"
     if a.spoken:
         switches["spoken"], tag = True, tag + ".spoken"
     if a.nowhere:

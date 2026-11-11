@@ -57,6 +57,9 @@ class Plan:
     gate: float = 0.0   # by hand: an interneuron whose nearness to the place is under this
     #                     says nothing and its wires do not change; 0: no gate. With nothing
     #                     felt there is no gate either
+    lean: float = 1.0   # how much of that gate is left: 1 the gate as it is, 0 none. A
+    #                     scaffold: a search can take the gate away step by step and see
+    #                     whether the cells have learnt to keep silent by themselves
     spoken: bool = False    # a plastic dendrite is scaled by what was SAID to it (the squares
     #                     of what its sources said, summed, plus one) and not by the number of
     #                     its wires: then neither what it reads nor how far one lesson moves it
@@ -192,8 +195,9 @@ class Grown:
                     feats.append(torch.zeros_like(feats[0]) if where is None
                                  else self.near(self.n[t], where))
             said = self.t.cells[t](torch.stack(feats, dim=-1))
-            if t != "O" and plan.field and plan.gate and where is not None:
-                said = said * (feats[-1] >= plan.gate).unsqueeze(-1)    # asleep away from the place
+            if t != "O" and plan.field and plan.gate and plan.lean and where is not None:
+                asleep = (feats[-1] < plan.gate).unsqueeze(-1)          # away from the place
+                said = said * (1 - plan.lean * asleep)
             new_act[t] = said[..., 0]
             j = 1
             for i in self.t.incoming[t]:

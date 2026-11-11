@@ -795,6 +795,50 @@ Prediction: an even chance for T1. Every search today that I expected to gain in
 did not (K1 twice, P, Q); what speaks for it is that three laps of study and four clean
 hops both showed headroom. T2 met if T1 is.
 
+## After rung 2: the user's vector (2026-11-11, evening)
+
+Step 2c left three crutches: the gate is by hand, the world tells the brain where it is, and
+"grown" has only ever meant "born bigger". The user wants each of them tried, and to be
+gone on with in his absence. The order is mine:
+
+| step | what | the question |
+|---|---|---|
+| 2d | the search finds the gate | can the cells learn to keep silent away from their place, once the hand gate is taken away step by step? |
+| 3a | growth within one life, the size turned by the examiner | does a brain that is given new cells in mid-life keep what it knew and use the new room? |
+| 2e | the brain chooses the place | in rungs: the place is not told with the eyes closed (hold it); told only during study (recall where a thing lives); not told at all |
+| 3b | growth decided by the tissue | does a brain that grows where it is crowded do better than one grown evenly? |
+
+2e may need a second kind of cell, an index that knows what lies where. That is the user's
+first idea, cells of several kinds, with a job to do at last.
+
+### Step 2d: the search finds the gate. Plan, bars and prediction, written before any run
+
+Nothing new in the brain. A cell has felt its nearness to the place all along (one of its
+inputs); in step 2c-2 that was not enough, because there was no slope to climb. Now there
+is a brain that works with the gate, and the gate can be a scaffold: `Plan.lean` is how
+much of the hand gate is left (1: all, 0: none), and a search with `--anneal 3000` takes it
+away evenly over its first 3000 steps and lives the last 1000 with none. As the scaffold
+goes, speech away from the place costs at once, and the only one who can stop it is the
+cell.
+
+From the best genomes with a gate (step 2c-6 if they are no worse than 2c-3b's on the exam
+of 2c-5, else 2c-3b's), the same lives. Exam with NO hand gate: field 24, 32 wires, reach
+32, sixteen lives, the third set of worlds, 256 to 4096 cells.
+
+- **U1, recall without the scaffold.** K90 at hop 1 at 4096 cells is at least half of what
+  the same lineage recalls with the hand gate, on at least four lineages.
+- **U2, holding without the scaffold.** At least 100 items held at 4096 cells on at least
+  four lineages (placeless: 18).
+- **U3, the gate is the cell's own.** Inside a life at 2048 cells (`python -m tissue.where`)
+  cells further than 64 from the place are at most a tenth as loud as cells within 6 of it,
+  eyes open and closed, and learn at most a tenth as much.
+- **U4, the controls.** Wires shuffled: less than half is recalled at 2048 cells. The sense
+  off: at most 32 items held.
+
+Prediction: U3 and U4 met. U1 and U2 met on three lineages or more, with a plain loss
+against the hand gate at 4096 cells: a whisper of the far cells that does no harm among 512
+cells is eight times as many voices among 4096, and no search has seen that size.
+
 ## Where the ladder stands
 
 | rung | state |

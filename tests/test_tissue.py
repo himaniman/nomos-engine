@@ -333,3 +333,27 @@ def test_the_gate_by_hand_silences_and_stills_the_cells_away_from_the_place():
     # with nothing felt there is no gate
     state, _ = brain.tick(brain.born(2, gen(1)), cue, cue, 1.0, 1.0)
     assert state[0]["I"].abs().min() > 0
+
+
+def test_a_gate_leaned_away_turns_the_far_cells_down_and_at_nothing_is_no_gate():
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, fan=6, reach=4, field=3, gate=0.3), ITEM)
+    cue, where = torch.ones(2, 12), torch.tensor([0.0, 0.5])
+
+    def first_tick(lean):
+        brain = Tissue(replace(genome.plan, lean=lean), ITEM)
+        brain.load_state_dict(genome.state_dict())
+        grown = brain.grow(40)
+        state, _ = grown.tick(grown.born(2, gen(1)), cue, cue, 1.0, 1.0, where=where)
+        return state[0]["I"], grown.near(40, where) >= 0.3
+
+    full, awake = first_tick(1.0)
+    half, _ = first_tick(0.5)
+    none, _ = first_tick(0.0)
+    assert not full[~awake].any()
+    assert torch.allclose(half[~awake], none[~awake] / 2) and torch.equal(half[awake], none[awake])
+    ungated = Tissue(replace(genome.plan, gate=0.0), ITEM)
+    ungated.load_state_dict(genome.state_dict())
+    grown = ungated.grow(40)
+    state, _ = grown.tick(grown.born(2, gen(1)), cue, cue, 1.0, 1.0, where=where)
+    assert torch.equal(none, state[0]["I"])

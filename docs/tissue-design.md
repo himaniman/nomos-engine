@@ -410,6 +410,29 @@ is the real obstacle to "grown bigger, smarter" under wiring a body could afford
 2b has its job: a kind of cell that keeps few cells speaking per item, so that different
 items live in different cells.
 
+**Outcome (journal 2026-11-13):** half right. Recall one step ahead still grows with the
+cells at a fixed fan, about x1.3 per doubling: the motor cells read every interneuron, so
+recall is a vote. A thought that HOLDS does not grow with the cells at all: about 0.55
+items per wire (18 at 32 wires, 35 at 64, 70 at 128) at 512, 1024 and 2048 cells alike.
+Under affordable wiring the claim "grown bigger, smarter" is true for what is recalled at
+once and false for what is kept in mind.
+
+### Step 2a', a search that lives with few wires: bars written before the search
+
+Ask before adding. The stream search (closings 4-32 as before), started from the five
+"hold" genomes, now lives in brains of 64, 128 and 256 cells with 8, 16 or 32 wires into
+each interneuron, and 1/4 to 2 items per wire (`--fan 16 --sizes 64 128 256`). No new
+mechanism. Exam at 32 wires (and 16, 64), 64 to 2048 cells, closing of 64 ticks.
+
+- **K1, a search that knows about few wires uses them better.** At 32 wires and 512 cells
+  the items held in thought are at least 1.5x the unsearched figure (17-18), every lineage.
+- **K2, and growth returns.** At 32 wires the items held in thought at 2048 cells are at
+  least 1.5x those at 512 cells, every lineage (unsearched: x1.0-1.1).
+
+My prediction: K1 met, a gain by a constant factor from a code better suited to few
+wires. K2 missed: one kind of cell cannot make fewer cells speak per item as the brain
+grows, because a cell has no way to know how big the brain is.
+
 ## Where the ladder stands
 
 | rung | state |

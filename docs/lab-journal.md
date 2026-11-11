@@ -4145,3 +4145,59 @@ to go. By hand as before; the loops and the closings are the examiner's.
 
 **Method, again:** ask before adding. Twice now (depth on step 1b, holding here) the brain in hand
 could do what I was about to build a mechanism for. Genomes in `runs/tissue/hold/`.
+
+## 2026-11-13 — rung 2a: a few wires per cell. Recall is a vote and more cells help; a thought that holds follows the wires alone
+
+Rung 2 is the user's choice and the core of the original idea: cells of several kinds joined by
+axons a genotype lays down. Three steps hide in it (the design note): a few wires per cell; a
+second kind of cell; cells in a space with wiring statistics in the genome. First the floor.
+
+**The mechanism** (`Plan.fan`): each interneuron gets `fan` wires from other interneurons drawn at
+random at birth, instead of one from every cell. Sensory and motor wires are unchanged. A dendrite
+still averages its wires and a wire still changes by the same product. Cost per individual falls
+from M^2 to M x fan, so 2048 cells with 32 wires each are a sixteenth of 512 cells all-to-all.
+Old results reproduce exactly with `fan = 0`. 18 tests.
+
+**No search:** three "hold" genomes (found all-to-all at 8-64 cells), grown sparse, on the stream
+exam with a closing of 64 ticks. Each cell of the table is the three genomes.
+
+K90 at hop 1 (items recalled one step ahead):
+
+| wires per cell | 64 cells | 128 | 256 | 512 | 1024 | 2048 |
+|---|---|---|---|---|---|---|
+| 8 | 10/10/11 | 13/14/16 | 17/19/21 | 21/26/30 | 29/32/34 | 33/36/39 |
+| 16 | 16/16/18 | 23/24/27 | 32/34/36 | 39/44/47 | 48/55/65 | 59/67/75 |
+| 32 | 24/25/26 | 36/38/38 | 52/54/58 | 69/74/80 | 90/95/102 | 97/108/112 |
+| 64 | (all) | 47/54/52 | 77/83/90 | 102/118/121 | 135/141/161 | 155/184/212 |
+| 128 | (all) | (all) | 104/112/114 | 160/173/195 | 205/243/251 | 253/291/354 |
+| all | 40/42/42 | 98/97 | 205/213 | 396/387 | | |
+
+Items held in thought (lap 8 of the closing still at 0.9):
+
+| wires per cell | 64 cells | 128 | 256 | 512 | 1024 | 2048 |
+|---|---|---|---|---|---|---|
+| 8 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 16 | 0 | 0 | 0 | 9 | 9 | 8-9 |
+| 32 | 9-10 | 10-11 | 13-17 | 17-18 | 18 | 18-19 |
+| 64 | (all) | 19-23 | 27-31 | 31-34 | 35-36 | 35-38 |
+| 128 | (all) | (all) | 39-42 | 51-64 | 62-69 | 69-70 |
+| all | 23-24 | 37-50 | 75-95 | 145-148 | | |
+
+**My prediction** (what a brain holds follows the wires per cell, flat in the number of cells,
+doubling with the fan) was half right, and the half is the interesting part.
+
+- *Recall one step ahead still grows with the brain*, slowly: about x1.3 per doubling of cells at
+  any fan (x2 from 256 to 2048, where I said "within a quarter"), and x1.6-1.9 per doubling of the
+  fan. The motor cells read every interneuron, so recall is a vote, and more voters outvote more
+  noise even when each voter knows no more than before.
+- *A thought that holds does not grow with the brain at all.* It settles at about 0.55 items per
+  wire: 18 at 32 wires, 35 at 64, 70 at 128, the same at 512, 1024 and 2048 cells. Holding needs
+  every cell right at every step, with nobody to outvote it, and a cell is as good as its wires.
+
+So under wiring a body could afford, "the same genome, grown bigger, is smarter" is true for what
+is recalled at once and false for what is kept in mind. All-to-all hid this: there a cell's wires
+grew with the brain. This is the first real obstacle to the claim, found on the first day of
+rung 2, and it gives step 2b a job with a number on it.
+
+Not searched for: these genomes never knew a sparse brain. Before any new kind of cell, the next
+step asks: a search that lives with few wires.

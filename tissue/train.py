@@ -54,13 +54,16 @@ def load(path: str, **switches):
 
 def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float = 3e-3,
           hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
-          vary: bool = False, fan: int = 0) -> None:
+          vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
     is always part of the error there; `vary` draws each life's closing from `hops`, `hops`
     / 2, / 4, / 8. `init`: start from a genome found earlier (same brain plan) instead of
-    from random numbers. `fan`: wires into each interneuron from other interneurons (0: all)."""
+    from random numbers. `fan`: wires into each interneuron from other interneurons (0: all);
+    a stream life then draws its fan from `fan` / 2, `fan`, 2 `fan` and its load from 1/4 to 2
+    items per wire, since that is what a sparse brain's capacity follows. `sizes`: the brain
+    sizes a life is drawn from."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model, task = make(arm, fan=fan) if fan else make(arm)
@@ -76,10 +79,15 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     t0 = time.time()
     for step in range(1, steps + 1):
         u = torch.rand(3, generator=gen)
-        m = TRAIN_SIZES[int(u[0] * len(TRAIN_SIZES))]
+        m = sizes[int(u[0] * len(sizes))]
         if arm == "stream":             # 1/16 .. 1/2 item per interneuron, loops of 4 or 8
             length = (4, 8)[int(u[2] * 2)]
-            loops = max(1, round(m * 2 ** (float(u[1]) * 3 - 4) / length))
+            if fan:                     # a sparse brain: 1/4 .. 2 items per wire
+                wires = fan * 2 ** (int(torch.rand(1, generator=gen) * 3) - 1)
+                model.plan = replace(model.plan, fan=int(wires))
+                loops = max(1, round(wires * 2 ** (float(u[1]) * 3 - 2) / length))
+            else:
+                loops = max(1, round(m * 2 ** (float(u[1]) * 3 - 4) / length))
             laps = 2 + int(torch.rand(1, generator=gen) * 2)        # 2 or 3 times round
             closed = hops >> int(torch.rand(1, generator=gen) * 4) if vary else hops
             life = stream.Life(loops, length, laps, idle=idle, blinks=6 if closed <= 8 else 3,
@@ -119,7 +127,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
-                        "genome": model.state_dict()}, out)
+                        "sizes": list(sizes), "genome": model.state_dict()}, out)
     log.close()
 
 
@@ -137,12 +145,14 @@ def main() -> None:
                    help="stream arm: closings of hops, hops/2, hops/4 or hops/8 ticks")
     p.add_argument("--fan", type=int, default=0,
                    help="wires into each interneuron from other interneurons (0: from all)")
+    p.add_argument("--sizes", type=int, nargs="*", default=list(TRAIN_SIZES),
+                   help="brain sizes a life is drawn from")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
-          vary=a.vary, fan=a.fan)
+          vary=a.vary, fan=a.fan, sizes=tuple(a.sizes))
 
 
 if __name__ == "__main__":

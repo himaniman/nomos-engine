@@ -4084,3 +4084,64 @@ found in the stream lives in the stream.
 
 **Kept as method:** a search for a new life starts from the genome of the life before. It cost
 nothing and removed the flat spot. Genomes in `runs/tissue/stream/`. 16 tests.
+
+## 2026-11-12 (night) — a thought that holds: asked for long closings, the brain stops whispering and walks its loop for 256 ticks
+
+The user chose "a walk that does not drift" over "own pace". I expected to need a new mechanism
+(private state in a cell). It needed none.
+
+**Diagnosis first** (`python -m tissue.drift`, the stream genomes in hand, 128 cells, a closing of
+64 ticks, per lap of a loop of 8):
+- The walk drifts at EVERY load, even with one loop of 8 items in 128 cells (lap 1: 1.00, lap 8:
+  0.63-0.83). Not capacity.
+- In silence the brain WHISPERS: the interneurons' mean |activity| is about 1 with the eyes open,
+  0.37 in the first closed lap, 0.14-0.22 from the third on, and stays there. It does not die.
+- What goes is the PATTERN: its cosine with the code of the item the world is really at falls 0.97
+  -> 0.31-0.76 in 8 laps. At a whisper a cell sits on the straight part of its curve, nothing
+  saturates, nothing pulls a slightly wrong pattern back.
+
+My guess for the whisper: a loud thought makes false links when the eyes reopen, since a wire
+changes by (source activity) x (learning signal) and a cell cannot tell its own thought from the
+world. From it my prediction, written first: asked to think longer the brain would think louder,
+lap 8 would reach 0.8-0.9, and capacity would fall.
+
+**The step**: the stream search, started from the five lineage genomes, sees closings of 4, 8, 16
+or 32 ticks (`--hops 32 --vary`). Nothing else changes. Exam: a closing of 64 ticks.
+
+| lineage | lap 8, 64 cells / 8 items | K90 hop 1 at 512, now / before | items held in thought* at 64 / 128 / 256 / 512 |
+|---|---|---|---|
+| 0 | 1.00 | 375 / 365 | 24 / 46 / 93 / 150 |
+| 1 | 1.00 | 408 / 371 | 17 / 36 / 75 / 125 |
+| 2 | 1.00 | 396 / 368 | 24 / 50 / 95 / 145 |
+| 3 | 0.96 | 209 / 197 | 13 / 24 / 63 / 82 |
+| 4 | 1.00 | 391 / 237 | 23 / 37 / 75 / 148 |
+
+\* items in the world at which lap 8 of the closing is still at least 0.9.
+
+- **H1 (lap 8 at least 0.95): met on all five** (before: 0.63-0.79).
+- **H2 (capacity at least 0.8 of before): met on all five**, 0.96-1.05 at 64 cells and 1.03-1.10
+  at 512; lineage 4 went from fading to linear (x1.65 at 512).
+- **H3 (a bigger brain holds more in thought): met on all five**, x6.0 to x7.2 from 64 to 512.
+- **My prediction was wrong on every count.** No capacity was lost, so the conflict I imagined
+  does not bind here. The brain whispered because nothing had asked it to think for more than
+  four ticks.
+
+**Inside** (`tissue.drift`, lineage 0, 128 cells, 8 items): loudness 0.58 in lap 1 and 0.57 in
+lap 8 (was 0.37 -> 0.15); pattern 0.98 at every lap (was 0.97 -> 0.31). With the senses silent an
+interneuron now passes its other dendrite through a curve that saturates at both ends (-0.44 and
++0.91): two levels, restored at every step. Input gain 14.6, and a sharper code (two cues one bit
+apart correlate 0.38, before 0.43-0.55).
+
+**Controls.** Wires among interneurons frozen: echo 1.00, every hop and every lap 0.44-0.49, so
+the walk is in those wires. A closing of 256 ticks, eight times the longest seen, 32 laps: lineage
+0 holds 1.00 (64 cells, 8 items), 0.99 (16 items), 0.99-1.00 (128 cells, 32 items) from the first
+lap to the last. Lineage 3, the weakest, wears slowly: 0.99 -> 0.91 (8 items), 0.98 -> 0.78 (16).
+
+**What it is and is not.** It is a limit cycle through items the brain learned from a stream with
+no teacher: a thought that goes on, about the right thing, for as long as was tested, in a brain
+that was only ever asked for 32 ticks; and the amount held this way grows with the brain. It is
+not a decision: every item has one successor, so there is nothing to choose and nowhere to want
+to go. By hand as before; the loops and the closings are the examiner's.
+
+**Method, again:** ask before adding. Twice now (depth on step 1b, holding here) the brain in hand
+could do what I was about to build a mechanism for. Genomes in `runs/tissue/hold/`.

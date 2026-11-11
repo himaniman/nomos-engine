@@ -589,10 +589,18 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   them capacity keeps pace with size to 512 (0.7 items per interneuron, x9 from 64), the first
   rung-1 result with no fade; idleness costs nothing; a walk through loops never seen holds
   hop 12 at 0.67-0.79 and drifts after 8-16 ticks. Exam trap: on a loop, hops that return to
-  what was just seen are flattered (recency), use loops longer than the closing. Next, to design
-  WITH the user: a walk that does not drift and the brain's own pace; then rung 2 wiring from
-  the genome, rung 3 growth from a seed. The table in the design note says where the ladder
-  stands. Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
+  what was just seen are flattered (recency), use loops longer than the closing.
+  A THOUGHT THAT HOLDS, DONE (2026-11-12): the walk drifted because in silence the brain
+  WHISPERED (activity 0.37 -> 0.15, on the straight part of a cell's curve nothing saturates, so
+  nothing restores a pattern; `python -m tissue.drift`). No mechanism was needed: asked for
+  closings up to 32 ticks (`--hops 32 --vary`, from the lineage genomes) all five lineages hold
+  a loop for 64 ticks, the best for 256, with no capacity lost, and the items held in thought
+  grow x6-7 from 64 to 512 cells. I had predicted a capacity loss and a need for private cell
+  state: wrong. METHOD: ask before adding a mechanism. Best genomes: `runs/tissue/hold/`.
+  It is a limit cycle, not a decision: every item has one successor. Open, the user decides
+  the order: own pace; a world with forks (choice, then a goal); rung 2 wiring from the genome;
+  rung 3 growth from a seed. The table in the design note says where the ladder stands.
+  Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

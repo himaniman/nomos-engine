@@ -367,6 +367,15 @@ and lap 8 will rise to 0.8-0.9, but capacity will fall, because of the false lin
 reopening. If so the next step is ONE mechanism that lets a cell tell its own thought
 from the world: private state in a cell, or a global signal a tick late.
 
+**Outcome (journal 2026-11-12, night):** H1, H2, H3 met on all five lineages; my
+prediction was wrong on every count. No new mechanism was needed: asked, the brain stops
+whispering (loudness 0.57 through the closing, pattern 0.98 at every lap), loses no
+capacity, and the best lineage walks its loop for 256 ticks, eight times the longest
+closing it was searched on. Items held in thought grow x6-7 from 64 to 512 cells.
+
+**Kept as method:** ask before adding a mechanism. The private state of a cell stays
+unbuilt until an exam needs it.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -375,9 +384,12 @@ from the world: private state in a cell, or a global signal a tick late.
 | 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
 | 1b search on chains | done, 5 seeds: links walked 4 hops doubled (17-19 at 64 cells), depth carries to 8 hops; size still does not buy depth |
 | 1c the stream: no resets, idleness | done: 8 genomes live an unbroken life (3 of 5 random starts, 5 of 5 lineages); on 5 of them capacity keeps pace with size to 512 (0.7 items per interneuron); idleness costs nothing; a walk holds 8-16 ticks, then drifts |
-| 1d own pace, and a walk that does not drift | next, to be designed with the user |
+| 1d a thought that holds | done, 5 lineages, no new mechanism: a stable cycle through learned items for 64 ticks on all five and 256 on the best; items held in thought x6-7 from 64 to 512 cells; capacity kept |
+| own pace; a world with forks (a choice, then a goal) | open, the user decides the order |
 | 2 wiring from the genome | not started |
 | 3 growth from a seed | not started |
 
-Open questions carried along: why capacity per interneuron fades beyond the searched sizes
-on rung 1 (rung 0 did not fade); why echo capacity stops growing near 128 cells.
+Open questions carried along: what separates the lineages that scale without a fade from
+those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed
+to help hop 4; whether a thought survives a world with forks, where an item has more than
+one successor.

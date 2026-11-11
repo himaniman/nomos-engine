@@ -5019,3 +5019,9 @@ hidden got the imitation to 5%), or a second kind of cell whose only work is to 
 neighbours to sleep. Either changes what a cell is, which the user fixed at the start (small and
 the same at every size), so it is his to decide. Until then the gate stays by hand.
 Genomes and exams: `runs/tissue/own/`.
+
+The last control, added when it finished: the same five genomes with the hand gate put back
+(`--lean 1`) recall 745/448/688/588/607 items at 2048 cells and 1435/900/1318/1166/1191 at 4096,
+against 785-898 and 1530-1779 for the genomes they started from; only lineage 0 still holds a
+thought with it (83 and 186 items). So this search, unlike the first, also cost the rule itself
+something: half to nine tenths of its recall is left when the gate is given back.

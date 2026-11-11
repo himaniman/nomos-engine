@@ -924,6 +924,10 @@ stays by hand. What would mend it is most likely not asking a third time but a c
 can say it sharply: a wider perceptron, or a kind of cell whose only work is to put its
 neighbours to sleep. That is a change to what a cell is, and the user's to decide.
 
+With the hand gate put back (`--lean 1`) these genomes recall 448-745 items at 2048 cells
+and 900-1435 at 4096 (2c-5: 785-898 and 1530-1779): the search cost the rule itself
+something as well.
+
 ### Step 3a: growth within one life. Plan, bars and prediction, written before the run
 
 Until now "grown bigger" has meant "born bigger". Exam 3 (`tissue/grow.py`): one unbroken

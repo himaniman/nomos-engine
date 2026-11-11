@@ -170,11 +170,16 @@ def k_grid(m: int, task: Task, length: int = 8) -> list[int]:
     return sorted(set(ks))
 
 
-def curve(live: Callable, task: Task, ks: list[int], shape: Life, seed: int = 30_000):
+def curve(live: Callable, task: Task, ks: list[int], shape: Life, seed: int = 30_000,
+          stop_below: float | None = None):
     """`live(items, life, gen) -> out` at each K: [{"echo", "hop": [...], "idle": [...]}].
-    `shape` gives everything about a life but the number of loops."""
+    `shape` gives everything about a life but the number of loops. With `stop_below` the
+    loads beyond the first one whose hop 1 falls under it are not examined (K90 and the
+    items held in thought are both decided before that)."""
     rows = []
     for k in ks:
+        if stop_below is not None and rows and rows[-1]["hop"][0] < stop_below:
+            break
         gen = torch.Generator().manual_seed(seed + k)
         loops = k // shape.length
         life = Life(loops, shape.length, shape.laps, shape.idle, max(shape.blinks, 2 * loops),

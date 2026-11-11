@@ -44,6 +44,8 @@ class Plan:
     blocks: tuple[Block, ...] = (Block("S", "I", False), Block("I", "O", True))
     hidden: int = 8     # the perceptron inside a cell: fixed, the same at every brain size
     mode: bool = False  # interneurons hear one global signal: are the senses on
+    fan: int = 0        # wires INTO each interneuron from other interneurons, drawn at random
+    #                     at birth; 0 (or more than there are cells): from every one of them
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -99,35 +101,53 @@ class Grown:
         self.t = tissue
         self.n = {"S": tissue.task.d_in, "O": tissue.task.d_out, **inter}
 
+    def sparse(self, b: Block) -> bool:
+        """Is this a block among interneurons with fewer wires than cells to draw from?"""
+        fan = self.t.plan.fan
+        return bool(fan) and b.pre != "S" and b.post != "O" and fan < self.n[b.pre]
+
     def born(self, batch: int, gen: torch.Generator):
+        """(activities, wires, sources). `wires[i]` is (B, targets, sources) for a block
+        wired from every source, or (B, targets, fan) for a sparse one, whose
+        `sources[i]` (B, targets, fan) says which source cell each wire comes from."""
         act = {t: torch.zeros(batch, self.n[t]) for t in self.t.types}
-        wires = {}
+        wires, sources = {}, {}
         for i, b in enumerate(self.t.plan.blocks):
-            shape = (batch, self.n[b.post], self.n[b.pre])
+            if self.sparse(b):
+                shape = (batch, self.n[b.post], self.t.plan.fan)
+                sources[i] = torch.randint(self.n[b.pre], shape, generator=gen)
+            else:
+                shape = (batch, self.n[b.post], self.n[b.pre])
             wires[i] = torch.zeros(shape) if b.plastic else torch.randn(shape, generator=gen)
-        return act, wires
+        return act, wires, sources
 
     def rest(self, state):
         """An episode ends: every cell falls silent, every wire stays as it is."""
-        act, wires = state
-        return {t: torch.zeros_like(a) for t, a in act.items()}, wires
+        act, wires, sources = state
+        return {t: torch.zeros_like(a) for t, a in act.items()}, wires, sources
 
     def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float, on: float = 1.0):
         """One tick. `teach`/`flag`: what the teacher shows the motor cells and whether it
         is there; `on`: whether the senses are on (heard by interneurons under `plan.mode`)."""
-        act, wires = state
+        act, wires, sources = state
         plan = self.t.plan
         seen = {**act, "S": cue}                    # sensory cells carry the cue as it is
         new_act, new_wires = {}, dict(wires)
+        heard = {}                                  # per block: what each wire's source said
         for t in self.t.types:
             feats = []
             for i in self.t.incoming[t]:
                 b = plan.blocks[i]
-                reach = torch.einsum("bij,bj->bi", wires[i], seen[b.pre])
-                if b.plastic:
-                    feats.append(reach / self.n[b.pre])
+                if i in sources:                    # a few wires per cell: gather their sources
+                    heard[i] = seen[b.pre].gather(1, sources[i].flatten(1)).view_as(wires[i])
+                    reach, n_wires = (wires[i] * heard[i]).sum(-1), wires[i].shape[-1]
                 else:
-                    feats.append(reach * torch.exp(self.t.gain[str(i)]) / math.sqrt(self.n[b.pre]))
+                    heard[i] = seen[b.pre].unsqueeze(1)
+                    reach, n_wires = torch.einsum("bij,bj->bi", wires[i], seen[b.pre]), self.n[b.pre]
+                if b.plastic:
+                    feats.append(reach / n_wires)
+                else:
+                    feats.append(reach * torch.exp(self.t.gain[str(i)]) / math.sqrt(n_wires))
             if t == "O":
                 feats += [teach, torch.full_like(teach, flag)]
             elif plan.mode:
@@ -140,9 +160,9 @@ class Grown:
                 if b.plastic:
                     if plan.learn and i not in plan.off:
                         signal = said[..., j] * flag if plan.taught_only and t == "O" else said[..., j]
-                        new_wires[i] = wires[i] + signal.unsqueeze(-1) * seen[b.pre].unsqueeze(1)
+                        new_wires[i] = wires[i] + signal.unsqueeze(-1) * heard[i]
                     j += 1
-        return (new_act, new_wires), new_act["O"]
+        return (new_act, new_wires, sources), new_act["O"]
 
 
 class Gru(nn.Module):

@@ -71,7 +71,7 @@ def test_the_genome_is_the_same_size_at_every_brain_size():
     n = sum(p.numel() for p in tissue.parameters())
     assert n < 200
     for m in (8, 512):
-        _, wires = tissue.grow(m).born(2, gen())
+        _, wires, _ = tissue.grow(m).born(2, gen())
         assert wires[0].shape == (2, m, Task().d_in) and wires[1].shape == (2, Task().d_out, m)
         assert not wires[1].any()
     assert sum(p.numel() for p in tissue.parameters()) == n
@@ -145,7 +145,7 @@ def test_rest_silences_cells_and_keeps_wires():
     cue = torch.ones(2, 12)
     state, _ = brain.tick(state, cue, torch.zeros(2, 12), 0.0, 1.0)
     state, _ = brain.tick(state, -cue, cue, 1.0, 1.0)
-    act, wires = brain.rest(state)
+    act, wires, _ = brain.rest(state)
     assert not any(a.any() for a in act.values())
     assert wires[1].any() and torch.equal(wires[1], state[1][1])
 
@@ -197,3 +197,37 @@ def test_a_stream_is_lived_without_a_reset_and_is_a_pure_function():
     assert torch.equal(out["closed"][1], told["closed"][1])
     assert torch.equal(out["echo"][1], told["echo"][1])
     assert len(stream.by_hop(out, life)) == 2
+
+
+# ---- rung 2: a few wires per cell ---------------------------------------------------------
+
+
+def test_sparse_wiring_keeps_a_few_wires_per_cell_and_only_those_learn():
+    torch.manual_seed(0)
+    plan = replace(RUNG1, fan=5)
+    brain = Tissue(plan, ITEM).grow(32)
+    act, wires, sources = brain.born(3, gen(1))
+    assert wires[1].shape == (3, 32, 5) and sources[1].shape == (3, 32, 5)
+    assert 0 <= int(sources[1].min()) and int(sources[1].max()) < 32
+    assert wires[0].shape == (3, 32, 12) and wires[2].shape == (3, 12, 32)   # senses and motor: all
+    cue = torch.ones(3, 12)
+    state = (act, wires, sources)
+    state, _ = brain.tick(state, cue, torch.zeros(3, 12), 0.0, 1.0)
+    state, _ = brain.tick(state, -cue, cue, 1.0, 1.0)
+    assert state[1][1].shape == (3, 32, 5) and state[1][1].any()
+    assert torch.equal(state[2][1], sources[1])            # the wiring itself never changes
+    # a brain smaller than the fan is simply wired from every cell
+    assert Tissue(plan, ITEM).grow(4).born(2, gen(1))[1][1].shape == (2, 4, 4)
+
+
+def test_a_sparse_brain_is_the_same_genome_and_lives_the_same_lives():
+    torch.manual_seed(0)
+    dense, few = Tissue(RUNG1, ITEM), Tissue(replace(RUNG1, fan=8), ITEM)
+    few.load_state_dict(dense.state_dict())                 # a genome does not know its fan
+    life = stream.Life(loops=2, length=4, laps=2, idle=4, blinks=2, open=2, closed=2)
+    items = stream.world(ITEM, life, 3, gen(4))
+    out = stream.run_life(few.grow(32), ITEM, items, life, gen(5))
+    assert out["closed"][0].shape == (3, 4, 12)
+    assert torch.equal(out["closed"][0], stream.run_life(few.grow(32), ITEM, items, life, gen(5))["closed"][0])
+    walked = chain.run_life(few.grow(32), ITEM, chain.worlds(ITEM, 3, 2, 2, gen(6)), gen(7))
+    assert walked.shape == (2, 3, 3, 12)

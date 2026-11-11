@@ -28,11 +28,19 @@ from tissue.hand import SIZES
 from tissue.train import load
 
 
+def held(ks: list, idle: list, bar: float = 0.9) -> float:
+    """Items held in thought: the load up to which the LAST stretch of the idle closing is
+    still at `bar` (interpolated like K90). 0 if there was no idle closing."""
+    last = [c[-1] for c in idle if c]
+    return k90(ks[:len(last)], last, bar) if last else 0.0
+
+
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
-            **switches) -> dict:
+            quick: bool = False, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
-    (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K]."""
+    (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
+    "held". `quick` stops a size once hop 1 has fallen under 0.8."""
     model, task, saved = load(path, **switches)
     out = {}
     if shape is not None:
@@ -40,9 +48,11 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
             brain = model.grow(m)
             ks = stream.k_grid(m, task, shape.length)
             rows = stream.curve(lambda items, life, g: stream.run_life(brain, task, items, life, g),
-                                task, ks, shape)
+                                task, ks, shape, stop_below=0.8 if quick else None)
+            ks = ks[:len(rows)]
             accs = [[r["echo"]] + r["hop"] for r in rows]
-            out[m] = {"ks": ks, "acc": accs, "idle": [r["idle"] for r in rows],
+            idle = [r["idle"] for r in rows]
+            out[m] = {"ks": ks, "acc": accs, "idle": idle, "held": held(ks, idle),
                       "k90": [k90(ks, [a[h] for a in accs]) for h in range(shape.closed + 1)]}
         return out
     if saved["arm"] in ("chain", "stream"):
@@ -78,9 +88,11 @@ def show(res: dict, frozen: bool) -> None:
                   + f" | {row['k90'][1] / m:6.2f}                 | "
                   + " ".join(f"{a:.3f}" for a in at(row["ks"], row["acc"], m / 4)))
         if first.get("idle") and first["idle"][0]:
-            print("      through the idle closing at M/4, bit accuracy per stretch of 8 ticks:")
+            print("      items held in thought (last stretch of the idle closing at 0.9), and the"
+                  " closing at M/8 items per stretch of 8 ticks:")
             for m, row in res.items():
-                print(f"{m:>5} | " + " ".join(f"{a:.2f}" for a in at(row["ks"], row["idle"], m / 4)))
+                print(f"{m:>5} | held {row['held']:6.1f} | "
+                      + " ".join(f"{a:.2f}" for a in at(row["ks"], row["idle"], m / 8)))
     elif frozen:
         print(f"{'M':>5} | accuracy at 4 pairs and more: lowest .. highest")
         for m, row in res.items():
@@ -108,6 +120,10 @@ def main() -> None:
     p.add_argument("--closed", type=int, default=4, help="stream: ticks the eyes stay closed")
     p.add_argument("--idle", type=int, default=0, help="stream: a long closing before the test")
     p.add_argument("--laps", type=int, default=2, help="stream: times each loop is walked round")
+    p.add_argument("--fan", type=int, default=None,
+                   help="wires into each interneuron from other interneurons (0: from all of them)")
+    p.add_argument("--quick", action="store_true",
+                   help="stream: stop a size once hop 1 has fallen under 0.8")
     p.add_argument("--sizes", type=int, nargs="*", default=list(SIZES))
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
@@ -119,6 +135,8 @@ def main() -> None:
         switches["taught_only"], tag = True, tag + ".taught-only"
     if a.off:
         switches["off"], tag = tuple(a.off), tag + ".off" + "-".join(map(str, a.off))
+    if a.fan is not None:
+        switches["fan"], tag = a.fan, tag + f".fan{a.fan}"
     for path in a.genomes:
         streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
@@ -128,7 +146,7 @@ def main() -> None:
                     + (f".laps{a.laps}" if a.laps != 2 else "")
         elif length > 1:
             mark += f".len{length}"
-        res = examine(path, a.sizes, length, shape, **switches)
+        res = examine(path, a.sizes, length, shape, a.quick, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

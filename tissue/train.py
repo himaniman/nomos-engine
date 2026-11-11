@@ -42,7 +42,11 @@ def make(arm: str, **switches):
 
 
 def load(path: str, **switches):
+    """A found genome as (model, task, what was saved). It is grown with the fan it was
+    searched with unless `fan` says otherwise; other switches are the plan's off-switches."""
     saved = torch.load(path, weights_only=True)
+    if saved.get("fan") and "fan" not in switches:
+        switches["fan"] = saved["fan"]
     model, task = make(saved["arm"], **switches)
     model.load_state_dict(saved["genome"])
     return model, task, saved
@@ -50,16 +54,16 @@ def load(path: str, **switches):
 
 def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float = 3e-3,
           hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
-          vary: bool = False) -> None:
+          vary: bool = False, fan: int = 0) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
     is always part of the error there; `vary` draws each life's closing from `hops`, `hops`
     / 2, / 4, / 8. `init`: start from a genome found earlier (same brain plan) instead of
-    from random numbers."""
+    from random numbers. `fan`: wires into each interneuron from other interneurons (0: all)."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model, task = make(arm)
+    model, task = make(arm, fan=fan) if fan else make(arm)
     if init:
         model.load_state_dict(torch.load(init, weights_only=True)["genome"])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
@@ -114,7 +118,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             log.flush()
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
-                        "idle": idle, "vary": vary, "init": init or "",
+                        "idle": idle, "vary": vary, "init": init or "", "fan": fan,
                         "genome": model.state_dict()}, out)
     log.close()
 
@@ -131,12 +135,14 @@ def main() -> None:
     p.add_argument("--init", help="start from this genome (same brain plan) instead of random")
     p.add_argument("--vary", action="store_true",
                    help="stream arm: closings of hops, hops/2, hops/4 or hops/8 ticks")
+    p.add_argument("--fan", type=int, default=0,
+                   help="wires into each interneuron from other interneurons (0: from all)")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
-          vary=a.vary)
+          vary=a.vary, fan=a.fan)
 
 
 if __name__ == "__main__":

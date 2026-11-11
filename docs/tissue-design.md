@@ -376,6 +376,40 @@ closing it was searched on. Items held in thought grow x6-7 from 64 to 512 cells
 **Kept as method:** ask before adding a mechanism. The private state of a cell stays
 unbuilt until an exam needs it.
 
+## Rung 2: wiring (started 2026-11-12, the user's choice)
+
+Until now every interneuron was wired from every other one (M^2 wires) and there was one
+kind of interneuron. The user's idea is the opposite: cells of several kinds, joined by
+axons that a genotype lays down. Three things hide in that, taken one at a time:
+
+| step | adds | the question |
+|---|---|---|
+| 2a | a few wires per cell (`Plan.fan`), drawn at random at birth | with the wires per cell fixed, does a bigger brain still hold more? |
+| 2b | a second kind of cell | can a kind of cell make growth pay again where 2a says it does not? |
+| 2c | cells in a space, wires by distance and by kind, their statistics in the genome | does wiring laid down by the genome beat wiring at random with the same number of wires? (the shuffle control) |
+
+Why 2a first: it is the floor every later wiring is read against, and it is what lets a
+brain be big at all. All-to-all costs M^2 numbers per individual; `fan` wires per cell
+cost M x fan, so 4096 cells with 32 wires each are cheaper than 512 cells all-to-all.
+
+### Step 2a: a few wires per cell. Question and prediction, written before any run
+
+No search yet: the five "hold" genomes are grown with `fan` wires into each interneuron
+from random other interneurons (sensory and motor wires stay as they are) and sit the
+stream exam with a closing of 64 ticks. Sizes 64 to 2048, fan 8 to 128.
+
+What is asked: K90 at hop 1 and the items held in thought, against the size at a fixed
+fan, and against the fan at a fixed size.
+
+My prediction, from the theory of diluted associative memories: **what a brain holds
+follows the wires per cell, not the cells.** At a fixed fan both figures stay flat from
+256 to 2048 cells (within a quarter), and both roughly double when the fan doubles. A
+code in which about half the cells speak for every item needs every cell to learn every
+item, so more cells with the same wires each add nothing. If that is what comes out, it
+is the real obstacle to "grown bigger, smarter" under wiring a body could afford, and step
+2b has its job: a kind of cell that keeps few cells speaking per item, so that different
+items live in different cells.
+
 ## Where the ladder stands
 
 | rung | state |

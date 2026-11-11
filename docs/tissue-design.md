@@ -320,6 +320,15 @@ five lineages instead of five seeds. Everything else as above.
 
 My prediction: G1 met by four or five of five. G2 met wherever G1 is.
 
+**Outcome (journal 2026-11-12):** no lineage got stuck, which was the point. By the letter
+both bars are missed: G1 by two lineages that sit 0.002 and 0.005 under hop 4 = 0.90 (hop
+1 is 0.986-0.996 on all five), G2 by two lineages (x5.0 and x6.0 against x8.9-9.5 on the
+other three). Growth without a fade is frequent, 5 of the 8 genomes that live in the
+stream, not the rule. On loops of 16, never seen, with the eyes closed 12 ticks, hop 12 is
+0.67-0.79 at 64 cells: the clean figure for a long closing.
+
+**Kept as method:** a search for a new life starts from the genome of the life before.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -327,8 +336,8 @@ My prediction: G1 met by four or five of five. G2 met wherever G1 is.
 | 0 pairs | done, 3 seeds: about 1 pair per interneuron to 512 |
 | 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
 | 1b search on chains | done, 5 seeds: links walked 4 hops doubled (17-19 at 64 cells), depth carries to 8 hops; size still does not buy depth |
-| 1c the stream: no resets, idleness | first search: 3 seeds of 5; on two of them growth does not fade (x9 from 64 to 512) and idleness costs nothing; lineage search running |
-| 1d own pace | after 1c |
+| 1c the stream: no resets, idleness | done: 8 genomes live an unbroken life (3 of 5 random starts, 5 of 5 lineages); on 5 of them capacity keeps pace with size to 512 (0.7 items per interneuron); idleness costs nothing; a walk holds 8-16 ticks, then drifts |
+| 1d own pace, and a walk that does not drift | next, to be designed with the user |
 | 2 wiring from the genome | not started |
 | 3 growth from a seed | not started |
 

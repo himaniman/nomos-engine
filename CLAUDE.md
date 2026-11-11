@@ -577,10 +577,22 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   0.35 at 512 (fades beyond the searched sizes, unexplained), and walk chains of 4 they were
   never shown (hop 4: 0.84 at 64 cells, 0.64 at 512). LESSON: score what the teacher teaches.
   With the echo unscored only 1 seed of 3 found the hop, the rest fell to a constant code, and
-  the one that worked stored everything sign-flipped so a chain alternated. Next: 1b search on
-  chains, 1c the brain says when it is done, rung 2 wiring from the genome, rung 3 growth from
-  a seed; the table in the design note says where the ladder stands. Commits go to branch
-  `tissue`. The lines below are the OLD plan, kept as history.
+  the one that worked stored everything sign-flipped so a chain alternated.
+  Step 1b DONE: searched on chains a walk goes twice as deep (17-19 links walked 4 hops at 64
+  cells) and carries to 8 hops, but size does not buy depth while the examiner sets the pace.
+  A BRAIN THAT NEVER STOPS (the user's correction, 2026-11-11): the planned step "the brain says
+  when it is done" was dropped as perceptron/LLM thinking. Found brains left alone keep wandering
+  along learned links (`python -m tissue.alone`). Replaced by THE STREAM (`tissue/stream.py`):
+  one unbroken life, no resets, the only teacher is the senses a tick late; a world of loops;
+  the eyes close and the brain must go on. DONE (2026-11-12): eight genomes live it (3 of 5
+  random starts, 5 of 5 started from the step 1b genomes: keep `--init` as method); on five of
+  them capacity keeps pace with size to 512 (0.7 items per interneuron, x9 from 64), the first
+  rung-1 result with no fade; idleness costs nothing; a walk through loops never seen holds
+  hop 12 at 0.67-0.79 and drifts after 8-16 ticks. Exam trap: on a loop, hops that return to
+  what was just seen are flattered (recency), use loops longer than the closing. Next, to design
+  WITH the user: a walk that does not drift and the brain's own pace; then rung 2 wiring from
+  the genome, rung 3 growth from a seed. The table in the design note says where the ladder
+  stands. Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

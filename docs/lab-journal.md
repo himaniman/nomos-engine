@@ -4027,3 +4027,60 @@ and the shape of a blink are the examiner's.
 **Not known.** Why growth stopped fading: the life (each link seen twice, as many items as links,
 so half the load on the decoder) or the genome. Cross-exams are running. Next: the stream search
 started from the step 1b genomes instead of random numbers (five lineages; bars in the note).
+
+## 2026-11-12 (later) — the stream, five lineages: none stuck; growth without a fade on three; what a long closing is really worth
+
+One change, to the search: it starts from the five chain genomes of step 1b (`--init`, the same
+brain plan) instead of random numbers. All five are at 0.89-0.91 after 100 steps and 0.93-0.95 at
+the end. Nothing got stuck.
+
+**Items held at 90%, hop 1** (K90; * = size never seen):
+
+| M | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 64 | 41.1 | 39.1 | 38.8 | 39.2 | 39.7 |
+| 128* | 93.9 | 83.8 | 84.9 | 86.9 | 79.8 |
+| 256* | 192.2 | 190.3 | 190.8 | 119.2 | 144.2 |
+| 512* | 365.4 | 371.2 | 368.1 | 197.0 | 236.9 |
+| 512 / 64 | x8.9 | x9.5 | x9.5 | x5.0 | x6.0 |
+| hop 4, 512 / 64 | x5.8 | x4.6 | x5.0 | x2.3 | x2.2 |
+
+- **G1 (64 cells, 16 items: hop 1 >= 0.97, hop 4 >= 0.90, all five): missed by a hair.** Hop 1
+  0.996 0.986 0.987 0.989 0.991; hop 4 0.939 0.895 0.898 0.903 0.902.
+- **G2 (K90 at hop 1 at least x6 from 64 to 512, all five): missed.** Three lineages are linear
+  (0.71-0.72 items per interneuron at 512), two fade (0.38, 0.46).
+- My prediction (4-5 lineages for G1, G2 wherever G1) was too kind.
+
+So over both searches eight genomes live an unbroken life, and on five of them capacity keeps pace
+with size out to 8x the largest size searched. Frequent, not the rule, and I do not know what
+separates the five from the three.
+
+**Idleness** (a closing of 64 ticks before the test, never asked for): hop 1 changes by +0.001
++0.001 +0.002 +0.001 -0.001, hop 4 by +0.013 +0.019 +0.021 +0.018 +0.002 (the same worlds with and
+without, so these are paired). It costs nothing, and on four lineages hop 4 is a little better
+after it. Small, about two standard errors each, cause unknown: not a finding yet.
+
+**What a long closing is really worth.** A slip of mine was instructive: I examined on loops of 4
+by mistake and hop 4 (0.99) beat hop 2 (0.93-0.95). Before the eyes close they see three items, and
+on a short loop the later hops come back to exactly those; what was just seen is recalled best.
+So hops 8 and 16 on loops of 8 were flattered, and the "parity" oddity of the previous entries is
+this recency. The clean exam: loops of 16 (the search saw 4 and 8), eyes closed 12 ticks, no hop
+returns to anything just seen. 64 cells at M/4 items:
+
+| hop | 1 | 2 | 4 | 8 | 12 |
+|---|---|---|---|---|---|
+| lineage 0 | 0.99 | 0.98 | 0.95 | 0.88 | 0.79 |
+| lineages 1-4 | 0.98-0.99 | 0.95-0.96 | 0.89-0.91 | 0.77-0.80 | 0.67-0.75 |
+
+Through a closing of 64 ticks: 0.95-0.97 in the first 8 ticks, 0.56-0.80 in the third 8, 0.42-0.66
+in the last 8 (lineage 2 ends BELOW chance, 0.42: its walk turns into the negative of itself).
+A walk holds for 8-16 ticks and then drifts. The brain does not stop, but what it thinks stops
+being about the world it left.
+
+**The life or the genome?** Both. Chain genomes in the stream: 0.29-0.33 items per interneuron at
+64 cells and 0.09-0.22 at 512. Stream genomes on the old rested chains of 4: 0.58 at 64 and
+0.31-0.36 at 512 (lineage 0: 0.52). Capacity that keeps pace with size appears only when a genome
+found in the stream lives in the stream.
+
+**Kept as method:** a search for a new life starts from the genome of the life before. It cost
+nothing and removed the flat spot. Genomes in `runs/tissue/stream/`. 16 tests.

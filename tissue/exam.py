@@ -103,6 +103,8 @@ def main() -> None:
     p.add_argument("--length", type=int, default=None,
                    help="links in a chain (default 1), or items in a loop of the stream (default 8)")
     p.add_argument("--stream", action="store_true", help="examine a rung 1 genome on the stream")
+    p.add_argument("--chains", action="store_true",
+                   help="examine a stream genome on rested episodes of chains instead")
     p.add_argument("--closed", type=int, default=4, help="stream: ticks the eyes stay closed")
     p.add_argument("--idle", type=int, default=0, help="stream: a long closing before the test")
     p.add_argument("--laps", type=int, default=2, help="stream: times each loop is walked round")
@@ -118,7 +120,7 @@ def main() -> None:
     if a.off:
         switches["off"], tag = tuple(a.off), tag + ".off" + "-".join(map(str, a.off))
     for path in a.genomes:
-        streamed = a.stream or torch.load(path, weights_only=True)["arm"] == "stream"
+        streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
         if streamed:
             shape = stream.Life(1, a.length or 8, a.laps, a.idle, 8, 3, a.closed)

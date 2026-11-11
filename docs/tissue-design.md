@@ -633,6 +633,19 @@ recall one step ahead grows in proportion to the cells, with no search at all:
 ever saw and with a gate no search ever saw. This is the first time on rung 2 that
 something grows with the cells at a fixed 32 wires per cell otherwise than as a vote.
 
+Two controls (lineages 0 and 4, K90 at hop 1 at 2048 cells) say what does it:
+
+| | lineage 0 | lineage 4 |
+|---|---|---|
+| no places, the dendrite as it was (2a') | 118 | 169 |
+| the new dendrite alone (`--spoken`) | 154 | 195 |
+| + a sense of place, the gate, wires from neighbours | 442 | 507 |
+| the same with wires from anywhere (`--reach 0`) | 0 | 0 |
+
+The gate without wiring by place is worse than no gate at all (a cell of the patch then
+hears next to none of its own patch: hop 1 at 0.73 at 512 cells and 0.61 at 2048). It is
+the two together that pay.
+
 **(b) A search with the gate on**, from the same genomes: `--fan 16 --reach 32 --field 12
 --spoken --gate 0.3 --sizes 128 256 512`, loads of 1/16 to 1/2 item per wire per patch
 (what a patch of that many cells can hold with the rule as it is, so that the lives start

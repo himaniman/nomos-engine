@@ -928,6 +928,31 @@ brain already muddied, which is why hop 1 fails even at a light load. So a brain
 its place for a while with nothing but its own wires; what it lacks is something that
 keeps the others out. That is a thing a search can be asked for.
 
+Inside such a life (`python -m tissue.where ... --told seen`, lineage 0, 512 cells): the
+moment nothing is felt, cells more than 64 away from the place are as loud as the patch
+(0.82 against 0.92 in the first lap of the closing, 0.87 against 0.86 in the last) and
+learn at two thirds of the patch's rate in the dark. A cell that hears nothing, with the
+eyes closed, says something: its rule was never asked to be silent there, the hand gate
+did that for it.
+
+### Step 2e-1, asked of a search. Bars written before the run
+
+No mechanism. The search of step 2c-3b again, from its own genomes, living with
+`--told seen`: the place is felt, and the hand gate works, only while the eyes are open.
+In the dark every cell is on its own. Exam with `--told seen`, field 24, sixteen lives, the
+third set of worlds, 256 to 4096 cells.
+
+- **V2.** K90 at hop 1 and the items held are each at least half of what the genomes of
+  2c-3b have when told the place throughout (2c-5), at 4096 cells, on at least four
+  lineages: K90 at least 765-890, held at least 80-143.
+- **V3.** In the dark, cells more than 64 away from the place are at most a tenth as loud
+  as cells within 6 of it, in the first lap of a closing and in the last (2048 cells).
+
+Prediction: both met on at least four lineages. It is a small thing to ask, silence when
+nothing is heard and nothing is seen, and the thought already keeps its place for a lap
+without it. My doubt is the usual one: a hum that is harmless among 512 cells may not be
+among 4096.
+
 ## Where the ladder stands
 
 | rung | state |

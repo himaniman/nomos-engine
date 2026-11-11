@@ -8,9 +8,12 @@ A stream life in a world whose loops lie at places along the ring, then the eyes
 band of distance the table gives:
 
   * open     their mean |activity| while the eyes are open (study);
-  * closed   the same through the closing;
+  * closed   the same through the closing (and, with `--told seen`, in its first lap and in
+             its last: is the thought still where it was?);
   * learns   the mean change of a wire into them per tick of study, relative to the band
-             nearest the place.
+             nearest the place (and "in the dark": the same per tick of the closing).
+
+With `--told seen` the place is felt only while the eyes are open, as in the exam.
 
 A brain that keeps each loop in its own patch is loud and learning near the place and
 silent and still far from it. One that ignores the sense is the same at every distance.
@@ -29,7 +32,7 @@ BANDS = (0, 6, 12, 18, 24, 36, 64, 10 ** 9)     # cells away from the place
 
 
 def where(path: str, m: int = 512, loops: int = 8, closing: int = 64, lives: int = 16,
-          seed: int = 11, **switches) -> dict:
+          seed: int = 11, told: str = "always", **switches) -> dict:
     tissue, task, _ = load(path, **switches)
     if not tissue.plan.field:
         raise ValueError(f"{path} has no sense of place")
@@ -42,7 +45,8 @@ def where(path: str, m: int = 512, loops: int = 8, closing: int = 64, lives: int
     ticks = stream.script(life, b, gen)
     place_of = torch.rand(b, loops, generator=gen)
     inner = next(i for i, blk in enumerate(tissue.plan.blocks) if blk.pre == blk.post)
-    sums = {k: torch.zeros(len(BANDS) - 1) for k in ("open", "closed", "learns")}
+    kinds = ("open", "closed", "first lap", "last lap", "learns", "in the dark")
+    sums = {k: torch.zeros(len(BANDS) - 1) for k in kinds}
     counts = {k: torch.zeros(len(BANDS) - 1) for k in sums}
 
     def add(kind, value, band):                 # value, band: (B, M)
@@ -54,7 +58,7 @@ def where(path: str, m: int = 512, loops: int = 8, closing: int = 64, lives: int
     with torch.no_grad():
         state = brain.born(b, gen)
         silent = torch.zeros(b, d)
-        before, before_seen = silent, False
+        before, before_seen, dark = silent, False, 0
         for kind, seen, loop, place in ticks:
             item = items[rows, loop, place]
             felt = place_of[rows, loop]
@@ -63,16 +67,22 @@ def where(path: str, m: int = 512, loops: int = 8, closing: int = 64, lives: int
             band = torch.bucketize(away, torch.tensor(BANDS[1:-1], dtype=away.dtype), right=True)
             old = state[1][inner]
             state, _ = brain.tick(state, item if seen else silent, before if before_seen else silent,
-                                  float(before_seen), float(seen), where=felt)
+                                  float(before_seen), float(seen),
+                                  where=felt if told == "always" or seen else None)
             if kind == "study":
                 add("open", state[0]["I"].abs(), band)
                 add("learns", (state[1][inner] - old).abs().mean(-1), band)
             elif kind == "idle":
                 add("closed", state[0]["I"].abs(), band)
+                add("in the dark", (state[1][inner] - old).abs().mean(-1), band)
+                if dark < 8 or dark >= closing - 8:
+                    add("first lap" if dark < 8 else "last lap", state[0]["I"].abs(), band)
+                dark += 1
             before, before_seen = item, seen
     out = {k: (sums[k] / counts[k].clamp(min=1)).tolist() for k in sums}
     near = max(out["learns"][0], 1e-12)
-    out["learns"] = [x / near for x in out["learns"]]
+    for key in ("learns", "in the dark"):
+        out[key] = [x / near for x in out[key]]
     return out
 
 
@@ -86,16 +96,18 @@ def main() -> None:
     p.add_argument("--field", type=int, default=None, help="the width of the sense of place")
     p.add_argument("--lean", type=float, default=None,
                    help="how much of the hand gate is left (1: all of it, 0: none)")
+    p.add_argument("--told", choices=("always", "seen"), default="always",
+                   help="when the place is felt: always, or only with the eyes open")
     a = p.parse_args()
     torch.set_num_threads(4)
     switches = {k: v for k, v in (("fan", a.fan), ("field", a.field), ("lean", a.lean)) if v is not None}
     names = [f"{lo}-{hi}" if hi < 10 ** 9 else f"{lo}+" for lo, hi in zip(BANDS, BANDS[1:])]
     for path in a.genomes:
-        r = where(path, a.m, a.loops, **switches)
+        r = where(path, a.m, a.loops, told=a.told, **switches)
         print(f"{path}  {a.m} cells, {a.loops * 8} items; cells away from the place:")
-        print("            " + " ".join(f"{n:>7}" for n in names))
-        for key in ("open", "closed", "learns"):
-            print(f"   {key:<8} " + " ".join(f"{x:7.2f}" for x in r[key]))
+        print("               " + " ".join(f"{n:>7}" for n in names))
+        for key in ("open", "closed", "first lap", "last lap", "learns", "in the dark"):
+            print(f"   {key:<11} " + " ".join(f"{x:7.2f}" for x in r[key]))
 
 
 if __name__ == "__main__":

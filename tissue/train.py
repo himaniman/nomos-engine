@@ -49,12 +49,14 @@ def load(path: str, **switches):
 
 
 def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float = 3e-3,
-          hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None) -> None:
+          hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None,
+          vary: bool = False) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
-    is always part of the error there. `init`: start from a genome found earlier (same
-    brain plan) instead of from random numbers."""
+    is always part of the error there; `vary` draws each life's closing from `hops`, `hops`
+    / 2, / 4, / 8. `init`: start from a genome found earlier (same brain plan) instead of
+    from random numbers."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model, task = make(arm)
@@ -75,7 +77,9 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             length = (4, 8)[int(u[2] * 2)]
             loops = max(1, round(m * 2 ** (float(u[1]) * 3 - 4) / length))
             laps = 2 + int(torch.rand(1, generator=gen) * 2)        # 2 or 3 times round
-            life = stream.Life(loops, length, laps, idle=idle, blinks=6, open=3, closed=hops)
+            closed = hops >> int(torch.rand(1, generator=gen) * 4) if vary else hops
+            life = stream.Life(loops, length, laps, idle=idle, blinks=6 if closed <= 8 else 3,
+                               open=3, closed=closed)
             lived = stream.run_life(model.grow(m), task, stream.world(task, life, batch, gen), life, gen)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
             answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
@@ -110,7 +114,8 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             log.flush()
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
-                        "idle": idle, "init": init or "", "genome": model.state_dict()}, out)
+                        "idle": idle, "vary": vary, "init": init or "",
+                        "genome": model.state_dict()}, out)
     log.close()
 
 
@@ -124,11 +129,14 @@ def main() -> None:
     p.add_argument("--echo", action="store_true", help="chain arm: the echo is in the error too")
     p.add_argument("--idle", type=int, default=0, help="stream arm: a long closing before the test")
     p.add_argument("--init", help="start from this genome (same brain plan) instead of random")
+    p.add_argument("--vary", action="store_true",
+                   help="stream arm: closings of hops, hops/2, hops/4 or hops/8 ticks")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init)
+    train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
+          vary=a.vary)
 
 
 if __name__ == "__main__":

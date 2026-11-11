@@ -329,6 +329,44 @@ stream, not the rule. On loops of 16, never seen, with the eyes closed 12 ticks,
 
 **Kept as method:** a search for a new life starts from the genome of the life before.
 
+## A thought that holds (chosen with the user, 2026-11-12)
+
+With the eyes closed the walk drifts within 8-16 ticks. The user chose this over "own
+pace" as the next thing to mend. Diagnosis first, on the genomes in hand (128 cells, a
+closing of 64 ticks, per lap of a loop of 8):
+
+- It drifts at EVERY load, even with one loop of 8 items in 128 cells (lap 1: 1.00, lap 8:
+  0.63-0.83). Not a matter of capacity.
+- In silence the brain WHISPERS: interneurons' mean |activity| is about 1 with the eyes
+  open, 0.37 in the first closed lap, 0.14-0.22 from the third lap on, and stays there.
+- It is the pattern that goes, not the loudness: the match between the interneurons'
+  pattern and the code of the item the world is really at falls 0.97 -> 0.31-0.76 over 8
+  laps. At a whisper a cell works on the straight part of its curve, where nothing
+  saturates, so nothing pulls a slightly wrong pattern back.
+
+Why whisper? A guess: a loud thought is a liability when the eyes reopen, because a wire
+changes by (source activity) x (learning signal) and a cell cannot tell that the source
+activity was its own thought and not the world. Whispering keeps those false links small.
+
+### Step: ask for long closings, no new mechanism. Bars written before the search
+
+The cheapest thing first, as on step 1b: ask. The stream search, started from the five
+lineage genomes, now sees closings of 4, 8, 16 or 32 ticks (`--hops 32 --vary`). Nothing
+else changes. Exam: a closing of 64 ticks (twice the longest seen) on loops of 8, where a
+stretch of 8 ticks is one lap, so every lap holds the same items.
+
+- **H1, the thought holds.** 64 cells, 8 items: lap 8 at least 0.95, on every lineage
+  (now 0.63-0.79).
+- **H2, and not by unlearning.** K90 at hop 1 at 64 and at 512 cells is at least 0.8 of
+  the lineage's own figure before.
+- **H3, a bigger brain holds more in thought.** The number of items whose lap 8 is at
+  least 0.9 rises at every doubling from 64 to 512 cells, on every lineage.
+
+My prediction: H1 missed, or met at the price of H2. Asked, the brain will think louder
+and lap 8 will rise to 0.8-0.9, but capacity will fall, because of the false links at
+reopening. If so the next step is ONE mechanism that lets a cell tell its own thought
+from the world: private state in a cell, or a global signal a tick late.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -4201,3 +4201,49 @@ rung 2, and it gives step 2b a job with a number on it.
 
 Not searched for: these genomes never knew a sparse brain. Before any new kind of cell, the next
 step asks: a search that lives with few wires.
+
+## 2026-11-13 (later) — rung 2a': a search that lives with few wires improves recall and not holding; my loads were lopsided; and the runs move to a VM
+
+**Where the runs go now.** The desktop has 16 GB shared with everything else. Five parallel
+searches in sparse brains were paged out (working sets of 12 MB, a second a step), the harness
+reaped my waiting shell for low memory, and I stopped the searches at a third of their steps. The
+user asked for a VM on his Proxmox host: VM 1094 `nomos`, made that day by the recipe his other
+sandbox VMs use (`infra/pve`, `docs/operations.md`). 16 threads and 8 GB for this first run, sized
+under the host's own alerts; 20 threads and 16 GB from the next one, the user's choice. Every
+number below is from the VM, the unsearched ones included, so they compare.
+
+**The step** (bars K1, K2 in the design note): the stream search, from the five "hold" genomes,
+lives in brains of 64-256 cells with 8, 16 or 32 wires into each interneuron and 1/4 to 2 items
+per wire; 3000 steps, 32 minutes a lineage. No new mechanism.
+
+Items held in thought at 32 wires per cell, five lineages:
+
+| cells | searched with few wires | unsearched |
+|---|---|---|
+| 256 | 10/14/18/9/12 | 14/16/17/12/13 |
+| 512 | 12/17/18/11/17 | 17/17/18/12/17 |
+| 1024 | 13/17/20/14/19 | 18/18/18/17/18 |
+| 2048 | 13/17/23/13/20 | 18/19/18/16/19 |
+
+K90 at hop 1:
+
+| cells | searched with few wires | unsearched |
+|---|---|---|
+| 512 | 83/95/89/75/94 | 69/77/75/65/80 |
+| 2048 | 122/151/151/91/160 | 96/108/108/75/112 |
+
+- **K1 (held at 512 cells at least 1.5x the unsearched): missed.** x0.69 / 0.95 / 1.05 / 0.91 /
+  1.01. No gain, and a loss on lineage 0. I had predicted a gain by a constant factor.
+- **K2 (held at 2048 at least 1.5x held at 512): missed**, x1.05-1.26 (unsearched: x1.03-1.32).
+  Predicted.
+- What did improve is recall one step ahead: +15-23% at 512 cells and +21-43% at 2048.
+
+**The search was not asking the right question, and that is my doing.** A sparse brain holds about
+0.55 items per wire in thought. I drew loads log-uniformly from 1/4 to 2 items per wire, so 62% of
+the lives were above what any of these brains can hold, where the only thing left to earn is
+recall one step ahead. The search did what the lives paid for. K1 is therefore not a fair verdict
+on whether a search can use few wires better for holding; K2 is the prediction of the theory and
+I still expect it, but it was tested by the same lopsided search.
+
+Next, the same step asked properly: loads of 1/8 to 1 item per wire (71% of lives at or under what
+can be held), bigger brains in the search (128-512 cells, 16-64 wires), the same bars.

@@ -13,8 +13,8 @@ nomos 10.99.0.70 ──vmbr1──▶ pve 10.99.0.1 ──NAT via vmbr0──▶
 ## VM 1094 `nomos` on pve
 
 - Ubuntu 24.04 cloud image, **20 vCPU `host` pinned to socket 1** (host cpus `10-19,30-39`, NUMA
-  node 1 preferred: the whole half the stopped `llm` VM used; 16 vCPU for its first hours), **8 GB
-  no balloon**, no swap, 40 GB (thin,
+  node 1 preferred: the whole half the stopped `llm` VM used; 16 vCPU and 8 GB for its first run), **16 GB no
+  balloon**, no swap, 40 GB (thin,
   `local-lvm`, `discard`), **`onboot 0`**, MAC pinned `BC:24:11:5E:5E:70`, IP `10.99.0.70` on stb's
   isolated bridge `vmbr1`. No GPU. Created 2026-11-13 by `infra/pve/create-vm.sh`.
 - **Nothing depends on it.** Stop it any time: `ssh root@pve.pgs.dom qm stop 1094`. It does not
@@ -25,9 +25,10 @@ nomos 10.99.0.70 ──vmbr1──▶ pve 10.99.0.1 ──NAT via vmbr0──▶
   accepts the warnings. The VM stays inside socket 1 so that socket 0 is left to production; more
   than 20 would take CPU from the platform, not just ring a bell. `pve.ram` warns at 90 % and
   clears under 85 %; the host was
-  at 80 % (38 GB available of 187) before this VM, and 8 GB keep it under 85. A search process
-  in sparse brains of up to 256 cells takes 0.8-1.2 GB (measured), an exam about half that, so 8 GB
-  is room for six searches or ten exams at once. More RAM
+  at 80 % (38 GB available of 187) before this VM. A search in sparse brains of up to 256 cells
+  takes 0.8-1.2 GB (measured), an exam about half that, so the first 8 GB held six searches and
+  left the threads idle; the user raised it to 16 GB the same day, knowing the host then sits at
+  82-88 %. That is room for a dozen searches or twenty exams. More RAM
   (`qm set 1094 --memory N --numa0 cpus=0-19,hostnodes=1,memory=N,policy=preferred`) only after
   something is freed on the host. Memory, not threads, is what limits the VM.
 - Own NAT `/usr/local/sbin/nomos-nat` on pve (chains `NOMOS_*`, internet only, every private range
@@ -53,8 +54,8 @@ infra/dev/vm.sh pull out/tissue/v2         # copy results back to the desktop
 ```
 
 `push` sends exactly what is committed, so a run can be named by a commit; the VM holds no
-credentials. Rules of the house: at most six searches or ten exams at one thread each (memory, not CPU, is the
-limit; more threads per process buy little: 50 steps took 32 s at one thread and 26 s at three);
+credentials. Rules of the house: at most twelve searches or twenty exams at once, and no more threads in
+total than the VM has (memory was the limit at 8 GB; more threads per process buy little: 50 steps took 32 s at one thread and 26 s at three);
 start them a few seconds apart; a run is still a pure function of its command line.
 Numbers from the VM and from the desktop agree only as far as two CPUs' floating point does:
 compare within one machine.

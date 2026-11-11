@@ -13,16 +13,17 @@
 #     used, and no more, so socket 0 stays with production). The host idles at ~16 % CPU and its
 #     `pve.cpu` alert warns at 70 %; 20 busy threads of 40 put it at about 66 %, on the edge. It was
 #     made with 16 for that reason; the user raised it the same day and accepts the warnings.
-#   - 8 GB, no balloon. The host was at 80 % RAM (38 GB available of 187) and its `pve.ram` alert
-#     warns at 90 %, clears under 85 %; 8 GB keeps it under 85. A search process takes about half a
-#     gigabyte, so this is room for a dozen at once. Raise with `qm set 1094 --memory N` (and the
-#     numa0 line) only after freeing RAM on the host.
+#   - 16 GB, no balloon. The host was at 80 % RAM (38 GB available of 187) and its `pve.ram` alert
+#     warns at 90 %, clears under 85 %. It was made with 8 GB to stay under 85; a search takes about
+#     1 GB, so 8 GB held six of them and left most of the threads idle, and the user raised it to 16
+#     the same day, knowing the host then sits at 82-88 %. More only after freeing RAM on the host
+#     (`qm set 1094 --memory N --numa0 cpus=0-19,hostnodes=1,memory=N,policy=preferred`).
 #   - 40 GB system disk, thin on local-lvm, with discard.
 # Network: stb's isolated bridge vmbr1; internet through nomos-nat (by IP + the MAC pinned here);
 # no way into any private range, reached only from pve (ssh -J).
 set -euo pipefail
 cd "$(dirname "$0")"
-ID=1094 NAME=nomos IP=10.99.0.70 MAC=BC:24:11:5E:5E:70 MEM=8192
+ID=1094 NAME=nomos IP=10.99.0.70 MAC=BC:24:11:5E:5E:70 MEM=16384
 IMG=/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img
 if qm status $ID >/dev/null 2>&1; then echo "VM $ID already exists"; exit 1; fi
 if ! iptables -L NOMOS_OUT -n >/dev/null 2>&1; then echo "run install-nat.sh first"; exit 1; fi

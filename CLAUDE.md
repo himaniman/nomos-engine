@@ -21,9 +21,9 @@ sessions.
 - **Shell**: Windows PowerShell. `2>$null` to drop numpy warnings from output.
 - **Heavy runs go to the VM, not the desktop** (since 2026-11-13, `docs/operations.md`): the
   desktop has 16 GB shared with everything else; five parallel searches were paged out and the
-  harness reaped a shell for low memory. VM 1094 `nomos` on the user's pve (16 threads, 8 GB,
-  ssh alias `nomos`), driven by `infra/dev/vm.sh push|run|jobs|tail|pull`; at most six
-  searches or ten exams there at one thread each (memory is the limit). On the desktop: tests, quick looks, at most two heavy
+  harness reaped a shell for low memory. VM 1094 `nomos` on the user's pve (20 threads, 16 GB,
+  ssh alias `nomos`), driven by `infra/dev/vm.sh push|run|jobs|tail|pull`; at most twelve
+  searches or twenty exams there at once, and no more threads in total than it has. On the desktop: tests, quick looks, at most two heavy
   processes. The host is the user's live infrastructure: follow `phil-architecture`'s rules,
   change nothing there beyond this VM without asking.
 - **This is a fast research playground** — favour small playable iterations

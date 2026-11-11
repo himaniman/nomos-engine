@@ -433,6 +433,23 @@ My prediction: K1 met, a gain by a constant factor from a code better suited to 
 wires. K2 missed: one kind of cell cannot make fewer cells speak per item as the brain
 grows, because a cell has no way to know how big the brain is.
 
+**Outcome (journal 2026-11-13, later):** K1 missed (x0.69-1.05, no gain), K2 missed
+(x1.05-1.26). Recall one step ahead did improve (+15-43%). But the search asked the wrong
+thing: 62% of its lives carried more than any of these brains can hold in thought (0.55
+items per wire), so only recall was left to earn. K1 is not a fair verdict.
+
+### Step 2a', asked properly: the same bars, written before the second search
+
+One change, to the lives of the search: 1/8 to 1 item per wire (71% of lives at or under
+what can be held), and bigger brains in the search, 128-512 cells with 16, 32 or 64 wires
+(`--fan 32 --sizes 128 256 512 --load 0.125 1`). Five lineages from the "hold" genomes,
+on the VM. Bars K1 and K2 as above, unchanged.
+
+My prediction: K1 met modestly, x1.2-1.5, now that holding is what the lives pay for. K2
+missed again: the reason I gave does not depend on how well the search is asked.
+
+**A lesson for every search:** put the loads where the thing being asked for is possible.
+
 ## Where the ladder stands
 
 | rung | state |

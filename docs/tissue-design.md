@@ -584,6 +584,18 @@ The shuffle (P3) and the sense off (P4) are run on the same genomes, so they car
 dendrite; if the bars are met I owe one more control, a search with `spoken` alone, to show
 what the new dendrite does without places.
 
+**The ceiling by hand**, computed while the search ran and before any result
+(`python -m tissue.hand --think --patch 36 --reach 32`): a sense of place that never errs,
+every cell fitting its own 32 wires, each loop spoken for by the 36 cells at its place.
+
+| cells | 128 | 512 | 2048 | 4096 |
+|---|---|---|---|---|
+| items held by hand, with places | 72 | 256 | 864 | 1296 |
+| by hand, without places | 32 | 32 | 32 | - |
+
+A third to a half of an item per cell (with a patch of 64 cells: 48, 168, 576). So the
+arithmetic holds by simulation too, places drawn at random and overlapping included.
+
 ## Where the ladder stands
 
 | rung | state |

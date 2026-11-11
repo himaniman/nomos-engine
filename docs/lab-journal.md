@@ -3615,3 +3615,91 @@ atlas's pose for its own scroll is true; the sheet counts its own. It was never 
 
 A latent crash surfaced on the way: `Atlas._read` faced `last_target` when food lay exactly under the
 body and the wave pointed nowhere (None). Fixed for that case only, every other path is unchanged.
+
+## 2026-11-11 — tissue: a restart, and rung 0: 76 numbers hold a pair per interneuron at sizes never seen
+
+**Why a restart.** The user's read: the evolving brains of vivarium/aqua improved by growing their
+perceptrons, not their tissue, and everything since followed from that. The saved pools fit it: rule
+depth at its cap of 4 almost everywhere, hidden width 16 -> 23-32 (cap 32), cell types 4 of 4, cells
+48-55 (aqua) and 11-39 (vivarium) of 144. Not proof: depth and width were free, mutation was biased
+to grow, only cells cost energy, and no ablation was ever run. New package `tissue/`, design and
+rules in `docs/tissue-design.md`. Decided with the user: the goal is growth that pays plus explicit
+memory and thinking; gradient may search for the genome, learning in a life stays local; the
+perceptron in a cell is small and fixed; exams before worlds; one mechanism per step.
+
+**Exam 0, associative memory** (`tissue/assoc.py`). A life = K random pairs, cue 12 bits -> answer
+4 bits, each shown once, then every cue asked. K90 = pairs held at 90% of the bits. Hand-made
+memories (`tissue/hand.py`, M threshold interneurons with random input wires, best sparseness each)
+are the yardstick, in the table below. Direct sensory -> motor Hebb with no interneurons: 7.9.
+
+**Kernel v0** (`tissue/kernel.py`). Sensory cells, M interneurons, motor cells. Sensory -> inter
+wires innate (random in each individual, the genome sets a gain); inter -> motor wires plastic from
+zero. One perceptron per cell type, 8 hidden. A wire changes by (source activity) x (target's
+learning signal). Genome: 76 numbers. Search: gradient through whole lives, sizes 8-64, 1/8 to 2
+pairs per interneuron, 6000 steps, 5 minutes a seed.
+
+**Bars written before the search** (in the design note): B1 frozen wires at chance (0.5 +- 0.03);
+B2 K90 rises at every doubling 8 -> 512 on every seed and K90(512) >= 2.5 x K90(64); B3 at least
+hand Hebb from 16 up. My prediction: within 20% of hand delta at 8-64, behind it at 256-512, B2
+narrow or missed.
+
+**Result, K90** (`python -m tissue.exam`; * = a size the search never saw):
+
+| M | seed 0 | seed 1 | seed 2 | hand hebb | hand delta | least squares |
+|---|---|---|---|---|---|---|
+| 8 | 8.2 | 7.7 | 7.8 | 4.3 | 5.9 | 12.0 |
+| 16 | 16.5 | 16.2 | 17.0 | 7.4 | 8.9 | 25.6 |
+| 32 | 33.0 | 30.4 | 31.3 | 12.6 | 16.2 | 51.3 |
+| 64 | 67.8 | 63.4 | 66.1 | 20.9 | 28.9 | 102.3 |
+| 128* | 128.6 | 121.5 | 124.3 | 34.3 | 46.4 | 210.4 |
+| 256* | 251.4 | 227.0 | 245.4 | 52.9 | 78.2 | 419.9 |
+| 512* | 461.2 | 390.6 | 450.7 | 78.5 | 123.1 | 847.7 |
+
+- **B2 met**: rises at every doubling on all three; K90(512) / K90(64) = 6.8, 6.2, 6.8 (8 would be
+  perfectly linear). Pairs per interneuron: about 1.0 up to 128, 0.89-0.98 at 256, 0.76-0.90 at 512.
+- **B3 met**, by 2x at 16 and 5-6x at 512.
+- **B1 missed by the letter**: 0.465 .. 0.515. With frozen wires the answer is one constant, so
+  this is the luck of the answers drawn at K = 4 (512 bits, se 0.022), the same figure at every
+  size and seed. The control itself is exact: a test asserts the answers do not change when
+  every taught answer is flipped. The bar was set tighter than the exam can resolve.
+- **My prediction failed.** It beat hand delta by 1.4-2.3x at trained sizes and 3.2-3.7x at 512.
+  I assumed the search would keep a threshold code and only find the rule.
+
+**What was found** (`python -m tissue.inside`), the same on all three seeds:
+1. *A code that is a hash.* An interneuron's activity is NOT monotonic in its dendrite: a narrow
+   peak near zero with a dip beside it, input gain 3.4-5.6. Codes of two cues one bit apart
+   correlate 0.28-0.37 (hand threshold units 0.46-0.63); three bits apart 0.04-0.09 (0.15-0.33).
+   The exam never asks for likeness between cues, so the best code keeps every cue apart.
+2. *A rule between Hebb and delta.* The learning signal has the teacher's sign and shrinks when the
+   dendrite already agrees (+2.4 at 0, +1.5 at +2, +2.6 at -1): error correction that saturates.
+3. *Something nobody wrote:* with NO teacher the signal is not zero but opposes the cell's own
+   answer (-0.3 at +0.5, -0.6 at +2). The tick after a pair is taught the motor cell still hears
+   that pair's code, so each lesson is a large step and a partial retraction sized by what the
+   step produced. Its worth is not measured yet (ablation owed).
+
+**Whose merit, the code or the rule** (found code under the hand rules):
+
+| M | hand code + hand delta | found code + hand delta | found code + found rule | least squares, either code |
+|---|---|---|---|---|
+| 64 | 28.9 | 46-50 | 63-68 | 102-104 |
+| 512 | 123.1 | 263-335 | 391-461 | 827-848 |
+
+The code is the larger part (x1.7 at 64, x2.1-2.7 at 512), the rule adds about x1.35 on top. The
+ceiling does not move: a better code does not hold more, it lets a local one-pass rule reach more
+of what is there. The found tissue reaches 62-66% of that ceiling at 64 and 46-55% at 512.
+
+**An ordinary net, same exam** (GRU, one seed each, 6000 steps, not tuned, one tick per pair):
+64 hidden (16 k numbers) K90 = 1.4; 256 hidden (213 k numbers) K90 = 5.6. A weak baseline, still
+improving when stopped, so only the shape counts: its capacity is one figure that more weights
+buy slowly, while 76 numbers hold 8 or 460 pairs depending on how big they are grown.
+
+**Limits.** By hand: the cell types, which wires exist, the average on a dendrite (this is what
+makes a cell's input independent of size), the product form of the rule, the teacher's timing. The
+theory says a delta rule on separated codes scales with size, so growth paying here is expected,
+not a discovery; what is new is that a search over 76 numbers at 8-64 cells found the code and
+the rule, and that they hold at 8x the largest size it saw with a 10-25% loss per cell. "Smarter"
+here means capacity only. Nothing yet about thinking, recurrence, or wiring from the genome. Seed 1
+found a blunter code and loses most at 512. Why any of them lose there is not known.
+
+Next: rung 1, chains (A->B, B->C, asked A->C), where the answer must be fed back and time to answer
+should grow with the chain. 8 tests in `tests/test_tissue.py`.

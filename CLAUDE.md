@@ -79,6 +79,13 @@ cortex/atlas.py   THE SHEET AS A MAP (branch `cortex-atlas`): a CA that plans by
                   rng tunes constants, control arm, train/holdout/FINAL worlds;
                   --agent + mailbox.py = the session's own agent is the model
                   (docs/cloud-lab.md)
+tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded into many
+                  cells and wires; the claim is "the same genome, grown bigger, is
+                  smarter". assoc.py exam 0 (associative memory, K90) · hand.py the
+                  hand-made yardstick · kernel.py cell types, blocks of wires, one
+                  synchronous tick · train.py the genome found by gradient through
+                  whole lives · exam.py every size incl. unseen · inside.py what was
+                  found. Design, ladder, rules, bars: docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +
@@ -550,6 +557,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   atlas's SOLID, with touch memory and a veto where rays passed (`beliefV`), on 128 fresh worlds: 17.6-18.2
   meals, hand 19.5, touch-only 14.2 (+3.4 to +4.0 +- 0.9, all 3 seeds). Wall memory is essential (wiped:
   4.0 meals); seeing walls adds little beyond bumping. Everything else in the atlas stays hand-made.
+- RESTART (2026-11-11, `tissue/`, read `docs/tissue-design.md` FIRST): the user judged that
+  everything since vivarium/aqua improved perceptrons, not tissue (saved pools fit it: rule depth
+  and width at their caps, cells not). New line, new method: the goal is growth that pays plus
+  explicit memory and thinking; exams before worlds (abstract tasks, ms per life, known floor and
+  ceiling); gradient may find the genome, learning in a life stays local; the perceptron in a cell
+  is small and FIXED; one mechanism per step, bar and prediction written before the run, every
+  mechanism with an off-switch, 3+ seeds; only a size the search never saw counts as growth. The
+  game is a later showcase. Rust only for a frozen kernel; the user's pve (20 free threads, no GPU)
+  is for breadth; renting a GPU (L4-class) is the user's idea for later, not now.
+  Rung 0 DONE: associative memory. A genome of 76 numbers found at 8-64 interneurons holds about
+  one pair per interneuron up to 512 (K90 461/391/451 on 3 seeds; hand delta 123, least squares
+  848). It found a hash-like non-monotonic code (the larger part of the gain) and a saturating
+  error-correcting rule. Expected by theory, so it is the instrument and the positive control,
+  not a discovery. Next: rung 1 chains (thinking), rung 2 wiring from the genome, rung 3 growth
+  from a seed. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;
   environment-coupled worlds. Preferred framing (user's, 2026-07-16): the cell
   grid is a *brain* that self-organizes and drives an external world through

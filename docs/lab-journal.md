@@ -4366,3 +4366,81 @@ One thing I got wrong on the way and fixed before the run that counts: my first 
 drew a cell's wires with repeats, and with 32 wires from 64 neighbours a third of them were
 duplicates. A preview on one genome showed holding fall from 17 to 11; with every wire from a
 different neighbour it is 17.5 against 17.3, which is what the prediction for 2c-1 says.
+
+## 2026-11-11 (18:05) — step 2c: wires from neighbours change nothing, and the search finds no use for a sense of place
+
+Step 2c puts the interneurons on a ring. Two dials, set by hand: `Plan.reach` (a cell's few wires
+come from different neighbours within that many places; 0 is the shuffle, wires from anywhere) and
+`Plan.field` (a sense of place: the world is somewhere along the ring, every loop of the stream at
+a place of its own, and an interneuron feels how near that is, a bell `field` cells wide, eyes open
+or closed). Plan, bars and predictions were in the design note before the runs.
+
+**2c-1, neighbours alone (no search): nothing changes, as predicted.** The five 2a' genomes, 32
+wires per cell from within 32 places against 32 wires from anywhere:
+
+| cells | held, neighbours | held, anywhere | K90 hop 1, neighbours | K90 hop 1, anywhere |
+|---|---|---|---|---|
+| 512 | 17/17/18/13/17 | 18/18/18/14/18 | 80/91/87/75/94 | 77/88/83/75/91 |
+| 2048 | 19/18/19/17/18 | 18/19/18/16/19 | 119/149/149/99/175 | 118/149/149/99/169 |
+
+A code that knows no place cannot use wiring that does.
+
+**The ceiling by hand, with places** (`python -m tissue.hand --think --patch 36 --reach 32`): a
+sense of place that never errs, each loop spoken for by the 36 cells at its place, every cell
+fitting its own 32 wires. 72, 256, 864 and 1296 items held at 128, 512, 2048 and 4096 cells,
+against 32 at any size without places. So places can make growth pay, by simulation and not only
+by arithmetic, with places drawn at random and overlapping.
+
+**A flaw of mine in the kernel, found by counting and mended before any result.** A plastic
+dendrite was an average over its wires and a motor cell is wired from every interneuron; if only a
+patch speaks, what the motor cells read and how far one lesson moves them shrink as patch / cells.
+A genome found at 128-512 cells could not have carried to 2048 for that reason alone. I stopped the
+first start of the search at step 200 of 4000 and added `Plan.spoken`: a plastic dendrite is scaled
+by what was said to it (the squares of what its sources said, summed, plus one). The 2a' genomes
+still live under it before any search (9 items held against 14 at 256 cells on lineage 0).
+
+**2c-2, a sense of place, searched for: all bars missed.** From the five 2a' genomes, `--fan 16
+--reach 32 --field 12 --spoken --sizes 128 256 512`, loads of 1/8 to 1 item per wire per patch of
+the ring, 4000 steps, 93 minutes a lineage on the VM. Exam at 32 wires per cell:
+
+| cells | held, searched with places | held, the 2a' genomes | K90 hop 1, with places | K90 hop 1, 2a' |
+|---|---|---|---|---|
+| 128 | 10/10/0/9/11 | 10/11/11/10/11 | 35/41/29/39/40 | 35/38/38/37/38 |
+| 512 | 10/11/0/10/12 | 18/18/18/14/18 | 86/102/53/83/96 | 77/88/83/75/91 |
+| 2048 | 10/14/0/11/17 | 18/19/18/16/19 | 129/188/71/99/156 | 118/149/149/99/169 |
+| 4096 | 10/16/0/13/17 | - | 152/215/77/105/187 | - |
+
+| at 2048 cells | held | K90 hop 1 |
+|---|---|---|
+| as found | 10/14/0/11/17 | 129/188/71/99/156 |
+| wires shuffled (`--reach 0`) | 16/17/0/16/17 | 127/183/70/96/155 |
+| the sense off (`--nowhere`) | 10/13/0/11/17 | 122/175/76/99/149 |
+
+- **P1 (held at 2048 at least 2x held at 512): missed**, x1.03 / 1.31 / - / 1.14 / 1.41.
+- **P2 (at least 100 items held at 2048): missed**, 10 / 14 / 0 / 11 / 17.
+- **P3 (the shuffle holds less than half): missed**, the shuffle holds as much or more.
+- **P4 (the sense off: at most 32): met, and empty**, since nothing was gained to lose.
+
+I had predicted the bars met on at least three lineages. Wrong on all five. What I wrote I was
+least sure of is what happened: the search found no use for the sense. Inside a life
+(`python -m tissue.where`, 512 cells) a cell is as loud and learns as much far from the place as at
+it:
+
+| cells away from the place | 0-6 | 12-18 | 24-36 | 64+ |
+|---|---|---|---|---|
+| loudness, eyes open (lineages 0, 1, 4) | 1.50 / 1.58 / 1.41 | 1.48 / 1.57 / 1.40 | 1.48 / 1.57 / 1.40 | 1.48 / 1.57 / 1.40 |
+| learning, relative to the nearest band | 1 | 0.98-1.00 | 0.98-1.00 | 0.97-1.00 |
+
+Holding got worse than where the search began, and lineage 2 lost it altogether. The loss ended at
+0.39-0.56 (accuracy 0.76-0.81), where the 2a' search ended at 0.15-0.21.
+
+**Why, and it is the lesson of step 2a' in a new coat.** I loaded the lives for the brain I wanted,
+one that keeps each loop in its own patch: up to 256 items at 512 cells. The brain the search
+started as holds 18 at any size. So nearly every life was far beyond anything a small change could
+win, and a cell that falls silent away from its place loses recall before it gains holding. There
+was no slope to climb. "Put the loads where the thing asked for is possible" was not enough: they
+must also be where the brain in hand can begin to earn.
+
+Kept: `runs/tissue/place/` (the genomes and their three exams, and the 2c-1 exams). Next, the
+question this search could not answer: if cells ARE silent away from their place, by hand, does
+holding grow with the brain? `Plan.gate`; plan and bars in the design note.

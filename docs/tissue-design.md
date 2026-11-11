@@ -538,7 +538,7 @@ shuffled figure, recall one step ahead is the same or a little lower (neighbours
 sources, so their errors agree and a vote gains less). A code that knows no place cannot
 use wiring that does.
 
-**Outcome (journal 2026-11-11, evening):** nothing changes, as predicted. Held x0.93-1.02
+**Outcome (journal 2026-11-11, 18:05):** nothing changes, as predicted. Held x0.93-1.02
 of the shuffled figure at 512 and at 2048 cells, recall one step ahead x0.99-1.05. (A
 preview with wires drawn with repeats had shown a loss; a third of those wires were
 duplicates, and the wiring now takes every wire from a different neighbour.)
@@ -596,7 +596,7 @@ every cell fitting its own 32 wires, each loop spoken for by the 36 cells at its
 A third to a half of an item per cell (with a patch of 64 cells: 48, 168, 576). So the
 arithmetic holds by simulation too, places drawn at random and overlapping included.
 
-**Outcome (journal 2026-11-11, 19:00):** P1, P2, P3 missed on all five lineages; my
+**Outcome (journal 2026-11-11, 18:05):** P1, P2, P3 missed on all five lineages; my
 prediction was wrong and my fear was right. The search did not find a use for the sense of
 place: its genomes hold 10/14/0/11/17 items at 2048 cells (the 2a' genomes they started
 from: 18/19/18/16/19), the same with the wires shuffled or the sense off, and inside a life

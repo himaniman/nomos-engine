@@ -453,3 +453,25 @@ def test_a_life_told_its_places_by_an_index_is_the_same_world_and_feels_what_the
         if kind == "study":
             assert torch.equal(a, b)                        # in study it is the world's
     assert index.w.any()
+
+
+def test_a_brain_never_told_a_place_writes_new_things_along_a_tape_and_finds_known_ones():
+    index = hand.Index(batch=1, cells=256, d=12, ring=256, pace=8)
+    a, b = torch.ones(1, 12), -torch.ones(1, 12)
+    first = float(index.tape(a))
+    second = float(index.tape(b))
+    assert first == pytest.approx(8 / 256) and second == pytest.approx(16 / 256)    # new: further along
+    again = float(index.tape(a))
+    assert abs(again - first) <= 8 / 256                    # known: where it was put, to a stretch
+    assert float(index.head) == pytest.approx(16 / 256)     # and the tape did not move
+    torch.manual_seed(0)
+    brain = Tissue(replace(RUNG1, fan=6, reach=4, field=3), ITEM).grow(32)
+    life = stream.Life(loops=2, length=4, laps=2, idle=3, blinks=2, open=2, closed=2)
+    items = stream.world(ITEM, life, 2, gen(4))
+    felt = []
+    tick = brain.tick
+    brain.tick = lambda *x, where=None, **k: (felt.append(where), tick(*x, where=where, **k))[1]
+    stream.run_life(brain, ITEM, items, life, gen(5), places=True, told="self",
+                    index=hand.Index(2, 256, 12, 32, pace=2))
+    assert all(w is not None for w in felt)
+    assert len({round(float(w[0]), 4) for w in felt}) >= 4  # eight things seen, several places

@@ -110,9 +110,11 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     the test it has to find where a thing lives from what it sees; "index", the same, but a
     memory of what lies where (`index`, with `learn(item, place)` and `say(item)`) is taught
     during study and says the place of whatever is seen afterwards, and with the eyes closed
-    the brain goes on feeling the place it felt last."""
-    if told not in ("always", "seen", "study", "index"):
-        raise ValueError(f"told must be always, seen, study or index, not {told!r}")
+    the brain goes on feeling the place it felt last; "self", the world never tells a place:
+    the brain puts each new thing a little further along the ring and finds a known thing
+    by its index (`index.tape(item)`). The places of the world are then not used at all."""
+    if told not in ("always", "seen", "study", "index", "self"):
+        raise ValueError(f"told must be always, seen, study, index or self, not {told!r}")
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
     ticks = script(life, b, gen)                # the world first: the same for any brain
@@ -126,7 +128,10 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
     for kind, seen, loop, place in ticks + [("end", False, None, None)]:
         item = silent if loop is None else items[rows, loop, place]
         if places and loop is not None:
-            if told == "index":
+            if told == "self":
+                if seen:
+                    felt = index.tape(item)     # and with the eyes closed: the place felt last
+            elif told == "index":
                 if kind == "study":
                     felt = place_of[rows, loop]
                     index.learn(item, felt)
@@ -136,7 +141,7 @@ def run_life(brain, task: Task, items: torch.Tensor, life: Life, gen: torch.Gene
                 felt = place_of[rows, loop]
                 if (told == "seen" and not seen) or (told == "study" and kind != "study"):
                     felt = None
-        elif told not in ("always", "index"):
+        elif told not in ("always", "index", "self"):
             felt = None
         state, out = brain.tick(state, item if seen else silent,
                                 before if before_seen else silent, float(before_seen), float(seen),

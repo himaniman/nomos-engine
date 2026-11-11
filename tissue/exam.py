@@ -39,7 +39,7 @@ def held(ks: list, idle: list, bar: float = 0.9) -> float:
 
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
             quick: bool = False, nowhere: bool = False, worlds: int = 0, lives: int = 4,
-            told: str | None = None, index_cells: int = 0, **switches) -> dict:
+            told: str | None = None, index_cells: int = 0, pace: int = 8, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
     (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
@@ -49,7 +49,8 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
     than the one every exam so far was sat in (0). `lives`: the fewest lives a load is
     measured on. `told`: when the place is told ("always", "seen", "study", or "index": by a
     hand-made memory of what lies where with `index_cells` cells, default as many as there
-    are interneurons; default: as the genome was searched)."""
+    are interneurons; or "self": never, the brain puts a new thing `pace` cells further
+    along the ring than the last; default: as the genome was searched)."""
     model, task, saved = load(path, **switches)
     places = bool(getattr(model, "plan", None) and model.plan.field) and not nowhere
     told = told or saved.get("told", "always")
@@ -59,8 +60,8 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
             brain = model.grow(m)
             ks = stream.k_grid(m, task, shape.length)
             def live(items, life, g, m=m, brain=brain):
-                index = (Index(items.shape[0], index_cells or m, task.d_in, m)
-                         if told == "index" else None)
+                index = (Index(items.shape[0], index_cells or m, task.d_in, m, pace=pace)
+                         if told in ("index", "self") else None)
                 return stream.run_life(brain, task, items, life, g, places=places, told=told,
                                        index=index)
 
@@ -154,9 +155,12 @@ def main() -> None:
                    help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--worlds", type=int, default=0,
                    help="stream: sit the exam in another set of worlds (0: the usual ones)")
-    p.add_argument("--told", choices=("always", "seen", "study", "index"), default=None,
+    p.add_argument("--told", choices=("always", "seen", "study", "index", "self"), default=None,
                    help="when the place is told: always, only with the eyes open, only in study,"
-                        " or in study and afterwards by a hand-made memory of what lies where")
+                        " in study and afterwards by a hand-made memory of what lies where, or"
+                        " never (self: the brain chooses, a new thing a little further along)")
+    p.add_argument("--pace", type=int, default=8,
+                   help="--told self: cells between one new thing and the next")
     p.add_argument("--index", type=int, default=0,
                    help="cells of that memory (default: as many as interneurons)")
     p.add_argument("--lives", type=int, default=4,
@@ -193,7 +197,8 @@ def main() -> None:
     if a.lives != 4:
         tag += f".lives{a.lives}"
     if a.told:
-        tag += f".told-{a.told}" + (f"{a.index}" if a.index else "")
+        tag += f".told-{a.told}" + (f"{a.index}" if a.index else "") + (
+            f".pace{a.pace}" if a.told == "self" else "")
     for path in a.genomes:
         streamed = not a.chains and (a.stream or torch.load(path, weights_only=True)["arm"] == "stream")
         shape, length, mark = None, a.length or 1, tag
@@ -204,7 +209,7 @@ def main() -> None:
         elif length > 1:
             mark += f".len{length}"
         res = examine(path, a.sizes, length, shape, a.quick, a.nowhere, a.worlds, a.lives,
-                      a.told, a.index, **switches)
+                      a.told, a.index, a.pace, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

@@ -219,14 +219,20 @@ class Index:
     ring of `ring` cells. Asked with an item it says a place, right or wrong.
 
     Its random numbers are its own (`seed`), so that a world lived with it is the same world
-    as without."""
+    as without.
+
+    `pace` is for a brain that is never told a place and chooses one itself (`tape`): a
+    thing never seen before is put `pace` cells further along the ring than the last new
+    thing, like writing on a tape; a thing the index knows is where the index says."""
 
     def __init__(self, batch: int, cells: int, d: int, ring: int, grain: int = 16,
-                 wave: float = 4.0, seed: int = 77):
+                 wave: float = 4.0, seed: int = 77, pace: int = 8):
         g = torch.Generator().manual_seed(seed)
         self.wires = torch.randn(batch, cells, d, generator=g)
         self.phase = torch.rand(batch, cells, generator=g) * 2 * math.pi
         self.wave, self.d = wave, d
+        self.pace = pace / ring
+        self.head = torch.zeros(batch)              # where the last new thing was put
         self.bits = max(1, math.ceil(math.log2(max(2, ring / grain))))
         self.w = torch.zeros(batch, self.bits, cells)
 
@@ -242,6 +248,16 @@ class Index:
         c = self.code(item)
         err = want - torch.einsum("bom,bm->bo", self.w, c)
         self.w = self.w + err.unsqueeze(-1) * (c / (c * c).sum(-1, keepdim=True)).unsqueeze(1)
+
+    def tape(self, item: torch.Tensor) -> torch.Tensor:
+        """The place the brain itself gives to what it sees (and the index is taught it):
+        where the index says if it is sure of every bit, else a little further along."""
+        out = torch.einsum("bom,bm->bo", self.w, self.code(item))
+        sure = (out.abs() > 0.5).all(dim=1)
+        self.head = torch.where(sure, self.head, (self.head + self.pace) % 1.0)
+        here = torch.where(sure, self.say(item), self.head)
+        self.learn(item, here)
+        return here
 
     def say(self, item: torch.Tensor) -> torch.Tensor:
         on = (torch.einsum("bom,bm->bo", self.w, self.code(item)) > 0).long()

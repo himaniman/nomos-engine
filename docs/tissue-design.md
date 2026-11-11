@@ -1071,6 +1071,28 @@ it, and a latch is enough to stay there in the dark. All of it by hand: the inde
 code, the Gray code of a place, the latch. What is asked of the world now is only to say
 the place while a thing is first learnt.
 
+### Step 2e-3a: the brain chooses the place, by hand. Bars written before the run
+
+The last rung: the world never says a place (`--told self`). By hand, a tape: a thing the
+index does not know is put a few cells further along the ring than the last new thing
+(`--pace`, 8 cells) and the index is taught it there; a thing the index is sure of (every
+bit of its answer beyond a half) is where the index says; with the eyes closed the brain
+stays where it is. So the items of a loop met for the first time lie side by side, and
+when the loop comes round again the index takes the brain back to them. The store is the
+five genomes of step 2c-3b with their hand gate, unchanged; the index has four times as
+many cells as the ring. Nothing is searched.
+
+- **X1.** With no place ever told, K90 at hop 1 at 512 cells is at least half of what the
+  same genome recalls when the world tells it the place on every tick (2c-5: 193-213), on
+  at least four lineages.
+- **X2.** The same for the items held in thought (2c-5: 30-48).
+
+Prediction: X1 met, at 0.5-0.8 of the world-told figure. X2 missed on some lineages.
+The tape lays loops end to end, so the stretch a loop is written on is shared with its
+neighbours on both sides and the chance link from the last item of one loop to the first of
+the next is now always between neighbouring cells, where with places drawn at random it
+seldom was. Both cost holding more than recall.
+
 ## Where the ladder stands
 
 | rung | state |

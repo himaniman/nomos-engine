@@ -619,6 +619,20 @@ is about 37 cells.
 this asks what gating alone buys. Prediction: holding at 2048 cells above the placeless 18
 but far under the hand ceiling of 864: between 30 and 150.
 
+**Outcome of (a) (journal 2026-11-11, evening):** not what I predicted, in both directions.
+Holding is 0 at every size: with the gate on, the rule found for a brain where every cell
+speaks lets a walk fade (0.94, 0.87, 0.83, 0.79 over four hops, even at a light load). But
+recall one step ahead grows in proportion to the cells, with no search at all:
+
+| cells | 128 | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|---|
+| K90 hop 1, gate by hand | 20-32 | 16-53 | 95-125 | 171-255 | 357-507 | 707-1009 |
+| K90 hop 1, no places (2a') | 35-38 | 52-60 | 75-91 | 91-126 | 99-169 | - |
+
+0.17-0.25 items per cell at 2048 and at 4096 cells, on all five lineages, at sizes no search
+ever saw and with a gate no search ever saw. This is the first time on rung 2 that
+something grows with the cells at a fixed 32 wires per cell otherwise than as a vote.
+
 **(b) A search with the gate on**, from the same genomes: `--fan 16 --reach 32 --field 12
 --spoken --gate 0.3 --sizes 128 256 512`, loads of 1/16 to 1/2 item per wire per patch
 (what a patch of that many cells can hold with the rule as it is, so that the lives start

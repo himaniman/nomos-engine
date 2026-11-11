@@ -795,6 +795,12 @@ Prediction: an even chance for T1. Every search today that I expected to gain in
 did not (K1 twice, P, Q); what speaks for it is that three laps of study and four clean
 hops both showed headroom. T2 met if T1 is.
 
+**Outcome (journal 2026-11-11, 22:13):** T1 and T2 missed. Living with the wider field made
+holding worse on four lineages of five, 176/165/113/185/204 items at 4096 cells against
+217/160/220/268/287 (x0.81 / 1.03 / 0.51 / 0.69 / 0.71), and recall a little worse. The
+genomes of step 2c-3b stay the best with a gate, and 2d and 3a start from them. A fourth
+search today that did not buy holding.
+
 ## After rung 2: the user's vector (2026-11-11, evening)
 
 Step 2c left three crutches: the gate is by hand, the world tells the brain where it is, and

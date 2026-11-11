@@ -4624,3 +4624,35 @@ Method, added today and each paid for: build the ceiling by hand before the mech
 to earn, not only where the wanted brain could live; when a search does not find a thing, put it
 in by hand once to learn what it would be worth; a load measured on four lives is not measured;
 and check the clock before dating a page.
+
+## 2026-11-11 (22:13) — step 2c-6: a search that lives with the wider field holds less, not more; and the user's vector for what comes next
+
+The exam's field (24 cells) was not the one the rule was searched with (12), so one more search,
+from the genomes of 2c-3b, living with `--field 24`. Bars T1 and T2 first. Sixteen lives, the
+third set of worlds:
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| held, searched with field 24 | 24/27/25/19/30 | 50/32/25/25/50 | 89/58/40/47/96 | 193/105/0/91/158 | 176/165/113/185/204 |
+| held, searched with field 12 (2c-5) | 24/28/27/25/30 | 47/48/32/30/44 | 88/104/92/89/95 | 108/114/105/106/203 | 217/160/220/268/287 |
+| K90 hop 1, searched with 24 | 94-102 | 189-206 | 382-412 | 783-865 | 1526-1702 |
+| K90 hop 1, searched with 12 | 93-115 | 193-213 | 386-432 | 785-898 | 1530-1779 |
+
+- **T1 (held at 4096 at least 1.5x the 2c-5 figure, on four lineages): missed**, x0.81 / 1.03 /
+  0.51 / 0.69 / 0.71.
+- **T2 (held at 4096 at least 8x held at 256, on four): missed**, x7.3 / 6.1 / 4.6 / 9.7 / 6.9.
+
+I had given T1 an even chance. It is the fourth search today that I hoped would buy holding and
+did not (2a' twice, 2c-3b by its own bars, this one); what a search has bought every time is
+recall one step ahead. The controls are as before: wires shuffled, nothing; the sense off, a
+placeless brain. The genomes of 2c-3b stay the best with a gate (`runs/tissue/gate/`); these are
+kept in `runs/tissue/wide/`.
+
+**The user's vector (given the same evening, for work in his absence).** Step 2c left three
+crutches: the gate is by hand, the world tells the brain where it is, and "grown" has only ever
+meant "born bigger". The user wants each of them tried. The order is mine and is in the design
+note: 2d the search finds the gate (the hand gate as a scaffold that a search takes away step by
+step); 3a growth within one life, the size turned by the examiner; 2e the brain chooses the place,
+in rungs; 3b growth decided by the tissue. 2d is running; exam 3 (`tissue/grow.py`,
+`Grown.more`) is written, with a unit test that says growing costs nothing by itself: the grown
+brain says, on its next tick, what the small one would have said.

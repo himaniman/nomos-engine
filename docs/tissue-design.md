@@ -864,6 +864,11 @@ would have said), so the grown brain and the one born big differ only at the sea
 ring opened. That makes it close to a consequence of step 2c rather than a discovery; what
 it tests is that nothing in the kernel quietly depends on the size a brain was born with.
 
+(Said plainly: to test the code I had already run the exam once, 128 to 512 cells on
+lineage 0, and seen the grown brain level with the one born big, 0.84 and 0.87 at hop 1 on
+the first loops, 0.93 and 0.93 on the second, the small one at 0.60 and 0.72. The bars are
+for sizes and lineages not yet looked at.)
+
 ## Where the ladder stands
 
 | rung | state |

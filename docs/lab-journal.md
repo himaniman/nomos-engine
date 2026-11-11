@@ -4703,3 +4703,65 @@ written; that is on record in the design note. Exams: `runs/tissue/grow/`.
 So the claim in its literal form now has a first answer: the same genome, grown bigger in the
 middle of a life, is smarter, and loses nothing it knew. By the examiner's hand so far: the
 tissue did not decide to grow (step 3b).
+
+## 2026-11-12 (00:10) — step 2d: the hand gate taken away. The cells do not take it over; why; and step 2e-1 asked without a search
+
+**Step 2d** is the first thing on the user's vector: can the search find the gate that step 2c put
+in by hand? Nothing new in the brain. The hand gate became a scaffold (`Plan.lean`: how much of it
+is left) and a search from the genomes of 2c-3b took it away evenly over its first 3000 steps of
+4000 (`--anneal 3000`), the same lives otherwise. Bars U1-U4 first. Exam with no hand gate at all,
+field 24, sixteen lives, the third set of worlds:
+
+| cells | 256 | 512 | 1024 | 2048 | 4096 |
+|---|---|---|---|---|---|
+| K90 hop 1, no hand gate | 57/64/57/53/59 | 77/91/79/66/87 | 99/123/96/70/114 | 121/153/107/73/151 | 135/187/114/79/191 |
+| K90 hop 1, the gate by hand (2c-5) | 93/106/103/115/105 | 193/213/207/207/208 | 386/432/406/428/427 | 785/853/845/898/867 | 1530/1710/1648/1779/1706 |
+| held, no hand gate | 10/11/9/9/12 | 10/11/9/9/13 | 10/13/9/9/17 | 11/16/10/9/17 | 12/16/10/9/17 |
+
+- **U1 (recall at 4096 cells at least half of the hand gate's): missed**, 0.09 / 0.11 / 0.07 /
+  0.04 / 0.11.
+- **U2 (at least 100 items held at 4096): missed**, 12 / 16 / 10 / 9 / 17.
+- **U3 (far cells at most a tenth as loud): missed.** A cell is as loud 64 cells away from the
+  place as at it (1.26-1.38 against 1.28-1.39, eyes open).
+- **U4 (the controls): missed, emptily.** Shuffling the wires or taking the sense away changes
+  nothing (x0.95-1.07), because nothing uses them.
+
+I had predicted U3 and U4 met and U1, U2 on three lineages or more. Wrong on all. As the scaffold
+went the genomes became placeless brains again, a little better than the ones rung 2 began with.
+Put the hand gate back and the same genomes are what they were: 732-921 items recalled at 2048
+cells, 1400-1817 at 4096, 150-200 held at 4096. They did not forget how to live with a gate. They
+did not take it over.
+
+Lineage 3 died half way: as the gate weakened its error stopped being a number (a slope without
+end, clipped, turns a genome into NaN). The search now skips such a step and says how many
+(`skipped` in its log): 159 of 4000 on that lineage, none on the others.
+
+**Why, looked into before asking again.**
+
+1. *The lives did not make the gate pay.* The error of the search did not rise as the gate went:
+   0.35 with it, 0.30-0.41 without. At the sizes searched a placeless brain recalls nearly as much
+   as one with places (35-38 items against 40-53 at 128 cells, 77-91 against 157-183 at 512) and
+   most lives were loaded under that. So the gate was worth next to nothing where the search
+   lived, and it was let go. It is the loads lesson for the third time, each time in a new coat:
+   a life must pay for the wanted thing more than for what the brain can do without it.
+2. *A cell can say its own gate, roughly.* `python -m tissue.imitate` fits the interneuron's
+   perceptron (8 hidden) to its own speech under the hand gate. What is left: a cell that should
+   be asleep is a tenth as loud as an awake one, and 8-16% of an awake cell's speech is got wrong
+   (23-33% of its learning signal). With 32 hidden it would be 5%. So the gate is within the
+   cell's reach, but imitation alone is not a brain: with the hand gate off and no search the
+   five taught genomes recall 0-39 items at 512 cells.
+
+Step 2d' (running): the cell is first taught its gate by imitation, and the lives make places pay
+(256-1024 cells, 1/8 to 3/4 item per wire per patch). Two changes at once, said so in the note.
+
+**Step 2e-1, asked without a search** (the third thing on the vector, its first rung: the place is
+told only while the eyes are open, `--told seen`). The genomes of 2c-3b at 512 cells: K90 at hop 1
+is 0 on four lineages and nothing is held. V1 missed, as I predicted, but not the way I pictured
+it. Through the first lap of a long closing the brain is right on 0.96-0.99 of the bits, then
+0.90-0.95, 0.78-0.85, and 0.55-0.66 by the eighth lap: the thought keeps its place for a while and
+is lost by degrees. Inside (`python -m tissue.where --told seen`): the moment nothing is felt, a
+cell 64 away from the place is as loud as the patch (0.82 against 0.92) and learns in the dark. A
+cell that hears nothing and sees nothing says something; its rule was never asked to be silent
+there, the hand gate did that for it. A search can be asked for that (bars V2, V3 in the note).
+
+Kept: `runs/tissue/free/` (the 2d genomes and exams), `runs/tissue/told/`.

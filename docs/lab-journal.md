@@ -3868,3 +3868,34 @@ signal and the rest between episodes.
 
 Next: step 1b, search ON chains (does a walk get longer when asked for), then a brain that says
 when it is done.
+
+## 2026-11-11 (night) — left alone, the brain does not stop
+
+The user objected to "a brain that says when it is done": that is how a perceptron or an LLM is
+used, a question in and an answer out, and the idea here is a brain whose thinking never stops.
+So, before arguing: what do the brains already found do when nothing is asked? `python -m
+tissue.alone` on the five 1a' genomes (64 cells, a life of 4 chains of 4 links, 128 lives): one
+item shown, then 60 silent ticks. The search only ever read the first hops; nothing below was
+asked for.
+
+| seed | interneuron activity, tick 1 / 10 / 30 / 60 | ticks 6-60 saying a stored item | of two such in a row: the learned successor | the same item |
+|---|---|---|---|---|
+| 0 | 0.96 / 0.72 / 0.59 / 0.52 | 0.28 | 0.32 | 0.05 |
+| 1 | 1.01 / 0.73 / 0.61 / 0.54 | 0.30 | 0.27 | 0.10 |
+| 2 | 0.99 / 0.69 / 0.60 / 0.56 | 0.31 | 0.24 | 0.17 |
+| 3 | 1.10 / 0.64 / 0.53 / 0.47 | 0.35 | 0.26 | 0.18 |
+| 4 | 1.21 / 0.71 / 0.33 / 0.04 | 0.32 | 0.13 | 0.45 |
+| noise / chance | | 0.06 | 0.04 | |
+
+Four of five neither fall silent nor blow up over 60 ticks. They leave the chain they were
+started on and go on saying stored items five times more often than noise would, and step from
+an item to its learned successor six to eight times more often than chance: fragments of other
+chains, picked up and dropped. Seed 4 fades to silence and freezes on items as it goes. One size,
+one kind of life, 60 ticks only; whether the four would die later is not known, and whether this
+wandering mends or wears what was learned is not measured (the wires among interneurons are still
+being taught, faintly, in silence).
+
+What the objection exposed in the exams themselves: I silence every cell between episodes (the
+`rest`, by hand), and I set the pace of a walk from outside (hop h is due at tick h + 2). Both
+are the habits of calling a function. The second may be why depth does not grow with size: a
+brain of any size gets no time to clean a recalled code before it must hand it on.

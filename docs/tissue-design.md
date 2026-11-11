@@ -216,6 +216,24 @@ prediction held. Links per interneuron 0.68-0.74 at 64, 0.34-0.40 at 512. A chai
 never shown is walked without the sign alternating; depth of a walk grows only weakly
 with size. A lesson for every later exam: score what the teacher teaches.
 
+### Step 1b, the search is on chains: bars written before the search
+
+Nothing changes in the brain or the exam; the search now sees chains of 1-4 links (echo
+scored), sizes 8-64, 1/8 to 1 link per interneuron, 6000 steps, 5 seeds. Exam: chains of 4
+and chains of 8 (a depth never seen), sizes to 512. The 1a' genomes sit the same exam as
+the baseline.
+
+- **E1, asked for, a walk gets longer.** 64 cells, chains of 4 at M/4 links: hop 4 at
+  least 0.92 on every seed (1a': 0.83-0.85).
+- **E2, a depth never seen.** 64 cells, chains of 8 at M/4 links: hop 8 at least 0.75 on
+  every seed.
+- **E3, size buys depth.** Links walked 4 hops at 90% (K90 at hop 4): at 512 cells at
+  least 4x that at 64, on every seed (1a': 2.3-2.5x).
+
+My prediction: E1 met. E2 open, hop 8 somewhere in 0.7-0.8. E3 missed: the examiner sets
+the pace, one tick a hop, so a brain of any size has no time to clean a recalled code
+before it must hand it on.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -3950,3 +3950,80 @@ Unexplained: accuracy is not monotone in the hop. Hop 4 beats hop 2 on chains of
 against 0.95), as hop 3 beat hop 2 at 16 cells before. A parity effect of some kind.
 
 Genomes in `runs/tissue/rung1b/`. Next: the stream.
+
+## 2026-11-12 — tissue: the stream. One unbroken life, and for the first time on this rung growth does not fade
+
+**Why.** The user's objection (previous entry but two): a brain whose thinking never stops, not a
+function that is called. Agreed, and the step "says when it is done" is replaced by four
+properties to examine: no resets; neither dead nor noise in silence; idle thinking does not wear
+memory out; its own pace. First the first and the third.
+
+**Exam 2** (`tissue/stream.py`). The world is a few loops of 12-bit items; after an item comes the
+next on its loop, for ever. Study: eyes open, every loop walked round `laps` times, loops in random
+order (leaving one loop for another shows a pair that is not a link, once). Test: the world jumps,
+the eyes see 3 items and close for `closed` ticks while the world goes on; repeated. Every tick the
+motor cells are read as "what the world showed a tick ago", and while the eyes were open a tick ago
+the teacher shows exactly that: the only teacher is the senses a tick late. No cell is ever
+silenced by hand. The brain is the same `RUNG1`. A perfect memory of the stream (each item's most
+frequent successor) scores 1.000 at every hop with two laps; with one lap a link and a coincidence
+have each been seen once and nothing can tell them apart.
+
+**The rests were a crutch.** The 1a' genomes, made for rested episodes, in the stream at 64 cells
+and 16 items: hops 1-4 = 0.93 / 0.84-0.88 / 0.77-0.83 / 0.71-0.76 (rested: 0.99 / 0.91 / 0.89 /
+0.84), and after an idle closing of 32 ticks hop 1 falls to 0.89 (one genome).
+
+**The search** (`--arm stream`: sizes 8-64, 1/16 to 1/2 item per interneuron, loops of 4 or 8, 2-3
+laps, eyes closed 4 ticks, no idle closing, 6000 steps, 5 seeds). Seeds 1, 3, 4 reach 0.93-0.96;
+seeds 0 and 2 sit at 0.80 from step 700 to the end.
+
+**Bit accuracy at M/4 items, hops 1-4** (* = size never seen):
+
+| M | seed 1 | seed 3 | seed 4 | seeds 0, 2 |
+|---|---|---|---|---|
+| 64 | 0.99 0.98 0.95 0.93 | 1.00 0.99 0.96 0.94 | 0.98 0.94 0.90 0.87 | 0.58 0.60 0.58 0.60 |
+| 128* | 0.99 0.95 0.92 0.88 | 0.99 0.96 0.94 0.90 | 0.97 0.89 0.83 0.78 | 0.57 0.57 0.56 0.56 |
+| 512* | 0.98 0.92 0.86 0.82 | 0.98 0.94 0.90 0.87 | 0.95 0.80 0.72 0.65 | 0.51 0.52 0.50 0.54 |
+
+**Items held at 90%** (K90):
+
+| M | hop 1: seed 1 | seed 3 | seed 4 | hop 4: seed 1 | seed 3 | seed 4 |
+|---|---|---|---|---|---|---|
+| 16 | 9.0 | 9.3 | 9.3 | 0 | 0 | 0 |
+| 32 | 19.4 | 19.6 | 18.9 | 9.2 | 10.1 | 0 |
+| 64 | 43.5 | 42.4 | 38.0 | 18.1 | 20.0 | 12.2 |
+| 128* | 98.0 | 105.9 | 70.3 | 28.6 | 32.7 | 17.7 |
+| 256* | 206.3 | 202.1 | 120.0 | 48.4 | 57.5 | 20.5 |
+| 512* | 383.9 | 393.1 | 209.3 | 72.1 | 103.0 | 22.7 |
+
+Against the bars written first:
+- **F1 (64 cells, 16 items: hop 1 >= 0.97, hop 4 >= 0.90, every seed): missed.** Seeds 1 and 3
+  pass (hop 4 0.93, 0.94), seed 4 does not (0.87), seeds 0 and 2 found nothing.
+- **F2 (growth, every seed): missed as written, met by the three that found a hop.** And on
+  seeds 1 and 3 K90 at hop 1 grows x8.8 and x9.3 from 64 to 512 cells, items per interneuron 0.68 /
+  0.77-0.83 / 0.79-0.81 / 0.75-0.77 at 64 / 128 / 256 / 512. **No fade**: the first time on this
+  rung that capacity keeps pace with size beyond the sizes searched. Depth follows: items walked
+  4 hops x4.0 and x5.2 (rested episodes: x1.8-2.7). Seed 4: x5.5 at hop 1, flat at hop 4.
+- **F3 (an idle closing of 64 ticks, never asked for, costs hop 1 no more than 0.02): met on every
+  seed.** Change -0.001 -0.001 +0.001 -0.001 -0.002; hop 4 moves -0.016 / +0.005 / -0.028 on the
+  three that work. My prediction (a fall of 0.03-0.08) was wrong. A closing in every blink already
+  punishes a brain that rewrites its wires while it wanders, and inside seed 1 the signal an
+  interneuron teaches its wires with is about zero when the senses are silent.
+- **F4 (eyes closed 16 ticks, the search saw 4; hop 16 >= 0.75, every seed): missed as written;**
+  0.79 / 0.85 / 0.75 on the three. Caveat on the figure itself: on a loop of 8, hops 8 and 16 are
+  the item last seen, and hop 12 is lower than hop 16 (0.74 / 0.82 / 0.66), so part of the score
+  at 8 and 16 may be a trace of that item, not a walk. Through a closing of 64 ticks the brain
+  holds its loop for 8-16 ticks and then drifts: 0.97-0.98 in the first 8 ticks, 0.78-0.81 in the
+  third 8, 0.57-0.64 in the last 8. It does not fall silent and it is not a stable cycle.
+
+**The flat spot this time** (`tissue.inside`): an input gain of 0.48 (the working seeds: 5-10) and
+a code that is a linear copy of the cue. Two cues h bits apart correlate 0.83 / 0.66 / 0.49 / 0.32,
+which is 1 - 2h/12 to two digits. Such a code can be echoed and can hold about as many links as a
+cue has bits, whatever the size. On rung 1a the flat spot was a constant code. Both times the
+degenerate thing is the CODE, and some seeds never leave it.
+
+**What is by hand:** as before, minus the rests and the examiner's teacher. The loops, two laps
+and the shape of a blink are the examiner's.
+
+**Not known.** Why growth stopped fading: the life (each link seen twice, as many items as links,
+so half the load on the decoder) or the genome. Cross-exams are running. Next: the stream search
+started from the step 1b genomes instead of random numbers (five lineages; bars in the note).

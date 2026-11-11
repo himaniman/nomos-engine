@@ -298,6 +298,28 @@ brain to hold its wires still while it wanders; I expect a fall of 0.03-0.08. F4
 my guess is near the bar: a loop closes on itself, so a walk round it could correct itself,
 but nothing in a 4-tick closing rewards that.
 
+**Outcome (journal 2026-11-12):** three seeds of five found the hop; two settled on a code
+that is a linear copy of the cue (echo right, hops near chance). So F1, F2 and F4 are
+missed as written ("every seed"). On the three that worked: F1 met by two (hop 4 0.93-0.94)
+and missed by one (0.87); F2 met, and for two seeds growth is LINEAR for the first time on
+this rung (K90 at hop 1 x8.8-9.3 from 64 to 512, no fade); F3 met on every seed, idleness
+costs nothing, my prediction was wrong; F4 met (0.75-0.85), with the caveat that hop 16 on
+a loop of 8 is the item last seen.
+
+### The search starts from the previous step's genome: bars written before the run
+
+Twice now a search from random numbers has settled on a degenerate CODE (constant on rung
+1a, linear here) that some seeds never leave. One change, to the search only: the stream
+search starts from the five chain genomes of step 1b (`--init`), the same brain plan, so
+five lineages instead of five seeds. Everything else as above.
+
+- **G1, every lineage lives in the stream.** F1 on all five (64 cells, 16 items: hop 1 at
+  least 0.97, hop 4 at least 0.90).
+- **G2, growth without a fade is the rule.** K90 at hop 1: 512 cells at least 6x 64 cells,
+  on all five.
+
+My prediction: G1 met by four or five of five. G2 met wherever G1 is.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -305,7 +327,7 @@ but nothing in a 4-tick closing rewards that.
 | 0 pairs | done, 3 seeds: about 1 pair per interneuron to 512 |
 | 1a one hop through own wires | done, 5 seeds: 0.7 links per interneuron at 64, fading to 0.35 at 512 |
 | 1b search on chains | done, 5 seeds: links walked 4 hops doubled (17-19 at 64 cells), depth carries to 8 hops; size still does not buy depth |
-| 1c the stream: no resets, idleness | built, bars written, next |
+| 1c the stream: no resets, idleness | first search: 3 seeds of 5; on two of them growth does not fade (x9 from 64 to 512) and idleness costs nothing; lineage search running |
 | 1d own pace | after 1c |
 | 2 wiring from the genome | not started |
 | 3 growth from a seed | not started |

@@ -53,7 +53,7 @@ def main() -> None:
     a = p.parse_args()
     torch.set_num_threads(6)
     tissue, task, saved = load(a.genome)
-    chained = saved["arm"] == "chain"
+    chained = saved["arm"] in ("chain", "stream")
     gain = float(torch.exp(tissue.gain["0"].detach()))
     cell_i, cell_o = tissue.cells["I"], tissue.cells["O"]
 

@@ -49,14 +49,17 @@ def load(path: str, **switches):
 
 
 def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float = 3e-3,
-          hops: int = 1, echo: bool = False, idle: int = 0) -> None:
+          hops: int = 1, echo: bool = False, idle: int = 0, init: str | None = None) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
-    is always part of the error there."""
+    is always part of the error there. `init`: start from a genome found earlier (same
+    brain plan) instead of from random numbers."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model, task = make(arm)
+    if init:
+        model.load_state_dict(torch.load(init, weights_only=True)["genome"])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, steps, eta_min=lr / 10)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -107,7 +110,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             log.flush()
             print(row, flush=True)
             torch.save({"arm": arm, "seed": seed, "step": step, "hops": hops, "echo": echo,
-                        "idle": idle, "genome": model.state_dict()}, out)
+                        "idle": idle, "init": init or "", "genome": model.state_dict()}, out)
     log.close()
 
 
@@ -120,11 +123,12 @@ def main() -> None:
                    help="chain: longest chain trained on; stream: ticks the eyes stay closed")
     p.add_argument("--echo", action="store_true", help="chain arm: the echo is in the error too")
     p.add_argument("--idle", type=int, default=0, help="stream arm: a long closing before the test")
+    p.add_argument("--init", help="start from this genome (same brain plan) instead of random")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle)
+    train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init)
 
 
 if __name__ == "__main__":

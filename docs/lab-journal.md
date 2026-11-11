@@ -4819,3 +4819,71 @@ fifth of the store's wires.
 By hand: the index, its wave code, the Gray code of a place and its grain, the latch. Found:
 nothing new. The world still says where a thing lies while it is first learnt; the next rung is a
 brain that chooses that place itself. And the index and the latch are not cells of the genome yet.
+
+## 2026-11-12 (01:04) — step 2e-3: a brain that is never told a place. By hand it recalls less and holds more than one told by the world
+
+The last rung of "the brain chooses the place": the world never says where a thing lies
+(`--told self`). Everything here is by hand and nothing is searched; the store is the five genomes
+of step 2c-3b with their hand gate, the index is the hand-made one of the last entry with four
+times as many cells as the ring. Sixteen lives. What changes from run to run is the rule by which
+the brain itself gives a place to what it sees.
+
+**2e-3a, a tape.** A thing the index does not know is put a few cells further along the ring than
+the last new thing; a thing the index is sure of is where the index says; in the dark the brain
+stays where it is. Bars X1, X2 first. At 512 cells:
+
+| | K90 hop 1 | held in thought |
+|---|---|---|
+| told by the world on every tick (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| a new thing 8 cells further on | 138/139/136/145/142 | 0/0/0/0/0 |
+| 4 cells further on | 148/152/150/157/153 | 10/9/0/9/12 |
+| 2 cells further on | 58/72/74/67/73 | 10/10/9/10/12 |
+| 4 cells, and in the dark the place goes after the thing just said | 129/129/128/132/130 | 9/0/0/8/9 |
+
+- **X1 (recall at least half of the world-told figure): met** on all five, 0.65-0.72. Predicted.
+- **X2 (the same for holding): missed** on all five. I had predicted "on some".
+
+On a tape every item of a loop has a place of its own, so a place that stands still in the dark
+fits only a part of the loop. Letting the place go after the thought (where the index says the
+thing just said lives) made it worse.
+
+**2e-3b, new things in a row share a place** (`--runs`): the tape moves on only when a new thing
+comes right after a known one. In this world a loop walked round for the first time is a run of
+new things that ends on a known one, so each loop gets one place, as when the world told it. That
+fit to the shape of this world is by hand; the rule is "something new after something familiar
+starts something new", and nothing here shows it is a good rule elsewhere. With the next place 20
+cells on: recall 126/149/139/126/141, held 16/11/11/13/15. **X3: recall met, holding missed**; I
+had predicted both at 0.8-0.9 of the world-told figures. Places side by side share their cells
+with both neighbours, and the chance link from the end of one loop to the start of the next gets
+learnt because the two patches overlap. The world's random places had kept consecutive loops far
+apart, a help I had not noticed.
+
+**2e-3c, each new place far from the last** (the next place 0.382 of the ring further on, which
+fills a ring evenly however long one goes on). First seen as an exploration at 512 cells, then
+bars X4, X5 and a fourth set of worlds:
+
+| never told a place, the fourth set of worlds | K90 hop 1 | held in thought |
+|---|---|---|
+| 512 cells | 151/159/157/160/160 | 63/86/74/75/84 |
+| 512 cells, told by the world (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| 2048 cells | 541/549/546/543/553 | 308/298/293/269/296 |
+| 2048 cells, told by the world (2c-5) | 785/853/845/898/867 | 108/114/105/106/203 |
+
+- **X5 (holds at least what the world-told brain holds): met at 512 and 2048 cells on all five
+  lineages**, x1.3-2.5 and x1.5-2.9. From 512 to 2048 cells holding grows x3.5-4.9: nearly in
+  proportion, which the world-told brain did not do (x2-3).
+- **X4 (recall at least 0.7 of the world-told figure): met at 512 cells (0.75-0.78), missed at
+  2048 (0.60-0.69).** All five lineages stop at the same load there, so it is the hand-made part
+  that gives out, not the genomes; my guess, not checked, is the index's test of being sure.
+- 4096 cells is still to run.
+
+Why a brain that chooses its own places holds more than one that is told: the world drew its
+places at random, so here and there loops fell on top of one another, and a thought breaks where
+the cells are crowded. A rule that opens each new place far from the last spreads the loops
+evenly. It costs some recall.
+
+**Where the third thing on the vector stands.** By hand, a brain needs no word from the world
+about where anything lies: a memory of what lies where, a latch, and a rule for opening places.
+Not one of the three is a cell of the genome yet, and the gate is still by hand as well. That is
+the work left on this step: an index made of cells and found by a search.
+Exams: `runs/tissue/told/`.

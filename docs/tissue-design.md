@@ -1158,6 +1158,29 @@ Prediction: X4 met. X5 met at 512 and 2048 cells; at 4096 I am less sure, since 
 then has to place some thousands of items to within 12 cells and one wrong place moves a
 whole loop.
 
+**Outcome so far (journal 2026-11-12, 01:04; 4096 cells still to run):**
+
+| never told a place, the fourth set of worlds | K90 hop 1 | held in thought |
+|---|---|---|
+| 512 cells | 151/159/157/160/160 | 63/86/74/75/84 |
+| 512 cells, told by the world (2c-5) | 193/213/207/207/208 | 47/48/32/30/44 |
+| 2048 cells | 541/549/546/543/553 | 308/298/293/269/296 |
+| 2048 cells, told by the world (2c-5) | 785/853/845/898/867 | 108/114/105/106/203 |
+
+- **X5, holding: met at 512 and at 2048 cells on all five lineages**, x1.3-2.5 and
+  x1.5-2.9 the world-told figure. From 512 to 2048 cells it grows x3.5-4.9.
+- **X4, recall: met at 512 cells (0.75-0.78), missed at 2048 (0.60-0.69, bar 0.7).** The
+  five lineages stop at the same load there, which points at the hand-made part and not at
+  the genomes. My guess, not checked: the index's test of being sure. At 545 items in an
+  index of 8192 cells a known item has about one chance in five of having some bit of its
+  place under a half, and is then taken for a new thing and written somewhere else.
+
+So a brain that chooses its own places holds more in thought than one told places by the
+world, and the reason is plain once seen: the world drew its places at random, so loops
+fell on top of one another here and there, while a rule that opens each new place far from
+the last spreads them evenly. The cost is some recall. All of it is by hand: the index,
+the latch, the rule of runs, the stride.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -1174,8 +1197,9 @@ whole loop.
 | 2c cells in a space | done, 5 lineages. Wires from neighbours alone change nothing. A search given a sense of place found no use for it. With a gate BY HAND (cells silent away from their place) and 32 wires per cell: recall one step ahead in proportion to the cells, 0.4 items per cell to 4096; a thought held 24-30 items at 256 cells and 160-287 at 4096 (placeless: 18 at any size). Shuffle the wires: nothing. Sense off: a placeless brain. Open: the search finding the gate; the dials in the genome |
 | 2c-6 a search living with the wider field | done: holds less, not more (T1, T2 missed); the genomes of 2c-3b stay the best with a gate |
 | 3a growth within one life, the size turned by the examiner | done, 5 lineages, no search: a brain given new cells in mid-life (512, then 2048) is within 0.02 of one born with 2048 on old and new loops alike, and 0.16-0.20 above one left at 512 |
-| 2d the search finds the gate | running |
-| 2e the brain chooses the place; 3b growth decided by the tissue | planned, in that order |
+| 2d the search finds the gate | first attempt failed: with the hand gate taken away the genomes go back to placeless brains (the lives did not make the gate pay). Second attempt running: the cell taught its gate by imitation first, and lives where places pay |
+| 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-2.9 of it (63-86 items at 512 cells, 269-308 at 2048) |
+| 3b growth decided by the tissue | planned |
 
 Open questions carried along: what separates the lineages that scale without a fade from
 those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed

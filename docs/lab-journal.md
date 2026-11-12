@@ -5542,3 +5542,32 @@ No thought ever ended with nothing left to think of: every failure is the limit 
 
 Step 6b (bars T1-T3 in the note): the same exam at side 8 with 1024 and 4096 rooms a thought,
 and with imagery beside it; fifteen runs on the VM.
+
+## 2026-11-12 (19:45) — step 4b', the body's sense asked again for depth: it is the lineage, not the luck, and depth is bought with the first hop
+
+Closings of 2-16 ticks, brains of 16-64 cells, 8000 steps (twelve minutes a search, on the
+desktop). K90 in links at hop 1 / 2 / 4, exam 4 with two ways, `--body felt`
+(`runs/tissue/body/deep-*`):
+
+| | 64 cells | 128 | 256 | 512 |
+|---|---|---|---|---|
+| 4b, lineage 1 (where it started) | 26 / 9 / 0 | 57 / 16 / 0 | 108 / 20 / 0 | 216 / 20 / 0 |
+| (a) from that genome, four starts | 24-25 / 12 / 8 | 49-50 / 19-20 / 9-10 | 71-78 / 26-27 / 12-13 | 90-109 / 32-33 / 13 |
+| (b) from 1d again, lineage 1 | 25 / 12 / 8 | 49 / 19 / 9 | 80 / 26 / 12 | 109 / 28 / 13 |
+| (b) lineages 0, 2, 3, 4 | 0 | 0 | 0 | 0 |
+| a dendrite per way by hand, lineage 1 | 96 / 68 / 51 | 213 / 137 / 97 | 460 / 264 / 182 | 930 / 487 / 315 |
+
+- **D1 (arm (a): two starts of four hold 45 links at hop 4 at 256 cells): missed.** All four
+  starts end in the same place: 12-13 links at hop 4 where there were none, 26-27 at hop 2 where
+  there were 20, and 71-78 at hop 1 where there were 108. Depth is bought with the first hop.
+  And it no longer grows as it did: from 256 to 512 cells x1.3-1.4 at hop 1 (it was x2.0) and
+  nothing at hop 4.
+- **D2 (arm (b): three lineages of five use their body): missed.** One does, the same one, and
+  it lands where arm (a) landed. With the body cells silent it is numb (0 links).
+
+Both predicted missed, and they were. What is learned: it is lineage 1 that can use a body on a
+dendrite of its own, twice out of twice, and the other four not at all, twice out of twice; so
+the difference is in the genome the search starts from, not in the dice of the search. And a
+cell with one set of wires trades the first hop against the later ones. The dendrite per way
+stays by hand; the next asking, if there is one, is of another kind (branches of a dendrite as
+units with a rule of their own, as the sleep cell was for the gate), not of more of the same.

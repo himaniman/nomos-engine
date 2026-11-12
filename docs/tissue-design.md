@@ -1753,6 +1753,15 @@ Prediction: both missed. If a cell with one set of wires keeps the ways apart on
 cells speak, a second hop has to tell apart rooms entered by different ways as well, and
 asking harder does not give it the wires for that. I would like to be wrong.
 
+**Outcome (journal 2026-11-12, 19:45): both missed, as predicted.** (a) all four starts end
+in one place: at 256 cells 12-13 links at hop 4 (none before), 26-27 at hop 2 (20 before)
+and 71-78 at hop 1 (108 before), and it no longer doubles with the cells. Depth is bought
+with the first hop. (b) one lineage of five uses its body, the same one (lineage 1), and
+lands where (a) did. So it is the genome a search starts from and not the dice of the
+search, and a cell with one set of wires trades the first hop against the later ones. The
+dendrite per way stays by hand; a next asking would be of another kind (branches of a
+dendrite as units with a rule of their own, as the sleep cell was for the gate).
+
 ## Where the ladder stands
 
 | rung | state |

@@ -97,7 +97,10 @@ tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded in
                   through a closing; left alone; who speaks and learns by distance from
                   the place) · grow.py exam 3 (growth in mid-life; a brain told nothing)
                   · imitate.py a cell taught its own gate · look.py a PICTURE of one life
-                  (cells of the ring by tick, growth, what is said in the dark; out/tissue/).
+                  (cells of the ring by tick, growth, what is said in the dark; out/tissue/)
+                  · fork.py, seek.py exams 4 and 5 (rooms with ways out; a wanted room) ·
+                  world.py exam 6, A WORLD (a walled land, trees, one life with no study) ·
+                  view.py a picture and a film of one life in a land.
                   Design, ladder, rules, bars: docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
@@ -680,7 +683,26 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   brain walks every string of ways in the dark and the first way of the shortest plan is taken:
   a wanted room 1-4 steps away is reached by a shortest road 0.92-1.00 of the time on five
   lineages (not thinking 0.15-0.53). Thinking with NO copy, keeping what thought taught, wears
-  the map out (0.40-0.59 at distance 4): the open problem on the road.
+  the map out (0.40-0.59 at distance 4); with its wires still in thought (`Plan.still`, by
+  hand) the brain thinks in its own head as well as a copy.
+  EXAM 6, A WORLD (`tissue/world.py`, the user's choice, 2026-11-12): a walled square land of
+  rooms, a tree on one room in six, one fruit at a time. The brain is told what the room with
+  the fruit looks like and nothing else; no study, nobody leads; with no road in its head it
+  takes a way at random, and what it wanders through is what it thinks with (copies walk the
+  nearest rooms first on its own wires). 256 cells in 36 rooms: 86-130 meals a life on five
+  lineages (a perfect memory with the same will 121, born knowing the land 259, blind 5; numb =
+  blind). 100 rooms: 256 cells 10-25, 512 cells 17-73. WHAT BINDS IS THE DEPTH OF A THOUGHT
+  (trips of 9+ steps straight 0.07-0.55 at 64 rooms though the map one hop ahead is 0.91-0.97
+  right); two guessed cures (`--imagery`, `--mumble`) did nothing or harm in a pilot: look at
+  failing thoughts before guessing again. By hand in the world: a dendrite per way, stillness
+  in thought, the will (the wanted look told; random with no road), the whole thinking.
+  Pictures: `python -m tissue.view GENOME.pt [--film out/tissue/world.gif]`. Exam trap: a will
+  that remembers where it ate made knowing less pay (a brain with two trees side by side beat
+  the oracle); a yardstick with perfect memory is not a ceiling when wandering teaches.
+  STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
+  dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
+  hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by
+  hand. Cheap to ask again: many starts, lives that pay for depth.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

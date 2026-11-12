@@ -1604,6 +1604,27 @@ just this, and a land has roads of ten steps and more where exam 5 had four, so 
 of a thought may bind before the size of the map does, and then growing the brain would
 buy little. Side 8 at 256 cells: 0.7 of `perfect` or better on four lineages.
 
+**Outcome (journal 2026-11-12, 18:40).** Meals a life: `blind` 5-7 in every land; `perfect`
+121 / 182 / 141 and `oracle` 259 / 380 / 476 at sides 6 / 8 / 10.
+- **V1 missed**: at side 6 the five lineages at 256 cells eat 130 / 92 / 118 / 86 / 95, which
+  is 1.07 / 0.76 / 0.97 / 0.71 / 0.78 of `perfect` (two over the bar, three just under) and 16
+  to 24 times `blind` (all over).
+- **V2 met** on all five: numb 5.9-6.1.
+- **V3 met** on all five: trips of 3-4 steps in the last third straight 0.98-1.00.
+- **V4**: the first half met on all five (side 10, last third, 512 cells eat 2.5 to 4.4 times
+  what 256 eat); the second not cleanly (side 6: 0.92 to 1.22, over 1.1 on three, which a
+  life that swings by a factor of five does not let me read).
+A bigger land wants a bigger brain far more sharply than I predicted: 256 cells make 0.71-1.07
+of `perfect` at side 6, 0.20-0.52 at side 8, 0.07-0.17 at side 10 (512 cells there:
+0.12-0.52). What binds is the DEPTH of a thought and not the map one hop ahead: at side 8
+the brain says the right room behind 91-97% of the ways it has gone and still goes straight
+on 0.07-0.55 of trips of nine steps and more. Half the copies of a long thought say rooms
+that are not there. Two guesses at a cure, tried as pilots and left behind switches that are
+off: a copy shown what it has just said (`--imagery`) does next to nothing; a copy that
+speaks quietly dropped (`--mumble`) halves the meals. Why a long thought fails is the open
+question on this road. Also seen: the brain speaks 2 to 6 times more quietly of ways it has
+never gone, from which a curiosity of its own could be read.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way
@@ -1682,6 +1703,8 @@ that pay for depth, four ways in the search.
 | 5a in a crowded world | 128 rooms (256 links): at 256 cells 0.21-0.48 at distance 4, at 512 cells 0.43-0.94. A thought is as good as the map and the map grows with the brain, but at least 0.9 at every distance is reached by one lineage of five (G4 missed) |
 | 5b, 5c thinking with no copy | when the brain walks in thought itself and keeps what thought taught it the map wears out (0.40-0.59 at distance 4, worse in the second half of a life). The learning does all of the harm and the state none: with its wires still in thought the brain thinks in its own head as well as a copy (0.94-0.99 at distance 4), coming back by one look at the room |
 | 5d wires still in the dark, in the kernel (`Plan.still`, by hand) | thinking in its own head: met on four lineages. On the loops of exam 2 recall is untouched and holding is 0.80-0.98 of what it was: there the learning in the dark was mending a little. Open: a rule that tells rehearsing from imagining; the search through the map as cells |
+| 6a a world: a walled land, trees, one life with no study | done by hand, 5 lineages, nothing searched. Born into a land it has never seen and told only what the room with the fruit looks like, a brain of 256 cells learns 36 rooms by wandering and eats 86-130 times a life (a perfect memory with the same will 121, born knowing the land 259, a blind walker 5); numb: a blind walker. In the last third of a life trips of 3-4 steps are straight 0.98-1.00. At 100 rooms 256 cells eat 10-25 and 512 cells 17-73 (2.5-4.4 times as much in the last third). V2, V3 met; V1 missed by three lineages a few hundredths short; V4 met in its first half. What binds is the depth of a thought |
+| 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from
 those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed

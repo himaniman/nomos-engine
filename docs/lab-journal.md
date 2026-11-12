@@ -5358,3 +5358,93 @@ The dendrite per way stays by hand. What was not tried, and is cheap (six minute
 many starts per lineage, longer searches, lives that pay for depth (in these lives most of the
 error sits at hop 1), four ways in the search. METHOD, again: I set a bar against a hand-made
 part of another kind (ways times the wires) without building the ceiling of the thing asked for.
+
+## 2026-11-12 (18:40) — exam 6, a world: a brain born into a land it has never seen learns it by wandering and goes to food by thought
+
+The user's choice: a small simulated world on top of exams 4 and 5, the hand-made parts listed.
+`tissue/world.py`: a walled square land of rooms, each with a look of its own, four ways, a tree
+on one room in six, one fruit at a time; the brain is told what the room with the fruit looks
+like and nothing else. No study, no trials, nobody leads: one life of 40 ticks to a room. With
+no road in its head it takes a way at random; what it walks through is what it later thinks
+with. The thinking, by hand: copies of what the cells say walk in the dark, nearest rooms
+first, a room thought of once, the first copy to say the wanted look gives the road.
+`tissue/view.py` draws one life and makes a film of it (`out/tissue/world.png`, `world.gif`).
+
+On the way (pilot lands, seed 1): my first will (remember where it ate, want the tree eaten at
+longest ago) made knowing less pay: a brain that found two trees side by side and no third ate
+1399 times in 1440 ticks, more than one born knowing the land. Dropped for one fruit at a time
+and its room told. A thought costs 5-50 ms, half of which was my own slow code, not the brain.
+
+The exam's lands (seed 90000, 16 lives, the five genomes of 1d, nothing searched). Meals a life,
+and in the last third of it:
+
+| land | never a plan | a perfect memory of every way gone | born knowing every way |
+|---|---|---|---|
+| side 6 (36 rooms, 144 ways) | 5.4 | 121 (67) | 259 (88) |
+| side 8 (64 rooms, 256 ways) | 6.6 | 182 (99) | 380 (127) |
+| side 10 (100 rooms, 400 ways) | 5.2 | 141 (90) | 476 (158) |
+
+| lineage | side 6, 256 cells | side 6, 512 | numb, side 6 | side 8, 256 | side 10, 256 | side 10, 512 |
+|---|---|---|---|---|---|---|
+| 0 | 130 (65) | 132 (72) | 5.9 | 95 (66) | 25 (14) | 73 (60) |
+| 1 | 92 (56) | 89 (51) | 5.9 | 55 (40) | 14 (7) | 39 (29) |
+| 2 | 118 (60) | 135 (69) | 6.1 | 88 (60) | 17 (9) | 42 (29) |
+| 3 | 86 (40) | 73 (39) | 6.1 | 53 (36) | 11 (6) | 19 (14) |
+| 4 | 95 (44) | 102 (54) | 6.1 | 36 (19) | 10 (3) | 17 (9) |
+
+- **V1 (side 6 at 256 cells: at least 0.8 of `perfect` and ten times `blind`, four lineages):
+  missed.** Two lineages meet it (1.07 and 0.97 of `perfect`), three are just under (0.71, 0.76,
+  0.78). All five eat 16 to 24 times what a blind walker eats. My prediction (met on four) was
+  wrong by three lineages a few hundredths short; a life swings by a factor of five, so the
+  third decimal is not to be read.
+- **V2 (a numb brain no more than twice `blind`): met on all five** (5.9-6.1 against 5.4). A
+  numb brain says the right room behind 1-21% of the ways it has gone; it never has a road.
+- **V3 (last third, side 6, 256 cells: trips of 3-4 steps go by a shortest road at least 0.8 of
+  the time, four lineages): met on all five** (0.98-1.00). Trips of 5-8 steps: 0.70-0.90; of 9
+  and more: 0.25-0.64.
+- **V4 (side 10, last third: 512 cells eat at least 1.25 times what 256 eat, three lineages;
+  at side 6 no more than 1.1 times): the first half met on all five, the second not cleanly.** At side
+  10 512 cells eat 4.4, 4.1, 3.3, 2.5 and 3.1 times what 256 eat in the last third. At side 6 the ratio is 1.11, 0.92,
+  1.15, 0.97, 1.22: no difference I can tell from noise, but over 1.1 on three lineages.
+
+What the numbers say beyond the bars:
+
+- **It lives.** In a land of 36 rooms a brain of 256 cells that was told nothing makes the
+  living a perfect memory makes with the same will, half of what one born knowing the land
+  makes, twenty times a blind walker's. Its map is its own: by the end it has gone 98-100% of
+  the ways and says the right room behind 93-98% of them, all twelve bits.
+- **A bigger land wants a bigger brain, sharply.** 256 cells: 0.71-1.07 of `perfect` at side
+  6, 0.20-0.52 at side 8, 0.07-0.17 at side 10, where they are two to five times a blind
+  walker. I had predicted "about half" at side 10 and 0.7 at side 8: wrong, both far too
+  hopeful.
+- **What binds is the depth of a thought, not the map one hop ahead.** At side 8 the 256-cell
+  brain still says the right room behind 91-97% of the ways it has gone, yet trips of nine
+  steps and more go straight 0.07-0.55 of the time. Growing the brain mends the long roads
+  first: at side 6 trips of 9+ go straight 0.25-0.64 at 256 cells and 0.54-0.84 at 512; at side
+  10 trips of 5-8 steps 0.00-0.64 against 0.38-0.95. But at side 10 even 512 cells make 0.12-0.52
+  of `perfect`: the weak lineages (3 and 4) stay near the floor.
+- **Half of what its copies say in thought is no room of the land** (one life looked at: 243
+  copies of 492 at side 10). The thought goes on from them all the same until its limit of 256
+  rooms; they are where a long thought drowns.
+- **It is quieter about what it does not know.** The mean size of what it says one hop ahead:
+  5.0-5.9 for ways it has gone, 0.8-2.6 for ways it never went (side 6, 256 cells). A curiosity of its own could
+  be read from that.
+- **`perfect` is not a ceiling.** It stops wandering as soon as it has a road, and a brain
+  whose thought fails wanders on and comes to know more ways. Two lineages beat it at side 6.
+
+By hand in this world: the dendrite per way, the stillness of wires in thought, the will (the
+wanted look told; a way at random with no road), the whole procedure of thinking. Found: the
+cell's rule. Step 4b (the entry before this one) asked a search for the first of these.
+
+The later stages of the two queues ran after `Plan.body` went into the kernel (commit ad25204):
+the change is behind a switch that is off here, and the tests that pin a life to its seed pass.
+
+Two pilots after the exam, on pilot lands (seed 1, lineage 0, side 8, four lives, so a look and
+no more), both left in `world.py` behind switches that are off:
+- `--imagery`, a copy in thought is shown what it has just said as if its eyes saw it, so every
+  hop starts from a sight: 115 meals against 110, trips of 9+ straight 0.49 against 0.42. Next to
+  nothing. I had expected it to mend the long roads.
+- `--mumble 3.5`, a copy that says its room quietly is not followed: 53 meals against 110, and 32
+  with imagery as well. It cuts true roads with the false ones.
+So the depth of a thought is not mended by either idea as I built them, and why a long thought
+fails is not yet known: the next step on the road is to LOOK at failing thoughts, not to guess.

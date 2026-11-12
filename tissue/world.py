@@ -186,13 +186,18 @@ class Table(Blind):
 class Mind(Blind):
     """The tissue in a body: it sees the look of its room, feels the way just gone and thinks
     in the dark. `depth`: how many hops a thought may go; `budget`: how many rooms it may
-    think of; `slack`: the bits of the wanted look a thought may get wrong."""
+    think of; `slack`: the bits of the wanted look a thought may get wrong. `imagery`, BY
+    HAND: in thought a copy is SHOWN what it has just said, as if its eyes saw that room (and
+    no wire changes), so every hop of a thought starts from a sight and not from the hop
+    before it. `mumble`, BY HAND: a copy that says its room more quietly than this (the mean
+    size of the bits it says) is not followed: the brain speaks low of what it does not know."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
-                 budget: int = 256, slack: int = 0):
+                 budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
         self.brain, self.depth, self.budget, self.slack = brain, depth, budget, slack
+        self.imagery, self.mumble = imagery, mumble
         self.state = brain.born(1, gen)
         self.body = fork.Dendrites(brain, self.state, 4, numb=numb)
         self.bits = brain.n["O"]
@@ -243,8 +248,9 @@ class Mind(Blind):
                         trace.append((0, None, ways[j], None))
                     return int(first[j])
                 keep = []
+                clear = (says.abs().mean(-1) >= self.mumble).tolist()
                 for j, room in enumerate(rooms):
-                    if room not in seen:
+                    if clear[j] and room not in seen:
                         seen.add(room)
                         keep.append(j)
             spent += len(keep)
@@ -252,7 +258,13 @@ class Mind(Blind):
                 return None
             pick = torch.tensor(keep)           # only the copies in new rooms go on, by every way
             act = {t: a[pick] for t, a in act.items()}
-            kids = [{t: a[pick] for t, a in north.items()}] + [self.hop(act, w)[0] for w in (1, 2, 3)]
+            if self.imagery and hops:           # each is shown the room it said, and goes on from that sight
+                shown = torch.where(says[pick] > 0, 1.0, -1.0)
+                calm = {**self.state[1], self.body.inner: torch.zeros_like(self.body.bank[:, 0])}
+                act = self.deaf.tick((act, calm, self.state[2]), shown, torch.zeros_like(shown), 0.0, 1.0)[0][0]
+                kids = [self.hop(act, w)[0] for w in range(4)]
+            else:
+                kids = [{t: a[pick] for t, a in north.items()}] + [self.hop(act, w)[0] for w in (1, 2, 3)]
             act = {t: torch.cat([kid[t] for kid in kids]) for t in kids[0]}
             first = torch.cat([first[pick] if hops else torch.full((1,), w) for w in range(4)])
             came = [(rooms[j], w) for w in range(4) for j in keep]
@@ -411,12 +423,16 @@ def main() -> None:
     p.add_argument("--depth", type=int, default=24, help="how many hops a thought may go")
     p.add_argument("--budget", type=int, default=256, help="how many rooms a thought may think of")
     p.add_argument("--slack", type=int, default=0, help="bits of the wanted look a thought may get wrong")
+    p.add_argument("--mumble", type=float, default=0.0,
+                   help="by hand: a copy that says its room more quietly than this is not followed")
+    p.add_argument("--imagery", action="store_true",
+                   help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--seed", type=int, default=90_000)
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     shape = Land(a.side, a.walls, a.trees, a.ticks)
-    think = {"depth": a.depth, "budget": a.budget, "slack": a.slack}
+    think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
@@ -426,7 +442,8 @@ def main() -> None:
             print(show(arm, row))
         with open(f"runs/tissue/world{shape.side}.yardsticks{pilot}.json", "w") as f:
             json.dump(res, f)
-    tag = f".world{shape.side}.{a.arm}" + (f".slack{a.slack}" if a.slack else "") + pilot
+    tag = (f".world{shape.side}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
+           + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "") + pilot)
     for path in a.genomes:
         res = {}
         for m in a.sizes:

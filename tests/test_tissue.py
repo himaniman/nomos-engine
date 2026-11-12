@@ -809,6 +809,14 @@ def test_a_brain_lives_in_a_land_and_a_thought_leaves_it_as_it_was():
     numb = world.Mind(genome.grow(16), gen(2), numb=True, budget=32)
     world.live(numb, looks, nxt, trees, start, 40, gen(3), fruits=5)
     assert numb.body.bank.shape[1] == 1
+    # the two switches of a thought, both by hand and both off unless asked for
+    for switch in ({"imagery": True}, {"mumble": 1.0}):
+        mind = world.Mind(genome.grow(16), gen(2), budget=32, **switch)
+        once = world.live(mind, looks, nxt, trees, start, 40, gen(3), fruits=5)
+        mind = world.Mind(genome.grow(16), gen(2), budget=32, **switch)
+        assert world.live(mind, looks, nxt, trees, start, 40, gen(3), fruits=5)["meals"] == once["meals"]
+    deaf = world.Mind(genome.grow(16), gen(2), budget=32, mumble=1e9)     # every copy mumbles: no road, ever
+    assert world.live(deaf, looks, nxt, trees, start, 40, gen(3), fruits=5)["planned"] <= life["planned"]
 
 
 @torch.no_grad()

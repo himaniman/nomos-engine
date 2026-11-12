@@ -5496,3 +5496,49 @@ By hand still on the ring: that sleep cells exist, one to eight interneurons, wh
 and that they speak within the tick; the scaffold during the search; the index, the latch, the
 rule of places, the rule of growth. Found: the cell's rule and, on two lineages, when a sleep
 cell says "asleep".
+
+## 2026-11-12 (19:00) — a look at why a long thought fails: the road is in the wires, the thought runs out of the rooms I allowed it
+
+`python -m tissue.world GENOME --why --side 8`: after a life (four of the exam's lands, 256
+cells) a copy of the grown brain is carried into every room and asked for a road to every tree,
+2520 pairs a lineage. Shares, by the shortest road between the room and the tree:
+
+| lineage 0 | 1-2 steps | 3-4 | 5-8 | 9+ |
+|---|---|---|---|---|
+| a road through ways the body has gone | 1.00 | 1.00 | 1.00 | 1.00 |
+| a road on the brain's own map, a hop at a time | 0.99 | 1.00 | 0.99 | 1.00 |
+| the thought finds a road (first way on a shortest road) | 1.00 (1.00) | 1.00 (1.00) | 0.93 (0.89) | 0.70 (0.66) |
+| none: the limit of 256 rooms | 0 | 0 | 0.07 | 0.30 |
+| allowed 4096 rooms | 1.00 (1.00) | 1.00 (1.00) | 1.00 (0.93) | 1.00 (0.92) |
+| shown what it says, 256 rooms | 1.00 (1.00) | 1.00 (0.99) | 0.94 (0.84) | 0.79 (0.73) |
+| both | 1.00 (0.99) | 1.00 (0.99) | 1.00 (0.88) | 1.00 (0.88) |
+
+| lineage 4 | 1-2 steps | 3-4 | 5-8 | 9+ |
+|---|---|---|---|---|
+| a road through ways the body has gone | 0.98 | 1.00 | 1.00 | 0.95 |
+| a road on the brain's own map, a hop at a time | 0.91 | 0.86 | 0.79 | 0.72 |
+| the thought finds a road (first way on a shortest road) | 0.88 (0.86) | 0.67 (0.64) | 0.40 (0.32) | 0.22 (0.15) |
+| none: the limit of 256 rooms | 0.12 | 0.33 | 0.60 | 0.78 |
+| allowed 4096 rooms | 0.97 (0.90) | 0.90 (0.76) | 0.88 (0.60) | 0.91 (0.55) |
+| shown what it says, 256 rooms | 0.94 (0.88) | 0.91 (0.83) | 0.69 (0.57) | 0.53 (0.40) |
+| both | 0.98 (0.90) | 0.99 (0.88) | 0.99 (0.75) | 0.95 (0.65) |
+
+No thought ever ended with nothing left to think of: every failure is the limit of rooms.
+
+- **The depth of a thought that bound exam 6 is my dial.** 256 rooms a thought was set on a
+  pilot at side 6 with lineage 0, where 512 bought nothing, and carried to bigger lands and
+  weaker lineages unexamined. The road is in the wires, in what the body walked and in what
+  the brain says a hop at a time; the thought spends its rooms on copies that say rooms which
+  are not there, and stops.
+- **A weak lineage is weak twice.** Lineage 4's map taken a hop at a time has a road for
+  0.72-0.91 of the pairs where lineage 0's has one for all, and its thought wastes more: with
+  the same 256 rooms it finds a third of what lineage 0 finds at 5 steps and more.
+- **Showing a copy what it says** helps the weak lineage (0.15 to 0.40 at 9+, 0.55 to 0.65
+  with the wide limit) and costs the strong one a little (0.92 to 0.88): a thought that starts
+  each hop from a sight does not drift, but a wrong sight is then held to.
+- My two pilots after exam 6 guessed at cures before this look; one did nothing and one did
+  harm. METHOD: look at what fails before mending it; and a dial set where it does not bind
+  says nothing about where it does.
+
+Step 6b (bars T1-T3 in the note): the same exam at side 8 with 1024 and 4096 rooms a thought,
+and with imagery beside it; fifteen runs on the VM.

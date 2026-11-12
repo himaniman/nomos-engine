@@ -96,8 +96,9 @@ tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded in
                   drift.py, alone.py, where.py looks inside a life (loudness and pattern
                   through a closing; left alone; who speaks and learns by distance from
                   the place) · grow.py exam 3 (growth in mid-life; a brain told nothing)
-                  · imitate.py a cell taught its own gate. Design, ladder, rules, bars:
-                  docs/tissue-design.md
+                  · imitate.py a cell taught its own gate · look.py a PICTURE of one life
+                  (cells of the ring by tick, growth, what is said in the dark; out/tissue/).
+                  Design, ladder, rules, bars: docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
                   sensorium (properties, never labels) · brain.py the sheet +

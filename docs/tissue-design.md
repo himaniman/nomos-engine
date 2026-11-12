@@ -1348,6 +1348,94 @@ the gate is found on three lineages or more; the rest stay brains with everyone 
 stop on an endless slope, since they start where step 2d ended. I have been wrong about
 every search on this ladder so far, each time on the hopeful side.
 
+## Exam 4: forks, the road to a world (`tissue/fork.py`, from 2026-11-12)
+
+What the brain can do so far is say what follows what when only one thing can follow. To
+act in a world it needs three more things, in this order: FORKS (what comes next depends
+on what the body does), a CHOICE (the brain says the way itself), a GOAL (it chooses the
+way that leads to a wanted thing, by walking its learned links in the dark before it
+acts: thinking as planning on a map that was learned).
+
+The world of exam 4 is rooms, each a distinct item, with `ways` ways out of each; a way
+out of a room always leads to the same room (each way is a shuffle of the rooms, the
+first one a single round through them all). The eyes see the room's item and may close.
+The body feels the way it has just gone and never stops feeling it. Study: the body is
+led out of every room by every way, twice (a round that takes every link once, so no
+jump). Test: a jump, three rooms seen, then the eyes close and the body walks on by ways
+drawn at random; hop j is right only if the brain went on by itself AND the way its body
+went. K = links = rooms x ways. One way is one loop of exam 2. Yardsticks: a perfect
+memory is right at every hop; a memory that does not feel the body is right at 0.75,
+0.63, 0.57, 0.55 over four hops with two ways.
+
+### Step 4a: the body's ways, asked first with no search. Bars written before the run
+
+Three ways for the body's sense to reach the brain, the genomes those of step 1d
+(`runs/tissue/hold/`, wired from every cell, no places), nothing searched:
+
+- `cells`: the way gone sits on sensory cells of its own beside the eyes'. No mechanism;
+  what an interneuron makes of them is up to a rule that never met them.
+- `dendrites`, BY HAND: an interneuron has one dendrite from the other interneurons per
+  way, and on a tick only the dendrite of the way just gone is heard and learns. The cell
+  and its rule are untouched; it reads "my dendrite" and never knows there are several.
+  (Why not groups of cells per way: a room's code would then depend on the way it was
+  entered by, and a link would have to be learnt once for every pair of ways, in and out.)
+- `numb`: the control.
+
+Seen before writing the bars (lineage 0 only, 64 and 256 cells): with `cells` hop 1 is at
+0.58-0.60, under the numb brain's 0.77-0.82 (the body's cells speak in the dark, where
+this rule has only known silence). With `dendrites` K90 at hop 1 is 46 and 217 links with
+one way, 98 and 422 with two, and at the top of the grid with four.
+
+Bars, for the five lineages at 64 to 512 cells (128 and up never searched), sixteen lives:
+- **F1, the dark walk goes where the body goes.** `dendrites`, two ways, 256 cells: K90 at
+  hop 1 at least 300 links and at hop 4 at least 150, on at least four lineages; `numb`
+  holds nothing at any load (hop 1 under 0.9).
+- **F2, growth pays.** K90 at hop 1 at 512 cells at least 1.8 times that at 256, on at
+  least four lineages.
+- **F3, a way is paid for in wires, not cells.** At 256 cells the links held with two ways
+  are at least 1.7 times those with one, and with four at least 3 times.
+
+Prediction: all three met on all five lineages. It is one lineage and two sizes that I
+have seen, so the doubt is lineage 3, the weakest on every exam, and 512 cells.
+
+## Exam 5: a goal (`tissue/seek.py`)
+
+The forked world, studied as in exam 4. Then, sixteen times in the same unbroken life,
+the world jumps somewhere, the eyes see the room and a WANTED room is named, 1 to `depth`
+steps away by the shortest road. The brain walks, eyes open, until it stands there or has
+taken 2 x `depth` + 2 steps.
+
+### Step 5a: thinking by hand on a map that was learned. Bars written before any run
+
+All the brain knows of the world is in its wires, and the only way to ask them is to walk
+them in the dark. BY HAND: before each step a copy of the brain is walked with its eyes
+closed along every string of `depth` ways, its body's sense (the hand-made dendrites of
+4a) fed as if it had gone them. A string along which the copy says the wanted room, all
+bits but one at most, is a plan; the shortest wins and its first way is taken by the real
+body; no plan, a way at random. What a copy learns in thought is thrown away. The map is
+the brain's own: the rule found for loops and the wires of this life. The search through
+it, the holding of the wanted room, the comparing and the choosing are mine. Nothing is
+searched. This asks one thing: is the map a brain learns good enough to plan on?
+
+The genomes of step 1d, two ways, thoughts 4 deep, sixteen lives of sixteen wanted rooms.
+`straight`: the share of wanted rooms reached by a shortest road. A perfect map with the
+same thinking goes straight every time.
+
+- **G1, it plans on its own map.** 32 rooms (64 links), 256 cells: straight at least 0.9
+  at every distance from 1 to 4, on at least four lineages.
+- **G2, thinking is what does it.** The same brain not thinking (`blind`, ways at random)
+  and the same thinking in a brain that does not feel its body (`numb`): straight under
+  0.5 at distance 3 and 4.
+- **G3, a thought is only as good as the map.** 128 rooms (256 links) at 256 cells, beyond
+  what that brain walks four hops deep: straight at distance 4 under 0.7.
+- **G4, and a bigger brain has the better map.** The same 128 rooms at 512 cells: straight
+  at least 0.9 at every distance, on at least four lineages.
+
+Prediction: G1, G2 and G4 met; G3 met, with distance 1 still above 0.9 in the crowded
+brain (a thought one hop deep needs only the first hop). The one I am least sure of is
+G1 at distance 4: a string of four ways is right only if four hops in a row are, and the
+wanted room has to be said to within a bit.
+
 ## Where the ladder stands
 
 | rung | state |

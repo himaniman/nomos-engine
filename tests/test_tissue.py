@@ -535,6 +535,114 @@ def test_a_watched_life_is_the_same_life_and_a_picture_of_it_can_be_drawn():
     assert img.size[0] > 1000 and img.size[1] > 500
 
 
+def test_a_forked_world_hangs_together_and_a_round_takes_every_way_out_of_every_room_once():
+    from tissue import fork
+    walk = fork.Walk(rooms=9, ways=3, laps=2, blinks=4, open=3, closed=4)
+    items, nxt = fork.world(12, walk, 5, gen(1))
+    assert items.shape == (5, 9, 12) and nxt.shape == (5, 9, 3)
+    for b in range(5):
+        assert len({tuple(x.tolist()) for x in items[b]}) == 9          # distinct rooms
+        for w in range(3):
+            assert sorted(nxt[b, :, w].tolist()) == list(range(9))      # a way is a shuffle
+        room, seen = 0, set()                                           # way 0 is one round of all
+        for _ in range(9):
+            seen.add(room)
+            room = int(nxt[b, room, 0])
+        assert room == 0 and len(seen) == 9
+        steps, room, taken = fork.tour(nxt[b], 4, gen(2)), 4, set()
+        for to, way in steps:
+            assert int(nxt[b, room, way]) == to
+            taken.add((room, way))
+            room = to
+        assert len(steps) == len(taken) == 27 and room == 4            # every link once, and home
+    ticks = fork.script(nxt, walk, gen(3))
+    assert len(ticks) == 1 + 2 * 27 + 4 * 7
+    assert [k for k, _, _, _ in ticks[-7:]] == ["echo"] * 3 + ["closed"] * 4
+    assert all(seen == (kind != "closed") for kind, seen, _, _ in ticks)
+    assert int(ticks[0][3].max()) == -1 and int(ticks[-7][3].max()) == -1       # carried: no way felt
+    for (_, _, was, _), (_, _, room, way) in zip(ticks[-7:], ticks[-6:]):
+        assert torch.equal(nxt[torch.arange(5), was, way], room)        # the body goes where the way leads
+    same = fork.script(nxt, walk, gen(3))
+    assert all(torch.equal(a[2], b[2]) and torch.equal(a[3], b[3]) for a, b in zip(ticks, same))
+
+
+def test_a_memory_that_does_not_feel_its_body_is_right_about_one_hop_in_as_many_as_there_are_ways():
+    from tissue import fork
+    for ways, hop1 in ((1, 1.0), (2, 0.75), (4, 0.625)):
+        walk = fork.Walk(rooms=64, ways=ways, blinks=64)
+        items, nxt = fork.world(12, walk, 8, gen(4))
+        hops = fork.by_hop(fork.numb(items, nxt, walk, gen(5)), walk)
+        assert hops[0] == pytest.approx(hop1, abs=0.04)
+        assert ways == 1 or hops[-1] < hops[0] - 0.05
+
+
+@torch.no_grad()
+def test_a_walk_is_lived_without_a_reset_and_a_dendrite_per_way_is_the_bodys_by_hand():
+    from tissue import fork
+    torch.manual_seed(0)
+    genome = Tissue(RUNG1, ITEM)
+    walk = fork.Walk(rooms=6, ways=2, blinks=3)
+    items, nxt = fork.world(12, walk, 4, gen(6))
+    out = fork.run_life(genome.grow(32), items, nxt, walk, gen(7), body="dendrites")
+    assert out["closed"][0].shape == (4, 3 * 4, 12) and out["echo"][0].shape == (4, 3 * 3, 12)
+    again = fork.run_life(genome.grow(32), items, nxt, walk, gen(7), body="dendrites")
+    assert torch.equal(out["closed"][0], again["closed"][0])            # a pure function
+    numb = fork.run_life(genome.grow(32), items, nxt, walk, gen(7), body="numb")
+    assert torch.equal(out["closed"][1], numb["closed"][1])             # the same world for any body
+    assert not torch.equal(out["closed"][0], numb["closed"][0])
+    # with one way a dendrite per way is the brain as it always was
+    one = fork.Walk(rooms=6, ways=1, blinks=3)
+    items, nxt = fork.world(12, one, 4, gen(8))
+    a = fork.run_life(genome.grow(32), items, nxt, one, gen(9), body="dendrites")["closed"][0]
+    b = fork.run_life(genome.grow(32), items, nxt, one, gen(9), body="numb")["closed"][0]
+    assert torch.allclose(a, b, atol=1e-2) and not torch.equal(a, b)    # but for what a jump teaches
+    # the body on sensory cells of its own: the genome is the same, the brain has more of them
+    felt = fork.embodied(Tissue(RUNG1, ITEM), 2)
+    assert felt.grow(32).n["S"] == 14 and sum(p.numel() for p in felt.parameters()) == sum(
+        p.numel() for p in genome.parameters())
+    items, nxt = fork.world(12, walk, 4, gen(6))
+    assert fork.run_life(felt.grow(32), items, nxt, walk, gen(7), body="cells")["closed"][0].shape == (4, 12, 12)
+    with pytest.raises(ValueError):
+        fork.run_life(genome.grow(32), items, nxt, walk, gen(7), body="legs")
+
+
+@torch.no_grad()
+def test_a_wanted_room_is_sought_by_walking_a_copy_in_the_dark_and_the_brain_is_left_as_it_was():
+    from tissue import fork, seek
+    torch.manual_seed(0)
+    walk = fork.Walk(rooms=8, ways=2)
+    items, nxt = fork.world(12, walk, 3, gen(1))
+    far = seek.distances(nxt, 3)
+    for b in range(3):                                      # against a plain search, room by room
+        reach, at = {0: 0}, [0]
+        for k in range(1, 4):
+            at = [int(nxt[b, r, w]) for r in at for w in range(2)]
+            for r in at:
+                reach.setdefault(r, k)
+        assert [int(x) for x in far[b, 0]] == [reach.get(r, 4) for r in range(8)]
+    brain = Tissue(RUNG1, ITEM).grow(32)
+    state = brain.born(3, gen(2))
+    body = fork.Dendrites(brain, state, 2)
+    for _, _, room, way in fork.script(nxt, fork.Walk(8, 2, blinks=0), gen(3)):
+        state, _ = body.tick(brain, state, items[torch.arange(3), room], way, torch.zeros(3, 12), 0.0, 1.0)
+    bank, wires = body.bank.clone(), {i: w.clone() for i, w in state[1].items()}
+    said = seek.imagine(brain, body, state, torch.tensor([0, 1, 1]), 12)
+    assert said.shape == (3, 3, 12)
+    assert torch.equal(bank, body.bank) and all(torch.equal(w, state[1][i]) for i, w in wires.items())
+    assert not torch.equal(said, seek.imagine(brain, body, state, torch.tensor([1, 1, 1]), 12))
+    # a life of wanted rooms: every arm lives the same worlds, and a life is a pure function
+    lived = {arm: seek.seek(brain, items, nxt, walk, gen(4), depth=3, trials=4, arm=arm) for arm in seek.ARMS}
+    assert all(r["far"].shape == (3, 4) and int(r["far"].min()) >= 1 and int(r["far"].max()) <= 3
+               for r in lived.values())
+    assert torch.equal(lived["thinks"]["far"][:, 0], lived["blind"]["far"][:, 0])
+    assert not lived["blind"]["plan"].any()                 # a brain that does not think makes no plan
+    assert int(lived["blind"]["steps"].min()) >= 1 and int(lived["blind"]["steps"].max()) <= 9
+    again = seek.seek(brain, items, nxt, walk, gen(4), depth=3, trials=4, arm="thinks")
+    assert all(torch.equal(lived["thinks"][k], again[k]) for k in again)
+    table = seek.by_distance(lived["blind"], 3, 8)
+    assert sum(row["n"] for row in table.values()) == 12
+
+
 SLEEPY = replace(RUNG1, fan=6, reach=4, field=3, spoken=True, sleep=4)
 
 

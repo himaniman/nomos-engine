@@ -211,9 +211,70 @@ def draw(rows: list, name: str, loops: int, batches: int, closed: int = 8, zoom:
     return img
 
 
+def draw_thought(t: dict, name: str, cells: int) -> Image.Image:
+    """One thought of exam 5: every string of ways walked in the dark by a copy of the brain,
+    and how near what the copy says comes to the wanted room."""
+    strings, says, true, items = t["strings"], t["says"], t["true"], t["items"]
+    n, depth, bits = says.shape
+    want = items[t["want"]]
+    agree = ((says > 0) == (want > 0)).sum(-1)                      # bits of the wanted room said
+    knows = ((says > 0) == (items[true] > 0)).sum(-1) >= bits - 1   # the copy says the room really there
+    f_title, f_head, f_text, f_small = font(46, True), font(32, True), font(27), font(23)
+    x0, y0, cw, ch = 330, 300, 190, 46
+    img = Image.new("RGB", (x0 + depth * cw + 700, y0 + n * ch + 150), SURFACE)
+    g = ImageDraw.Draw(img)
+    g.text((32, 30), "One thought: walks in the dark toward a wanted room", font=f_title, fill=INK)
+    g.text((32, 96), f"{name}, {cells} cells; a world of {len(items)} rooms with {int(strings.max()) + 1} ways out"
+                     f" of each, learned in this life. The wanted room is {depth} steps away.", font=f_text, fill=INK2)
+    g.text((32, 132), "A copy of the brain walks every string of ways with its eyes closed. A number: how"
+                      f" many of the wanted room's {bits} bits the copy says after that hop.", font=f_text, fill=INK2)
+    g.text((32, 216), "the ways tried", font=f_head, fill=INK)
+    for h in range(depth):
+        g.text((x0 + h * cw + cw // 2, 236), f"hop {h + 1}", font=f_text, fill=INK2, anchor="mm")
+    g.text((x0 + depth * cw + 30, 236), "where that string really leads", font=f_text, fill=INK2, anchor="lm")
+    plans = [(int((agree[s] >= bits - 1).float().argmax()) if bool((agree[s] >= bits - 1).any()) else depth + 1)
+             for s in range(n)]
+    best = min(range(n), key=lambda s: plans[s])
+    for s in range(n):
+        y = y0 + s * ch
+        chosen = plans[s] <= depth and s == best
+        g.text((x0 - 24, y + ch // 2), "  ".join("ABCDEFGH"[w] for w in strings[s].tolist()), font=f_text,
+               fill=INK if chosen else INK2, anchor="rm")
+        for h in range(depth):
+            v = float(agree[s, h])
+            box = [x0 + h * cw + 2, y + 2, x0 + (h + 1) * cw - 3, y + ch - 3]
+            fill = tuple(ramp(np.array([[(v - bits / 2) / (bits / 2)]]))[0, 0].tolist())
+            g.rectangle(box, fill=fill)
+            g.text(((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), f"{int(v)}", font=f_small,
+                   fill=PLANE if v >= bits - 2 else INK2, anchor="mm")
+            if not bool(knows[s, h]):               # the copy is lost: it says a room that is not there
+                g.rectangle([box[2] - 14, box[1], box[2], box[1] + 14], fill=WRONG)
+            if v >= bits - 1:
+                g.rectangle(box, outline=INK, width=3)
+        reach = [h + 1 for h in range(depth) if int(true[s, h]) == t["want"]]
+        note = f"the wanted room at hop {reach[0]}" if reach else "elsewhere"
+        if chosen:
+            note += "   <- the plan: its first way is taken"
+        g.text((x0 + depth * cw + 30, y + ch // 2), note, font=f_small,
+               fill=INK if reach else MUTED, anchor="lm")
+    y = y0 + n * ch + 30
+    g.rectangle([x0, y, x0 + 26, y + 26], outline=INK, width=3)
+    g.text((x0 + 40, y + 13), "the copy says the wanted room (all bits but one at most)", font=f_small,
+           fill=INK2, anchor="lm")
+    g.rectangle([x0, y + 44, x0 + 14, y + 58], fill=WRONG)
+    g.text((x0 + 40, y + 51), "the copy is lost: what it says is not the room that string leads to",
+           font=f_small, fill=INK2, anchor="lm")
+    return img
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("genome")
+    p.add_argument("--thought", action="store_true",
+                   help="draw one thought of exam 5 instead: every string of ways walked in the dark")
+    p.add_argument("--rooms", type=int, default=32, help="--thought: rooms in the world")
+    p.add_argument("--depth", type=int, default=4, help="--thought: how far the wanted room lies")
+    p.add_argument("--cells", type=int, default=256, help="--thought: the size of the brain")
     p.add_argument("--loops", type=int, default=24, help="loops in the world, eight items each")
     p.add_argument("--batches", type=int, default=8)
     p.add_argument("--small", type=int, default=256, help="cells the brain is born with")
@@ -228,8 +289,20 @@ def main() -> None:
     a = p.parse_args()
     torch.set_num_threads(4)
     switches = {k: v for k, v in (("fan", a.fan), ("field", a.field), ("lean", a.lean)) if v is not None}
-    rows, res = record(a.genome, a.loops, a.batches, a.small, a.big, a.closed, a.seed, **switches)
     name = os.path.splitext(os.path.basename(a.genome))[0]
+    os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
+    if a.thought:
+        from tissue import fork, seek
+        tissue, task, _ = load(a.genome, **switches)
+        gen = torch.Generator().manual_seed(a.seed)
+        walk = fork.Walk(rooms=a.rooms, ways=2)
+        items, nxt = fork.world(task.d_out, walk, 1, gen)
+        with torch.no_grad():
+            t = seek.thought(tissue.grow(a.cells), items, nxt, walk, gen, a.depth)
+        draw_thought(t, name, a.cells).save(a.out)
+        print(f"{a.genome}: one thought, {a.rooms} rooms, {a.depth} deep -> {a.out}")
+        return
+    rows, res = record(a.genome, a.loops, a.batches, a.small, a.big, a.closed, a.seed, **switches)
     img = draw(rows, name, a.loops, a.batches, a.closed, a.zoom)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     img.save(a.out)

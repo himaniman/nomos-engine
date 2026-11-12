@@ -1456,6 +1456,28 @@ it is right, and what is said there is learnt as well. I expect the first wanted
 near 5a's figures and a slide after that, to under 0.8 at distance 4 in the second half.
 The stream said idleness costs nothing over 64 ticks; this is fifty times that.
 
+**Outcomes of 5a and 5b (journal 2026-11-12, 13:10 and after).** G1 and G2 met on all five
+lineages (thinks 1.00 / 0.94-0.97 / 0.92-0.98 / 0.92-0.96 at distances 1 to 4; blind 0.53 /
+0.28 / 0.17 / 0.15; numb the same as blind). G3 met on all five (128 rooms at 256 cells:
+0.21-0.48 at distance 4), though distance 1 is above 0.9 on three lineages only. **G4
+missed**, my prediction wrong: at 512 cells the same world is walked straight 0.92-1.00 /
+0.79-1.00 / 0.53-0.97 / 0.43-0.94, at least 0.9 at every distance on one lineage of five.
+The bigger brain does have the better map (at distance 4 from 0.21-0.48 to 0.43-0.94) but
+256 links are too many for 512 cells to be walked four hops deep to within a bit. **G5
+missed** as predicted, and by more: 0.40-0.59 at distance 4, the last eight wanted rooms
+worse than the first eight, and the first eight already well under the copy's figures.
+
+### Step 5c: which half of thinking in one's own head does the harm. Prediction first
+
+Two arms between `thinks` and `ponders`, 32 rooms, 256 cells, five lineages, no bar:
+`ponders-still` (the brain walks in thought itself and opens its eyes again, but its
+wires are still while it thinks) and `thinks-learns` (a copy walks, but what its wires
+learn in thought is kept). Prediction: the learning does the harm. `ponders-still` within
+0.05 of `thinks` at every distance (one look at the room is enough to come back), and
+`thinks-learns` as bad as `ponders`. If so, what the road needs next is a rule that does
+not learn from its own thoughts as it learns from its eyes, and the cell already hears
+whether the eyes are open.
+
 ## Where the ladder stands
 
 | rung | state |

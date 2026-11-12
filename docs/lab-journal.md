@@ -5151,3 +5151,29 @@ the twin rooms and none was the map. Lineage 3, the weakest, goes 1.00 / 0.99 / 
 makes a plan for only 0.82 of the rooms four steps away: its dark walk gets a bit wrong often
 enough that an exact comparison turns good plans down. The slack is a dial of mine; the bars
 were set and met at one bit, and it stays there.
+
+## 2026-11-12 (13:15) — exam 5 in a crowded world: a thought is as good as the map, and a bigger brain has the better map, though not as good as I said
+
+The two bars of step 5a that were still running. The same thinking by hand, the five genomes of
+1d, a world of 128 rooms with two ways (256 links); the share of wanted rooms reached by a
+shortest road, by distance 1 / 2 / 3 / 4:
+
+| lineage | 256 cells | 512 cells |
+|---|---|---|
+| 0 | 0.90 / 0.81 / 0.66 / 0.48 | 1.00 / 0.96 / 0.91 / 0.86 |
+| 1 | 0.92 / 0.77 / 0.67 / 0.42 | 0.98 / 1.00 / 0.91 / 0.88 |
+| 2 | 0.96 / 0.84 / 0.72 / 0.48 | 0.98 / 1.00 / 0.97 / 0.94 |
+| 3 | 0.77 / 0.59 / 0.45 / 0.21 | 0.92 / 0.79 / 0.53 / 0.43 |
+| 4 | 0.90 / 0.75 / 0.57 / 0.44 | 1.00 / 0.90 / 0.84 / 0.80 |
+
+- **G3 (a thought is only as good as the map; under 0.7 at distance 4 at 256 cells): met** on all
+  five, 0.21-0.48. I had also said distance 1 would stay above 0.9 there: true of three lineages.
+- **G4 (the same world at 512 cells, at least 0.9 at every distance on four lineages): missed.**
+  One lineage of five gets there. My prediction was wrong. Growth does what it should in kind:
+  at distance 4 every lineage about doubles (0.21-0.48 to 0.43-0.94), with 512 cells never
+  searched. But 256 links are more than 512 cells walk four hops deep to within a bit; lineage 3,
+  the weakest on every exam of this ladder, is the weakest here too.
+
+Reading it with the rest of the day: the limit on thinking is the map, hop by hop, and the map
+is what grows with the brain. Step 5c (which half of thinking in its own head wears the map out)
+is running; the prediction is in the note.

@@ -626,10 +626,14 @@ def test_a_wanted_room_is_sought_by_walking_a_copy_in_the_dark_and_the_brain_is_
     for _, _, room, way in fork.script(nxt, fork.Walk(8, 2, blinks=0), gen(3)):
         state, _ = body.tick(brain, state, items[torch.arange(3), room], way, torch.zeros(3, 12), 0.0, 1.0)
     bank, wires = body.bank.clone(), {i: w.clone() for i, w in state[1].items()}
-    said = seek.imagine(brain, body, state, torch.tensor([0, 1, 1]), 12)
+    _, said = seek.imagine(brain, body, state, torch.tensor([0, 1, 1]), 12)
     assert said.shape == (3, 3, 12)
     assert torch.equal(bank, body.bank) and all(torch.equal(w, state[1][i]) for i, w in wires.items())
-    assert not torch.equal(said, seek.imagine(brain, body, state, torch.tensor([1, 1, 1]), 12))
+    assert not torch.equal(said, seek.imagine(brain, body, state, torch.tensor([1, 1, 1]), 12)[1])
+    kept = fork.Dendrites(brain, state, 2)                  # thinking with no copy: what it learns stays
+    kept.bank = body.bank.clone()
+    seek.imagine(brain, kept, state, torch.tensor([0, 1, 1]), 12, keep=True)
+    assert not torch.equal(kept.bank, bank)
     # a life of wanted rooms: every arm lives the same worlds, and a life is a pure function
     lived = {arm: seek.seek(brain, items, nxt, walk, gen(4), depth=3, trials=4, arm=arm) for arm in seek.ARMS}
     assert all(r["far"].shape == (3, 4) and int(r["far"].min()) >= 1 and int(r["far"].max()) <= 3

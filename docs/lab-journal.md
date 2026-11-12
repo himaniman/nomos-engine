@@ -5074,3 +5074,73 @@ Running on the VM (commit f058c15): the by-hand arm at every size on five lineag
 control; five searches with the hand gate as a scaffold taken away over 3000 steps of 4000 (the
 sleep cell born saying "awake" to all); five with no hand gate from the first step. Bars W0-W4
 are in the note. About three and a half hours a search.
+
+## 2026-11-12 (13:10) — the road to a world: forks, and a goal. A brain plans on a map it learned; thinking in its own head wears the map out
+
+The user's aim is a brain that acts in a world. What it could do so far is say what follows what
+when only one thing can follow. Two exams built today, by hand first, nothing searched; the
+genomes are those of step 1d (`runs/tissue/hold/`, wired from every cell, no places).
+
+**Exam 4, forks (`tissue/fork.py`).** Rooms, each a distinct item, with `ways` ways out of each;
+a way out of a room always leads to the same room. The eyes see the room and may close; the body
+feels the way it has just gone and never stops feeling it. Study: the body is led out of every
+room by every way, twice (a round that takes every link once). Test: a jump, three rooms seen,
+then the eyes close and the body walks on by ways drawn at random. Hop j is right only if the
+brain went on by itself and the way its body went. A memory that does not feel the body is right
+at 0.75, 0.63, 0.57, 0.55 over four hops with two ways.
+
+Step 4a asked three things of the found genomes, bars F1-F3 first:
+
+- The way gone on sensory cells of its own (`--body cells`), no mechanism: K90 is 0 at every size
+  on all five lineages, hop 1 at 0.30-0.80, no better than a numb brain (0.76-0.84) and on two
+  lineages worse. The body's cells speak in the dark, where this rule has only known silence.
+- BY HAND, a dendrite per way (`--body dendrites`): an interneuron has one dendrite from the other
+  interneurons per way and on a tick only the dendrite of the way just gone is heard and learns.
+  The cell and its rule are untouched. Lineage 0, no search: K90 at hop 1 of 46 and 217 links at
+  64 and 256 cells with one way, 98 and 422 with two, and at the top of the grid with four (128
+  and 512); at hop 4 with two ways 57 and 206. A way is paid for in wires, not in cells.
+- `--body numb`, the control: K90 0 at every size on all five.
+
+The five lineages at 64 to 512 cells for F1-F3 are still running on the desktop (512 cells wired
+from every cell is slow); the page after this one has them.
+
+**Exam 5, a goal (`tissue/seek.py`).** The same world, studied the same way. Then sixteen times in
+the same life the world jumps somewhere, the eyes see the room and a wanted room is named, 1 to 4
+steps away by the shortest road; the brain walks, eyes open, until it is there or has taken ten
+steps. THE THINKING IS BY HAND (step 5a): before each step a copy of the brain is walked with its
+eyes closed along every string of four ways, its body's sense fed as if it had gone them. A
+string along which the copy says the wanted room (all bits but one at most) is a plan; the
+shortest wins and its first way is taken. The map is the brain's own: the rule found for loops
+and the wires of this life. The search, the holding of the wanted room, the comparing and the
+choosing are mine. 32 rooms, two ways, 256 cells, sixteen lives; the share of wanted rooms reached
+by a shortest road, by distance:
+
+| five lineages | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| thinks | 1.00 | 0.94-0.97 | 0.92-0.98 | 0.92-0.96 |
+| thinks, but does not feel its body (`numb`) | 0.53-0.58 | 0.26-0.33 | 0.14-0.16 | 0.11-0.12 |
+| does not think (`blind`, ways at random) | 0.53 | 0.28 | 0.17 | 0.15 |
+| thinks with no copy and keeps what thought taught it (`ponders`) | 0.75-0.91 | 0.66-0.82 | 0.45-0.67 | 0.40-0.59 |
+
+- **G1 (plans on its own map, at least 0.9 at every distance): met on all five lineages.**
+- **G2 (thinking is what does it): met.** Without thinking, or thinking on a map that does not
+  hear the body, 0.11-0.17 at distances 3 and 4.
+- G3 and G4 (a crowded world of 128 rooms at 256 and at 512 cells): running.
+- A few of the misses are mine and not the map's: a comparison that allows one bit takes a room
+  one bit away from the wanted one for it, and such twins exist in a world of 32 random items
+  (the plan made at distance 3 is 2.9 hops long on every lineage, the worlds being the same).
+
+**Step 5b, thinking with no copy.** A copy whose learning is thrown away is something no brain
+has. `ponders`: the brain itself closes its eyes, walks a string in thought, opens them on the
+room it is in, and so for every string; what its wires learn in the dark stays. That is 96 ticks
+of thought a step, several thousand in a life, on a map studied for 129.
+
+- **G5 (thinking does not wear the map out): missed, as I predicted, and by more.** Straight
+  falls to 0.40-0.59 at distance 4, and within a life from 0.45-0.72 over the first eight wanted
+  rooms to 0.31-0.57 over the last eight. Even the first half is well under the copy's figures.
+  It is still far above a brain that does not think.
+
+So the brain has a map good enough to plan on, at sizes its search never saw, in a world of a kind
+its search never saw; and it cannot yet think in its own head without spoiling that map. Which
+half does the harm, the learning in thought or the state a thought leaves behind, is asked next
+(`ponders-still`, `thinks-learns`). Pictures: `python -m tissue.look GENOME.pt --thought`.

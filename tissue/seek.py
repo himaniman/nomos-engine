@@ -19,7 +19,13 @@ a way at random. What a copy learns in thought is thrown away. So the map is the
 the wanted room, the comparing and the choosing are mine.
 
 Arms: `thinks` as above; `numb`, the same thinking in a brain that does not feel its body
-(one dendrite whatever the way); `blind`, no thinking, a way at random at every step.
+(one dendrite whatever the way); `blind`, no thinking, a way at random at every step;
+`ponders`, thinking with no copy: the brain itself closes its eyes, walks a string in
+thought, opens them on the room it is in, and so for every string, and whatever its wires
+learn in thought stays learnt. Sixteen strings four deep are 96 ticks of thought a step.
+Two arms between them say which half of that costs: `ponders-still`, the brain walks in
+thought itself but its wires are still while it does; `thinks-learns`, a copy walks but
+what its wires learn is kept.
 
 Per shortest distance to the wanted room: the share of trials that got there by a shortest
 road (`straight`), the share that got there at all within the limit (`there`), and how
@@ -38,7 +44,7 @@ import torch
 from tissue import fork
 from tissue.train import load
 
-ARMS = ("thinks", "numb", "blind")
+ARMS = ("thinks", "numb", "blind", "ponders", "ponders-still", "thinks-learns")
 
 
 def distances(nxt: torch.Tensor, most: int) -> torch.Tensor:
@@ -55,16 +61,17 @@ def distances(nxt: torch.Tensor, most: int) -> torch.Tensor:
     return far
 
 
-def imagine(brain, body: fork.Dendrites, state, ways: torch.Tensor, bits: int) -> torch.Tensor:
-    """Walk a copy of the brain in the dark along `ways` (hops,), the same string for every
-    life: what it says it would see after each hop, (B, hops, bits). The brain's own state
-    is not touched (a tick makes a new state and nothing is written back)."""
+def imagine(brain, body: fork.Dendrites, state, ways: torch.Tensor, bits: int, keep: bool = False):
+    """Walk the brain in the dark along `ways` (hops,), the same string for every life:
+    (the state it ends in, what it said it would see after each hop, (B, hops, bits)).
+    With `keep` off it is a copy that walks: the state given is not touched (a tick makes a
+    new state) and nothing the dendrites learn in thought is written back."""
     b = state[0]["I"].shape[0]
     silent, said = torch.zeros(b, bits), []
     for way in ways.tolist() + [-1]:            # one more tick: what is said is about the tick before
-        state, out = body.tick(brain, state, silent, torch.full((b,), way), silent, 0.0, 0.0, keep=False)
+        state, out = body.tick(brain, state, silent, torch.full((b,), way), silent, 0.0, 0.0, keep=keep)
         said.append(out)
-    return torch.stack(said[1:], dim=1)
+    return state, torch.stack(said[1:], dim=1)
 
 
 def seek(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen: torch.Generator,
@@ -77,6 +84,7 @@ def seek(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen: to
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
     limit = limit or 2 * depth + 2
+    own, learns = arm in ("ponders", "ponders-still"), arm in ("ponders", "thinks-learns")
     study = fork.script(nxt, fork.Walk(walk.rooms, walk.ways, walk.laps, blinks=0), gen)
     far_all = distances(nxt, depth)
     strings = torch.tensor(list(itertools.product(range(walk.ways), repeat=depth)))
@@ -110,7 +118,11 @@ def seek(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen: to
             if arm != "blind":
                 best = torch.full((b,), depth + 1)
                 for string in strings:
-                    says = imagine(brain, body, state, string, d)
+                    after, says = imagine(brain, body, state, string, d, keep=learns)
+                    state = (after[0] if own else state[0], after[1] if learns else state[1], state[2])
+                    if own:                     # no copy walked: it opens its eyes on the room again
+                        seen_before = False
+                        look(room, torch.full((b,), -1))
                     hit = ((says > 0) == (items[rows, want].unsqueeze(1) > 0)).sum(-1) >= d - 1
                     first = torch.where(hit.any(1), hit.float().argmax(1) + 1, torch.full((b,), depth + 1))
                     better = first < best
@@ -154,7 +166,7 @@ def thought(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen:
     strings = torch.tensor(list(itertools.product(range(walk.ways), repeat=depth)))
     says, true = [], []
     for string in strings:
-        says.append(imagine(brain, body, state, string, d)[0])
+        says.append(imagine(brain, body, state, string, d)[1][0])
         room, road = int(here[0]), []
         for way in string.tolist():
             room = int(nxt[0, room, way])
@@ -164,14 +176,15 @@ def thought(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen:
             "here": int(here[0]), "want": want, "items": items[0]}
 
 
-def by_distance(out: dict, depth: int, limit: int) -> dict:
-    """{distance: {"n", "straight", "there", "plan"}}."""
+def by_distance(out: dict, depth: int, limit: int, trials: slice = slice(None)) -> dict:
+    """{distance: {"n", "straight", "there", "plan", "planned"}} over the wanted rooms `trials`
+    of every life (all of them, or the first few, or the last)."""
     table = {}
     for far in range(1, depth + 1):
-        mask = out["far"] == far
+        mask = out["far"][:, trials] == far
         n = int(mask.sum())
         if n:
-            steps, plan = out["steps"][mask], out["plan"][mask].float()
+            steps, plan = out["steps"][:, trials][mask], out["plan"][:, trials][mask].float()
             table[far] = {"n": n, "straight": float((steps == far).float().mean()),
                           "there": float((steps <= limit).float().mean()),
                           "plan": float(plan[plan > 0].mean()) if bool((plan > 0).any()) else 0.0,
@@ -189,6 +202,9 @@ def examine(path: str, sizes, walk: fork.Walk, depth: int = 4, trials: int = 16,
         with torch.no_grad():
             out = seek(model.grow(m), items, nxt, walk, gen, depth, trials, arm=arm)
         res[m] = by_distance(out, depth, 2 * depth + 2)
+        for half, cols in (("first", slice(0, trials // 2)), ("last", slice(trials // 2, None))):
+            for far, row in by_distance(out, depth, 2 * depth + 2, cols).items():
+                res[m][far][half] = row["straight"]         # does a life of thinking wear the map?
     return res
 
 
@@ -216,7 +232,9 @@ def main() -> None:
                   + " | there " + " ".join(f"{r['there']:.2f}" for r in table.values())
                   + " | made a plan " + " ".join(f"{r['planned']:.2f}" for r in table.values())
                   + " | its length " + " ".join(f"{r['plan']:.1f}" for r in table.values())
-                  + " | trials " + " ".join(str(r["n"]) for r in table.values()))
+                  + " | trials " + " ".join(str(r["n"]) for r in table.values())
+                  + " | straight, first half " + " ".join(f"{r.get('first', 0):.2f}" for r in table.values())
+                  + ", last half " + " ".join(f"{r.get('last', 0):.2f}" for r in table.values()))
         with open(path.rsplit(".", 1)[0] + tag + ".json", "w") as f:
             json.dump({str(m): {str(k): v for k, v in t.items()} for m, t in res.items()}, f)
 

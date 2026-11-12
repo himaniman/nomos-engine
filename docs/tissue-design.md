@@ -1436,6 +1436,26 @@ brain (a thought one hop deep needs only the first hop). The one I am least sure
 G1 at distance 4: a string of four ways is right only if four hops in a row are, and the
 wanted room has to be said to within a bit.
 
+### Step 5b: thinking with no copy. Bar written before the run
+
+In 5a a COPY of the brain walks in thought and what it learns there is thrown away, which
+no brain can do. `ponders`: the brain itself closes its eyes, walks a string of ways in
+thought, opens its eyes on the room it stands in (which is how it comes back), and so for
+every string; whatever its wires learn in the dark stays learnt. A step then costs 96
+ticks of thought (sixteen strings, four hops and a tick to hear the last, a tick to look
+again), and a life of sixteen wanted rooms is several thousand dark ticks on a map that
+was studied for 129. Seen before writing this: G1 and G2 on five lineages, nothing of 5b.
+
+- **G5, thinking does not wear the map out.** 32 rooms, 256 cells, the five lineages:
+  straight at least 0.9 at every distance over the sixteen wanted rooms, and over the last
+  eight of them no more than 0.05 under the first eight.
+
+Prediction: not met. In the dark the rule goes on learning: where a thought is right it
+only says again what the wires hold, but every string is also walked past the point where
+it is right, and what is said there is learnt as well. I expect the first wanted rooms
+near 5a's figures and a slide after that, to under 0.8 at distance 4 in the second half.
+The stream said idleness costs nothing over 64 ticks; this is fifty times that.
+
 ## Where the ladder stands
 
 | rung | state |

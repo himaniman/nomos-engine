@@ -5144,3 +5144,10 @@ So the brain has a map good enough to plan on, at sizes its search never saw, in
 its search never saw; and it cannot yet think in its own head without spoiling that map. Which
 half does the harm, the learning in thought or the state a thought leaves behind, is asked next
 (`ponders-still`, `thinks-learns`). Pictures: `python -m tissue.look GENOME.pt --thought`.
+
+Checked the same hour (`--slack 0`, the comparison allowing no bit): lineage 0 then goes straight
+1.00 / 1.00 / 1.00 / 1.00 and its plan at distance 3 is 3.0 hops long, so every miss it had was
+the twin rooms and none was the map. Lineage 3, the weakest, goes 1.00 / 0.99 / 0.91 / 0.86 and
+makes a plan for only 0.82 of the rooms four steps away: its dark walk gets a bit wrong often
+enough that an exact comparison turns good plans down. The slack is a dial of mine; the bars
+were set and met at one bit, and it stays there.

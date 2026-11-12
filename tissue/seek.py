@@ -75,10 +75,12 @@ def imagine(brain, body: fork.Dendrites, state, ways: torch.Tensor, bits: int, k
 
 
 def seek(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen: torch.Generator,
-         depth: int = 4, trials: int = 16, limit: int | None = None, arm: str = "thinks") -> dict:
+         depth: int = 4, trials: int = 16, limit: int | None = None, arm: str = "thinks",
+         slack: int = 1) -> dict:
     """One life: study, then `trials` wanted rooms. {"far": (B, trials) the shortest road to
     the wanted room, "steps": (B, trials) steps taken (limit + 1: never got there), "plan":
-    (B, trials) the length of the first plan made (0: none)}."""
+    (B, trials) the length of the first plan made (0: none)}. `slack`: the bits of the wanted
+    room a thought may get wrong and still count as saying it."""
     if arm not in ARMS:
         raise ValueError(f"arm must be one of {ARMS}, not {arm!r}")
     b, d = items.shape[0], items.shape[-1]
@@ -123,7 +125,7 @@ def seek(brain, items: torch.Tensor, nxt: torch.Tensor, walk: fork.Walk, gen: to
                     if own:                     # no copy walked: it opens its eyes on the room again
                         seen_before = False
                         look(room, torch.full((b,), -1))
-                    hit = ((says > 0) == (items[rows, want].unsqueeze(1) > 0)).sum(-1) >= d - 1
+                    hit = ((says > 0) == (items[rows, want].unsqueeze(1) > 0)).sum(-1) >= d - slack
                     first = torch.where(hit.any(1), hit.float().argmax(1) + 1, torch.full((b,), depth + 1))
                     better = first < best
                     best = torch.where(better, first, best)
@@ -193,14 +195,14 @@ def by_distance(out: dict, depth: int, limit: int, trials: slice = slice(None)) 
 
 
 def examine(path: str, sizes, walk: fork.Walk, depth: int = 4, trials: int = 16, lives: int = 16,
-            arm: str = "thinks", seed: int = 80_000, **switches) -> dict:
+            arm: str = "thinks", seed: int = 80_000, slack: int = 1, **switches) -> dict:
     model, task, _ = load(path, **switches)
     res = {}
     for m in sizes:
         gen = torch.Generator().manual_seed(seed + walk.rooms)
         items, nxt = fork.world(task.d_out, walk, lives, gen)
         with torch.no_grad():
-            out = seek(model.grow(m), items, nxt, walk, gen, depth, trials, arm=arm)
+            out = seek(model.grow(m), items, nxt, walk, gen, depth, trials, arm=arm, slack=slack)
         res[m] = by_distance(out, depth, 2 * depth + 2)
         for half, cols in (("first", slice(0, trials // 2)), ("last", slice(trials // 2, None))):
             for far, row in by_distance(out, depth, 2 * depth + 2, cols).items():
@@ -218,13 +220,15 @@ def main() -> None:
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--sizes", type=int, nargs="*", default=[256])
     p.add_argument("--arm", choices=ARMS, default="thinks")
+    p.add_argument("--slack", type=int, default=1,
+                   help="bits of the wanted room a thought may get wrong and still count as saying it")
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     walk = fork.Walk(rooms=a.rooms, ways=a.ways)
-    tag = f".seek{a.rooms}x{a.ways}.depth{a.depth}.{a.arm}"
+    tag = f".seek{a.rooms}x{a.ways}.depth{a.depth}.{a.arm}" + (f".slack{a.slack}" if a.slack != 1 else "")
     for path in a.genomes:
-        res = examine(path, a.sizes, walk, a.depth, a.trials, a.lives, a.arm)
+        res = examine(path, a.sizes, walk, a.depth, a.trials, a.lives, a.arm, slack=a.slack)
         print(f"\n{path}  {a.rooms} rooms, {a.ways} ways ({walk.links} links), {a.arm};"
               f" by the shortest road to the wanted room:")
         for m, table in res.items():

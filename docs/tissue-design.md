@@ -1503,6 +1503,18 @@ holding I do not know. A walk in the dark that learns what it says may be mendin
 loop as it goes or wearing it, and the stream never told the two apart. My guess is that
 holding is kept or better, since the same learning wears a map in exam 5.
 
+**Outcome (journal 2026-11-12, 13:25):** S2 met on four lineages (straight 1.00 /
+0.95-0.97 / 0.95-0.98 / 0.94-0.99 on all five; lineage 3 slides 0.06 at distance 4 from
+the first eight wanted rooms to the last, a hundredth over the bar). **S1 missed on
+holding**, and my guess had the wrong sign: recall at hop 1 is untouched (0.97-1.02 of the
+figure without `still`), but the items held through 64 dark ticks are 0.80-0.96 of it at
+64 cells on four lineages (1.17 on the fifth) and 0.85-0.98 at 256, at least 0.9 at both
+sizes on one lineage only; K90 at hop 4 is 7-12% lower as well. So on a loop, where there
+is one road, what the brain learns in the dark is the road said again, and it mends a
+little; in thought, where it walks every branch, the same learning wears the map out.
+Stillness by hand is the blunt cure: it buys thinking in the brain's own head and costs
+a tenth of the holding. The fine one is a rule that tells rehearsing from imagining.
+
 ## Where the ladder stands
 
 | rung | state |
@@ -1526,7 +1538,9 @@ holding is kept or better, since the same learning wears a map in exam 5.
 | 2f the gate as a cell (sleep cells) | by hand: a sleep cell set to the hand gate IS the hand gate (191 against 193 items at 512 cells, lineage 0) provided it speaks within the tick; heard a tick late it loses nearly half the recall and four fifths of the holding. The searches (with a scaffold, and with none) are running |
 | 4a forks: the dark walk goes where the body goes | by hand, nothing searched: a dendrite per way. Lineage 0 holds 98 and 422 links at 64 and 256 cells with two ways (hop 4: 57 and 206); with the body on sensory cells of its own, or numb, all five lineages hold nothing. Five lineages to 512 cells: running |
 | 5a a goal: thinking by hand on a learned map | done by hand, 5 lineages, nothing searched: a copy of the brain walks every string of four ways in the dark; wanted rooms 1 to 4 steps away are reached by a shortest road 1.00 / 0.94-0.97 / 0.92-0.98 / 0.92-0.96 of the time (not thinking: 0.53 / 0.28 / 0.17 / 0.15; thinking but numb: the same). The search through the map is by hand |
-| 5b thinking with no copy | missed, as predicted: when the brain walks in thought itself and keeps what thought taught it the map wears out (0.40-0.59 at distance 4, worse in the second half of a life). Open: which half does the harm, and a rule that is still in thought |
+| 5a in a crowded world | 128 rooms (256 links): at 256 cells 0.21-0.48 at distance 4, at 512 cells 0.43-0.94. A thought is as good as the map and the map grows with the brain, but at least 0.9 at every distance is reached by one lineage of five (G4 missed) |
+| 5b, 5c thinking with no copy | when the brain walks in thought itself and keeps what thought taught it the map wears out (0.40-0.59 at distance 4, worse in the second half of a life). The learning does all of the harm and the state none: with its wires still in thought the brain thinks in its own head as well as a copy (0.94-0.99 at distance 4), coming back by one look at the room |
+| 5d wires still in the dark, in the kernel (`Plan.still`, by hand) | thinking in its own head: met on four lineages. On the loops of exam 2 recall is untouched and holding is 0.80-0.98 of what it was: there the learning in the dark was mending a little. Open: a rule that tells rehearsing from imagining; the search through the map as cells |
 
 Open questions carried along: what separates the lineages that scale without a fade from
 those that do not (lineage 3 is the weakest on every exam); why a little idleness seemed

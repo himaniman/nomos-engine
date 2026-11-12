@@ -5204,3 +5204,41 @@ the eyes are open, so a rule could do that itself; the rule in hand was found on
 learning in the dark cost nothing and so never learnt not to. That is the next thing to ask on
 this road: by hand first (wires change only with the eyes open: does a thought still hold, exam
 2?), then of a search whose lives include thinking.
+
+## 2026-11-12 (13:25) — step 5d: wires still in the dark, in the kernel. It buys thinking in the brain's own head and costs a tenth of the holding
+
+`Plan.still`, by hand: on a tick with the eyes closed no wire changes. In 5c the examiner put the
+wires back after every thought; now the brain is built so. Since every exam of the stream let
+the brain learn in the dark, the old exam was sat again with it. The genomes of 1d, nothing
+searched, sixteen lives. Bars S1, S2 first.
+
+**Exam 5, `ponders --still`** (32 rooms, 256 cells): straight 1.00 / 0.95-0.97 / 0.95-0.98 /
+0.94-0.99 by distance on all five lineages, the same as when the examiner did it.
+**S2 met on four lineages**; lineage 3 slides from 0.97 to 0.91 at distance 4 between the first
+eight wanted rooms of a life and the last, a hundredth over the 0.05 allowed (some thirty trials
+a half).
+
+**Exam 2 with and without `--still`** (loops of 8, a closing of 64 ticks):
+
+| lineage | K90 hop 1, 64 cells | held, 64 cells | K90 hop 1, 256 cells | held, 256 cells | K90 hop 4, 256 cells |
+|---|---|---|---|---|---|
+| 0 | 39.9 -> 39.7 | 24.4 -> 21.5 | 194.0 -> 189.2 | 81.6 -> 78.4 | 81.2 -> 75.2 |
+| 1 | 39.6 -> 40.5 | 17.3 -> 16.5 | 208.5 -> 208.1 | 71.4 -> 68.1 | 69.8 -> 63.3 |
+| 2 | 41.7 -> 41.3 | 24.0 -> 21.3 | 208.3 -> 203.8 | 90.9 -> 88.8 | 78.5 -> 69.3 |
+| 3 | 40.1 -> 40.6 | 12.7 -> 14.8 | 148.1 -> 143.5 | 63.0 -> 55.7 | 38.7 -> 35.1 |
+| 4 | 41.8 -> 41.4 | 23.2 -> 18.5 | 199.3 -> 197.0 | 81.6 -> 69.0 | 63.9 -> 58.5 |
+
+- **S1 (a thought that is not learnt still holds, at least 0.9 of the figure): met for recall,
+  missed for holding.** Recall at hop 1 is 0.97-1.02 of what it was. The items held are 0.80-0.96
+  of it at 64 cells on four lineages (1.17 on lineage 3) and 0.85-0.98 at 256; at least 0.9 at
+  both sizes on lineage 1 alone. I had guessed holding kept or better: the wrong sign.
+
+So the same learning does opposite things in the two exams. On a loop there is one road, a walk
+in the dark says that road again, and what is learnt from it mends the loop a little. In thought
+the brain walks every branch from where it stands, sixteen times over, and that wears the map
+out. Stillness by hand is the blunt cure. The fine one would be a rule that tells rehearsing a
+thing from imagining it; the cell hears the eyes and nothing else that could tell it which.
+
+Records of exams 4 and 5 and of this one: `runs/tissue/hold/*.fork*.json`, `*.seek*.json`,
+`*.lives16.stream8x4.idle64.json`. Step 4a on five lineages has finished one way of three
+(K90 at hop 1 with one way: 46/45/49/48/49 links at 64 cells, 429/489/470/292/461 at 512).

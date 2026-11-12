@@ -5177,3 +5177,30 @@ shortest road, by distance 1 / 2 / 3 / 4:
 Reading it with the rest of the day: the limit on thinking is the map, hop by hop, and the map
 is what grows with the brain. Step 5c (which half of thinking in its own head wears the map out)
 is running; the prediction is in the note.
+
+## 2026-11-12 (13:20) — step 5c: a brain can think in its own head, if its wires are still while it thinks
+
+Step 5b said that thinking with no copy wears the map out. Two arms between the copy (`thinks`)
+and the brain's own head (`ponders`) say which half does it. 32 rooms, two ways, 256 cells, the
+five genomes of 1d, sixteen lives; the share of wanted rooms reached by a shortest road, by
+distance, and at distance 4 over the first eight wanted rooms of a life and the last eight:
+
+| five lineages | 1 | 2 | 3 | 4 | first 8, last 8 at distance 4 |
+|---|---|---|---|---|---|
+| a copy walks, nothing kept (`thinks`, 5a) | 1.00 | 0.94-0.97 | 0.92-0.98 | 0.92-0.96 | |
+| the brain itself walks, its wires still in thought (`ponders-still`) | 1.00 | 0.95-0.97 | 0.93-0.98 | 0.94-0.99 | 0.97, 0.91-1.00 |
+| a copy walks, what its wires learn is kept (`thinks-learns`) | 0.76-0.92 | 0.69-0.77 | 0.47-0.62 | 0.45-0.58 | 0.45-0.68, 0.31-0.51 |
+| the brain itself walks and keeps what it learns (`ponders`, 5b) | 0.75-0.91 | 0.66-0.82 | 0.45-0.67 | 0.40-0.59 | 0.45-0.72, 0.31-0.57 |
+
+The prediction held, on all five lineages: the learning does all of the harm and the state none.
+A brain that walks sixteen strings of ways in thought, 96 dark ticks a step and several thousand
+in a life, and comes back each time by opening its eyes on the room it stands in, plans as well
+as a copy does and does not slide through the life. So the copy was never needed. What is needed
+is that a thought is not learnt as a sight is.
+
+By hand here: the wires are held still while the eyes are closed (and the search through the
+map, the wanted room, the comparing, the choosing, as before). The cell already hears whether
+the eyes are open, so a rule could do that itself; the rule in hand was found on lives in which
+learning in the dark cost nothing and so never learnt not to. That is the next thing to ask on
+this road: by hand first (wires change only with the eyes open: does a thought still hold, exam
+2?), then of a search whose lives include thinking.

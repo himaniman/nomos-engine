@@ -20,6 +20,10 @@ cell's input does not depend on how many wires reach it; under `spoken`, on how 
 sources speak), the product form of the wire rule;
 and, where there is a space (`reach`, `field`), that it is a ring, that wires come from
 neighbours, and that the sense of place is laid out along it. What a cell does with them is found.
+With sleep cells (`sleep`): that there is such a kind of cell, one beside every few
+interneurons, that it feels the place and the eyes and no other cell, that it speaks within
+the tick as a sense organ does, and that what it says scales, through a sigmoid, what its
+interneurons say and learn. When it says "sleep" is found.
 """
 
 from __future__ import annotations
@@ -60,6 +64,15 @@ class Plan:
     lean: float = 1.0   # how much of that gate is left: 1 the gate as it is, 0 none. A
     #                     scaffold: a search can take the gate away step by step and see
     #                     whether the cells have learnt to keep silent by themselves
+    sleep: int = 0      # a second kind of cell: one SLEEP CELL beside every `sleep` interneurons
+    #                     along the ring. It feels how near the place is to itself and whether
+    #                     the eyes are open, and says one number; its interneurons are awake as
+    #                     much as the sigmoid of that, and what they say and what their wires
+    #                     learn is scaled by it. Like a sense organ it speaks within the tick:
+    #                     it hears senses only, no cell. 0: no such cells
+    late: bool = False  # the control that says why: the sleep cell is heard a tick late, as
+    #                     one cell hears another. The patch a place has just left is then awake
+    #                     for the first thing seen at the next place
     spoken: bool = False    # a plastic dendrite is scaled by what was SAID to it (the squares
     #                     of what its sources said, summed, plus one) and not by the number of
     #                     its wires: then neither what it reads nor how far one lesson moves it
@@ -72,6 +85,7 @@ class Plan:
 
 RUNG0 = Plan()
 RUNG1 = Plan(blocks=(Block("S", "I", False), Block("I", "I", True), Block("I", "O", True)), mode=True)
+SLEEP = "Z"             # the type of a sleep cell; it has no wires, so it is in no block
 
 
 class Cell(nn.Module):
@@ -106,6 +120,19 @@ class Tissue(nn.Module):
             for t in self.types})
         self.gain = nn.ParameterDict({str(i): nn.Parameter(torch.zeros(()))
                                       for i, b in enumerate(plan.blocks) if not b.plastic})
+        if plan.sleep:                  # the sleep cell: (nearness, eyes) -> one number
+            self.cells[SLEEP] = Cell(1 + int(plan.mode), 1, plan.hidden)
+            with torch.no_grad():       # born saying "awake" to everyone: a brain with no gate
+                self.cells[SLEEP].b.bias.fill_(3.0)
+
+    def sleep_by_hand(self, gate: float, sharp: float = 8.0, loud: float = 12.0) -> None:
+        """Set the sleep cell's perceptron BY HAND to the hand gate: awake where the place is
+        nearer than `gate`, asleep beyond, whatever the eyes do. One hidden unit does it."""
+        cell = self.cells[SLEEP]
+        with torch.no_grad():
+            for p in cell.parameters():
+                p.zero_()
+            cell.a.weight[0, 0], cell.a.bias[0], cell.b.weight[0, 0] = sharp, -sharp * gate, loud
 
     def grow(self, m) -> "Grown":
         """A brain with `m` interneurons (or {type: count} once there are several types)."""
@@ -118,6 +145,8 @@ class Grown:
     def __init__(self, tissue: Tissue, inter: dict):
         self.t = tissue
         self.n = {"S": tissue.task.d_in, "O": tissue.task.d_out, **inter}
+        if tissue.plan.sleep:
+            self.n[SLEEP] = -(-inter["I"] // tissue.plan.sleep)
 
     def sparse(self, b: Block) -> bool:
         """Is this a block among interneurons with fewer wires than cells to draw from?"""
@@ -129,6 +158,8 @@ class Grown:
         wired from every source, or (B, targets, fan) for a sparse one, whose
         `sources[i]` (B, targets, fan) says which source cell each wire comes from."""
         act = {t: torch.zeros(batch, self.n[t]) for t in self.t.types}
+        if self.t.plan.sleep:
+            act[SLEEP] = torch.zeros(batch, self.n[SLEEP])
         wires, sources = {}, {}
         for i, b in enumerate(self.t.plan.blocks):
             if self.sparse(b):
@@ -167,7 +198,11 @@ class Grown:
             raise ValueError("only a brain with a few wires per cell can grow in mid-life")
         new_act, new_wires, new_sources = grown.born(act["I"].shape[0], gen)   # take its new cells
         new_act["I"] = torch.cat([act["I"], new_act["I"][:, old:]], dim=1)
-        new_act.update({t: a for t, a in act.items() if t != "I"})
+        new_act.update({t: a for t, a in act.items() if t not in ("I", SLEEP)})
+        if plan.sleep:                  # the new interneurons bring sleep cells of their own
+            if old % plan.sleep:
+                raise ValueError(f"a ring of {old} cells is not whole stretches of {plan.sleep}")
+            new_act[SLEEP] = torch.cat([act[SLEEP], new_act[SLEEP][:, self.n[SLEEP]:]], dim=1)
         for i, b in enumerate(plan.blocks):
             if b.post == "I":                       # rows are interneurons: the old ones stay
                 new_wires[i] = torch.cat([wires[i], new_wires[i][:, old:]], dim=1)
@@ -179,10 +214,12 @@ class Grown:
                 new_wires[i] = wires[i]
         return grown, (new_act, new_wires, new_sources)
 
-    def near(self, n: int, where: torch.Tensor) -> torch.Tensor:
+    def near(self, n: int, where: torch.Tensor, every: int = 1) -> torch.Tensor:
         """How near the world's place (B,), a share of the way round the ring, is to each
-        of `n` cells: a bell `plan.field` cells wide, 1 at the place itself."""
-        away = (torch.arange(n).unsqueeze(0) - where.unsqueeze(1) * n).abs()
+        of `n` cells: a bell `plan.field` cells wide, 1 at the place itself. `every`: to a
+        cell that sits in the middle of each stretch of that many cells (a sleep cell)."""
+        at = torch.arange(0, n, every) + (every - 1) / 2
+        away = (at.unsqueeze(0) - where.unsqueeze(1) * n).abs()
         away = torch.minimum(away, n - away)
         return torch.exp(-0.5 * (away / self.t.plan.field) ** 2)
 
@@ -197,6 +234,11 @@ class Grown:
         seen = {**act, "S": cue}                    # sensory cells carry the cue as it is
         new_act, new_wires = {}, dict(wires)
         heard = {}                                  # per block: what each wire's source said
+        if plan.sleep:                  # a sleep cell hears no cell: the place and the eyes
+            felt = (torch.zeros_like(act[SLEEP]) if where is None or not plan.field
+                    else self.near(self.n["I"], where, plan.sleep))
+            feats = [felt] + ([torch.full_like(felt, on)] if plan.mode else [])
+            new_act[SLEEP] = self.t.cells[SLEEP](torch.stack(feats, dim=-1))[..., 0]
         for t in self.t.types:
             feats = []
             for i in self.t.incoming[t]:
@@ -224,6 +266,9 @@ class Grown:
             if t != "O" and plan.field and plan.gate and plan.lean and where is not None:
                 asleep = (feats[-1] < plan.gate).unsqueeze(-1)          # away from the place
                 said = said * (1 - plan.lean * asleep)
+            if t != "O" and plan.sleep:             # as its sleep cell says (`late`: said a tick ago)
+                awake = torch.sigmoid((act if plan.late else new_act)[SLEEP])
+                said = said * awake.repeat_interleave(plan.sleep, dim=1)[:, :self.n[t]].unsqueeze(-1)
             new_act[t] = said[..., 0]
             j = 1
             for i in self.t.incoming[t]:

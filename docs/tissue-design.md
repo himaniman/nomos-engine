@@ -1267,6 +1267,87 @@ brain born big, which has ten cells for every item and costs three times as much
 stops growing the moment the ring is no longer crowded; it does not buy comfort. How much
 room is "enough" is the one number in the rule (`--full`), and it is by hand.
 
+## Hand-made parts into cells (from 2026-11-12, the user's word to go on)
+
+Only the cells' rule is found; the gate, the index, the latch, the rule of places and the
+rule of growth are by hand. They are to become cells of the genome one at a time. The user
+restated the aim the same day: a brain that thinks, develops and in the end acts in a
+simulated world. So this work does not stand in front of the road to a world (forks, an
+action, a goal: the open rung of the ladder); the two go side by side.
+
+### Step 2f: a cell that puts its neighbours to sleep. Plan, bars and predictions
+
+Step 2d' ended on a fork that was the user's: a wider perceptron in the cell, or a second
+kind of cell. The second is taken: the cell stays small and the same at every size, and
+kinds of cells were the user's first idea.
+
+`Plan.sleep = 8`: a SLEEP CELL beside every 8 interneurons along the ring, an eighth more
+cells. It carries a perceptron of the same size as any cell (8 hidden). It feels how near
+the place is to itself and whether the eyes are open, hears no cell, and says one number.
+Its interneurons are awake as much as the sigmoid of that number: what they say and what
+their wires learn is scaled by it. By hand: that there is such a kind of cell, where it
+sits, what it feels, and the product form of sleep (as the wire rule's product is by hand).
+Found: when it says "sleep". Why a cell of its own can do what the interneuron could not: an
+interneuron of 8 hidden units had to say its speech AND multiply it by a gate, and a small
+perceptron multiplies badly (a tenth of a voice left at best); here the product is the
+mechanism and the cell has one thing to say.
+
+**Built by hand first, and what that showed (before any search, lineage 0, 512 cells).**
+`Tissue.sleep_by_hand(0.3)` sets the sleep cell's perceptron to the hand gate (one hidden
+unit). With no hand gate in the brain:
+
+| lineage 0, 512 cells | K90 hop 1 | held |
+|---|---|---|
+| the gate by hand (2c-5) | 193 | 47 |
+| sleep cells by hand, speaking within the tick | 191 | 51 |
+| sleep cells by hand, heard a tick late (`--late`) | 109 | 9 |
+
+My first build had the sleep cell heard a tick late, as one cell hears another. That costs
+nearly half the recall and four fifths of the holding: when the world jumps to another
+loop, the patch it has just left is still awake for the first thing seen there and learns
+"my last item, then that thing", once, in the very lap in which the new patch, not yet
+awake, misses its own first link. One stretch of eight interneurons per sleep cell costs
+nothing (191 against 193 with one each). So a sleep cell speaks WITHIN the tick, as a sense
+organ does (S cells carry the cue as it is): it hears senses only, so no cell waits on
+another. It is the same computation as a brain whose sleep cells lag a tick and whose
+other senses are delayed a tick to match, shifted by that tick; the kernel takes the
+simpler of the two. `Plan.late` keeps the other as a control.
+
+**The exams**, as in 2c-5 and 2d: field 24, 32 wires, reach 32, sixteen lives, the third
+set of worlds, 256 to 4096 cells, NO hand gate (`--gate 0`). The figures to stand against
+are the hand gate's (2c-5): K90 at hop 1 of 93-115, 193-213, 386-432, 785-898, 1530-1779 at
+256 to 4096 cells; held 30-48 at 512, 105-203 at 2048, 160-287 at 4096.
+
+**(H) By hand, nothing searched.** The five genomes of 2c-3b with sleep cells set by hand.
+- **W0.** At every size recall within a tenth of the hand gate's and at least 100 items
+  held at 4096 cells, on all five lineages. And heard a tick late: recall under 0.7 of it.
+Prediction: met. It is the hand gate said by a cell; this arm only says so at every size.
+
+**(A) The search finds the gate, with a scaffold.** As 2d: the hand gate is taken away
+evenly over the first 3000 steps of 4000 (`--gate 0.3 --anneal 3000`), the lives of 2d'
+(256, 512, 1024 cells, 1/8 to 3/4 item per wire per patch). The sleep cell is born saying
+"awake" to everyone, so as the scaffold goes somebody has to say "sleep", and now there is
+a cell whose word is enough. From the genomes of 2c-3b; every number of the genome is free.
+
+**(B) The search finds the gate, with none.** The same, but no hand gate from the first
+step (`--gate 0`): a rule made for a gate lives without one until the sleep cells learn it.
+
+Bars for (A) and for (B), each on its own:
+- **W1, recall.** K90 at hop 1 at 4096 cells at least half the hand gate's, on at least
+  four lineages.
+- **W2, holding.** At least 100 items held at 4096 cells on at least four lineages.
+- **W3, the gate is sharp and the cells' own.** At 2048 cells (`python -m tissue.where`)
+  cells further than 64 from the place are at most a tenth as loud as cells within 6 of
+  it, eyes open and closed, and learn at most a tenth as much.
+- **W4, the controls.** With the sleep cells taken out (`--sleep 0`) and with the wires
+  shuffled (`--reach 0`): less than half the recall at 2048 cells.
+
+Predictions. (A): W1-W4 met on four lineages or more, recall at 4096 cells at 0.8 of the
+hand gate's or better; the nearness at which the cell says "sleep" need not be my 0.3. (B):
+the gate is found on three lineages or more; the rest stay brains with everyone awake or
+stop on an endless slope, since they start where step 2d ended. I have been wrong about
+every search on this ladder so far, each time on the hopeful side.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -182,11 +182,17 @@ class Places(Index):
 
 def alone(tissue, task: Task, loops: int, batches: int, small: int, big: int, arm: str,
           lives: int = 8, step: int = 256, full: float = 2.0, index: int = 4, closed: int = 8,
-          seed: int = 60_000) -> dict:
+          seed: int = 60_000, watch=None) -> dict:
     """One arm of a life in which nothing is told. `loops` loops come in `batches` equal
     batches, each walked round twice; after a batch the brain that GROWS gives itself
     `step` more cells if its ring is crowded. Then the eyes close on every loop, twice.
-    {"hop": accuracy by hop, "cells": the size it ended with, "cost": cells x ticks}."""
+    {"hop": accuracy by hop, "cells": the size it ended with, "cost": cells x ticks}.
+
+    `watch`, for a viewer: called once a tick with what happened in it (`act` the
+    interneurons' activity, `seen` whether the eyes were open, `felt` the place the brain
+    was at, a share of its ring, `said` what the motor cells said, which is about the tick
+    before: `about` what the world showed then and `about_closed` whether the eyes were
+    closed then). It changes nothing."""
     wgen = torch.Generator().manual_seed(seed)
     bgen = torch.Generator().manual_seed(seed + 1)
     h = Halves(first=loops, second=0, closed=closed)
@@ -208,6 +214,9 @@ def alone(tissue, task: Task, loops: int, batches: int, small: int, big: int, ar
             state, out = brain.tick(state, item if seen else silent, was if was_seen else silent,
                                     float(was_seen), float(seen), where=felt)
             cost += brain.n["I"]
+            if watch is not None:
+                watch(act=state[0]["I"], seen=seen, felt=felt, said=out, about=was,
+                      about_closed=was_closed)
             if was_closed:                          # what is said now is about the tick before
                 right[hop] += float(((out > 0) == (was > 0)).float().mean())
                 count[hop] += 1

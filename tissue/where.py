@@ -96,11 +96,15 @@ def main() -> None:
     p.add_argument("--field", type=int, default=None, help="the width of the sense of place")
     p.add_argument("--lean", type=float, default=None,
                    help="how much of the hand gate is left (1: all of it, 0: none)")
+    p.add_argument("--gate", type=float, default=None, help="the hand gate (0: none)")
+    p.add_argument("--sleep", type=int, default=None,
+                   help="a sleep cell beside every this many interneurons (0: take them out)")
     p.add_argument("--told", choices=("always", "seen"), default="always",
                    help="when the place is felt: always, or only with the eyes open")
     a = p.parse_args()
     torch.set_num_threads(4)
-    switches = {k: v for k, v in (("fan", a.fan), ("field", a.field), ("lean", a.lean)) if v is not None}
+    switches = {k: v for k, v in (("fan", a.fan), ("field", a.field), ("lean", a.lean),
+                                  ("gate", a.gate), ("sleep", a.sleep)) if v is not None}
     names = [f"{lo}-{hi}" if hi < 10 ** 9 else f"{lo}+" for lo, hi in zip(BANDS, BANDS[1:])]
     for path in a.genomes:
         r = where(path, a.m, a.loops, told=a.told, **switches)

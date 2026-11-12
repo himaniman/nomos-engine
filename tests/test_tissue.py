@@ -518,3 +518,86 @@ def test_a_life_told_nothing_runs_for_every_arm_and_the_one_that_grows_ends_betw
     assert 64 < lived["grows"]["cells"] <= 128
     assert lived["small"]["cost"] < lived["grows"]["cost"] < lived["born big"]["cost"]
     assert all(len(r["hop"]) == 3 for r in lived.values())
+
+
+def test_a_watched_life_is_the_same_life_and_a_picture_of_it_can_be_drawn():
+    from tissue import grow, look
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, fan=6, reach=8, field=4, gate=0.3, spoken=True), ITEM)
+    rows = []
+    kept = dict(loops=8, batches=4, small=64, big=128, arm="grows", lives=1, step=32, full=0.4, closed=3)
+    watched = grow.alone(genome, ITEM, watch=lambda **tick: rows.append(
+        {k: v[0].clone().numpy() if torch.is_tensor(v) else v for k, v in tick.items()}), **kept)
+    assert watched == grow.alone(genome, ITEM, **kept)      # looking changes nothing
+    assert len(rows) == watched["cost"] // 64 or len(rows[-1]["act"]) > 64
+    assert len(rows[0]["act"]) == 64 and len(rows[-1]["act"]) == watched["cells"]
+    img = look.draw(rows, "a test", loops=8, batches=4, closed=3, zoom=2)
+    assert img.size[0] > 1000 and img.size[1] > 500
+
+
+SLEEPY = replace(RUNG1, fan=6, reach=4, field=3, spoken=True, sleep=4)
+
+
+@torch.no_grad()
+def test_a_sleep_cell_is_born_saying_awake_and_by_hand_it_is_the_hand_gate():
+    torch.manual_seed(0)
+    genome = Tissue(SLEEPY, ITEM)
+    assert set(genome.cells) == {"I", "O", "Z"} and genome.cells["Z"].a.weight.shape == (8, 2)
+    brain = genome.grow(40)
+    assert brain.n["Z"] == 10
+    cue, here, there = torch.ones(2, 12), torch.tensor([0.0, 0.5]), torch.tensor([0.5, 0.0])
+    state = brain.born(2, gen(1))
+    for _ in range(3):
+        state, _ = brain.tick(state, cue, cue, 1.0, 1.0, where=here)
+    assert float(torch.sigmoid(state[0]["Z"]).min()) > 0.85         # born blank: nobody is put to sleep
+    assert state[0]["I"].abs().min() > 0
+
+    genome.sleep_by_hand(0.3)
+    state = brain.born(2, gen(1))
+    for _ in range(3):
+        state, _ = brain.tick(state, cue, cue, 1.0, 1.0, where=here)
+    act, wires, _ = state
+    awake = (brain.near(40, here, 4) >= 0.3).repeat_interleave(4, dim=1)    # by stretches of four
+    assert 4 <= int(awake[0].sum()) <= 12
+    loud = float(act["I"][awake].abs().mean())
+    assert float(act["I"][~awake].abs().max()) < 1e-3 * loud        # asleep: silent,
+    assert float(wires[1][~awake].abs().max()) < 1e-2 * float(wires[1][awake].abs().max())    # and still
+    # the place moves: the sleep cell speaks within the tick, so the new patch is awake at once
+    moved, _ = brain.tick(state, cue, cue, 1.0, 1.0, where=there)
+    assert float(moved[0]["I"][awake].abs().max()) < 1e-3 * loud and moved[0]["I"][~awake].any()
+    # heard a tick late (the control), the old patch speaks on that tick and the new one a tick after
+    slow = Tissue(replace(SLEEPY, late=True), ITEM)
+    slow.load_state_dict(genome.state_dict())
+    slow = slow.grow(40)
+    late, _ = slow.tick(state, cue, cue, 1.0, 1.0, where=there)
+    assert float(late[0]["I"][~awake].abs().max()) < 1e-3 * loud and late[0]["I"][awake].any()
+    late, _ = slow.tick(late, cue, cue, 1.0, 1.0, where=there)
+    assert float(late[0]["I"][awake].abs().max()) < 1e-3 * loud and late[0]["I"][~awake].any()
+    # with nothing felt a sleep cell set by hand puts everyone to sleep
+    state, _ = brain.tick(moved, cue, cue, 1.0, 1.0)
+    assert float(state[0]["I"].abs().max()) < 1e-3 * loud
+
+
+def test_sleep_cells_come_with_new_cells_in_mid_life_and_a_plan_without_them_drops_them():
+    from tissue.train import adopt
+    torch.manual_seed(0)
+    genome = Tissue(SLEEPY, ITEM)
+    genome.sleep_by_hand(0.3)
+    small = genome.grow(40)
+    state = small.born(2, gen(1))
+    cue, place = torch.ones(2, 12), torch.tensor([10.0, 25.0])
+    for _ in range(4):
+        state, _ = small.tick(state, cue, cue, 1.0, 1.0, where=place / 40)
+    big, grown = small.more(state, 24, gen(2))
+    assert big.n["Z"] == 16 and grown[0]["Z"].shape == (2, 16)
+    assert torch.equal(grown[0]["Z"][:, :10], state[0]["Z"])
+    _, was = small.tick(state, -cue, cue, 1.0, 1.0, where=place / 40)
+    grown, now = big.tick(grown, -cue, cue, 1.0, 1.0, where=place / 64)
+    assert torch.allclose(was, now, atol=1e-5)              # growing costs nothing by itself
+    far = (big.near(64, place / 64, 4) < 0.3).repeat_interleave(4, dim=1)
+    assert float(grown[0]["I"][far].abs().max()) < 1e-3     # a new cell far from the place is born asleep
+    with pytest.raises(ValueError):
+        genome.grow(42).more(genome.grow(42).born(1, gen(0)), 8, gen(1))     # not whole stretches
+    plain = Tissue(replace(SLEEPY, sleep=0), ITEM)
+    adopt(plain, genome.state_dict())                       # the sleep cells are left out
+    assert torch.equal(plain.cells["I"].a.weight, genome.cells["I"].a.weight)

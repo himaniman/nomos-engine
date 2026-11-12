@@ -40,7 +40,7 @@ def held(ks: list, idle: list, bar: float = 0.9) -> float:
 def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None = None,
             quick: bool = False, nowhere: bool = False, worlds: int = 0, lives: int = 4,
             told: str | None = None, index_cells: int = 0, pace: int = 8, follow: bool = False,
-            runs: bool = False, **switches) -> dict:
+            runs: bool = False, sleep_hand: float = 0.0, **switches) -> dict:
     """Rung 0: {m: {"ks", "acc", "k90"}} (m = 0 for a net with no size).
     Rung 1: {m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}}; on the stream
     (`shape` given: a `stream.Life`, its loop count ignored) also "idle": [curve per K] and
@@ -51,8 +51,11 @@ def examine(path: str, sizes=SIZES, length: int = 1, shape: stream.Life | None =
     measured on. `told`: when the place is told ("always", "seen", "study", or "index": by a
     hand-made memory of what lies where with `index_cells` cells, default as many as there
     are interneurons; or "self": never, the brain puts a new thing `pace` cells further
-    along the ring than the last; default: as the genome was searched)."""
+    along the ring than the last; default: as the genome was searched). `sleep_hand`: the
+    sleep cell is set by hand to a gate at this nearness, whatever the genome holds."""
     model, task, saved = load(path, **switches)
+    if sleep_hand:
+        model.sleep_by_hand(sleep_hand)
     places = bool(getattr(model, "plan", None) and model.plan.field) and not nowhere
     told = told or saved.get("told", "always")
     out = {}
@@ -152,6 +155,12 @@ def main() -> None:
                    help="how much of the hand gate is left (1: all of it, 0: none)")
     p.add_argument("--spoken", action="store_true",
                    help="plastic dendrites are scaled by what was said, not by their wires")
+    p.add_argument("--sleep", type=int, default=None,
+                   help="a sleep cell beside every this many interneurons (0: take them out)")
+    p.add_argument("--sleep-hand", type=float, default=0.0,
+                   help="set the sleep cell by hand to a gate at this nearness")
+    p.add_argument("--late", action="store_true",
+                   help="the sleep cell is heard a tick late (the control for its being prompt)")
     p.add_argument("--nowhere", action="store_true",
                    help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--worlds", type=int, default=0,
@@ -196,6 +205,12 @@ def main() -> None:
         switches["lean"], tag = a.lean, tag + f".lean{a.lean:g}"
     if a.spoken:
         switches["spoken"], tag = True, tag + ".spoken"
+    if a.sleep is not None:
+        switches["sleep"], tag = a.sleep, tag + f".sleep{a.sleep}"
+    if a.sleep_hand:
+        tag += f".zhand{a.sleep_hand:g}"
+    if a.late:
+        switches["late"], tag = True, tag + ".late"
     if a.nowhere:
         tag += ".nowhere"
     if a.worlds:
@@ -216,7 +231,7 @@ def main() -> None:
         elif length > 1:
             mark += f".len{length}"
         res = examine(path, a.sizes, length, shape, a.quick, a.nowhere, a.worlds, a.lives,
-                      a.told, a.index, a.pace, a.follow, a.runs, **switches)
+                      a.told, a.index, a.pace, a.follow, a.runs, a.sleep_hand, **switches)
         print(f"\n{path}  {mark.strip('.') or 'as found'}")
         show(res, a.no_learn)
         with open(path.rsplit(".", 1)[0] + (mark or ".exam") + ".json", "w") as f:

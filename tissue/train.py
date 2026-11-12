@@ -49,6 +49,8 @@ def adopt(model, genome: dict) -> None:
     and a new input starts at zero, so the brain begins exactly as the old one lived."""
     mine = model.state_dict()
     for name, old in genome.items():
+        if name not in mine:            # a kind of cell this plan does not have (`--sleep 0`)
+            continue
         new = mine[name]
         if new.shape != old.shape:
             if new.dim() != 2 or new.shape[0] != old.shape[0] or new.shape[1] < old.shape[1]:
@@ -63,7 +65,7 @@ def load(path: str, **switches):
     field it was searched with unless a switch says otherwise; other switches are the plan's
     off-switches."""
     saved = torch.load(path, weights_only=True)
-    for dial in ("fan", "reach", "field", "spoken", "gate", "lean"):
+    for dial in ("fan", "reach", "field", "spoken", "gate", "lean", "sleep"):
         if dial in saved and dial not in switches:
             switches[dial] = saved[dial]
     model, task = make(saved["arm"], **switches)
@@ -76,7 +78,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
           vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES,
           load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0,
           spoken: bool = False, gate: float = 0.0, anneal: int = 0,
-          told: str = "always") -> None:
+          told: str = "always", sleep: int = 0, sleep_hand: float = 0.0) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -94,13 +96,17 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     gate is taken away evenly over this many steps and the rest are lived without it (the
     genome is then saved as one that needs no gate). `told`: when a life tells the brain
     the place ("always", "seen": only with the eyes open, "study": only while a loop is
-    first walked round)."""
+    first walked round). `sleep`: a sleep cell beside every so many interneurons; it is born
+    saying "awake" to all of them (a genome from `init` that has none gets it so), or, with
+    `sleep_hand`, set by hand to a gate at that nearness."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model, task = (make(arm, fan=fan, reach=reach, field=field, spoken=spoken, gate=gate)
-                   if fan else make(arm))
+    model, task = (make(arm, fan=fan, reach=reach, field=field, spoken=spoken, gate=gate,
+                        sleep=sleep) if fan else make(arm))
     if init:
         adopt(model, torch.load(init, weights_only=True)["genome"])
+    if sleep_hand:
+        model.sleep_by_hand(sleep_hand)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, steps, eta_min=lr / 10)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -175,7 +181,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
                         "reach": reach, "field": field, "spoken": spoken, "gate": gate,
                         "anneal": anneal, "lean": model.plan.lean if arm == "stream" else 1.0,
-                        "told": told,
+                        "told": told, "sleep": sleep,
                         "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
     log.close()
 
@@ -210,13 +216,18 @@ def main() -> None:
                    help="with --gate: take the gate away evenly over this many steps")
     p.add_argument("--told", choices=("always", "seen", "study"), default="always",
                    help="with --field: when a life tells the brain the place")
+    p.add_argument("--sleep", type=int, default=0,
+                   help="with --field: a sleep cell beside every this many interneurons")
+    p.add_argument("--sleep-hand", type=float, default=0.0,
+                   help="with --sleep: start from a sleep cell set by hand to a gate at this nearness")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
           vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
-          field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal, told=a.told)
+          field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal, told=a.told,
+          sleep=a.sleep, sleep_hand=a.sleep_hand)
 
 
 if __name__ == "__main__":

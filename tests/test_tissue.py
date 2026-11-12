@@ -733,3 +733,79 @@ def test_sleep_cells_come_with_new_cells_in_mid_life_and_a_plan_without_them_dro
     plain = Tissue(replace(SLEEPY, sleep=0), ITEM)
     adopt(plain, genome.state_dict())                       # the sleep cells are left out
     assert torch.equal(plain.cells["I"].a.weight, genome.cells["I"].a.weight)
+
+
+@torch.no_grad()
+def test_a_land_hangs_together_and_a_way_back_undoes_a_way_gone_unless_a_wall_stands():
+    from tissue import world
+    shape = world.Land(side=5)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    assert looks.shape == (25, 12) and len({world.key(x) for x in looks}) == 25      # no two rooms alike
+    assert len(set(trees.tolist())) == shape.n_trees == 4 and 0 <= start < 25
+    walls = 0
+    for a in range(25):
+        for w in range(4):
+            b = int(nxt[a, w])
+            row, col = a // 5 + world.WAYS[w][0], a % 5 + world.WAYS[w][1]
+            inside = 0 <= row < 5 and 0 <= col < 5
+            assert b in (a, row * 5 + col if inside else a)         # the room that way, or a wall
+            if b != a:
+                assert int(nxt[b, (w + 2) % 4]) == a                # and the way back leads back
+            walls += inside and b == a
+    assert walls == 2 * round(0.3 * 40)                             # a wall has two sides
+    far = world.roads(nxt)
+    assert int(far.max()) < 25 and torch.equal(far, far.T)          # every room is reached from every room
+    again = world.land(12, shape, gen(1))
+    assert torch.equal(nxt, again[1]) and torch.equal(looks, again[0])
+
+
+@torch.no_grad()
+def test_in_a_land_a_memory_born_knowing_every_way_goes_straight_and_one_that_never_plans_wanders():
+    from tissue import world
+    shape = world.Land(side=5, ticks=600)
+    lives = {}
+    for arm in world.YARDSTICKS:
+        looks, nxt, trees, start = world.land(12, shape, gen(1))
+        lives[arm] = world.live(world.body_for(arm, None, 0, looks, nxt, gen(2)), looks, nxt, trees, start,
+                                600, gen(3), fruits=7)
+    oracle, perfect, blind = lives["oracle"], lives["perfect"], lives["blind"]
+    assert all(far == steps for far, steps, _ in oracle["trips"]) and oracle["planned"] == 600
+    assert blind["planned"] == 0 and len(blind["meals"]) < len(perfect["meals"]) < len(oracle["meals"])
+    # the fruit goes from tree to tree in the same order whoever lives there
+    assert [far for far, _, _ in perfect["trips"]][:3] != [] and oracle["trips"][0][0] == blind["trips"][0][0]
+    res = world.summary([oracle], 600)
+    assert sum(res["thirds"]) == res["meals"] == len(oracle["meals"])
+    assert all(row["straight"] == 1.0 for row in res["trips"].values())
+    assert sum(row["n"] for row in res["late"].values()) == res["late_per_life"][0]
+
+
+@torch.no_grad()
+def test_a_brain_lives_in_a_land_and_a_thought_leaves_it_as_it_was():
+    from tissue import world
+    torch.manual_seed(0)
+    shape = world.Land(side=3, ticks=40)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    with pytest.raises(ValueError):
+        world.Mind(Tissue(RUNG1, ITEM).grow(16), gen(2))            # a thought needs its wires still
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    mind = world.Mind(genome.grow(16), gen(2), budget=32)
+    life = world.live(mind, looks, nxt, trees, start, 40, gen(3), fruits=5)
+    assert int(life["walked"].sum()) == 40
+    bank, act = mind.body.bank.clone(), {t: a.clone() for t, a in mind.state[0].items()}
+    wires = {i: w.clone() for i, w in mind.state[1].items()}
+    trace: list = []
+    way = mind.think(looks[int(trees[0])], gen(4), trace=trace)
+    assert way is None or 0 <= way < 4
+    assert trace and all(hops >= 1 and 0 <= w < 4 for hops, _, w, _ in trace)
+    says = mind.atlas(looks)
+    assert says.shape == (9, 4, 12)
+    assert torch.equal(bank, mind.body.bank) and all(torch.equal(a, mind.state[0][t]) for t, a in act.items())
+    assert all(torch.equal(w, mind.state[1][i]) for i, w in wires.items())
+    known = world.known_map(mind, looks, nxt, life["walked"])
+    assert 0 < known["gone"] <= 1 and 0 <= known["right_gone"] <= 1
+    again = world.Mind(genome.grow(16), gen(2), budget=32)          # a life is a pure function
+    relived = world.live(again, looks, nxt, trees, start, 40, gen(3), fruits=5)
+    assert relived["meals"] == life["meals"] and torch.equal(relived["walked"], life["walked"])
+    numb = world.Mind(genome.grow(16), gen(2), numb=True, budget=32)
+    world.live(numb, looks, nxt, trees, start, 40, gen(3), fruits=5)
+    assert numb.body.bank.shape[1] == 1

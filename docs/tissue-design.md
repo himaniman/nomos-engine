@@ -1515,6 +1515,95 @@ little; in thought, where it walks every branch, the same learning wears the map
 Stillness by hand is the blunt cure: it buys thinking in the brain's own head and costs
 a tenth of the holding. The fine one is a rule that tells rehearsing from imagining.
 
+## Exam 6: a world (`tissue/world.py`, the user's choice, 2026-11-12)
+
+Offered a fork (a small world now, with the thinking still by hand, or first the hand-made
+parts of thinking into cells) the user chose the world, "though it is important to remove
+the hand-made parts too". So the world is built on what exams 4 and 5 have, by hand where
+it must be, with the list of what is by hand kept in the open, and the parts are then
+taken away one at a time.
+
+What exams 4 and 5 were not: the body was LED through a study (out of every room by every
+way, twice, in a round with no jump), then examined in trials, and the world was a shuffle
+with no shape. A world has a shape, and nobody leads.
+
+**The land.** A square grid of rooms. Between two rooms that touch stands a wall or none
+(a wall in three places of ten, and the land hangs together). Every room has a look of its
+own, a random item of 12 bits. The body goes north, east, south or west; into a wall, it
+stays. So a land of side 6 is 36 rooms and 144 ways, of which about four in ten lead back
+into the room they leave. One room in six has a TREE; one tree at a time bears a fruit; a
+body that comes to it eats and another tree, drawn at random, bears the next. A life is 40
+ticks to every room of the land, unbroken, from birth: no study, no trial, no jump.
+
+**The brain** is the tissue of exam 5 with its wires still in the dark (`Plan.still`), eyes
+that never close and a dendrite per way.
+
+**By hand, all of it listed** (found by a search: the cell's rule, and nothing else):
+
+1. the body's sense of the way gone, as a dendrite per way (exam 4);
+2. no wire changes in thought (5d);
+3. THE WILL: it wants the room where the fruit is and is TOLD what that room looks like
+   (exam 5's naming of a wanted room); it thinks before every step; a road found, it takes
+   the first way of it; none found, a way at random. There is no curiosity: it wanders
+   because it has no plan, and it learns the land because it wanders;
+4. THE THINKING: copies of what the cells say now walk in the dark, the nearest rooms
+   first (one hop by every way, then one hop on from every room so reached). The list of
+   rooms already thought of, the comparing of what a copy says with the wanted look (every
+   bit), the choice among roads of one length (at random), a limit of 24 hops and of 256
+   rooms a thought: all mine. In exam 5 a thought was every string of four ways, 16 of
+   them; with four ways and roads of ten steps that is a million strings, so the nearest
+   rooms go first and a room is thought of once;
+5. the world's: no two rooms look alike, and the eyes see the room and nothing beyond it.
+
+First tried and dropped, on lands of a pilot seed: a will that remembers the rooms where it
+ate and wants the one it ate at longest ago. A brain that happened to find two trees side
+by side and no third ate 1399 times in 1440 ticks, more than one born knowing the land:
+with that rule knowing less pays, and what is measured is the luck of the finding. Hence
+one fruit at a time and the look of its room told.
+
+**Yardsticks**, the same will with another memory, in the same lands with the fruit going
+round in the same order: `blind` never has a plan; `perfect` remembers every way it ever
+went and thinks on that; `oracle` was born knowing every way. `perfect` is not a ceiling:
+it stops wandering once it has a road, a brain that fails a thought wanders on and comes
+to know more, so only `oracle` is above everything.
+
+**Pilot** (seed 1, lineage 0, 256 cells, 8 lives, side 6; it set the rule above and the
+limit of 256 rooms a thought, which costs nothing against 512 and halves the time): meals
+a life 168 against `perfect` 150, `oracle` 304, `blind` 7; a single life swings by a factor
+of five (a fruit on a tree in a dead end the body has never entered is found by luck
+alone). So sixteen lives, and bars with room for that noise. The exam's lands (seed
+90000) have not been looked at.
+
+### Step 6a: a life in a land. Bars written before the run
+
+Genomes of 1d (`runs/tissue/hold/`), nothing searched, 16 lives, five lineages.
+
+- **V1, it makes a living.** Side 6 at 256 cells: meals a life at least 0.8 of `perfect`
+  and at least ten times `blind`, on at least four lineages of five.
+- **V2, and it is the map in its wires that feeds it.** `numb` (one dendrite whatever the
+  way) at 256 cells, side 6: no more than twice `blind`, on every lineage.
+- **V3, what it learned by wandering it thinks with.** In the last third of a life, side 6
+  at 256 cells: trips whose shortest road is 3 or 4 steps go by a shortest road at least
+  0.8 of the time, on at least four lineages.
+- **V4, a bigger land wants a bigger brain.** Side 10 (100 rooms, 400 ways: about what 256
+  cells hold at hop 4 with four ways in exam 4, and half of what 512 hold): in the last
+  third of a life 512 cells eat at least 1.25 times what 256 eat, on at least three
+  lineages; and at side 6 they eat no more than 1.1 times as much (there the small brain
+  is enough).
+
+Reported with no bar: side 8 at 256 cells; meals by third of a life (how fast it comes to
+know its land); at the end of a life, of the ways it has gone the share it says right one
+hop ahead, and how LOUD it speaks of ways gone and of ways never gone (if a brain is
+quieter about what it does not know, that is where a curiosity of its own can come from).
+
+Prediction. V1 met on four (lineage 3 the doubt, as everywhere). V2 met: a numb thought
+finds the wanted room at some depth and cannot say which way, so it walks at random. V3
+met on four. V4 is the open one: I expect 256 cells to fall to about half of `perfect` at
+side 10 and 512 cells to be near it, so met; but exam 5's crowded world missed its bar on
+just this, and a land has roads of ten steps and more where exam 5 had four, so the depth
+of a thought may bind before the size of the map does, and then growing the brain would
+buy little. Side 8 at 256 cells: 0.7 of `perfect` or better on four lineages.
+
 ## Where the ladder stands
 
 | rung | state |

@@ -2,6 +2,7 @@
 
     python -m tissue.world GENOME.pt ... [--side 6] [--sizes 256] [--arm thinks|numb]
     python -m tissue.world --yardsticks [--side 6]
+    python -m tissue.world GENOME.pt --why [--side 8] [--lives 4]     why a thought fails
 
 THE LAND is a square grid of rooms. Between two rooms that touch there is a wall or there is
 none, and the land hangs together. Every room has a LOOK of its own, a random item, and no
@@ -223,14 +224,18 @@ class Mind(Blind):
         state, out = self.brain.tick((act, wires, self.state[2]), silent, silent, 0.0, 0.0)
         return state[0], out
 
-    def think(self, wanted, gen, trace=None):
+    def think(self, wanted, gen, trace=None, root=None):
         """The first way of the shortest road the brain can think of to the `wanted` look, or
-        None. `trace`: a list that gets (hops, the room a copy came from, the way, the room
-        it said it reached) for every copy, rooms as `key`s, and last, if a road was found,
-        (0, None, the ways of that road, None)."""
-        act = {t: a.clone() for t, a in self.state[0].items()}      # one copy, in the room it is in
+        None (`self.ended` then says why: "rooms", nothing new to think of; "budget"; "depth").
+        `trace`: a list that gets (hops, the room a copy came from, the way, the room it said
+        it reached) for every copy, rooms as `key`s, and last, if a road was found, (0, None,
+        the ways of that road, None). `root`: think from this (activity, look) and not from
+        where the brain is (the examiner's: a copy carried somewhere)."""
+        act, here = root or (self.state[0], self.before[0])
+        act = {t: a.clone() for t, a in act.items()}        # one copy, in the room it is in
         first = torch.tensor([-1])              # per copy: the first way of its road
-        came = [(key(self.before[0]), -1)]      # per copy: (the room it came from, by which way)
+        came = [(key(here), -1)]                # per copy: (the room it came from, by which way)
+        self.ended = "depth"
         seen, spent = {came[0][0]}, 0
         ways = [()] if trace is not None else None          # per copy: the ways of its road
         for hops in range(self.depth + 1):
@@ -255,6 +260,7 @@ class Mind(Blind):
                         keep.append(j)
             spent += len(keep)
             if not keep or spent > self.budget:
+                self.ended = "budget" if keep else "rooms"
                 return None
             pick = torch.tensor(keep)           # only the copies in new rooms go on, by every way
             act = {t: a[pick] for t, a in act.items()}
@@ -342,6 +348,68 @@ def known_map(mind: Mind, looks, nxt, walked) -> dict:
             "loud_never": share(loud, ~gone)}
 
 
+COLS = ("gone", "map", "thinks", "thinks_right", "rooms", "budget", "wide", "wide_right",
+        "seeing", "seeing_right", "seeing_wide", "seeing_wide_right")
+
+
+def why(mind: Mind, looks, nxt, trees, walked, gen: torch.Generator) -> dict:
+    """The examiner looks at a grown brain: a copy is carried into every room and asked for a
+    road to every tree. Per band of the true shortest road, shares of those pairs:
+      gone      there is a road through ways the body has gone;
+      map       there is one on the brain's own map taken a hop at a time (a copy carried into
+                a room says what lies one hop by each way: `atlas`), through rooms that exist;
+      thinks    the thought finds a road; thinks_right: and its first way lies on a shortest road;
+      rooms / budget   it finds none, with nothing new left to think of / at its limit of rooms;
+      wide      the same thought allowed sixteen times the rooms finds a road, wide_right;
+      seeing, seeing_right   with `imagery`, as `thinks`; seeing_wide: both."""
+    n, far = len(looks), roads(nxt)
+    room_of = {k: r for r, k in enumerate(keys(looks))}
+    said = [[room_of.get(k) for k in keys(x)] for x in mind.atlas(looks)]
+    gone = walked > 0
+
+    def reach(step) -> torch.Tensor:            # (n, n): is there a road from a room to a room by `step`
+        can = torch.eye(n, dtype=torch.bool)
+        for a in range(n):
+            edge = [a]
+            while edge:
+                new = {b for r in edge for b in step(r) if b is not None and not can[a, b]}
+                for b in new:
+                    can[a, b] = True
+                edge = list(new)
+        return can
+
+    by_feet = reach(lambda r: [int(nxt[r, w]) for w in range(4) if gone[r, w]])
+    by_map = reach(lambda r: said[r])
+    act = {t: a.expand(n, -1) for t, a in mind.state[0].items()}
+    calm = {**mind.state[1], mind.body.inner: torch.zeros_like(mind.body.bank[:, 0])}
+    carried = mind.deaf.tick((act, calm, mind.state[2]), looks, mind.before.expand(n, -1), 1.0, 1.0)[0][0]
+    budget, imagery = mind.budget, mind.imagery
+    rows = []
+    for tree in trees.tolist():
+        for room in range(n):
+            if room == tree:
+                continue
+            root = ({t: a[room:room + 1] for t, a in carried.items()}, looks[room])
+            row = {"far": int(far[room, tree]), "gone": bool(by_feet[room, tree]), "map": bool(by_map[room, tree])}
+            for name, see, most in (("thinks", False, budget), ("wide", False, 16 * budget),
+                                    ("seeing", True, budget), ("seeing_wide", True, 16 * budget)):
+                mind.imagery, mind.budget = see, most
+                way = mind.think(looks[tree], gen, root=root)
+                row[name] = way is not None
+                row[name + "_right"] = way is not None and int(far[int(nxt[room, way]), tree]) == row["far"] - 1
+                if name == "thinks" and way is None:
+                    row[mind.ended] = True
+            rows.append(row)
+    mind.budget, mind.imagery = budget, imagery
+    out = {}
+    for lo, hi in BANDS:
+        band = [r for r in rows if lo <= r["far"] <= hi]
+        if band:
+            out[f"{lo}-{hi}" if hi < 99 else f"{lo}+"] = {"n": len(band), **{
+                c: sum(r.get(c, False) for r in band) / len(band) for c in COLS}}
+    return out
+
+
 BANDS = ((1, 2), (3, 4), (5, 8), (9, 99))      # trips by the shortest road to the wanted room
 
 
@@ -420,6 +488,8 @@ def main() -> None:
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--arm", choices=ARMS, default="thinks")
     p.add_argument("--yardsticks", action="store_true", help="blind, perfect and oracle in the same lands")
+    p.add_argument("--why", action="store_true",
+                   help="a look, no exam: after each life, why a thought to a tree finds a road or does not")
     p.add_argument("--depth", type=int, default=24, help="how many hops a thought may go")
     p.add_argument("--budget", type=int, default=256, help="how many rooms a thought may think of")
     p.add_argument("--slack", type=int, default=0, help="bits of the wanted look a thought may get wrong")
@@ -436,6 +506,26 @@ def main() -> None:
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
+    if a.why:
+        for path in a.genomes:
+            model, task, _ = load(path, still=True)
+            for m in a.sizes:
+                bands: dict = {}
+                for i in range(a.lives):
+                    gen = torch.Generator().manual_seed(a.seed + 1000 * shape.side + i)
+                    looks, nxt, trees, start = land(task.d_out, shape, gen)
+                    with torch.no_grad():
+                        mind = Mind(model.grow(m), gen, **think)
+                        life = live(mind, looks, nxt, trees, start, shape.life, gen, fruits=a.seed + i)
+                        for band, row in why(mind, looks, nxt, trees, life["walked"], gen).items():
+                            bands.setdefault(band, []).append(row)
+                print(f"{path} {m} cells, {a.lives} lives; pairs of a room and a tree by their shortest road, shares:")
+                print(f"{'road':>5} {'pairs':>6} " + " ".join(f"{c:>12}" for c in COLS))
+                for band, rows in bands.items():
+                    n = sum(r["n"] for r in rows)
+                    print(f"{band:>5} {n:>6} " + " ".join(
+                        f"{sum(r[c] * r['n'] for r in rows) / n:>12.2f}" for c in COLS), flush=True)
+        return
     if a.yardsticks:
         res = {arm: examine(arm, shape, a.lives, seed=a.seed) for arm in YARDSTICKS}
         for arm, row in res.items():
@@ -443,7 +533,8 @@ def main() -> None:
         with open(f"runs/tissue/world{shape.side}.yardsticks{pilot}.json", "w") as f:
             json.dump(res, f)
     tag = (f".world{shape.side}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
-           + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "") + pilot)
+           + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
+           + (f".budget{a.budget}" if a.budget != 256 else "") + pilot)
     for path in a.genomes:
         res = {}
         for m in a.sizes:

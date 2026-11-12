@@ -1637,6 +1637,47 @@ speaks quietly dropped (`--mumble`) halves the meals. Why a long thought fails i
 question on this road. Also seen: the brain speaks 2 to 6 times more quietly of ways it has
 never gone, from which a curiosity of its own could be read.
 
+### Step 6b: a wider thought. A look first, then bars written before the run
+
+**The look** (`python -m tissue.world GENOME --why --side 8`, four of the exam's lands,
+the brain as it is at the end of its life): a copy is carried into every room and asked for
+a road to every tree. Shares of the pairs whose shortest road is 9 steps or more:
+
+| | lineage 0 | lineage 4 |
+|---|---|---|
+| a road exists through ways the body has gone | 1.00 | 0.95 |
+| a road exists on the brain's own map, a hop at a time | 1.00 | 0.72 |
+| the thought finds a road (its first way on a shortest road) | 0.70 (0.66) | 0.22 (0.15) |
+| it finds none: at its limit of 256 rooms / nothing left to think of | 0.30 / 0 | 0.78 / 0 |
+| allowed 4096 rooms | 1.00 (0.92) | 0.91 (0.55) |
+| shown what it says (`--imagery`), 256 rooms | 0.79 (0.73) | 0.53 (0.40) |
+| both | 1.00 (0.88) | 0.95 (0.65) |
+
+So a long thought fails for one reason, and it is mine: the limit of 256 rooms a thought,
+set on a pilot at side 6 where it cost nothing, and spent mostly on copies that say rooms
+which are not there. The road is in the wires. (At 5-8 steps the same: 0.93 and 0.40 found,
+1.00 and 0.88 with 4096 rooms.) METHOD: a dial set by hand where it does not bind was carried
+to where it does, unexamined; I then guessed at cures before looking.
+
+**The step**: no new mechanism, the dial `--budget` (rooms a thought may think of) at 1024
+and 4096. It costs thinking time and nothing else. Reported beside it with no bar:
+`--imagery` at 4096 rooms, which the look says helps a weak lineage and costs a strong one
+a little.
+
+Bars: the exam's lands, side 8, 256 cells, 16 lives, five lineages, 4096 rooms a thought,
+against 6a (meals 95 / 55 / 88 / 53 / 36; trips of 9+ steps in the last third straight
+0.55 / 0.22 / 0.39 / 0.17 / 0.07; `perfect` 182):
+
+- **T1.** Meals a life at least 1.3 times 6a's, on at least four lineages.
+- **T2.** Trips of 9+ steps in the last third straight at least 0.6 of the time, on at least
+  three.
+- **T3.** At least 0.7 of `perfect`, on at least two.
+
+Prediction: T1 met on four (the weak lineages gain most), T2 on three, T3 on two (lineages 0
+and 2). The doubt: the look asks a grown brain; in a life the thoughts that fail come mostly
+while the map is still being made, and there a thought may be right to find nothing. Then
+side 10 at 512 cells with the same dial, reported.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

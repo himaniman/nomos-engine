@@ -897,3 +897,21 @@ def test_cells_that_belong_to_a_way_by_hand_speak_only_when_the_body_went_their_
     assert lived["closed"][0].shape == (2, 2 * walk.closed, 12)
     assert torch.equal(lived["closed"][0], fork.run_life(brain, items, nxt, walk, gen(2), body="tribes")["closed"][0])
     assert not torch.equal(lived["closed"][0], fork.run_life(brain, items, nxt, walk, gen(2), body="numb")["closed"][0])
+
+
+@torch.no_grad()
+def test_a_look_at_why_thoughts_fail_asks_a_copy_in_every_room_and_leaves_the_brain_as_it_was():
+    from tissue import world
+    torch.manual_seed(0)
+    shape = world.Land(side=3, ticks=60)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    mind = world.Mind(Tissue(replace(RUNG1, still=True), ITEM).grow(16), gen(2), budget=8)
+    life = world.live(mind, looks, nxt, trees, start, 60, gen(3), fruits=5)
+    act = {t: a.clone() for t, a in mind.state[0].items()}
+    bands = world.why(mind, looks, nxt, trees, life["walked"], gen(4))
+    assert sum(row["n"] for row in bands.values()) == len(trees) * 8       # every room but the tree itself
+    assert all(0 <= row[c] <= 1 for row in bands.values() for c in world.COLS)
+    assert all(row["thinks"] + row["rooms"] + row["budget"] <= 1 + 1e-9 for row in bands.values())
+    assert all(row["wide"] >= row["thinks"] - 1e-9 for row in bands.values())     # more rooms to think of never hides a road
+    assert mind.budget == 8 and not mind.imagery
+    assert all(torch.equal(a, mind.state[0][t]) for t, a in act.items())

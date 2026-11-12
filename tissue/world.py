@@ -125,9 +125,13 @@ def roads(nxt: torch.Tensor) -> torch.Tensor:
     return far
 
 
+def keys(looks: torch.Tensor) -> list:
+    """Looks (N, bits) as one number each: the bits by sign."""
+    return ((looks > 0).long() << torch.arange(looks.shape[-1])).sum(-1).tolist()
+
+
 def key(look: torch.Tensor) -> int:
-    """A look as one number: its bits by sign."""
-    return int(((look > 0).long() << torch.arange(look.shape[-1])).sum())
+    return keys(look.unsqueeze(0))[0]
 
 
 class Blind:
@@ -149,8 +153,8 @@ class Table(Blind):
         self.at = None
         if whole:
             looks, nxt = whole
-            keys = [key(x) for x in looks]
-            self.map = {(keys[r], w): keys[int(nxt[r, w])] for r in range(len(keys)) for w in range(4)}
+            ks = keys(looks)
+            self.map = {(ks[r], w): ks[int(nxt[r, w])] for r in range(len(ks)) for w in range(4)}
 
     def see(self, look, way):
         now = key(look)
@@ -223,14 +227,10 @@ class Mind(Blind):
         came = [(key(self.before[0]), -1)]      # per copy: (the room it came from, by which way)
         seen, spent = {came[0][0]}, 0
         for hops in range(self.depth + 1):
-            kids, says = [], None
-            for w in range(4):
-                kid, out = self.hop(act, w)
-                kids.append(kid)
-                says = out if says is None else says        # the same whatever the way
+            north, says = self.hop(act, 0)      # what a copy says of its room is the same whatever the way
             keep, rooms = [0], [came[0][0]]
             if hops:                            # only now is it known what room each copy is in
-                rooms = [key(x) for x in says]
+                rooms = keys(says)
                 if trace is not None:
                     trace.extend((hops, a, w, b) for (a, w), b in zip(came, rooms))
                 hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
@@ -245,8 +245,10 @@ class Mind(Blind):
             spent += len(keep)
             if not keep or spent > self.budget:
                 return None
-            pick = torch.tensor(keep)
-            act = {t: torch.cat([kid[t][pick] for kid in kids]) for t in kids[0]}
+            pick = torch.tensor(keep)           # only the copies in new rooms go on, by every way
+            act = {t: a[pick] for t, a in act.items()}
+            kids = [{t: a[pick] for t, a in north.items()}] + [self.hop(act, w)[0] for w in (1, 2, 3)]
+            act = {t: torch.cat([kid[t] for kid in kids]) for t in kids[0]}
             first = torch.cat([first[pick] if hops else torch.full((1,), w) for w in range(4)])
             came = [(rooms[j], w) for w in range(4) for j in keep]
         return None

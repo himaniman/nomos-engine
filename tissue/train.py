@@ -40,6 +40,8 @@ def make(arm: str, **switches):
         return Tissue(replace(RUNG0, **switches)), Task()
     if arm in ("chain", "stream"):      # the same brain; only the life it is searched on differs
         return Tissue(replace(RUNG1, **switches), CHAIN_TASK), CHAIN_TASK
+    if arm == "fork":                   # that brain with a sense of its body: two ways unless told
+        return Tissue(replace(RUNG1, **{"body": 2, **switches}), CHAIN_TASK), CHAIN_TASK
     task = Task(dwell=1)
     return Gru(task, int(arm[3:])), task
 
@@ -65,7 +67,7 @@ def load(path: str, **switches):
     field it was searched with unless a switch says otherwise; other switches are the plan's
     off-switches."""
     saved = torch.load(path, weights_only=True)
-    for dial in ("fan", "reach", "field", "spoken", "gate", "lean", "sleep"):
+    for dial in ("fan", "reach", "field", "spoken", "gate", "lean", "sleep", "body"):
         if dial in saved and dial not in switches:
             switches[dial] = saved[dial]
     model, task = make(saved["arm"], **switches)
@@ -139,6 +141,17 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                                     life, gen, places=field > 0, told=told)
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
             answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
+        elif arm == "fork":             # 1/16 .. 1/2 link per interneuron, rooms with two ways out
+            from tissue import fork         # here: exam 4 loads genomes through this module
+            ways = model.plan.body
+            rooms = max(2, round(m * 2 ** (float(u[1]) * 3 - 4) / ways))
+            laps = 2 + int(torch.rand(1, generator=gen) * 2)
+            closed = max(1, hops >> int(torch.rand(1, generator=gen) * 4)) if vary else hops
+            walk = fork.Walk(rooms, ways, laps, blinks=6 if closed <= 8 else 3, open=3, closed=closed)
+            items, nxt = fork.world(task.d_out, walk, batch, gen)
+            lived = fork.run_life(model.grow(m), items, nxt, walk, gen, body="felt")
+            logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
+            answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
         elif arm == "chain":            # 1/8 .. 1 link per interneuron, chains of 1..hops links
             length = 1 + int(u[2] * hops)
             k = max(1, round(m * 2 ** (float(u[1]) * 3 - 3)))
@@ -181,18 +194,20 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                         "idle": idle, "vary": vary, "init": init or "", "fan": fan,
                         "reach": reach, "field": field, "spoken": spoken, "gate": gate,
                         "anneal": anneal, "lean": model.plan.lean if arm == "stream" else 1.0,
-                        "told": told, "sleep": sleep,
+                        "told": told, "sleep": sleep, "body": model.plan.body,
                         "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
     log.close()
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--arm", default="tissue", help='"tissue", "chain", "stream" or "gru<hidden>"')
+    p.add_argument("--arm", default="tissue",
+                   help='"tissue", "chain", "stream", "fork" (the stream brain with a sense of its'
+                        ' body, in a world of forks) or "gru<hidden>"')
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--hops", type=int, default=1,
-                   help="chain: longest chain trained on; stream: ticks the eyes stay closed")
+                   help="chain: longest chain trained on; stream, fork: ticks the eyes stay closed")
     p.add_argument("--echo", action="store_true", help="chain arm: the echo is in the error too")
     p.add_argument("--idle", type=int, default=0, help="stream arm: a long closing before the test")
     p.add_argument("--init", help="start from this genome (same brain plan) instead of random")

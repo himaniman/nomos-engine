@@ -834,3 +834,45 @@ def test_a_life_in_a_land_can_be_watched_and_drawn_and_a_thought_gives_back_its_
     rec["thought"] = thought
     img = view.draw(rec, "a test", 16)
     assert img.size[0] > 1000 and img.size[1] > 500
+
+
+@torch.no_grad()
+def test_a_sense_of_the_body_is_one_more_dendrite_and_a_genome_without_it_begins_numb():
+    from tissue import fork
+    from tissue.train import adopt
+    torch.manual_seed(0)
+    old = Tissue(RUNG1, ITEM)
+    new = Tissue(replace(RUNG1, body=2), ITEM)
+    assert new.cells["I"].a.weight.shape[1] == old.cells["I"].a.weight.shape[1] + 1
+    assert sum(p.numel() for p in new.parameters()) == sum(p.numel() for p in old.parameters()) + 8 + 1
+    assert new.grow(16).born(3, gen(1))[1]["body"].shape == (3, 16, 2)     # from every body cell to every interneuron
+    adopt(new, old.state_dict())
+    felt = fork.feel(torch.tensor([1, -1, 0]), 2)
+    assert felt.tolist() == [[-1.0, 1.0], [0.0, 0.0], [1.0, -1.0]]        # carried: the body cells are silent
+    walk = fork.Walk(rooms=6, ways=2, blinks=3)
+    items, nxt = fork.world(12, walk, 3, gen(2))
+    numb = fork.run_life(old.grow(32), items, nxt, walk, gen(3), body="numb")["closed"][0]
+    now = fork.run_life(new.grow(32), items, nxt, walk, gen(3), body="felt")["closed"][0]
+    assert torch.allclose(numb, now, atol=1e-5)             # weights from the body at zero: the old brain
+    new.cells["I"].a.weight[:, -1] = 1.0                    # a cell that listens to its body
+    heard = fork.run_life(new.grow(32), items, nxt, walk, gen(3), body="felt")["closed"][0]
+    assert not torch.allclose(heard, now, atol=1e-3)
+    assert torch.equal(heard, fork.run_life(new.grow(32), items, nxt, walk, gen(3), body="felt")["closed"][0])
+    three = fork.Walk(rooms=6, ways=3, blinks=3)
+    with pytest.raises(ValueError):                         # as many body cells as there are ways
+        fork.run_life(new.grow(32), *fork.world(12, three, 3, gen(2)), three, gen(3), body="felt")
+
+
+def test_a_search_on_forks_runs_saves_and_the_genome_comes_back_with_its_body(tmp_path):
+    from tissue import fork
+    from tissue.train import load, train
+    stream_genome = tmp_path / "stream.pt"
+    train("stream", 0, 2, stream_genome, batch=2, hops=2, sizes=(8,))
+    out = tmp_path / "fork.pt"
+    train("fork", 0, 3, out, batch=2, hops=4, vary=True, sizes=(8, 16), init=str(stream_genome))
+    model, task, saved = load(str(out))
+    assert saved["body"] == 2 and model.plan.body == 2 and saved["arm"] == "fork"
+    four, _, _ = load(str(out), body=4)                     # the genome does not say how many ways there are
+    assert four.grow(8).born(1, gen(1))[1]["body"].shape == (1, 8, 4)
+    res = fork.examine(str(out), [16], fork.Walk(rooms=1, ways=2, closed=2), lives=2, body="felt")
+    assert len(res[16]["k90"]) == 3

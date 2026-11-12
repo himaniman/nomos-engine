@@ -24,6 +24,9 @@ With sleep cells (`sleep`): that there is such a kind of cell, one beside every 
 interneurons, that it feels the place and the eyes and no other cell, that it speaks within
 the tick as a sense organ does, and that what it says scales, through a sigmoid, what its
 interneurons say and learn. When it says "sleep" is found.
+With a sense of the body (`body`): that there are body cells, one per way the body can go,
+that each is wired at birth to every interneuron by an innate wire, and that an interneuron
+reads them on a dendrite of their own. What it makes of that is found.
 """
 
 from __future__ import annotations
@@ -79,6 +82,10 @@ class Plan:
     #                     depends on how many of its sources speak. False: by the wires
     still: bool = False     # by hand: with the eyes closed no wire changes. A thought is then
     #                     not learnt as a sight is (exam 5: learning in thought wears the map)
+    body: int = 0       # a sense of the body: this many BODY CELLS (one per way it can go), each
+    #                     wired at birth to every interneuron by an innate wire of that
+    #                     individual; an interneuron reads them on a dendrite of their own, a
+    #                     number beside its other inputs. 0: no such sense
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -117,11 +124,14 @@ class Tissue(nn.Module):
         self.incoming = {t: [i for i, b in enumerate(plan.blocks) if b.post == t]
                          for t in self.types}
         self.cells = nn.ModuleDict({
-            t: Cell(len(self.incoming[t]) + (2 if t == "O" else int(plan.mode) + int(plan.field > 0)),
+            t: Cell(len(self.incoming[t]) + (2 if t == "O" else int(plan.mode) + int(plan.field > 0)
+                                             + int(plan.body > 0)),
                     1 + sum(plan.blocks[i].plastic for i in self.incoming[t]), plan.hidden)
             for t in self.types})
         self.gain = nn.ParameterDict({str(i): nn.Parameter(torch.zeros(()))
                                       for i, b in enumerate(plan.blocks) if not b.plastic})
+        if plan.body:                   # one gain for the body's dendrite, as for a block of innate wires
+            self.gain["body"] = nn.Parameter(torch.zeros(()))
         if plan.sleep:                  # the sleep cell: (nearness, eyes) -> one number
             self.cells[SLEEP] = Cell(1 + int(plan.mode), 1, plan.hidden)
             with torch.no_grad():       # born saying "awake" to everyone: a brain with no gate
@@ -179,6 +189,8 @@ class Grown:
             else:
                 shape = (batch, self.n[b.post], self.n[b.pre])
             wires[i] = torch.zeros(shape) if b.plastic else torch.randn(shape, generator=gen)
+        if self.t.plan.body:            # from every body cell to every interneuron, innate
+            wires["body"] = torch.randn(batch, self.n["I"], self.t.plan.body, generator=gen)
         return act, wires, sources
 
     def rest(self, state):
@@ -214,6 +226,8 @@ class Grown:
                 new_wires[i] = torch.cat([wires[i], new_wires[i][:, :, old:]], dim=2)
             else:
                 new_wires[i] = wires[i]
+        if plan.body:                   # the new cells come with body wires of their own
+            new_wires["body"] = torch.cat([wires["body"], new_wires["body"][:, old:]], dim=1)
         return grown, (new_act, new_wires, new_sources)
 
     def near(self, n: int, where: torch.Tensor, every: int = 1) -> torch.Tensor:
@@ -226,11 +240,12 @@ class Grown:
         return torch.exp(-0.5 * (away / self.t.plan.field) ** 2)
 
     def tick(self, state, cue: torch.Tensor, teach: torch.Tensor, flag: float, on: float = 1.0,
-             where: torch.Tensor | None = None):
+             where: torch.Tensor | None = None, body: torch.Tensor | None = None):
         """One tick. `teach`/`flag`: what the teacher shows the motor cells and whether it
         is there; `on`: whether the senses are on (heard by interneurons under `plan.mode`);
         `where`: the world's place (B,) in [0, 1), felt by interneurons under `plan.field`
-        (None: nothing is felt)."""
+        (None: nothing is felt); `body`: what the body cells say (B, `plan.body`), read by
+        interneurons under `plan.body` (None: they are silent)."""
         act, wires, sources = state
         plan = self.t.plan
         seen = {**act, "S": cue}                    # sensory cells carry the cue as it is
@@ -264,9 +279,13 @@ class Grown:
                 if plan.field:
                     feats.append(torch.zeros_like(feats[0]) if where is None
                                  else self.near(self.n[t], where))
+                if plan.body:
+                    feats.append(torch.zeros_like(feats[0]) if body is None else
+                                 torch.einsum("bij,bj->bi", wires["body"], body)
+                                 * torch.exp(self.t.gain["body"]) / math.sqrt(plan.body))
             said = self.t.cells[t](torch.stack(feats, dim=-1))
             if t != "O" and plan.field and plan.gate and plan.lean and where is not None:
-                asleep = (feats[-1] < plan.gate).unsqueeze(-1)          # away from the place
+                asleep = (feats[-1 - int(plan.body > 0)] < plan.gate).unsqueeze(-1)     # away from the place
                 said = said * (1 - plan.lean * asleep)
             if t != "O" and plan.sleep:             # as its sleep cell says (`late`: said a tick ago)
                 awake = torch.sigmoid((act if plan.late else new_act)[SLEEP])

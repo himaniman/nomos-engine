@@ -1604,6 +1604,46 @@ just this, and a land has roads of ten steps and more where exam 5 had four, so 
 of a thought may bind before the size of the map does, and then growing the brain would
 buy little. Side 8 at 256 cells: 0.7 of `perfect` or better on four lineages.
 
+### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
+
+The first hand-made part on the world's list to go, if a search will have it. In 4a the way
+gone on SENSORY cells of its own did nothing, and what worked was mine: a dendrite per way,
+swapped by the examiner. Between the two lies the smallest thing a cell could be given:
+`Plan.body`, BODY CELLS (one per way), each wired at birth to every interneuron by an
+innate random wire, read by an interneuron on a dendrite of their own, one more number
+beside its inputs. A cell then knows, by the luck of its wires, some ways better than
+others, and what it does with that is its genome's. By hand: that the sense exists and
+lands on a dendrite of its own. Not by hand any more: which wires speak on which way.
+
+The search (`tissue.train --arm fork`): lives of exam 4 with two ways, 1/16 to 1/2 link per
+interneuron, brains of 8 to 64 cells, closings of 1 to 8 ticks, started from the genomes
+of 1d (whose new input begins at zero: a numb brain), 4000 steps, five lineages. It is
+cheap (small brains, wired from every cell). Off-switch: the body cells silent
+(`--body numb` on the found genome).
+
+Bars, exam 4 with two ways at 64 to 512 cells (128 and up never seen by the search),
+`--body felt`, against the same lineage with the hand-made dendrites (K90 at hop 1 at 256
+cells 422 / 460 / 464 / 333 / 451, at hop 4 206 / 182 / 216 / 111 / 171):
+
+- **B1, the cell uses its body.** K90 at hop 1 at 256 cells at least half the hand-made
+  figure, on at least three lineages; with the body cells silent it holds no more than a
+  numb brain does.
+- **B2, and more of it buys more.** K90 at hop 1 at 512 cells at least 1.6 times that at
+  256, on at least three.
+- **B3, several hops.** K90 at hop 4 at 256 cells at least half the hand-made figure, on
+  at least three.
+- **B4, ways it was never searched on.** Grown with four body cells in a world of four
+  ways: K90 at hop 1 at 256 cells at least what the same genome holds with two ways.
+
+Prediction: B1 met (a hundred steps of a trial search already moved: accuracy 0.91 where a
+numb brain starts near 0.8). B2 met on three. B3 the doubt: a dendrite swapped by hand
+keeps the ways wholly apart, a cell leaning by the luck of its wires keeps them apart
+only roughly, and four hops multiply the leak. B4 missed: with four cells on one dendrite
+a cell tells the ways apart worse.
+
+If B1 and B3 are met the world of exam 6 is lived again with this brain in place of the
+dendrite per way, and the list of hand-made parts is one shorter.
+
 ## Where the ladder stands
 
 | rung | state |

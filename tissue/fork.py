@@ -124,7 +124,17 @@ def embodied(tissue, ways: int):
     return tissue
 
 
-BODIES = ("cells", "dendrites", "numb")
+def feel(way: torch.Tensor, ways: int) -> torch.Tensor:
+    """What the body cells say of the way just gone (B,): +1 the cell of that way, -1 the
+    others, all silent when the body was carried (way -1)."""
+    felt = torch.zeros(way.shape[0], ways)
+    gone = way >= 0
+    felt[gone] = -1.0
+    felt[gone.nonzero().flatten(), way[gone]] = 1.0
+    return felt
+
+
+BODIES = ("cells", "dendrites", "numb", "felt")
 
 
 class Dendrites:
@@ -165,7 +175,10 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
                    per way, and on a tick only the dendrite of the way just gone is heard
                    and learns (none when the body was carried). The cell and its rule are
                    as they were: it never knows that its dendrite was changed for another;
-      "numb"       not at all (the control)."""
+      "numb"       not at all (the control);
+      "felt"       on body cells of the brain's own plan (`Plan.body`), which every
+                   interneuron reads on a dendrite of its own: nothing by hand but that
+                   the sense is there. What a cell makes of it is its genome's affair."""
     if body not in BODIES:
         raise ValueError(f"body must be one of {BODIES}, not {body!r}")
     b, d = items.shape[0], items.shape[-1]
@@ -177,6 +190,8 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
     true: dict = {"echo": [], "closed": []}
     before, before_seen, before_kind = silent, False, "study"
     dendrites = Dendrites(brain, state, walk.ways) if body == "dendrites" else None
+    if body == "felt" and brain.t.plan.body != walk.ways:
+        raise ValueError(f"the brain has {brain.t.plan.body} body cells and the world {walk.ways} ways")
     for kind, seen, room, way in ticks + [("end", False, None, None)]:
         item = silent if room is None else items[rows, room]
         cue = item if seen else silent
@@ -185,6 +200,8 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
         teach, flag = before if before_seen else silent, float(before_seen)
         if dendrites:
             state, out = dendrites.tick(brain, state, cue, way, teach, flag, float(seen))
+        elif body == "felt":
+            state, out = brain.tick(state, cue, teach, flag, float(seen), body=feel(way, walk.ways))
         else:
             if brain.n["S"] > d:
                 felt = torch.zeros(b, brain.n["S"] - d)
@@ -255,6 +272,8 @@ def curve(live, bits: int, ks: list[int], shape: Walk, seed: int = 70_000, lives
 def examine(path: str, sizes, shape: Walk, lives: int = 16, body: str = "cells", quick: bool = True,
             **switches) -> dict:
     """{m: {"ks", "acc": [[echo, hop 1, ...] per K], "k90": [by hop]}} for a found genome."""
+    if body == "felt":                      # as many body cells as the world has ways
+        switches["body"] = shape.ways
     model, task, _ = load(path, **switches)
     bits = task.d_out
     if body == "cells":
@@ -282,7 +301,8 @@ def main() -> None:
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--body", choices=BODIES, default="cells",
                    help="how the way just gone reaches the brain: on sensory cells of its own,"
-                        " by hand as a dendrite per way, or not at all (the control)")
+                        " by hand as a dendrite per way, not at all (the control), or on the"
+                        " body cells of the brain's own plan")
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)

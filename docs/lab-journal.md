@@ -5287,3 +5287,24 @@ cells, then the items held at 512 / 2048 / 4096:
 The searches: the scaffold arm is at step 2100 of 4000 (accuracy in its lives 0.81-0.85), the
 arm with no hand gate at 1500 on three lineages (0.75-0.78; two more start when the first arm
 ends). Exams and controls follow by themselves (`out/jobs/step2f.sh` on the VM).
+
+## 2026-11-12 (14:45) — step 4a, four ways: F3 met in full
+
+The last third of step 4a. A dendrite per way by hand, four ways, the five genomes of 1d; K90 in
+links at hop 1 (and hop 4):
+
+| lineage | 64 cells | 128 | 256 | 512 | against one way at 256 cells |
+|---|---|---|---|---|---|
+| 0 | 204 (113) | 415 (226) | 857 (417) | 1681 (738) | x3.95 |
+| 1 | 198 (99) | 425 (195) | 926 (361) | 1877 (618) | x3.88 |
+| 2 | 208 (123) | 451 (238) | 935 (439) | 1809 (762) | x3.93 |
+| 3 | 200 (91) | 371 (141) | 647 (202) | 1025 (277) | x3.66 |
+| 4 | 211 (107) | 430 (191) | 891 (338) | 1714 (569) | x3.73 |
+
+- **F3 (a way is paid for in wires, not cells; four ways at least 3 times one way at 256
+  cells): met on all five**, with two ways at x1.88-1.95 before. The links a brain holds are in
+  proportion to its wires: about 0.85 a cell for every way, 3.3-3.7 a cell with four ways.
+
+So exam 4 by hand stands: F1 and F2 on four lineages of five, F3 on five. The user has chosen
+the next step: a small simulated world on top of exams 4 and 5, the hand-made parts listed and
+taken out one at a time afterwards.

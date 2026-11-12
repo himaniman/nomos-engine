@@ -29,8 +29,9 @@ wanted look ends the thought and the first way of its road is the plan.
 
 Arms: `thinks` as above; `numb`, the same in a brain that does not feel its body.
 Yardsticks, the same will with another memory: `blind` never has a plan and walks at
-random; `perfect` remembers every way it has ever gone and thinks on that; `oracle` was
-born knowing every way of the land. In one land the fruit goes from tree to tree in the
+random; `perfect` remembers every way it has ever gone and thinks on that; `seeker` is `perfect`
+that, with no road, takes a way it has never gone out of the room it is in, if there is
+one; `oracle` was born knowing every way of the land. In one land the fruit goes from tree to tree in the
 same order whoever lives there.
 
 Per life: meals; meals in each third of it; and per TRIP (from one meal to the next) the
@@ -51,7 +52,7 @@ from tissue.train import load
 
 WAYS = ((-1, 0), (0, 1), (1, 0), (0, -1))       # north, east, south, west: (row, column)
 ARMS = ("thinks", "numb")
-YARDSTICKS = ("blind", "perfect", "oracle")
+YARDSTICKS = ("blind", "perfect", "seeker", "oracle")
 
 
 @dataclass(frozen=True)
@@ -144,14 +145,19 @@ class Blind:
     def think(self, wanted: torch.Tensor, gen: torch.Generator, trace: list | None = None):
         return None
 
+    def wonder(self, gen: torch.Generator) -> int:
+        """The way taken when no road was thought of: at random."""
+        return int(torch.randint(4, (1,), generator=gen))
+
 
 class Table(Blind):
     """A perfect memory of every way gone: (look, way) -> look. With `whole` it was born
     knowing every way of the land."""
 
-    def __init__(self, whole: tuple | None = None):
+    def __init__(self, whole: tuple | None = None, curious: bool = False):
         self.map: dict = {}
         self.at = None
+        self.curious = curious
         if whole:
             looks, nxt = whole
             ks = keys(looks)
@@ -183,6 +189,12 @@ class Table(Blind):
             edge = list({to: (to, f) for to, f in new}.values())
         return None
 
+    def wonder(self, gen):
+        new = [w for w in range(4) if (self.at, w) not in self.map] if self.curious else []
+        if new:                                 # a way it has never gone out of this room
+            return new[int(torch.randint(len(new), (1,), generator=gen))]
+        return int(torch.randint(4, (1,), generator=gen))
+
 
 class Mind(Blind):
     """The tissue in a body: it sees the look of its room, feels the way just gone and thinks
@@ -191,14 +203,19 @@ class Mind(Blind):
     HAND: in thought a copy is SHOWN what it has just said, as if its eyes saw that room (and
     no wire changes), so every hop of a thought starts from a sight and not from the hop
     before it. `mumble`, BY HAND: a copy that says its room more quietly than this (the mean
-    size of the bits it says) is not followed: the brain speaks low of what it does not know."""
+    size of the bits it says) is not followed: the brain speaks low of what it does not know.
+    `curious`, BY HAND: with no road, the body takes the way of which the brain speaks most
+    quietly one hop ahead, if that is quieter than this share of the loudest of the four (0:
+    a way at random, always). The dice are replaced by what the brain itself does not know."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
-                 budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0):
+                 budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0,
+                 curious: float = 0.0):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
         self.brain, self.depth, self.budget, self.slack = brain, depth, budget, slack
-        self.imagery, self.mumble = imagery, mumble
+        self.imagery, self.mumble, self.curious = imagery, mumble, curious
+        self.voice = None                       # how loud it spoke one hop ahead by each way, last thought
         self.state = brain.born(1, gen)
         self.body = fork.Dendrites(brain, self.state, 4, numb=numb)
         self.bits = brain.n["O"]
@@ -243,6 +260,8 @@ class Mind(Blind):
             keep, rooms = [0], [came[0][0]]
             if hops:                            # only now is it known what room each copy is in
                 rooms = keys(says)
+                if hops == 1:
+                    self.voice = says.abs().mean(-1)
                 if trace is not None:
                     trace.extend((hops, a, w, b) for (a, w), b in zip(came, rooms))
                 hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
@@ -278,6 +297,13 @@ class Mind(Blind):
                 ways = [ways[j] + (w,) for w in range(4) for j in keep]
         return None
 
+    def wonder(self, gen):
+        if self.curious and self.voice is not None:
+            way = int(self.voice.argmin())
+            if float(self.voice[way]) < self.curious * float(self.voice.max()):
+                return way
+        return int(torch.randint(4, (1,), generator=gen))
+
     def atlas(self, looks: torch.Tensor):
         """The examiner asks, the brain is not touched: a copy is carried into every room,
         sees it and goes one hop in the dark by every way. (rooms, 4, bits): what it says it
@@ -299,7 +325,8 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
          gen: torch.Generator, fruits: int = 0, watch=None) -> dict:
     """One life. {"meals": [the tick of each], "trips": [(shortest road, steps taken, the tick
     it ended)], "planned": ticks on which a thought found a road, "walked": (rooms, 4) how
-    often each way out of each room was gone}. `fruits`: the seed of the order in which the
+    often each way out of each room was gone, "early": the share of ways gone by an eighth of
+    the life}. `fruits`: the seed of the order in which the
     trees bear. `watch(tick, room, fruit, way, planned)` is called before every step."""
     far = roads(nxt)
     order = torch.Generator().manual_seed(fruits)       # the land's own dice, not the body's
@@ -316,7 +343,9 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
             trip = int(far[room, fruit])
         plan = mind.think(looks[fruit], gen)
         out["planned"] += plan is not None
-        way = int(torch.randint(4, (1,), generator=gen)) if plan is None else plan
+        way = mind.wonder(gen) if plan is None else plan
+        if t == ticks // 8:
+            out["early"] = float((out["walked"] > 0).float().mean())
         if watch:
             watch(t, room, fruit, way, plan is not None)
         out["walked"][room, way] += 1
@@ -329,8 +358,8 @@ def body_for(arm: str, model, m: int, looks, nxt, gen, **think):
     """The memory an arm lives with."""
     if arm == "blind":
         return Blind()
-    if arm in ("perfect", "oracle"):
-        return Table((looks, nxt) if arm == "oracle" else None)
+    if arm in ("perfect", "seeker", "oracle"):
+        return Table((looks, nxt) if arm == "oracle" else None, curious=arm == "seeker")
     return Mind(model.grow(m), gen, numb=arm == "numb", **think)
 
 
@@ -437,7 +466,8 @@ def summary(lives: list, ticks: int) -> dict:
            "trips": banded(trips), "late": banded([trip for trip in trips if trip[2] >= 2 * ticks // 3]),
            "per_life": [len(life["meals"]) for life in lives],
            "late_per_life": [sum(1 for t in life["meals"] if t >= 2 * ticks // 3) for life in lives],
-           "planned": sum(life["planned"] for life in lives) / (n * ticks)}
+           "planned": sum(life["planned"] for life in lives) / (n * ticks),
+           "early": sum(life.get("early", 0.0) for life in lives) / n}
     maps = [life["map"] for life in lives if "map" in life]
     if maps:
         res["map"] = {k: sum(m[k] for m in maps) / len(maps) for k in maps[0]}
@@ -468,7 +498,8 @@ def show(name: str, res: dict) -> str:
     trips = lambda bands: " ".join(f"{band}: {r['straight']:.2f} x{r['steps_per_far']:.1f} ({r['n']})"
                                    for band, r in bands.items())
     line = (f"{name:>18} | meals {res['meals']:6.1f} | by third " + " ".join(f"{x:5.1f}" for x in res["thirds"])
-            + f" | plan {res['planned']:.2f} | trips, straight and steps per step of the shortest road:"
+            + f" | plan {res['planned']:.2f} | ways gone by an eighth of the life {res['early']:.2f}"
+            + " | trips, straight and steps per step of the shortest road:"
             + f" {trips(res['trips'])} | in the last third: {trips(res['late'])}")
     if "map" in res:
         k = res["map"]
@@ -495,6 +526,8 @@ def main() -> None:
     p.add_argument("--slack", type=int, default=0, help="bits of the wanted look a thought may get wrong")
     p.add_argument("--mumble", type=float, default=0.0,
                    help="by hand: a copy that says its room more quietly than this is not followed")
+    p.add_argument("--curious", type=float, default=0.0,
+                   help="by hand: with no road, the way it speaks most quietly of, if under this share of the loudest")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--seed", type=int, default=90_000)
@@ -502,7 +535,8 @@ def main() -> None:
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     shape = Land(a.side, a.walls, a.trees, a.ticks)
-    think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble}
+    think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
+             "curious": a.curious}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
@@ -534,7 +568,8 @@ def main() -> None:
             json.dump(res, f)
     tag = (f".world{shape.side}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
-           + (f".budget{a.budget}" if a.budget != 256 else "") + pilot)
+           + (f".budget{a.budget}" if a.budget != 256 else "")
+           + (f".curious{a.curious:g}" if a.curious else "") + pilot)
     for path in a.genomes:
         res = {}
         for m in a.sizes:

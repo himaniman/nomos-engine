@@ -915,3 +915,28 @@ def test_a_look_at_why_thoughts_fail_asks_a_copy_in_every_room_and_leaves_the_br
     assert all(row["wide"] >= row["thinks"] - 1e-9 for row in bands.values())     # more rooms to think of never hides a road
     assert mind.budget == 8 and not mind.imagery
     assert all(torch.equal(a, mind.state[0][t]) for t, a in act.items())
+
+
+@torch.no_grad()
+def test_with_no_road_a_seeker_takes_a_way_never_gone_and_a_curious_brain_the_one_it_speaks_low_of():
+    from tissue import world
+    torch.manual_seed(0)
+    shape = world.Land(side=3, ticks=60)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    seeker = world.Table(curious=True)
+    seeker.see(looks[0], -1)
+    seeker.see(looks[int(nxt[0, 1])], 1)
+    seeker.see(looks[0], 3) if int(nxt[0, 1]) != 0 else None
+    tried = {w for (room, w) in seeker.map if room == seeker.at}
+    assert all(seeker.wonder(gen(k)) not in tried for k in range(8)) or len(tried) == 4
+    plain = world.Table()
+    plain.see(looks[0], -1)
+    assert {plain.wonder(gen(k)) for k in range(40)} == {0, 1, 2, 3}          # no curiosity: any way
+    mind = world.Mind(Tissue(replace(RUNG1, still=True), ITEM).grow(16), gen(2), budget=16, curious=0.99)
+    life = world.live(mind, looks, nxt, trees, start, 60, gen(3), fruits=5)
+    assert mind.voice.shape == (4,) and 0 < life["early"] <= 1
+    torch.manual_seed(0)
+    mind2 = world.Mind(Tissue(replace(RUNG1, still=True), ITEM).grow(16), gen(2), budget=16, curious=0.99)
+    assert world.live(mind2, looks, nxt, trees, start, 60, gen(3), fruits=5)["meals"] == life["meals"]
+    mind.voice = torch.tensor([3.0, 0.5, 3.0, 3.0])
+    assert mind.wonder(gen(1)) == 1                         # the way it speaks most quietly of

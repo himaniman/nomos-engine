@@ -5242,3 +5242,48 @@ thing from imagining it; the cell hears the eyes and nothing else that could tel
 Records of exams 4 and 5 and of this one: `runs/tissue/hold/*.fork*.json`, `*.seek*.json`,
 `*.lives16.stream8x4.idle64.json`. Step 4a on five lineages has finished one way of three
 (K90 at hop 1 with one way: 46/45/49/48/49 links at 64 cells, 429/489/470/292/461 at 512).
+
+## 2026-11-12 (14:35) — two things that were running: forks on five lineages (F1-F3), and sleep cells by hand at every size (W0)
+
+**Step 4a, a dendrite per way by hand, the five genomes of 1d, nothing searched.** K90 in links at
+hop 1 (and at hop 4), two ways:
+
+| lineage | 64 cells | 128 | 256 | 512 | one way, 256 cells |
+|---|---|---|---|---|---|
+| 0 | 98 (57) | 204 (109) | 422 (206) | 817 (373) | 217 |
+| 1 | 96 (52) | 213 (97) | 460 (182) | 930 (315) | 239 |
+| 2 | 101 (61) | 221 (116) | 464 (216) | 899 (388) | 238 |
+| 3 | 100 (46) | 195 (74) | 333 (111) | 522 (153) | 177 |
+| 4 | 102 (52) | 219 (98) | 451 (171) | 862 (289) | 239 |
+
+- **F1 (the dark walk goes where the body goes; at 256 cells at least 300 links at hop 1 and 150
+  at hop 4): met on four lineages** (lineage 3: 333 and 111). The numb brain holds nothing.
+- **F2 (growth pays; 512 cells at least 1.8 times 256 at hop 1): met on four** (1.94, 2.02,
+  1.94, 1.91; lineage 3: 1.57). 128 cells and up were never searched.
+- **F3 (a way is paid for in wires): two ways hold 1.88-1.95 times the links of one way at 256
+  cells, on all five.** Four ways are still running.
+
+Lineage 3 is the one that misses, as on every exam of this ladder; the prediction named it.
+
+**Step 2f, arm H: sleep cells set by hand, no hand gate, the five genomes of 2c-3b** (field 24,
+32 wires, sixteen lives, the third set of worlds). K90 at hop 1 at 256 / 512 / 1024 / 2048 / 4096
+cells, then the items held at 512 / 2048 / 4096:
+
+| lineage | K90 hop 1 | held | the hand gate (2c-5): K90, held |
+|---|---|---|---|
+| 0 | 92 / 190 / 385 / 781 / 1524 | 51 / 110 / 212 | 93 / 193 / 386 / 785 / 1530, 47 / 108 / 217 |
+| 1 | 100 / 213 / 425 / 840 / 1699 | 31 / 110 / 179 | 106 / 213 / 432 / 853 / 1710, 48 / 114 / 160 |
+| 2 | 96 / 208 / 412 / 836 / 1633 | 29 / 103 / 249 | 103 / 207 / 406 / 845 / 1648, 32 / 105 / 220 |
+| 3 | 108 / 206 / 417 / 888 / 1748 | 34 / 99 / 166 | 115 / 207 / 428 / 898 / 1779, 30 / 106 / 268 |
+| 4 | 102 / 209 / 426 / 859 / 1689 | 45 / 179 / 215 | 105 / 208 / 427 / 867 / 1706, 44 / 203 / 287 |
+
+- **W0, first half (recall within a tenth of the hand gate's at every size, at least 100 held
+  at 4096 cells): met on all five.** Recall is 0.94-1.00 of the hand gate's. The gate said by a
+  cell is the gate, at sizes up to 4096.
+- **W0, second half (heard a tick late, recall under 0.7 of that):** four lineages in so far.
+  From 512 cells up 0.54-0.63, as the bar says; at 256 cells 0.72-0.77, over it. Held with the
+  lag: 0-22 items at every size (22-249 without it).
+
+The searches: the scaffold arm is at step 2100 of 4000 (accuracy in its lives 0.81-0.85), the
+arm with no hand gate at 1500 on three lineages (0.75-0.78; two more start when the first arm
+ends). Exams and controls follow by themselves (`out/jobs/step2f.sh` on the VM).

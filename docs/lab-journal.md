@@ -5025,3 +5025,52 @@ The last control, added when it finished: the same five genomes with the hand ga
 against 785-898 and 1530-1779 for the genomes they started from; only lineage 0 still holds a
 thought with it (83 and 186 items). So this search, unlike the first, also cost the rule itself
 something: half to nine tenths of its recall is left when the gate is given back.
+
+## 2026-11-12 (13:00) — a picture of a life; the aim restated; step 2f begun: a sleep cell set by hand is the hand gate, if it speaks within the tick
+
+**A picture.** The user asked to see how the brain works and `tissue/` had never drawn anything.
+`python -m tissue.look GENOME.pt --fan 32 --field 24` records one life of exam 3 with `--alone` (a
+brain told nothing) and draws it: the cells of the ring by tick with their loudness, the steps by
+which the brain gives itself cells, the eyes, the bits right in each closing, and the first
+closings tick by tick with what the world showed against what the brain said. `grow.alone` got a
+`watch` hook for it, which changes nothing (a test says so). Lineage 0: 256 cells to 768, right
+with the eyes closed 0.91 at hop 1 and 0.79 at hop 8 in that one life.
+
+**The aim, restated by the user:** a brain that thinks, develops and in the end acts in a
+simulated world. So the work of turning hand-made parts into cells (he gave the word to go on
+with it) runs beside the road to a world and not in front of it. The road is forks, a choice, a
+goal; exams 4 and 5 below are its first steps, begun the same day.
+
+**Step 2f, the gate as a cell.** Of the fork step 2d' left to the user (a wider perceptron, or a
+second kind of cell) the second is taken. `Plan.sleep = 8`: a sleep cell beside every 8
+interneurons, a perceptron of 8 hidden units like any cell. It feels how near the place is and
+whether the eyes are open, hears no cell, says one number; its interneurons are awake as much as
+the sigmoid of it, and what they say and learn is scaled by that. An interneuron had to say its
+speech and multiply it by a gate, which a small perceptron does badly; here the product is the
+mechanism and the cell has one thing to say.
+
+Built by hand before any search (`Tissue.sleep_by_hand(0.3)`, one hidden unit), lineage 0 at 512
+cells, no hand gate in the brain:
+
+| | K90 hop 1 | held |
+|---|---|---|
+| the gate by hand (2c-5) | 193 | 47 |
+| sleep cells by hand, one per 8 interneurons, speaking within the tick | 191 | 51 |
+| the same, one per interneuron | 193 | 52 |
+| sleep cells by hand, heard a tick late | 109 | 9 |
+| the same, one per interneuron | 113 | 8 |
+
+My first build had the sleep cell heard a tick late, as one cell hears another. It costs nearly
+half the recall and four fifths of the holding. The reason is one tick at every jump: the patch
+the world has just left is still awake for the first thing seen at the next place and learns "my
+last item, then that thing", in the same lap in which the new patch, not yet awake, misses its own
+first link. So for that item the true link and the false one have been seen as often. A sleep
+cell therefore speaks within the tick, as a sense organ does: it hears senses only, so no cell
+waits on another, and it is the same computation as a brain whose sleep cells lag and whose other
+senses are delayed a tick to match. `Plan.late` keeps the lag as a control. The ceiling by hand
+caught this before a search could be blamed for it.
+
+Running on the VM (commit f058c15): the by-hand arm at every size on five lineages, with the late
+control; five searches with the hand gate as a scaffold taken away over 3000 steps of 4000 (the
+sleep cell born saying "awake" to all); five with no hand gate from the first step. Bars W0-W4
+are in the note. About three and a half hours a search.

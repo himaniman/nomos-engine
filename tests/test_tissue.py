@@ -826,12 +826,12 @@ def test_a_life_in_a_land_can_be_watched_and_drawn_and_a_thought_gives_back_its_
     assert rec["maps"][60]["gone"].sum() >= rec["maps"][7]["gone"].sum()       # it has gone more ways by the end
     again = view.record(path, shape, 16, budget=16)                            # watching changes nothing
     assert again["track"] == rec["track"] and again["meals"] == rec["meals"]
-    # rooms 0 -> 1 -> 4, found at the second hop among copies that led nowhere
-    thought = {"here": 0, "want": 4, "tick": 50,
-               "trace": [(1, 0, 1, 1), (1, 0, 2, 3), (1, 0, 0, None), (2, 1, 2, 4), (2, 3, 1, None)]}
-    assert view.road(thought) == [0, 1, 4]
-    assert view.road({**thought, "want": 8}) == []
-    rec["thought"] = thought
+    # a road of two ways found at the second hop, among copies that led nowhere
+    trace = [(1, 0, 1, 1), (1, 0, 2, 3), (1, 0, 0, None), (2, 1, 2, 4), (2, 3, 1, None), (0, None, (1, 2), None)]
+    nxt = rec["nxt"]
+    assert view.road(trace, 0, nxt) == [0, int(nxt[0, 1]), int(nxt[int(nxt[0, 1]), 2])]
+    assert view.road(trace[:-1], 0, nxt) == []              # no road found: nothing to draw
+    rec["thought"] = {"here": 0, "want": 4, "tick": 50, "trace": trace}
     img = view.draw(rec, "a test", 16)
     assert img.size[0] > 1000 and img.size[1] > 500
 
@@ -876,3 +876,16 @@ def test_a_search_on_forks_runs_saves_and_the_genome_comes_back_with_its_body(tm
     assert four.grow(8).born(1, gen(1))[1]["body"].shape == (1, 8, 4)
     res = fork.examine(str(out), [16], fork.Walk(rooms=1, ways=2, closed=2), lives=2, body="felt")
     assert len(res[16]["k90"]) == 3
+
+
+@torch.no_grad()
+def test_cells_that_belong_to_a_way_by_hand_speak_only_when_the_body_went_their_way():
+    from tissue import fork
+    torch.manual_seed(0)
+    brain = Tissue(RUNG1, ITEM).grow(16)
+    walk = fork.Walk(rooms=5, ways=2, blinks=2)
+    items, nxt = fork.world(12, walk, 2, gen(1))
+    lived = fork.run_life(brain, items, nxt, walk, gen(2), body="tribes")
+    assert lived["closed"][0].shape == (2, 2 * walk.closed, 12)
+    assert torch.equal(lived["closed"][0], fork.run_life(brain, items, nxt, walk, gen(2), body="tribes")["closed"][0])
+    assert not torch.equal(lived["closed"][0], fork.run_life(brain, items, nxt, walk, gen(2), body="numb")["closed"][0])

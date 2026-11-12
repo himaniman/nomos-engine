@@ -221,11 +221,13 @@ class Mind(Blind):
     def think(self, wanted, gen, trace=None):
         """The first way of the shortest road the brain can think of to the `wanted` look, or
         None. `trace`: a list that gets (hops, the room a copy came from, the way, the room
-        it said it reached) for every copy, rooms as `key`s."""
+        it said it reached) for every copy, rooms as `key`s, and last, if a road was found,
+        (0, None, the ways of that road, None)."""
         act = {t: a.clone() for t, a in self.state[0].items()}      # one copy, in the room it is in
         first = torch.tensor([-1])              # per copy: the first way of its road
         came = [(key(self.before[0]), -1)]      # per copy: (the room it came from, by which way)
         seen, spent = {came[0][0]}, 0
+        ways = [()] if trace is not None else None          # per copy: the ways of its road
         for hops in range(self.depth + 1):
             north, says = self.hop(act, 0)      # what a copy says of its room is the same whatever the way
             keep, rooms = [0], [came[0][0]]
@@ -236,7 +238,10 @@ class Mind(Blind):
                 hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
                 if bool(hit.any()):
                     hits = hit.nonzero().flatten()
-                    return int(first[hits[int(torch.randint(len(hits), (1,), generator=gen))]])
+                    j = int(hits[int(torch.randint(len(hits), (1,), generator=gen))])
+                    if trace is not None:
+                        trace.append((0, None, ways[j], None))
+                    return int(first[j])
                 keep = []
                 for j, room in enumerate(rooms):
                     if room not in seen:
@@ -251,6 +256,8 @@ class Mind(Blind):
             act = {t: torch.cat([kid[t] for kid in kids]) for t in kids[0]}
             first = torch.cat([first[pick] if hops else torch.full((1,), w) for w in range(4)])
             came = [(rooms[j], w) for w in range(4) for j in keep]
+            if ways is not None:
+                ways = [ways[j] + (w,) for w in range(4) for j in keep]
         return None
 
     def atlas(self, looks: torch.Tensor):

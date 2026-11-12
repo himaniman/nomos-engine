@@ -5308,3 +5308,53 @@ links at hop 1 (and hop 4):
 So exam 4 by hand stands: F1 and F2 on four lineages of five, F3 on five. The user has chosen
 the next step: a small simulated world on top of exams 4 and 5, the hand-made parts listed and
 taken out one at a time afterwards.
+
+## 2026-11-12 (18:10) — step 4b: the body's sense asked of a search. One lineage of five finds a use for it, one hop deep; the bars are missed
+
+The first hand-made part on the world's list put to a search. `Plan.body`: body cells, one per
+way, each wired at birth to every interneuron by an innate random wire; an interneuron reads
+them on a dendrite of its own, one more number beside its inputs (the genome grows from 101
+numbers to 110). `tissue.train --arm fork`: lives of exam 4 with two ways, brains of 8-64 cells,
+closings of 1-8 ticks, 4000 steps from the genomes of 1d, seeds 500-504. A search takes six
+minutes, so it ran on the desktop. Genomes and exams: `runs/tissue/body/`.
+
+Exam 4, two ways, `--body felt`; K90 in links at hop 1 (hop 2):
+
+| lineage | accuracy in its lives at the end | 64 cells | 128 | 256 | 512 | body cells silent, 256 | four ways, 256 |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.919 | 0 | 0 | 0 | 0 | 0 | 8 |
+| 1 | 0.945 | 26 (9) | 57 (16) | 108 (20) | 216 (20) | 0 | 9 |
+| 2 | 0.909 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 3 | 0.906 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | 0.912 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+A numb brain scores 0.898 in those lives (measured; my note before the run read the first
+hundred steps as the search moving, which was wrong and was corrected in the note before any
+exam). At hop 4 nobody holds anything. With a dendrite per way by hand the same lineages hold
+422 / 460 / 464 / 333 / 451 links at 256 cells (hop 4: 206 / 182 / 216 / 111 / 171).
+
+- **B1 (at least half the hand-made figure at 256 cells, three lineages): missed.** One lineage
+  uses its body at all, and holds a quarter of the hand-made figure (108 against 460).
+- **B2 (512 cells at least 1.6 times 256, three lineages): missed**, met by that one lineage
+  (x2.0 at every doubling from 64 to 512: in proportion to the cells, at sizes never searched).
+- **B3 (hop 4): missed.** The found sense is one hop deep: 20 links at hop 2 whatever the size.
+- **B4 (four ways): missed.** 9 links.
+
+So: asked once, plainly, a search finds a use for the body on one lineage of five. What it
+finds is real (silence the body cells and it is a numb brain; it grows with the cells) and
+shallow: after one hop in the dark the walk no longer follows the body.
+
+I then tried to say what its ceiling is and failed to. My reading was that a cell which leans to
+a way makes a population per way, worth about a quarter of a dendrite per way with two ways
+(a half of the wires, twice as much to store), and that lineage 1 sits on that ceiling. Built by
+hand (`--body tribes`: every interneuron belongs to one way and only those of the way just gone
+speak and learn; the genomes of 1d, not searched for it) it holds LESS than what the search
+found: K90 at hop 1 at 256 cells 36 / 36 / 16 / 15 / 16, at 512 cells 52 / 40 / 49 / 31 / 16,
+hop 2 about 10, with four ways 8-10. So the hand version is not a ceiling of anything, the
+found rule is three times better than my idea of it, and the reading is not supported. What a
+cell with one set of wires can do with a sense of its body is not known.
+
+The dendrite per way stays by hand. What was not tried, and is cheap (six minutes a search):
+many starts per lineage, longer searches, lives that pay for depth (in these lives most of the
+error sits at hop 1), four ways in the search. METHOD, again: I set a bar against a hand-made
+part of another kind (ways times the wires) without building the ceiling of the thing asked for.

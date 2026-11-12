@@ -69,14 +69,11 @@ def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_0
     mind.think = thinking
 
     def watch(t, room, fruit, way, planned):
-        rec["film"].append((room, fruit, road({"trace": rec["last"], "want": fruit}) if planned else []))
+        rec["film"].append((room, fruit, road(rec["last"], room, nxt) if planned else []))
         if t in (ticks // 8, ticks // 3):
             know(t)
         if rec["thought"] is None and t >= 2 * ticks // 3 and planned and int(far[room, fruit]) >= min(5, shape.side - 1):
-            trace: list = []
-            mind.think(looks[fruit], torch.Generator().manual_seed(0), trace=trace)
-            rec["thought"] = {"here": room, "want": fruit, "tick": t, "trace": [
-                (hops, room_of.get(a), w, room_of.get(b)) for hops, a, w, b in trace]}
+            rec["thought"] = {"here": room, "want": fruit, "tick": t, "trace": rec["last"]}
         rec["track"].append(room)
         gone[room, way] = True
 
@@ -90,20 +87,17 @@ def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_0
     return rec
 
 
-def road(thought: dict) -> list:
-    """The rooms of the road a thought found, from the body to the wanted room ([]: none)."""
-    trace, want = thought["trace"], thought["want"]
-    hits = [row for row in trace if row[3] == want]
-    if not hits:
+def road(trace: list, here: int, nxt: torch.Tensor) -> list:
+    """The rooms the road a thought found leads through in the land, from the body's room on
+    ([]: the thought found none). It is the ways the brain means to go, followed in the real
+    land: where the thought was wrong the road ends somewhere else than it meant."""
+    ways = next((w for hops, _, w, _ in trace if hops == 0), None)
+    if ways is None:
         return []
-    hops, at, rooms = max(row[0] for row in hits), want, [want]
-    while hops:
-        came = next((a for h, a, _, b in trace if h == hops and b == at), None)
-        if came is None:
-            return []
-        rooms.append(came)
-        at, hops = came, hops - 1
-    return rooms[::-1]
+    rooms = [here]
+    for way in ways:
+        rooms.append(int(nxt[rooms[-1], way]))
+    return rooms
 
 
 def draw(rec: dict, name: str, cells: int) -> Image.Image:
@@ -158,11 +152,12 @@ def draw(rec: dict, name: str, cells: int) -> Image.Image:
     # one thought
     th = rec["thought"]
     if th:
-        real = [(a, b) for _, a, _, b in th["trace"] if a is not None and b is not None and a != b]
-        lost = sum(1 for _, _, _, b in th["trace"] if b is None)
-        way = road(th)
+        copies = [row for row in th["trace"] if row[0]]
+        real = [(a, b) for _, a, _, b in copies if a is not None and b is not None and a != b]
+        lost = sum(1 for _, _, _, b in copies if b is None)
+        way = road(th["trace"], th["here"], nxt)
         x0, y0 = land(3, 0, f"One thought, tick {th['tick']}",
-                      f"{len(th['trace'])} copies; {lost} said no room of the land; road of {max(0, len(way) - 1)} steps")
+                      f"{len(copies)} copies; {lost} said no room of the land; road of {max(0, len(way) - 1)} steps")
         for a, b in real:
             d.line([centre(a, x0, y0), centre(b, x0, y0)], fill=PLUS + (110,), width=2)
         if way:

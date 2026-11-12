@@ -134,7 +134,7 @@ def feel(way: torch.Tensor, ways: int) -> torch.Tensor:
     return felt
 
 
-BODIES = ("cells", "dendrites", "numb", "felt")
+BODIES = ("cells", "dendrites", "numb", "felt", "tribes")
 
 
 class Dendrites:
@@ -176,6 +176,10 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
                    and learns (none when the body was carried). The cell and its rule are
                    as they were: it never knows that its dendrite was changed for another;
       "numb"       not at all (the control);
+      "tribes"     BY HAND, the ceiling of a brain whose CELLS lean to a way (one set of
+                   wires): every interneuron belongs to one way, and on a tick only those of
+                   the way just gone speak and learn (everyone when the body was carried,
+                   and then no wire among interneurons changes);
       "felt"       on body cells of the brain's own plan (`Plan.body`), which every
                    interneuron reads on a dendrite of its own: nothing by hand but that
                    the sense is there. What a cell makes of it is its genome's affair."""
@@ -190,6 +194,8 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
     true: dict = {"echo": [], "closed": []}
     before, before_seen, before_kind = silent, False, "study"
     dendrites = Dendrites(brain, state, walk.ways) if body == "dendrites" else None
+    inner = next(i for i, blk in enumerate(brain.t.plan.blocks) if blk.pre == blk.post)
+    tribe = torch.arange(brain.n["I"]) % walk.ways      # "tribes": the way each interneuron belongs to
     if body == "felt" and brain.t.plan.body != walk.ways:
         raise ValueError(f"the brain has {brain.t.plan.body} body cells and the world {walk.ways} ways")
     for kind, seen, room, way in ticks + [("end", False, None, None)]:
@@ -202,6 +208,12 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
             state, out = dendrites.tick(brain, state, cue, way, teach, flag, float(seen))
         elif body == "felt":
             state, out = brain.tick(state, cue, teach, flag, float(seen), body=feel(way, walk.ways))
+        elif body == "tribes":
+            was = state[1][inner]
+            state, out = brain.tick(state, cue, teach, flag, float(seen))
+            awake = (tribe.unsqueeze(0) == way.unsqueeze(1)) | ~gone.unsqueeze(1)
+            learnt = torch.where((awake & gone.unsqueeze(1)).unsqueeze(-1), state[1][inner], was)
+            state = ({**state[0], "I": state[0]["I"] * awake}, {**state[1], inner: learnt}, state[2])
         else:
             if brain.n["S"] > d:
                 felt = torch.zeros(b, brain.n["S"] - d)

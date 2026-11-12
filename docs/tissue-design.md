@@ -1636,13 +1636,25 @@ cells 422 / 460 / 464 / 333 / 451, at hop 4 206 / 182 / 216 / 111 / 171):
   ways: K90 at hop 1 at 256 cells at least what the same genome holds with two ways.
 
 Prediction: B1 met (a hundred steps of a trial search already moved: accuracy 0.91 where a
-numb brain starts near 0.8). B2 met on three. B3 the doubt: a dendrite swapped by hand
+numb brain starts near 0.8). (Corrected while the search was running and before any exam:
+that reading was wrong. Measured, a numb brain scores 0.90 on these lives, 0.82 with the
+eyes closed, so the trial said nothing and B1 is as open as the rest.) B2 met on three. B3 the doubt: a dendrite swapped by hand
 keeps the ways wholly apart, a cell leaning by the luck of its wires keeps them apart
 only roughly, and four hops multiply the leak. B4 missed: with four cells on one dendrite
 a cell tells the ways apart worse.
 
 If B1 and B3 are met the world of exam 6 is lived again with this brain in place of the
 dendrite per way, and the list of hand-made parts is one shorter.
+
+**Outcome (journal 2026-11-12, 18:10): all four bars missed.** One lineage of five (lineage
+1) finds a use for its body: K90 at hop 1 26 / 57 / 108 / 216 links at 64 / 128 / 256 / 512
+cells, twice as much at every doubling to sizes never searched, and nothing with the body
+cells silent; but that is a quarter of the hand-made figure, 20 links at hop 2 and none at
+hop 4, and 9 links with four ways. The other four stay numb. A hand-made guess at the
+ceiling of a cell that leans to a way (`--body tribes`) holds less than the search found
+(15-36 links at 256 cells), so it is no ceiling and that ceiling is not known. The
+dendrite per way stays by hand. Not tried and cheap: many starts, longer searches, lives
+that pay for depth, four ways in the search.
 
 ## Where the ladder stands
 

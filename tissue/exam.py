@@ -161,6 +161,8 @@ def main() -> None:
                    help="set the sleep cell by hand to a gate at this nearness")
     p.add_argument("--late", action="store_true",
                    help="the sleep cell is heard a tick late (the control for its being prompt)")
+    p.add_argument("--still", action="store_true",
+                   help="by hand: with the eyes closed no wire changes")
     p.add_argument("--nowhere", action="store_true",
                    help="a genome with a sense of place feels nothing (its off-switch)")
     p.add_argument("--worlds", type=int, default=0,
@@ -211,6 +213,8 @@ def main() -> None:
         tag += f".zhand{a.sleep_hand:g}"
     if a.late:
         switches["late"], tag = True, tag + ".late"
+    if a.still:
+        switches["still"], tag = True, tag + ".still"
     if a.nowhere:
         tag += ".nowhere"
     if a.worlds:

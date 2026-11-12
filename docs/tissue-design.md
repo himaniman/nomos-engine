@@ -1478,6 +1478,31 @@ learn in thought is kept). Prediction: the learning does the harm. `ponders-stil
 not learn from its own thoughts as it learns from its eyes, and the cell already hears
 whether the eyes are open.
 
+**Outcome (journal 2026-11-12, 13:20):** as predicted, on all five lineages.
+`ponders-still` 1.00 / 0.95-0.97 / 0.93-0.98 / 0.94-0.99 with no slide through a life;
+`thinks-learns` 0.76-0.92 / 0.69-0.77 / 0.47-0.62 / 0.45-0.58, as bad as `ponders`. The
+learning does all of the harm; the copy was never needed.
+
+### Step 5d: wires still in the dark, in the kernel. Bars written before the run
+
+In 5c the stillness was the examiner's: he put the wires back after every thought.
+`Plan.still`, BY HAND, puts it into the brain: on a tick with the eyes closed no wire
+changes. It reaches further than exam 5, since every exam of the stream let the brain
+learn in the dark, so it is asked of the old exams too. The genomes of 1d, nothing
+searched, sixteen lives.
+
+- **S1, a thought that is not learnt still holds.** Exam 2 at 64 and 256 cells with
+  `--still`: K90 at hop 1 and the items held through a closing of 64 ticks at least 0.9 of
+  the same genome's figures without it, on at least four lineages.
+- **S2, and the brain thinks in its own head.** Exam 5, `ponders` with `--still`, 32 rooms
+  at 256 cells: straight at least 0.9 at every distance on at least four lineages, the
+  last eight wanted rooms no more than 0.05 under the first eight.
+
+Prediction: S2 met (it is 5c again, bar the one echo a closing loses). S1: recall met;
+holding I do not know. A walk in the dark that learns what it says may be mending the
+loop as it goes or wearing it, and the stream never told the two apart. My guess is that
+holding is kept or better, since the same learning wears a map in exam 5.
+
 ## Where the ladder stands
 
 | rung | state |

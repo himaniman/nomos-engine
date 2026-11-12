@@ -647,6 +647,26 @@ def test_a_wanted_room_is_sought_by_walking_a_copy_in_the_dark_and_the_brain_is_
     assert sum(row["n"] for row in table.values()) == 12
 
 
+@torch.no_grad()
+def test_with_still_no_wire_changes_while_the_eyes_are_closed_and_all_do_while_they_are_open():
+    torch.manual_seed(0)
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    brain = genome.grow(16)
+    cue, silent = torch.ones(2, 12), torch.zeros(2, 12)
+    state = brain.born(2, gen(1))
+    for _ in range(3):
+        state, _ = brain.tick(state, cue, cue, 1.0, 1.0)
+    dark, _ = brain.tick(state, silent, cue, 1.0, 0.0)
+    assert all(torch.equal(dark[1][i], state[1][i]) for i in (1, 2))       # eyes closed: still
+    assert not torch.equal(dark[0]["I"], state[0]["I"])                   # though the cells go on
+    seen, _ = brain.tick(state, cue, cue, 1.0, 1.0)
+    assert not any(torch.equal(seen[1][i], state[1][i]) for i in (1, 2))  # eyes open: they learn
+    plain = Tissue(RUNG1, ITEM)
+    plain.load_state_dict(genome.state_dict())
+    moved, _ = plain.grow(16).tick(state, silent, cue, 1.0, 0.0)
+    assert not any(torch.equal(moved[1][i], state[1][i]) for i in (1, 2))  # the switch is what stills them
+
+
 SLEEPY = replace(RUNG1, fan=6, reach=4, field=3, spoken=True, sleep=4)
 
 

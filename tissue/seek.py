@@ -222,13 +222,17 @@ def main() -> None:
     p.add_argument("--arm", choices=ARMS, default="thinks")
     p.add_argument("--slack", type=int, default=1,
                    help="bits of the wanted room a thought may get wrong and still count as saying it")
+    p.add_argument("--still", action="store_true",
+                   help="by hand, in the kernel: with the eyes closed no wire changes")
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     walk = fork.Walk(rooms=a.rooms, ways=a.ways)
-    tag = f".seek{a.rooms}x{a.ways}.depth{a.depth}.{a.arm}" + (f".slack{a.slack}" if a.slack != 1 else "")
+    tag = f".seek{a.rooms}x{a.ways}.depth{a.depth}.{a.arm}" + (f".slack{a.slack}" if a.slack != 1 else "") + (
+        ".still" if a.still else "")
+    switches = {"still": True} if a.still else {}
     for path in a.genomes:
-        res = examine(path, a.sizes, walk, a.depth, a.trials, a.lives, a.arm, slack=a.slack)
+        res = examine(path, a.sizes, walk, a.depth, a.trials, a.lives, a.arm, slack=a.slack, **switches)
         print(f"\n{path}  {a.rooms} rooms, {a.ways} ways ({walk.links} links), {a.arm};"
               f" by the shortest road to the wanted room:")
         for m, table in res.items():

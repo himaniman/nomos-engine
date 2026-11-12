@@ -77,6 +77,8 @@ class Plan:
     #                     of what its sources said, summed, plus one) and not by the number of
     #                     its wires: then neither what it reads nor how far one lesson moves it
     #                     depends on how many of its sources speak. False: by the wires
+    still: bool = False     # by hand: with the eyes closed no wire changes. A thought is then
+    #                     not learnt as a sight is (exam 5: learning in thought wears the map)
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -274,7 +276,7 @@ class Grown:
             for i in self.t.incoming[t]:
                 b = plan.blocks[i]
                 if b.plastic:
-                    if plan.learn and i not in plan.off:
+                    if plan.learn and i not in plan.off and not (plan.still and not on):
                         signal = said[..., j] * flag if plan.taught_only and t == "O" else said[..., j]
                         new_wires[i] = wires[i] + signal.unsqueeze(-1) * heard[i]
                     j += 1

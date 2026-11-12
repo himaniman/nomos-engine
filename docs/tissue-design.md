@@ -1730,6 +1730,29 @@ ceiling of a cell that leans to a way (`--body tribes`) holds less than the sear
 dendrite per way stays by hand. Not tried and cheap: many starts, longer searches, lives
 that pay for depth, four ways in the search.
 
+### Step 4b', asked again for depth. Bars written before the run
+
+What 4b lacked, by its own lives: most of the error a numb brain makes there sits at hop 1
+(closings of 1-8 ticks, half of them 1 or 2), brains of 8 cells live in worlds of two rooms,
+and one start a lineage. Asked again: closings of 2 to 16 ticks (`--hops 16 --vary`), brains
+of 16 to 64 cells, 8000 steps, and two arms:
+
+- **(a) from the genome that found the first hop** (`runs/tissue/body/body-s1.pt`), four
+  starts (seeds 510-513): can depth be asked for once the body is in use?
+- **(b) from the genomes of 1d again**, one start each (seeds 520-524): do lives that pay
+  for depth find the body more often?
+
+Exam 4, two ways, `--body felt`, 64 to 512 cells. Bars:
+
+- **D1.** Arm (a): at least two starts of four hold, at hop 4 at 256 cells, a quarter of what
+  lineage 1 holds there with the hand-made dendrites (182, so 45 links). In 4b: none.
+- **D2.** Arm (b): at least three lineages of five use their body (K90 at hop 1 at 256 cells
+  at least 50 links, and nothing with the body cells silent). In 4b: one.
+
+Prediction: both missed. If a cell with one set of wires keeps the ways apart only by which
+cells speak, a second hop has to tell apart rooms entered by different ways as well, and
+asking harder does not give it the wires for that. I would like to be wrong.
+
 ## Where the ladder stands
 
 | rung | state |

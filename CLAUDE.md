@@ -663,6 +663,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   cells' rule is found. METHOD: when a search will not find a thing, build it by hand to learn
   what it is worth before asking again; never start a long-lived waiting shell on the desktop
   (the harness reaps it when memory is short), poll the VM in short calls.
+  THE AIM RESTATED (the user, 2026-11-12): a brain that thinks, develops and in the end ACTS in
+  a simulated world. Turning hand-made parts into cells runs beside the road to a world (forks,
+  a choice, a goal), not in front of it; long searches go to the VM unattended. The user wants
+  pictures: `python -m tissue.look GENOME.pt --fan 32 --field 24` (one life) and `--thought`.
+  STEP 2f (2026-11-12, running): the gate as a second kind of cell, `Plan.sleep` (a sleep cell
+  beside every 8 interneurons feels the place and the eyes, hears no cell, and its word scales
+  what its interneurons say and learn). Set by hand it IS the hand gate, but only if it speaks
+  WITHIN the tick (`Plan.late`, heard a tick late: recall 109 against 191, holding 9 against 51:
+  at every jump the old patch learns a false link). Searches on the VM: `out/tissue/v5/` za-*
+  (scaffold annealed), zb-* (no hand gate), queue `out/jobs/step2f.sh`; bars W0-W4 in the note.
+  EXAM 4, FORKS (`tissue/fork.py`): rooms with several ways out, the body feels the way gone.
+  By hand, no search: a dendrite per way (`fork.Dendrites`) and the genomes of 1d walk in the
+  dark where the body goes (lineage 0: 422 links at 256 cells with two ways); the body's sense on
+  sensory cells does nothing. EXAM 5, A GOAL (`tissue/seek.py`): thinking BY HAND, a copy of the
+  brain walks every string of ways in the dark and the first way of the shortest plan is taken:
+  a wanted room 1-4 steps away is reached by a shortest road 0.92-1.00 of the time on five
+  lineages (not thinking 0.15-0.53). Thinking with NO copy, keeping what thought taught, wears
+  the map out (0.40-0.59 at distance 4): the open problem on the road.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

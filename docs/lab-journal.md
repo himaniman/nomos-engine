@@ -5448,3 +5448,51 @@ no more), both left in `world.py` behind switches that are off:
   with imagery as well. It cuts true roads with the false ones.
 So the depth of a thought is not mended by either idea as I built them, and why a long thought
 fails is not yet known: the next step on the road is to LOOK at failing thoughts, not to guess.
+
+## 2026-11-12 (18:50) — step 2f, the searches: with a scaffold two lineages of five find a sharp gate of their own that holds to 4096 cells; with none, nobody does
+
+The VM queue of step 2f is done (`out/tissue/v5/`, records in `runs/tissue/sleep/`). Sleep
+cells (`Plan.sleep 8`): a second kind of cell beside every eight interneurons, feeling the place
+and the eyes, whose word scales what its interneurons say and learn. Exams as in 2c-5: field 24,
+32 wires, sixteen lives, the third set of worlds, NO hand gate. K90 at hop 1 / items held through
+64 dark ticks:
+
+| | 256 cells | 512 | 1024 | 2048 | 4096 | 2048: no sleep cells | 2048: wires shuffled | far cells as loud as near (eyes open / closed), learn |
+|---|---|---|---|---|---|---|---|---|
+| the hand gate (2c-5) | 93-115 | 193-213 / 30-48 | 386-432 | 785-898 / 105-203 | 1530-1779 / 160-287 | | | 0 |
+| (A) scaffold, lineage 0 | 74 / 20 | 132 / 27 | 223 / 45 | 326 / 76 | 371 / 78 | 85 | 222 | 0.17 / 0.08, 0.04 |
+| (A) lineage 1 | 95 / 28 | 195 / 51 | 378 / 63 | 742 / 125 | 1221 / 330 | 134 | 75 | 0.06 / 0.02, 0.01 |
+| (A) lineage 2 | 71 / 17 | 104 / 21 | 155 / 18 | 203 / 19 | 231 / 16 | 159 | 202 | 0.36 / 0.27, 0.17 |
+| (A) lineage 3 | 69 / 0 | 114 / 0 | 184 / 0 | 170 / 0 | 123 / 0 | 82 | 117 | 0.29 / 0.16, 0.11 |
+| (A) lineage 4 | 95 / 30 | 187 / 57 | 372 / 108 | 695 / 126 | 1154 / 289 | 134 | 59 | 0.06 / 0.04, 0.01 |
+| (B) no scaffold, five lineages | 55-71 / 9-10 | 75-101 / 9-12 | 84-149 / 10-15 | 93-206 / 10-17 | 102-254 / 11-17 | 92-197 | 91-205 | 0.9-1.1 / 1.0-1.2, 0.84-1.22 |
+
+- **(A), the hand gate taken away over 3000 steps of 4000. W1 (recall at 4096 at least half the
+  hand gate's, four lineages) and W2 (100 items held at 4096, four lineages): missed, met by
+  two lineages.** On lineages 1 and 4 the search has a gate of the cells' own: recall 0.69-0.80
+  of the hand gate's at 4096 cells and MORE held than the hand gate holds (330 and 289 against
+  160-287), growing with the ring at every size. **W3 (sharp): met on those two**: cells
+  further than 64 from the place are 0.06 as loud as cells at it with the eyes open, 0.02-0.04
+  with them closed, and learn a hundredth as much. **W4 (controls): met on those two**: without
+  the sleep cells 0.18-0.19 of the recall at 2048, with the wires shuffled 0.08-0.10. Lineage 0
+  keeps a leaky gate (far cells 0.17 as loud) and a third of the recall; lineages 2 and 3 are
+  placeless brains again, lineage 3 with nothing held and 88 steps on an endless slope.
+- **(B), no hand gate from the first step: W1-W4 missed on all five.** Every one is a
+  placeless brain: far cells as loud as near ones, 11-17 items held at any size, the same
+  recall with the sleep cells taken out.
+- **(H), by hand, the last lineage of the late control is in.** A sleep cell heard a tick late:
+  recall 0.54-0.63 of a prompt one's from 512 cells up on all five (the bar said under 0.7: met
+  there) and 0.72-0.77 at 256 (over it); 0-26 items held at every size.
+
+Both of my predictions were wrong on the hopeful side again: (A) four lineages or more, (B)
+three or more. What is true: this is the first gate FOUND by a search that is sharp and that
+scales (2d: none; 2d': two leaky ones, every bar missed). What made the difference from 2d is
+the kind of cell, not the lives: a cell whose one job is to say "asleep", heard within the tick.
+And it needs the scaffold: a search that starts with everyone awake never finds its way to a
+gate (B), as in 2d'. As in 4b (one lineage of five, with no scaffold) a search finds the thing on
+a minority of lineages, and the lineages that are weak everywhere else fail here (2, 3).
+
+By hand still on the ring: that sleep cells exist, one to eight interneurons, what they feel,
+and that they speak within the tick; the scaffold during the search; the index, the latch, the
+rule of places, the rule of growth. Found: the cell's rule and, on two lineages, when a sleep
+cell says "asleep".

@@ -670,12 +670,16 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   a simulated world. Turning hand-made parts into cells runs beside the road to a world (forks,
   a choice, a goal), not in front of it; long searches go to the VM unattended. The user wants
   pictures: `python -m tissue.look GENOME.pt --fan 32 --field 24` (one life) and `--thought`.
-  STEP 2f (2026-11-12, running): the gate as a second kind of cell, `Plan.sleep` (a sleep cell
+  STEP 2f (2026-11-12): the gate as a second kind of cell, `Plan.sleep` (a sleep cell
   beside every 8 interneurons feels the place and the eyes, hears no cell, and its word scales
   what its interneurons say and learn). Set by hand it IS the hand gate, but only if it speaks
   WITHIN the tick (`Plan.late`, heard a tick late: recall 109 against 191, holding 9 against 51:
-  at every jump the old patch learns a false link). Searches on the VM: `out/tissue/v5/` za-*
-  (scaffold annealed), zb-* (no hand gate), queue `out/jobs/step2f.sh`; bars W0-W4 in the note.
+  at every jump the old patch learns a false link). SEARCHED (done 2026-11-12, records
+  `runs/tissue/sleep/`): with the hand gate as a scaffold taken away, two lineages of five (za-s1,
+  za-s4) find a SHARP gate of their own that holds to 4096 cells (K90 1221 and 1154, 0.7-0.8 of
+  the hand gate's; 330 and 289 items held, more than the hand gate's; far cells 0.06 as loud);
+  with no scaffold (zb-*) none of five. The first gate found by a search that is sharp and
+  scales; bars W1, W2 missed on the count of lineages.
   EXAM 4, FORKS (`tissue/fork.py`): rooms with several ways out, the body feels the way gone.
   By hand, no search: a dendrite per way (`fork.Dendrites`) and the genomes of 1d walk in the
   dark where the body goes (lineage 0: 422 links at 256 cells with two ways); the body's sense on

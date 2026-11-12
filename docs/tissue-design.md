@@ -1348,6 +1348,18 @@ the gate is found on three lineages or more; the rest stay brains with everyone 
 stop on an endless slope, since they start where step 2d ended. I have been wrong about
 every search on this ladder so far, each time on the hopeful side.
 
+**Outcome (journal 2026-11-12, 14:35 and 18:50).** (H) W0 met in its first half on all five
+(a sleep cell set by hand is the hand gate at every size); heard a tick late recall is
+0.54-0.63 of it from 512 cells up and 0.72-0.77 at 256. (A) **W1 and W2 missed, met by two
+lineages of five** (1 and 4): there the search has a gate of the cells' own, K90 at hop 1 of
+1221 and 1154 at 4096 cells (0.69-0.80 of the hand gate's) and 330 and 289 items held (more
+than the hand gate's 160-287), sharp (W3: far cells 0.06 as loud, learning a hundredth) and
+its own (W4: 0.18-0.19 of the recall without the sleep cells, 0.08-0.10 with the wires
+shuffled). Lineage 0 keeps a leaky gate, 2 and 3 are placeless again. (B) **missed on all
+five**: with no scaffold every genome stays a placeless brain. Both predictions wrong on
+the hopeful side. It is the first gate found by a search that is sharp and scales; it took
+a kind of cell whose one job is to say "asleep", and the scaffold.
+
 ## Exam 4: forks, the road to a world (`tissue/fork.py`, from 2026-11-12)
 
 What the brain can do so far is say what follows what when only one thing can follow. To
@@ -1697,7 +1709,7 @@ that pay for depth, four ways in the search.
 | 2e the brain chooses the place | by hand so far, nothing searched. Told only with the eyes open: the thought keeps its place for a lap, then the other cells join in. With a hand-made index of what lies where (`hand.Index`) the place need not be told when a thing is met again: recall 0.82-0.88 of the world-told figure, holding the same. Never told at all, new things in a row sharing a place and each new place opened far from the last: recall 0.6-0.8 of the world-told figure and holding x1.3-3.9 of it (63-86 items at 512 cells, 269-308 at 2048, 573-627 at 4096: in proportion to the cells) |
 | 3b growth decided by the tissue | done by hand, 5 lineages, nothing searched and nothing told: places chosen by the brain, cells added when every stretch of the ring is in use. It grows x3 in a poor world and x8 in a rich one; in the rich world it is level with a brain born big for four fifths of the cost, in the poor one 0.06-0.07 under it for a third of the cost |
 
-| 2f the gate as a cell (sleep cells) | by hand: a sleep cell set to the hand gate IS the hand gate (191 against 193 items at 512 cells, lineage 0) provided it speaks within the tick; heard a tick late it loses nearly half the recall and four fifths of the holding. The searches (with a scaffold, and with none) are running |
+| 2f the gate as a cell (sleep cells) | by hand: a sleep cell set to the hand gate IS the hand gate at every size, provided it speaks within the tick (heard a tick late: 0.54-0.63 of the recall). Searched with the hand gate as a scaffold taken away: two lineages of five find a sharp gate of their own that holds to 4096 cells (K90 1221 and 1154, 0.7-0.8 of the hand gate's; 330 and 289 items held, more than the hand gate's); searched with no scaffold: none of five. W1, W2 missed on the count of lineages |
 | 4a forks: the dark walk goes where the body goes | by hand, nothing searched: a dendrite per way. Lineage 0 holds 98 and 422 links at 64 and 256 cells with two ways (hop 4: 57 and 206); with the body on sensory cells of its own, or numb, all five lineages hold nothing. Five lineages to 512 cells: running |
 | 5a a goal: thinking by hand on a learned map | done by hand, 5 lineages, nothing searched: a copy of the brain walks every string of four ways in the dark; wanted rooms 1 to 4 steps away are reached by a shortest road 1.00 / 0.94-0.97 / 0.92-0.98 / 0.92-0.96 of the time (not thinking: 0.53 / 0.28 / 0.17 / 0.15; thinking but numb: the same). The search through the map is by hand |
 | 5a in a crowded world | 128 rooms (256 links): at 256 cells 0.21-0.48 at distance 4, at 512 cells 0.43-0.94. A thought is as good as the map and the map grows with the brain, but at least 0.9 at every distance is reached by one lineage of five (G4 missed) |

@@ -809,3 +809,28 @@ def test_a_brain_lives_in_a_land_and_a_thought_leaves_it_as_it_was():
     numb = world.Mind(genome.grow(16), gen(2), numb=True, budget=32)
     world.live(numb, looks, nxt, trees, start, 40, gen(3), fruits=5)
     assert numb.body.bank.shape[1] == 1
+
+
+@torch.no_grad()
+def test_a_life_in_a_land_can_be_watched_and_drawn_and_a_thought_gives_back_its_road(tmp_path):
+    from tissue import view, world
+    from tissue.train import make
+    torch.manual_seed(0)
+    genome, _ = make("stream")
+    path = str(tmp_path / "blank.pt")
+    torch.save({"arm": "stream", "genome": genome.state_dict()}, path)
+    shape = world.Land(side=3, ticks=60)
+    rec = view.record(path, shape, 16, budget=16)
+    assert len(rec["track"]) == 60 and sorted(rec["maps"]) == [7, 20, 60]
+    assert set(rec["meals"]) == {"thinks", *world.YARDSTICKS}
+    assert rec["maps"][60]["gone"].sum() >= rec["maps"][7]["gone"].sum()       # it has gone more ways by the end
+    again = view.record(path, shape, 16, budget=16)                            # watching changes nothing
+    assert again["track"] == rec["track"] and again["meals"] == rec["meals"]
+    # rooms 0 -> 1 -> 4, found at the second hop among copies that led nowhere
+    thought = {"here": 0, "want": 4, "tick": 50,
+               "trace": [(1, 0, 1, 1), (1, 0, 2, 3), (1, 0, 0, None), (2, 1, 2, 4), (2, 3, 1, None)]}
+    assert view.road(thought) == [0, 1, 4]
+    assert view.road({**thought, "want": 8}) == []
+    rec["thought"] = thought
+    img = view.draw(rec, "a test", 16)
+    assert img.size[0] > 1000 and img.size[1] > 500

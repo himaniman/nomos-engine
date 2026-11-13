@@ -259,10 +259,14 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=90_000)
     p.add_argument("--out", default="out/tissue/world.png")
     p.add_argument("--film", help="a film of the life's first and last ticks goes here (GIF)")
+    p.add_argument("--budget", type=int, default=256, help="how many rooms a thought may think of")
+    p.add_argument("--curious", type=float, default=0.0, help="by hand, see tissue.world")
+    p.add_argument("--keep", action="store_true", help="by hand, see tissue.world")
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    rec = record(a.genome, world.Land(a.side), a.cells, a.life, a.seed)
+    rec = record(a.genome, world.Land(a.side), a.cells, a.life, a.seed,
+                 budget=a.budget, curious=a.curious, keep=a.keep)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     draw(rec, os.path.basename(a.genome).rsplit(".", 1)[0], a.cells).save(a.out)
     if a.film:

@@ -940,3 +940,36 @@ def test_with_no_road_a_seeker_takes_a_way_never_gone_and_a_curious_brain_the_on
     assert world.live(mind2, looks, nxt, trees, start, 60, gen(3), fruits=5)["meals"] == life["meals"]
     mind.voice = torch.tensor([3.0, 0.5, 3.0, 3.0])
     assert mind.wonder(gen(1)) == 1                         # the way it speaks most quietly of
+
+
+@torch.no_grad()
+def test_a_road_kept_is_walked_with_no_new_thought_until_a_room_is_not_the_room_a_copy_said():
+    from tissue import world
+    torch.manual_seed(0)
+    shape = world.Land(side=3, ticks=60)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    mind = world.Mind(genome.grow(16), gen(2), budget=32, keep=True)
+    life = world.live(mind, looks, nxt, trees, start, 60, gen(3), fruits=5)
+    assert 0 < life["thoughts"] <= 60
+    again = world.Mind(genome.grow(16), gen(2), budget=32, keep=True)       # a pure function still
+    assert world.live(again, looks, nxt, trees, start, 60, gen(3), fruits=5)["meals"] == life["meals"]
+    plain = world.Mind(genome.grow(16), gen(2), budget=32)
+    assert world.live(plain, looks, nxt, trees, start, 60, gen(3), fruits=5)["thoughts"] == 60
+    # a road in hand: its ways come out one a tick while the body sees what was said, and no thought is thought
+    here, wanted = world.key(mind.before[0]), looks[int(trees[0])]
+    mind.goal, mind.due, mind.road = world.key(wanted), here, [(2, 111), (3, 222)]
+    n = mind.thoughts
+    trace: list = []
+    assert mind.think(wanted, gen(4), trace=trace) == 2 and mind.due == 111 and mind.thoughts == n
+    assert trace == [(0, None, (2, 3), None)]
+    mind.think(wanted, gen(4))                              # the room is not the room said: afresh
+    assert mind.thoughts == n + 1 and (mind.road == [] or mind.due != 111)
+    mind.goal, mind.due, mind.road = world.key(wanted), here, [(2, 111)]
+    mind.think(looks[int(trees[1])], gen(4))                # another look is wanted: afresh
+    assert mind.thoughts == n + 2
+    # the examiner's thoughts from a copy carried somewhere touch no road in hand
+    mind.goal, mind.due, mind.road = world.key(wanted), here, [(2, 111)]
+    mind.think(wanted, gen(4), root=(mind.state[0], looks[0]))
+    assert mind.road == [(2, 111)] and mind.thoughts == n + 2
+

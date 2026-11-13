@@ -1813,6 +1813,45 @@ Prediction: L1 met on four, L2 on three (0, 1, 4), L3 missed: lineage 0 only. Th
 weak lineages (19 and 17 meals) may be bound by what 512 cells hold of 400 ways, and then
 neither dial reaches them.
 
+### Step 6e: a road kept. Bars written before the run
+
+The fault 6b found is in my thinking procedure, not in the cells: the body takes the first way
+of a road and the brain thinks afresh on the next tick, so a road is never walked and a false
+one is never put to the test. Two thoughts that disagree pass the body between two rooms for
+the rest of its life.
+
+**The mechanism** (`--keep`, BY HAND, off unless asked for): a road once thought of is kept,
+with the room a copy said after each of its ways. The body walks it a way a tick with no new
+thought for as long as the room it comes to is the room that was said and the wanted look is
+the same. At the first room that is not as said (a wall where a way was thought, another
+room, the end of the road with no fruit there) the brain thinks afresh, from what it now sees.
+Nothing is added to the cells; what changes is when a thought is thought. The argument for it:
+a road walked is a road tested, and where it is false the body sees the truth and its wires
+learn it by walking, which a first step taken and forgotten never does. Yardsticks are
+untouched by it (their maps are true, and a kept road and a road thought afresh are the same).
+
+Seen before these bars, on the desktop while checking the code: three lives of the exam's lands
+of SIDE 6, lineage 0, 256 rooms a thought: 184 / 206 / 227 meals with a road kept where the
+record says 162 / 119 / 207, a thought afresh on 0.37 of the ticks. The exam below is at side
+8, which nobody has seen with a road kept.
+
+Bars: the exam's lands, side 8, 256 cells, 16 lives, five lineages, 4096 rooms a thought,
+`--keep` against 6b with the same rooms (163 / 69 / 123 / 51 / 62 meals; 16 lives of 80 with no
+meal in the last third; trips of 9+ in the last third straight 0.49 / 0.37 / 0.28 / 0.37 /
+0.10; `perfect` 182, `seeker` 210):
+
+- **K1.** Lives with no meal in the last third: at most 4 of 80.
+- **K2.** Meals a life at least 1.3 times 6b's, on at least three lineages.
+- **K3.** At least 0.7 of `perfect` (127 meals), on at least three.
+- **K4.** Trips of 9+ steps in the last third straight at least 0.6 of the time, on at least two.
+
+Reported with no bar, as the VM has room: a road kept with 256 rooms a thought (against 6a);
+with curiosity and 1024 rooms as well.
+
+Prediction: K1 met; K2 met on three (the lineages that locked: 1, 3, 4); K3 missed, two (0 and
+2); K4 missed, one (lineage 0). The doubt: a false road walked to its end carries the body
+away from the fruit, and a longer round of roads may take the place of the short one.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

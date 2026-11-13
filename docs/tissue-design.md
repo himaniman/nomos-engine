@@ -1678,6 +1678,43 @@ and 2). The doubt: the look asks a grown brain; in a life the thoughts that fail
 while the map is still being made, and there a thought may be right to find nothing. Then
 side 10 at 512 cells with the same dial, reported.
 
+### Step 6c: curiosity in place of the dice. Pilot, then bars written before the run
+
+One hand-made part of the will made less arbitrary. With no road in its head the body took a
+way at random. A yardstick says what that costs: `seeker`, a perfect memory that with no road
+takes a way it has never gone out of the room it is in, eats 172 / 210 / 231 times a life on
+the exam's lands of side 6 / 8 / 10 where `perfect` eats 121 / 182 / 141. And the brain has
+the signal already: exam 6 found it speaks 2-6 times more quietly of ways it never went.
+
+**The mechanism** (`--curious P`, BY HAND, off unless asked for): with no road, the body takes
+the way of which the brain spoke most quietly one hop ahead in the thought it has just had, if
+that is quieter than a share P of the loudest of the four; otherwise the dice as before. What
+is read is the brain's own voice; that it is read, the rule and the threshold are mine.
+
+**The pilot** (pilot lands, seed 1, side 8, 256 cells, 16 lives, 256 rooms a thought), meals a
+life and the share of the land's ways gone by an eighth of the life:
+
+| | no curiosity | P 0.5 | P 0.7 |
+|---|---|---|---|
+| lineage 0 | 88, 0.46 | 69, 0.51 | 133, 0.64 |
+| lineage 4 | 34, 0.46 | | 59, 0.57 |
+
+P 0.5 below no curiosity is not understood (sixteen lives of chaotic walks; reported, not
+explained). The threshold is set at 0.7 on these lands and not touched again.
+
+Bars: the exam's lands, side 8, 256 cells, 16 lives, five lineages, 256 rooms a thought,
+`--curious 0.7` against the same brain without (rerun beside it, since 6a's records do not
+hold the share of ways gone early; 6a: 95 / 55 / 88 / 53 / 36) and against `seeker` (210):
+
+- **C1.** Meals a life at least 1.3 times those without curiosity, on at least four lineages.
+- **C2.** A larger share of the ways gone by an eighth of the life, on all five.
+- **C3.** At least 0.6 of `seeker` (126 meals), on at least two.
+
+Reported beside it with no bar: the same with 1024 rooms a thought.
+
+Prediction: C1 met on four, C2 on five, C3 on two (lineages 0 and 2). The doubt: the pilot is
+two lineages, and its middle threshold went the wrong way.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

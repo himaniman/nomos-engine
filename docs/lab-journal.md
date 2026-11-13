@@ -5623,3 +5623,35 @@ right; in the next a thought says a road that begins with the way back.
 Yardsticks rerun on the exam's lands with `seeker` (a perfect memory that with no road takes a
 way never gone): side 6: 172 (perfect 121), side 8: 210 (182), side 10: 231 (141). Step 6c
 (curiosity in place of the dice, bars C1-C3 in the note) is running on the VM: fifteen runs.
+
+## 2026-11-13 (12:00) — step 6c, curiosity in place of the dice: a third more meals on four lineages, read from the brain's own quiet
+
+With no road in its head the body takes the way of which the brain spoke most quietly one hop
+ahead, if quieter than 0.7 of the loudest (the threshold from a pilot on other lands); else the
+dice. By hand. The exam's lands, side 8, 256 cells, 16 lives; fifteen runs on the VM, an hour
+and a half. The rerun with no curiosity gives 6a's figures to the last digit.
+
+| side 8, 256 cells, 16 lives | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| no curiosity, 256 rooms a thought: meals a life | 95 | 55 | 88 | 53 | 36 |
+| curious 0.7 | 124 | 79 | 99 | 71 | 47 |
+| times as much | 1.31 | 1.43 | 1.13 | 1.33 | 1.32 |
+| no curiosity: ways gone by an eighth of the life | 0.48 | 0.51 | 0.48 | 0.47 | 0.48 |
+| curious 0.7 | 0.60 | 0.62 | 0.61 | 0.58 | 0.60 |
+| no curiosity, 1024 rooms a thought (6b): meals | 139 | 87 | 103 | 68 | 62 |
+| curious 0.7, 1024 rooms | 173 | 97 | 123 | 71 | 80 |
+| the same: lives of 16 with no meal in the last third | 0 | 6 | 1 | 9 | 1 |
+
+- **C1 (1.3 times the meals on four lineages): met** (0, 1, 3, 4).
+- **C2 (more ways gone by an eighth of the life on all five): met.**
+- **C3 (0.6 of `seeker`, 126 meals, on two): missed**; the best is 124.
+
+The gain is where the map is being made (lineage 0 by thirds: 6 / 29 / 90 against 7 / 22 / 66).
+Curiosity and a wider thought add up (173 on lineage 0: 0.95 of `perfect`, 0.83 of `seeker`),
+and neither mends the other's fault: 17 lives of 80 still end locked between two rooms, for a
+body with a road in its head is never curious.
+
+**The looks at 6b's dead lives, all in**: lineage 1 life 11, lineage 3 lives 0 and 1, lineage 4
+life 8: each goes to and fro between two rooms next to each other from its last meal to the end,
+a road in its head on every tick. Lineage 0 life 5, which goes on eating, does the same for
+tens of ticks at a time and gets out. So the lock is the rule, not an accident of one life.

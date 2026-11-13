@@ -1760,6 +1760,59 @@ Reported beside it with no bar: the same with 1024 rooms a thought.
 Prediction: C1 met on four, C2 on five, C3 on two (lineages 0 and 2). The doubt: the pilot is
 two lineages, and its middle threshold went the wrong way.
 
+**Outcome (2026-11-13; records `runs/tissue/hold/hold-s*.world8.thinks*.curious0.7.json`; the
+rerun without curiosity gives 6a's figures to the last digit).**
+
+| side 8, 256 cells, 16 lives | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| no curiosity, 256 rooms a thought: meals a life | 95 | 55 | 88 | 53 | 36 |
+| curious 0.7 | 124 | 79 | 99 | 71 | 47 |
+| times as much | 1.31 | 1.43 | 1.13 | 1.33 | 1.32 |
+| no curiosity: ways gone by an eighth of the life | 0.48 | 0.51 | 0.48 | 0.47 | 0.48 |
+| curious 0.7 | 0.60 | 0.62 | 0.61 | 0.58 | 0.60 |
+| no curiosity, 1024 rooms a thought (6b): meals | 139 | 87 | 103 | 68 | 62 |
+| curious 0.7, 1024 rooms | 173 | 97 | 123 | 71 | 80 |
+| the same: lives of 16 with no meal in the last third | 0 | 6 | 1 | 9 | 1 |
+
+- **C1: met**, on four lineages (0, 1, 3, 4); lineage 2 gains x1.13.
+- **C2: met**, on all five: 0.58-0.62 of the land's ways gone by an eighth of the life where
+  the dice gave 0.47-0.51.
+- **C3: missed**: the best is lineage 0 at 124 meals, 0.59 of `seeker`, two meals short.
+
+Predicted: C1 and C2 met (right), C3 on two lineages (wrong). The brain's own quiet is a usable
+sign of what it has not seen: read by a hand-made rule in place of the dice it is worth a third
+more meals, and the gain is in the middle of a life (lineage 0 by thirds: 6 / 29 / 90 against
+7 / 22 / 66), where the map is being made. With 1024 rooms a thought beside it the two add up:
+173 / 97 / 123 / 71 / 80, the best figures at this side, lineage 0 at 0.95 of `perfect` and 0.83
+of `seeker`. They do not mend each other's fault: lives locked between two rooms are as many as
+without curiosity (17 of 80), since a body with a road in its head is never curious.
+
+Three more looks at lives of 6b came in (lineage 3 life 1, lineage 4 life 8: the same two rooms
+to and fro, from tick 935 and tick 1060 to the end; lineage 0 life 5, a life that goes on
+eating: the same to and fro for some tens of ticks at a time, and then out of it). Four dead
+lives looked at, four locked between two rooms.
+
+### Step 6d: the bigger land with both dials. Bars written before the run
+
+No new mechanism: the land of side 10 (100 rooms, 400 ways, 4000 ticks) at 512 cells, where 6a
+gave 73 / 39 / 42 / 19 / 17 meals a life with a road in the head on 0.08-0.18 of the ticks
+(`perfect` 141, `seeker` 231, blind 5), now with the two dials of 6b and 6c as they were set
+at side 8 and not touched: `--curious 0.7`, `--budget 1024`, and both. `seeker` over `perfect`
+is x1.63 here where it was x1.15 at side 8, so what wandering finds should matter more.
+
+Bars: the exam's lands, 16 lives, five lineages, against 6a's records:
+
+- **L1.** Curiosity alone (256 rooms a thought): at least 1.5 times 6a's meals, on at least
+  four lineages.
+- **L2.** Both dials: at least twice 6a's meals, on at least three.
+- **L3.** Both dials: at least 0.7 of `perfect` (99 meals), on at least two.
+
+Reported with no bar: 1024 rooms alone; lives with no meal in the last third.
+
+Prediction: L1 met on four, L2 on three (0, 1, 4), L3 missed: lineage 0 only. The doubt: the
+weak lineages (19 and 17 meals) may be bound by what 512 cells hold of 400 ways, and then
+neither dial reaches them.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way
@@ -1872,6 +1925,7 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 5d wires still in the dark, in the kernel (`Plan.still`, by hand) | thinking in its own head: met on four lineages. On the loops of exam 2 recall is untouched and holding is 0.80-0.98 of what it was: there the learning in the dark was mending a little. Open: a rule that tells rehearsing from imagining; the search through the map as cells |
 | 6a a world: a walled land, trees, one life with no study | done by hand, 5 lineages, nothing searched. Born into a land it has never seen and told only what the room with the fruit looks like, a brain of 256 cells learns 36 rooms by wandering and eats 86-130 times a life (a perfect memory with the same will 121, born knowing the land 259, a blind walker 5); numb: a blind walker. In the last third of a life trips of 3-4 steps are straight 0.98-1.00. At 100 rooms 256 cells eat 10-25 and 512 cells 17-73 (2.5-4.4 times as much in the last third). V2, V3 met; V1 missed by three lineages a few hundredths short; V4 met in its first half. What binds is the depth of a thought |
 | 6b a wider thought (4096 rooms a thought in place of 256, side 8) | done, T1-T3 missed. Three lineages of five eat 1.4-1.7 times as much (163 / 69 / 123 / 51 / 62 against 95 / 55 / 88 / 53 / 36), long trips are no straighter (0.10-0.49), and 16 lives of 80 stop eating for good: a thought that always finds a road passes the body to and fro between two rooms. 1024 rooms is the better dial (139 / 87 / 103 / 68 / 62) |
+| 6c curiosity in place of the dice (`--curious 0.7`, by hand: with no road, the way the brain speaks most quietly of) | done, C1, C2 met, C3 missed. 1.3-1.4 times the meals on four lineages of five (124 / 79 / 99 / 71 / 47), 0.58-0.62 of the ways gone by an eighth of a life in place of 0.47-0.51; the best is 0.59 of `seeker`. With 1024 rooms a thought as well: 173 / 97 / 123 / 71 / 80, and as many locked lives as before |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

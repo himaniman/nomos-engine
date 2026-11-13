@@ -709,8 +709,10 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (it goes to and fro between two rooms on two plans that disagree; 16 lives of 80 stop
   eating). 1024 rooms is the better dial. Open: a body that keeps a plan or does not undo its
   last step. `seeker` yardstick (perfect memory + a way never gone): 172/210/231 at side
-  6/8/10. STEP 6c (`--curious 0.7`, with no road the way the brain speaks most quietly of,
-  by hand) has bars C1-C3 in the note.
+  6/8/10. STEP 6c DONE (`--curious 0.7`, by hand: with no road, the way the brain speaks most
+  quietly of, in place of the dice): 124/79/99/71/47 meals at side 8, x1.3-1.4 on four
+  lineages (C1, C2 met; C3 missed, best 0.59 of `seeker`); with 1024 rooms as well
+  173/97/123/71/80, and as many locked lives.
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by

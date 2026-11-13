@@ -703,6 +703,14 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   Pictures: `python -m tissue.view GENOME.pt [--film out/tissue/world.gif]`. Exam trap: a will
   that remembers where it ate made knowing less pay (a brain with two trees side by side beat
   the oracle); a yardstick with perfect memory is not a ceiling when wandering teaches.
+  STEP 6b (2026-11-13): `world --why` showed a long thought fails only at my limit of 256
+  rooms a thought (`--budget`); with 4096 the exam at side 8 gives 163/69/123/51/62 meals
+  (6a: 95/55/88/53/36), T1-T3 missed: A THOUGHT THAT ALWAYS FINDS A ROAD LOCKS THE BODY IN
+  (it goes to and fro between two rooms on two plans that disagree; 16 lives of 80 stop
+  eating). 1024 rooms is the better dial. Open: a body that keeps a plan or does not undo its
+  last step. `seeker` yardstick (perfect memory + a way never gone): 172/210/231 at side
+  6/8/10. STEP 6c (`--curious 0.7`, with no road the way the brain speaks most quietly of,
+  by hand) has bars C1-C3 in the note.
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by

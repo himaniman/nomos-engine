@@ -1678,6 +1678,51 @@ and 2). The doubt: the look asks a grown brain; in a life the thoughts that fail
 while the map is still being made, and there a thought may be right to find nothing. Then
 side 10 at 512 cells with the same dial, reported.
 
+**Outcome (2026-11-13; records `runs/tissue/hold/hold-s*.world8.thinks*.budget*.json`).**
+
+| rooms a thought | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 256 (6a): meals a life | 95 | 55 | 88 | 53 | 36 |
+| 1024 | 139 | 87 | 103 | 68 | 62 |
+| 4096 | 163 | 69 | 123 | 51 | 62 |
+| 4096, shown what it says | 107 | 109 | 165 | 22 | 102 |
+| 256: meals by third of the life | 7 / 22 / 66 | 7 / 9 / 40 | 7 / 21 / 60 | 4 / 13 / 36 | 5 / 12 / 19 |
+| 4096 | 14 / 70 / 79 | 9 / 30 / 30 | 15 / 64 / 44 | 6 / 25 / 19 | 9 / 29 / 24 |
+| 256: trips of 9+ in the last third, straight | 0.55 | 0.22 | 0.39 | 0.17 | 0.07 |
+| 1024 | 0.54 | 0.29 | 0.31 | 0.39 | 0.19 |
+| 4096 | 0.49 | 0.37 | 0.28 | 0.37 | 0.10 |
+| 256: lives of 16 with no meal in the last third | 1 | 1 | 0 | 1 | 3 |
+| 1024 | 1 | 5 | 1 | 1 | 2 |
+| 4096 | 0 | 6 | 0 | 9 | 1 |
+| 4096, shown what it says | 0 | 7 | 0 | 14 | 1 |
+
+- **T1: missed.** At 4096 rooms three lineages eat 1.3 times 6a's or more (x1.71, x1.40,
+  x1.71), lineage 1 x1.24 and lineage 3 x0.95. (At 1024: three as well.)
+- **T2: missed**, on every lineage: the best is 0.49.
+- **T3: missed**: lineage 0 only (163 of the 127 asked); lineage 2 is at 0.68 of `perfect`.
+
+All three predicted met. What the look did not show, because it asked each thought once and
+never let the body act on it: **a thought that always finds a road locks the body in.** With
+256 rooms a thought often found nothing and the body took a way at random; that was also what
+got it out of a bad place. With 4096 a road is found on 0.7-0.8 of the ticks (it was 0.2-0.3),
+some of those roads are false (a copy says the wanted look where it is not), and a false road
+that leads back whence the body came is thought again on the next tick. A look at such lives
+(`stuck`, single lives of the exam with a watch): the body goes to and fro between two rooms
+next to each other, a road in its head on every tick, from its last meal to the end of the
+life. The wide thought eats two or three times as much in the middle third of a life and then
+loses lives one by one: 16 lives of 80 end with an empty last third, where 6 did. Imagery
+makes it worse where the map is weak (lineage 3: fourteen lives of sixteen) and better where
+it is not (lineage 2: 165, lineage 4: 102).
+
+This is the reactive limit cycle of the forage world again, one floor up: there the cure was a
+commitment, here the fault is that the body takes only the first way of a plan and thinks
+afresh, so two plans that disagree can pass it between them forever. The limit of rooms is
+hand-made and so is this fault; 1024 rooms is the better dial as things stand (139 / 87 / 103
+/ 68 / 62), not because a thought should be short. The next asking of depth is a body that
+does not undo its own last step on the word of a thought (or keeps a plan while it holds), with
+bars of its own. METHOD: a look that asks thoughts one at a time says nothing of what happens
+when they are acted on in a row.
+
 ### Step 6c: curiosity in place of the dice. Pilot, then bars written before the run
 
 One hand-made part of the will made less arbitrary. With no road in its head the body took a
@@ -1826,6 +1871,7 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 5b, 5c thinking with no copy | when the brain walks in thought itself and keeps what thought taught it the map wears out (0.40-0.59 at distance 4, worse in the second half of a life). The learning does all of the harm and the state none: with its wires still in thought the brain thinks in its own head as well as a copy (0.94-0.99 at distance 4), coming back by one look at the room |
 | 5d wires still in the dark, in the kernel (`Plan.still`, by hand) | thinking in its own head: met on four lineages. On the loops of exam 2 recall is untouched and holding is 0.80-0.98 of what it was: there the learning in the dark was mending a little. Open: a rule that tells rehearsing from imagining; the search through the map as cells |
 | 6a a world: a walled land, trees, one life with no study | done by hand, 5 lineages, nothing searched. Born into a land it has never seen and told only what the room with the fruit looks like, a brain of 256 cells learns 36 rooms by wandering and eats 86-130 times a life (a perfect memory with the same will 121, born knowing the land 259, a blind walker 5); numb: a blind walker. In the last third of a life trips of 3-4 steps are straight 0.98-1.00. At 100 rooms 256 cells eat 10-25 and 512 cells 17-73 (2.5-4.4 times as much in the last third). V2, V3 met; V1 missed by three lineages a few hundredths short; V4 met in its first half. What binds is the depth of a thought |
+| 6b a wider thought (4096 rooms a thought in place of 256, side 8) | done, T1-T3 missed. Three lineages of five eat 1.4-1.7 times as much (163 / 69 / 123 / 51 / 62 against 95 / 55 / 88 / 53 / 36), long trips are no straighter (0.10-0.49), and 16 lives of 80 stop eating for good: a thought that always finds a road passes the body to and fro between two rooms. 1024 rooms is the better dial (139 / 87 / 103 / 68 / 62) |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

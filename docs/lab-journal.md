@@ -5571,3 +5571,55 @@ the difference is in the genome the search starts from, not in the dice of the s
 cell with one set of wires trades the first hop against the later ones. The dendrite per way
 stays by hand; the next asking, if there is one, is of another kind (branches of a dendrite as
 units with a rule of their own, as the sleep cell was for the gate), not of more of the same.
+
+## 2026-11-13 (10:00) — step 6b, a wider thought: more meals on three lineages, no straighter, and a thought that always finds a road locks the body between two rooms
+
+The exam's lands, side 8, 256 cells, 16 lives, five lineages; fifteen runs on the VM, about
+two and three quarter hours each on one thread.
+
+| rooms a thought | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 256 (6a): meals a life | 95 | 55 | 88 | 53 | 36 |
+| 1024 | 139 | 87 | 103 | 68 | 62 |
+| 4096 | 163 | 69 | 123 | 51 | 62 |
+| 4096, shown what it says | 107 | 109 | 165 | 22 | 102 |
+| 256: meals by third of the life | 7 / 22 / 66 | 7 / 9 / 40 | 7 / 21 / 60 | 4 / 13 / 36 | 5 / 12 / 19 |
+| 4096 | 14 / 70 / 79 | 9 / 30 / 30 | 15 / 64 / 44 | 6 / 25 / 19 | 9 / 29 / 24 |
+| 256: trips of 9+ in the last third, straight | 0.55 | 0.22 | 0.39 | 0.17 | 0.07 |
+| 1024 | 0.54 | 0.29 | 0.31 | 0.39 | 0.19 |
+| 4096 | 0.49 | 0.37 | 0.28 | 0.37 | 0.10 |
+| 256: lives of 16 with no meal in the last third | 1 | 1 | 0 | 1 | 3 |
+| 1024 | 1 | 5 | 1 | 1 | 2 |
+| 4096 | 0 | 6 | 0 | 9 | 1 |
+| 4096, shown what it says | 0 | 7 | 0 | 14 | 1 |
+
+- **T1 (meals 1.3 times 6a's on four lineages at 4096 rooms): missed**, three (x1.71, x1.24,
+  x1.40, x0.95, x1.71).
+- **T2 (trips of 9+ in the last third straight 0.6 of the time on three): missed** on all.
+- **T3 (0.7 of `perfect`, 127 meals, on two): missed**, lineage 0 only.
+
+I predicted all three met. The by-thirds rows say where it went: the wide thought doubles or
+trebles the middle third and then the last third falls (lineage 2: 64 then 44). Lives stop
+eating altogether: with 4096 rooms 16 lives of 80 have an empty last third (6 with 256 rooms),
+with imagery 22.
+
+**The look** (one life of the exam at a time, with a watch on the body; lineage 1 life 11 and
+lineage 3 life 0, both at 4096 rooms): after its last meal (tick 590 and tick 1261 of 2560) the
+body stands in two rooms only, next to each other, going from one to the other and back, with
+a road in its head on every tick and no wall hit. In one room the thought says the way that is
+right; in the next a thought says a road that begins with the way back.
+
+- With 256 rooms a thought found a road on 0.21-0.31 of the ticks, with 4096 on 0.69-0.81.
+  Failing to think was the body's way out of a bad place: the dice. Take the failures away and
+  a false road has nothing to break it.
+- It is the forage world's limit cycle between two equidistant foods, one floor up. The fault
+  is mine twice: the limit of rooms, and a body that takes the first way of a plan and then
+  forgets the plan.
+- `--why` could not see it: it asks every thought once and never acts. METHOD: a look at
+  thoughts one at a time says nothing of thoughts acted on in a row.
+- Imagery: best figure of the exam on lineage 2 (165) and lineage 4 (102), ruin on lineage 3
+  (22; fourteen lives locked). It holds a copy to what it said, right or wrong.
+
+Yardsticks rerun on the exam's lands with `seeker` (a perfect memory that with no road takes a
+way never gone): side 6: 172 (perfect 121), side 8: 210 (182), side 10: 231 (141). Step 6c
+(curiosity in place of the dice, bars C1-C3 in the note) is running on the VM: fifteen runs.

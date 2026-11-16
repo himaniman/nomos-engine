@@ -33,7 +33,8 @@ from tissue.look import AXIS, DOTS, INK, INK2, MUTED, PLANE, PLUS, SURFACE, WRON
 from tissue.train import load
 
 NAMES = {"oracle": "born knowing every way", "thinks": "the brain", "perfect": "a perfect memory",
-         "blind": "never a plan"}
+         "blind": "never a plan", "seeker": "perfect, trying ways never gone"}
+SEEK = (150, 200, 120)                          # the seeker's line
 
 
 def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_000, **think) -> dict:
@@ -72,7 +73,8 @@ def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_0
         rec["film"].append((room, fruit, road(rec["last"], room, nxt) if planned else []))
         if t in (ticks // 8, ticks // 3):
             know(t)
-        if rec["thought"] is None and t >= 2 * ticks // 3 and planned and int(far[room, fruit]) >= min(5, shape.side - 1):
+        fresh = any(hops for hops, *_ in rec["last"])          # a thought thought now, not a road kept
+        if rec["thought"] is None and t >= 2 * ticks // 3 and planned and fresh and int(far[room, fruit]) >= min(5, shape.side - 1):
             rec["thought"] = {"here": room, "want": fruit, "tick": t, "trace": rec["last"]}
         rec["track"].append(room)
         gone[room, way] = True
@@ -186,9 +188,9 @@ def draw(rec: dict, name: str, cells: int) -> Image.Image:
         if k:
             d.line([x, y0, x, y0 + ch], fill=AXIS, width=1)
     d.text((x0 + cw / 2 - 12, y0 + ch + 26), "tick", font=f_text, fill=MUTED)
-    inks = {"oracle": MUTED, "thinks": PLUS, "perfect": INK2, "blind": MUTED}
+    inks = {"oracle": MUTED, "thinks": PLUS, "perfect": INK2, "blind": MUTED, "seeker": SEEK}
     ends = []
-    for arm in ("oracle", "perfect", "blind", "thinks"):
+    for arm in ("oracle", "seeker", "perfect", "blind", "thinks"):
         meals = rec["meals"][arm]
         pts = [(x0, y0 + ch)] + [(x0 + cw * t / ticks, y0 + ch - ch * (i + 1) / most) for i, t in enumerate(meals)]
         pts.append((x0 + cw, pts[-1][1]))
@@ -268,9 +270,10 @@ def main() -> None:
     rec = record(a.genome, world.Land(a.side), a.cells, a.life, a.seed,
                  budget=a.budget, curious=a.curious, keep=a.keep)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    draw(rec, os.path.basename(a.genome).rsplit(".", 1)[0], a.cells).save(a.out)
+    name = os.path.basename(a.genome).rsplit(".", 1)[0] + (", a road kept" if a.keep else "")
+    draw(rec, name, a.cells).save(a.out)
     if a.film:
-        frames = film(rec, os.path.basename(a.genome).rsplit(".", 1)[0], a.cells)
+        frames = film(rec, name, a.cells)
         frames[0].save(a.film, save_all=True, append_images=frames[1:], duration=110, loop=0, optimize=True)
     print(f"{a.out}: meals " + ", ".join(f"{NAMES[k]} {len(v)}" for k, v in rec["meals"].items()))
 

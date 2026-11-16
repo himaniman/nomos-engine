@@ -1989,6 +1989,39 @@ each land first (`--yardsticks --walls W` / `--trees N`, files named with the la
 
 Next in line, when threads are free: 21 trees; the 256-cell records of 6f again.
 
+**Outcome (2026-11-16; records `runs/tissue/hold/hold-s*.world8.walls0.*.json`,
+`*.world8.thinks.slack1.*.json`).**
+
+| side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|---|---|---|---|
+| the exam's land (6e) | 241 | 212 | 214 | 193 | 160 | 182 | 210 | 380 |
+| B1, the maze (walls 0.5) | 76 | 89 | 97 | 82 | 49 | 20 | 54 | 257 |
+| B2, the open land (walls 0.1) | 334 | 308 | 328 | 289 | 268 | 292 | 363 | 469 |
+| B3, one bit of slack, the exam's land | 40 | 40 | 38 | 37 | 30 | | | |
+| lives locked of 16: maze / open / slack | 5 / 0 / 14 | 2 / 0 / 14 | 0 / 0 / 14 | 0 / 0 / 14 | 0 / 0 / 14 | | | |
+
+- **B1: half met.** Above `seeker` on four lineages (met), 100 or more on none (missed; best
+  97). In the maze the brain eats 2.4-4.9 times what a perfect memory eats: the harder the
+  land is to explore by the dice, the more the brain's walked mistakes are worth.
+- **B2: missed.** Below `perfect` on two lineages, not three; above it on three, below
+  `seeker` on all five. In an open land the lead over a perfect memory shrinks, as predicted,
+  but does not go.
+- **B3: met, and far beyond:** a fifth of the meals, and 70 lives of 80 locked again in spite
+  of the road kept. With one bit of slack a road is found on 0.97 of the ticks, and the body
+  passes from near-miss to near-miss. The exact match of the wanted look, a hand-made part, is
+  load-bearing: what makes a thought end is as much a part of thinking as what it searches.
+
+### Breadth 2: more trees, a smaller brain, and a check. Predictions before the run
+
+Side 8, a road kept, 4096 rooms a thought, five lineages, 16 lives:
+
+- **B4, 21 trees** (`--trees 21`; `perfect` 139, `seeker` 168, born knowing 376): the brain
+  above `perfect` on four lineages and above `seeker` on three.
+- **B5, 128 cells** (`--sizes 128`): 256 cells eat at least 1.25 times what 128 eat (6e: 241 /
+  212 / 214 / 193 / 160), on four lineages.
+- **The 256-cell runs of 6f again** (side 10): the same figures to the last digit as the lines
+  they printed (237.9 / 172.8 / 222.6 / 150.7 / 98.9). A life is a pure function of its seed.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

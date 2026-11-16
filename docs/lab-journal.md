@@ -5778,3 +5778,28 @@ little to keep. Locked lives: 4 of 80. Neither width nor keeping does much alone
 by a stronger model): the maze (`--walls 0.5`), the open land (`--walls 0.1`), a looser match
 (`--slack 1`); predictions in the note. Yardsticks of the new lands: the maze is cruel to a
 memory that explores by the dice (`perfect` 20 meals, born knowing 257).
+
+## 2026-11-16 (13:30) — breadth 1: in a maze the brain eats four times a perfect memory; one bit of slack in the match undoes the road kept
+
+Side 8, 256 cells, a road kept, 4096 rooms, five lineages, 16 lives; one to two hours a run.
+
+| side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|---|---|---|---|
+| the exam's land (6e) | 241 | 212 | 214 | 193 | 160 | 182 | 210 | 380 |
+| B1, the maze (walls 0.5) | 76 | 89 | 97 | 82 | 49 | 20 | 54 | 257 |
+| B2, the open land (walls 0.1) | 334 | 308 | 328 | 289 | 268 | 292 | 363 | 469 |
+| B3, one bit of slack, the exam's land | 40 | 40 | 38 | 37 | 30 | | | |
+| lives locked of 16: maze / open / slack | 5 / 0 / 14 | 2 / 0 / 14 | 0 / 0 / 14 | 0 / 0 / 14 | 0 / 0 / 14 | | | |
+
+- **The maze** (B1): above `seeker` on four lineages (predicted four), 100 meals on none
+  (predicted two). 2.4-4.9 times a perfect memory. The brain's walked mistakes are worth most
+  where exploring by the dice is worth least.
+- **The open land** (B2): I predicted the brain below `perfect` on three lineages; it is below on
+  two (289, 268 against 292) and above on three. Below `seeker` (363) everywhere.
+- Brain over `perfect`, by land: maze x2.4-4.9, the exam's land x0.88-1.32, open x0.92-1.14.
+- **One bit of slack** (B3): predicted a tenth fewer meals; it is four fifths fewer, and 14 lives
+  of 16 locked on every lineage, though the road is kept. A road is found on 0.97 of the ticks;
+  near-misses lead to near-misses. The exact match is a hand-made part that carries weight; if it
+  is ever taken from my hand, whatever replaces it must be as strict.
+
+Breadth 2 (predictions in the note): 21 trees; 128 cells; the 256-cell runs of 6f again.

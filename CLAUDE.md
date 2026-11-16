@@ -717,7 +717,9 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   STEP 6e (2026-11-16), A ROAD KEPT (`--keep`, by hand: a road thought of is walked, no new
   thought, while every room is as a copy said): side 8, 4096 rooms, 241/212/214/193/160 meals
   (6b 163/69/123/51/62), no locked life, K1-K4 met; three lineages at or above `seeker` (210).
-  `perfect` is beaten because it never goes a way it has not gone once it has a road.
+  `perfect` is beaten because it never goes a way it has not gone once it has a road; the
+  brain's false roads, walked, go through every open way of the land (its mistakes explore).
+  STEP 6f (side 10, 256/512/1024 cells, road kept, 4096 rooms): bars G1-G4 in the note.
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by

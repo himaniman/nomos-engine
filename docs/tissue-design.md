@@ -1901,9 +1901,11 @@ so far, and the weak lineages gain most: the five lineages, 36-95 meals apart in
 That a brain beats `perfect` says what `perfect` is not: it knows only the ways it has gone,
 and once it has a road to every tree it never goes a way it has not gone, so a shortcut
 through a way never gone stays unknown for life (its trips of 1-2 steps in the last third are
-straight 0.90; the brain's 1.00). Why the brain does better is not yet looked at; the guess is
-that its false roads are walked into ways it has never gone, so its mistakes explore toward the
-fruit. A look is running.
+straight 0.90; the brain's 1.00). The look (journal, 2026-11-16) bears the guess out: by
+the end of a life the brain has gone every open way of its land where the perfect memories
+leave 0.06-0.21 never gone, and more than half its first goings come on a false road it was
+walking toward the fruit. A brain that thinks afresh every tick explores as much and eats a
+third as much: keeping a road adds the use of what was found, not the finding.
 
 ### Step 6f: the claim of the line in a world. Bars written before the run
 

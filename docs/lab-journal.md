@@ -5711,3 +5711,32 @@ The wider thought does nearly all of it at side 10; curiosity on top helps three
 costs two. The lock is here as well where roads are found often. Both 6d and 6e were set
 before the other was known; the next exam puts the road kept on the land of side 10, at three
 sizes of brain, which is the claim of the line.
+
+**A look: how a brain beats a perfect memory** (`explore.py` in the scratchpad, one life of the
+exam's lands at a time, a watch on every step; a way through a wall teaches no new room and is
+not counted as gone):
+
+| side 8, 256 cells, 4096 rooms | meals | open ways gone by the end | ways gone for the first time: on a road / with no road |
+|---|---|---|---|
+| lineage 0 life 0: `perfect` | 185 | 0.93 | 0 / 145 |
+| `seeker` | 250 | 0.79 | 0 / 124 |
+| the brain, a road kept | 217 | 1.00 | 87 / 69 |
+| the brain, a thought afresh every tick (6b) | 72 | 1.00 | 115 / 41 |
+| lineage 0 life 1: `perfect` | 140 | 0.92 | 0 / 143 |
+| `seeker` | 151 | 0.94 | 0 / 146 |
+| the brain, a road kept | 181 | 1.00 | 96 / 60 |
+| the brain, a thought afresh every tick (6b) | 88 | 1.00 | 91 / 65 |
+| lineage 4 life 0 (the same land as lineage 0's): the brain, a road kept | 135 | 1.00 | 105 / 51 |
+| the brain, a thought afresh every tick (6b) | 31 | 1.00 | 86 / 70 |
+| lineage 4 life 1: the brain, a road kept | 116 | 1.00 | 82 / 74 |
+
+- **The guess holds.** By the end of a life the brain has gone every open way of its land; the
+  perfect memories leave 0.06-0.21 never gone. More than half the brain's first goings come on
+  a road it thought of, not from the dice: a road that was false, through a way it never went
+  (a copy said the wanted look somewhere it was not, among thousands of copies), walked until
+  the room was not the room said. Its mistakes explore, toward the fruit. A perfect memory
+  makes no such mistake and so never finds a shortcut once it has a road.
+- **Both brains explore so; only the one that keeps its roads eats.** A thought afresh every
+  tick goes through every way as well (86-115 first goings on a road), and eats 31-88.
+  Exploring is not what keeping a road adds; using what was found is.
+- The brain also walks into walls on a road: 162-325 steps a life, a way it thought open.

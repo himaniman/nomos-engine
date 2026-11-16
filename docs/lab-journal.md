@@ -5741,3 +5741,40 @@ not counted as gone):
   tick goes through every way as well (28-115 first goings on a road), and eats 31-88.
   Exploring is not what keeping a road adds; using what was found is.
 - The brain also walks into walls on a road: 162-325 steps a life, a way it thought open.
+
+## 2026-11-16 (11:20) — step 6f in part: growth pays in a world on every lineage; a narrow thought gains little from a road kept
+
+**6f** (bars G1-G4 in the note): side 10, a road kept, 4096 rooms a thought, 16 lives. 256 and
+512 cells are in (three to five hours a run); 1024 cells still run.
+
+| | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 6d (512 cells, 1024 rooms, a thought afresh) | 162 | 79 | 135 | 56 | 64 |
+| 256 cells | 237.9 | 172.8 | 222.6 | 150.7 | 98.9 |
+| 512 cells | 301.1 | 267.4 | 289.3 | 224.0 | 192.6 |
+| 512 over 256 | 1.27 | 1.55 | 1.30- | 1.49 | 1.95 |
+
+- **G1 met** (five), **G4 met** (five; four lineages above `seeker`, 231, at 512 cells).
+- **G2 missed** by a hair: three lineages of the four asked; lineage 2 at 1.2997.
+- No life locked at either size; long trips straighter with size on every lineage (lineage 0
+  0.58 to 0.75 in the last third).
+
+The line's claim, the same genome grown bigger is smarter, now holds in a world: every
+lineage eats more at 512 cells than at 256 (x1.27-1.95), the weakest most. A brain of 512
+cells born into 100 rooms it has never seen eats 193-301 times a life, where a perfect memory
+with the same will eats 141 and one that also seeks ways never gone 231.
+
+A FAULT IN MY RECORDS: the runs of one genome at two sizes wrote one file, and the 512-cell runs
+took the place of the 256-cell ones; the 256 figures above are the runs' printed lines. Record
+names now carry the size when it is not 256 and the land when it is not of the default make;
+the 256-cell runs go again.
+
+**Side 8, a road kept with a narrow thought** (256 rooms; reported): 90 / 83 / 103 / 75 / 59
+meals, against 95 / 55 / 88 / 53 / 36 with neither and 241 / 212 / 214 / 193 / 160 with a
+wide thought as well. With 256 rooms a road is found on a quarter of the ticks; there is
+little to keep. Locked lives: 4 of 80. Neither width nor keeping does much alone.
+
+**Breadth 1** started (the user's word today: try many ideas, gather data for a later reading
+by a stronger model): the maze (`--walls 0.5`), the open land (`--walls 0.1`), a looser match
+(`--slack 1`); predictions in the note. Yardsticks of the new lands: the maze is cruel to a
+memory that explores by the dice (`perfect` 20 meals, born knowing 257).

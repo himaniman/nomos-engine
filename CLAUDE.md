@@ -719,7 +719,11 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (6b 163/69/123/51/62), no locked life, K1-K4 met; three lineages at or above `seeker` (210).
   `perfect` is beaten because it never goes a way it has not gone once it has a road; the
   brain's false roads, walked, go through every open way of the land (its mistakes explore).
-  STEP 6f (side 10, 256/512/1024 cells, road kept, 4096 rooms): bars G1-G4 in the note.
+  STEP 6f (side 10, road kept, 4096 rooms): 256 cells 238/173/223/151/99, 512 cells
+  301/267/289/224/193 meals (perfect 141, seeker 231): growth pays on every lineage; G1, G4
+  met, G2 missed by a hair, 1024 cells running. BREADTH from 2026-11-16 (the user's word):
+  many ideas, comparable records, for a later reading by a stronger model; record names carry
+  a non-default land (`.walls0.5`) and a size other than 256 (`.m512`).
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by

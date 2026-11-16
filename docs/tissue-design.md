@@ -1931,6 +1931,64 @@ rooms a thought (does the gain of 6e need a wide thought?).
 Prediction: G1 on four, G2 on five, G3 on three, G4 on three. The doubt: G3, if 512 cells
 already hold the land, 1024 add only what a vote of more cells adds to recall.
 
+**Outcome, in part (2026-11-16; 1024 cells still running).**
+
+| side 10, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 6d (512 cells, 1024 rooms, a thought afresh) | 162 | 79 | 135 | 56 | 64 |
+| 256 cells | 237.9 | 172.8 | 222.6 | 150.7 | 98.9 |
+| 512 cells | 301.1 | 267.4 | 289.3 | 224.0 | 192.6 |
+| 512 over 256 | 1.27 | 1.55 | 1.30- | 1.49 | 1.95 |
+| lives with no meal in the last third, 256 / 512 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| trips of 9+ in the last third straight, 256 / 512 | 0.58 / 0.75 | 0.32 / 0.69 | 0.46 / 0.62 | 0.40 / 0.70 | 0.09 / 0.28 |
+
+- **G1: met**, on five (x1.9-4.0).
+- **G2: missed**, three of four: lineage 2 is at 1.2997 (289.31 over 222.6), lineage 0 at 1.27.
+- **G4: met**, on five; four lineages at 512 cells eat more than `seeker` (231), lineage 0 0.63
+  of born knowing the land (476).
+- G3 waits for 1024 cells.
+
+Growth pays on every lineage, x1.27-1.95, and most on the weakest (4: x1.95); long trips get
+straighter with size on all five. The 256-cell records were overwritten by the 512-cell runs
+(one file per genome and land; the size was not in its name): the figures above are the runs'
+own printed lines, and the runs are repeated to restore the records. Names now carry the size
+when it is not 256, and the land when it is not of the default make.
+
+Side 8 with a road kept and a NARROW thought (256 rooms; reported, no bar): 90 / 83 / 103 / 75
+/ 59 meals (6a 95 / 55 / 88 / 53 / 36; with 4096 rooms 241 / 212 / 214 / 193 / 160); a road is
+found on 0.24-0.33 of the ticks, so there is little to keep. Width of thought and a road kept
+are worth little alone and much together.
+
+## Breadth (from 2026-11-16, the user's word: many ideas, data for a later reading)
+
+Each item: one change against a known arm, five lineages, 16 lives, a prediction written
+before the run that serves as its bar. The point is a wide, comparable record.
+
+### Breadth 1: other lands, and a looser match. Predictions before the run
+
+Side 8, 256 cells, a road kept, 4096 rooms a thought, the exam's seeds; yardsticks rerun for
+each land first (`--yardsticks --walls W` / `--trees N`, files named with the land):
+
+| land of side 8 | blind | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|
+| walls 0.3, 10 trees (the exam's) | 6.6 | 182 | 210 | 380 |
+| walls 0.5, a maze | 2.3 | 20 | 54 | 257 |
+| walls 0.1, open | 13.4 | 292 | 363 | 469 |
+| 21 trees | 5.9 | 139 | 168 | 376 |
+
+- **B1, the maze** (`--walls 0.5`): roads are long and most ways are walls, so a memory that
+  explores by the dice starves (`perfect` 20). Prediction: the brain eats more than `seeker`
+  (54) on four lineages and 100 or more on two; its false roads explore toward the fruit.
+- **B2, the open land** (`--walls 0.1`): shortcuts everywhere, and a perfect memory finds them
+  as it wanders. Prediction: the brain's lead over `perfect` shrinks: below `perfect` (292) on
+  three lineages.
+- **B3, a looser match** (`--slack 1`, on the exam's land: a copy that says the wanted look
+  with one bit of twelve wrong ends the thought): false hits about thirteen times as many, so
+  more false roads walked. Prediction: fewer meals than with an exact match (241 / 212 / 214 /
+  193 / 160) by a tenth or more, on four lineages.
+
+Next in line, when threads are free: 21 trees; the 256-cell records of 6f again.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

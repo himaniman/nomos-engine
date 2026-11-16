@@ -564,6 +564,9 @@ def main() -> None:
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
              "curious": a.curious, "keep": a.keep}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
+    # a land not of the default make is named in every record of it
+    ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
+              + (f".ticks{a.ticks}" if a.ticks else ""))
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
     if a.why:
@@ -590,12 +593,15 @@ def main() -> None:
         res = {arm: examine(arm, shape, a.lives, seed=a.seed) for arm in YARDSTICKS}
         for arm, row in res.items():
             print(show(arm, row))
-        with open(f"runs/tissue/world{shape.side}.yardsticks{pilot}.json", "w") as f:
+        with open(f"runs/tissue/world{shape.side}{ground}.yardsticks{pilot}.json", "w") as f:
             json.dump(res, f)
-    tag = (f".world{shape.side}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
+    tag = (f".world{shape.side}{ground}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
            + (f".budget{a.budget}" if a.budget != 256 else "")
-           + (f".curious{a.curious:g}" if a.curious else "") + (".keep" if a.keep else "") + pilot)
+           + (f".curious{a.curious:g}" if a.curious else "") + (".keep" if a.keep else "")
+           # sizes other than the default are named too (from 2026-11-16: two runs of one genome at
+           # two sizes wrote one file, and the later one took the other's place)
+           + ("" if a.sizes == [256] else ".m" + "-".join(map(str, a.sizes))) + pilot)
     for path in a.genomes:
         res = {}
         for m in a.sizes:

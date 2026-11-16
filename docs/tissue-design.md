@@ -2021,6 +2021,9 @@ Side 8, a road kept, 4096 rooms a thought, five lineages, 16 lives:
   212 / 214 / 193 / 160), on four lineages.
 - **The 256-cell runs of 6f again** (side 10): the same figures to the last digit as the lines
   they printed (237.9 / 172.8 / 222.6 / 150.7 / 98.9). A life is a pure function of its seed.
+- **B8, 512 cells at side 8** (written before its run, queued behind breadth 3): 512 cells eat
+  at least 1.15 times what 256 eat (241 / 212 / 214 / 193 / 160) on four lineages. With B5
+  that gives a curve of growth at one land: 128, 256, 512.
 
 ### Breadth 3: a land that changes under the body. Predictions before the run
 

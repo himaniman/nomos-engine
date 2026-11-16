@@ -5655,3 +5655,59 @@ body with a road in its head is never curious.
 life 8: each goes to and fro between two rooms next to each other from its last meal to the end,
 a road in its head on every tick. Lineage 0 life 5, which goes on eating, does the same for
 tens of ticks at a time and gets out. So the lock is the rule, not an accident of one life.
+
+## 2026-11-16 (06:00) — step 6e, a road kept: the lock is gone and the weak lineages catch up; step 6d, the land of side 10
+
+**6e.** The fault of 6b was in my procedure: the body took the first way of a road and the brain
+thought afresh on the next tick, so no road was ever walked and a false one never tested. Now
+(`--keep`, by hand) a road thought of is walked, a way a tick and no new thought, while every
+room the body comes to is the room a copy said; at the first that is not, the brain thinks
+afresh. Side 8, 256 cells, 4096 rooms a thought, 16 lives, five lineages, an hour and a quarter
+a run on the VM (half of 6b's: two thoughts of three are not thought).
+
+| side 8, 256 cells, 4096 rooms a thought, 16 lives | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 6b, a thought afresh on every tick: meals a life | 163 | 69 | 123 | 51 | 62 |
+| a road kept | 241 | 212 | 214 | 193 | 160 |
+| times 6b | 1.48 | 3.07 | 1.74 | 3.78 | 2.58 |
+| 6b: lives with no meal in the last third | 0 | 6 | 0 | 9 | 1 |
+| a road kept | 0 | 0 | 0 | 0 | 0 |
+| 6b: trips of 9+ in the last third, straight | 0.49 | 0.37 | 0.28 | 0.37 | 0.10 |
+| a road kept | 0.71 | 0.57 | 0.57 | 0.65 | 0.17 |
+| a road kept: meals by third | 24 / 106 / 112 | 18 / 90 / 104 | 20 / 95 / 100 | 15 / 74 / 105 | 19 / 78 / 63 |
+| a road kept: a thought thought afresh, per tick | 0.36 | 0.38 | 0.39 | 0.42 | 0.45 |
+
+- **K1** (at most 4 locked lives of 80): **met**, none.
+- **K2** (1.3 times 6b's meals on three lineages): **met**, on five.
+- **K3** (0.7 of `perfect` on three): **met**, on five.
+- **K4** (trips of 9+ in the last third straight 0.6 of the time on two): **met**, on two.
+
+I predicted K3 and K4 missed. The five lineages, 36-95 meals apart in 6a, are 160-241 now, and
+three eat as much as `seeker` or more (210), a perfect memory that tries ways never gone. The
+cells did not change; when a thought is thought did.
+
+A brain above `perfect`: `perfect` knows only ways gone and, once it has a road to every tree,
+never goes a way it has not gone; a shortcut through such a way stays unknown to it for life
+(its trips of 1-2 steps in the last third are straight 0.90, the brain's 1.00). A guess for
+why the brain does better, to be looked at: its false roads lead it through ways it never went,
+so its mistakes explore, toward the fruit.
+
+**6d** (bars L1-L3 in the note): side 10, 512 cells, 16 lives; three to five hours a run.
+
+| side 10, 512 cells, 16 lives | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 6a (256 rooms a thought, a way at random) | 73 | 39 | 42 | 19 | 17 |
+| curious 0.7 | 107 | 55 | 77 | 22 | 24 |
+| 1024 rooms a thought | 162 | 79 | 135 | 56 | 64 |
+| both | 167 | 92 | 109 | 49 | 71 |
+| both, times 6a | 2.29 | 2.36 | 2.60 | 2.58 | 4.18 |
+| lives with no meal in the last third: 6a / curious / 1024 / both | 2 / 0 / 0 / 1 | 0 / 0 / 4 / 6 | 5 / 2 / 0 / 0 | 0 / 2 / 2 / 4 | 0 / 2 / 1 / 0 |
+
+- **L1** (curiosity alone 1.5 times 6a's on four): **missed**, one.
+- **L2** (both dials twice 6a's on three): **met**, on five.
+- **L3** (both at 0.7 of `perfect`, 99, on two): **met**, on two.
+
+The wider thought does nearly all of it at side 10; curiosity on top helps three lineages and
+costs two. The lock is here as well where roads are found often. Both 6d and 6e were set
+before the other was known; the next exam puts the road kept on the land of side 10, at three
+sizes of brain, which is the claim of the line.

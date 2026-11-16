@@ -712,7 +712,12 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   6/8/10. STEP 6c DONE (`--curious 0.7`, by hand: with no road, the way the brain speaks most
   quietly of, in place of the dice): 124/79/99/71/47 meals at side 8, x1.3-1.4 on four
   lineages (C1, C2 met; C3 missed, best 0.59 of `seeker`); with 1024 rooms as well
-  173/97/123/71/80, and as many locked lives.
+  173/97/123/71/80, and as many locked lives. STEP 6d (side 10, 512 cells): both dials
+  167/92/109/49/71 (6a 73/39/42/19/17), 1024 rooms alone as much; L2, L3 met, L1 missed.
+  STEP 6e (2026-11-16), A ROAD KEPT (`--keep`, by hand: a road thought of is walked, no new
+  thought, while every room is as a copy said): side 8, 4096 rooms, 241/212/214/193/160 meals
+  (6b 163/69/123/51/62), no locked life, K1-K4 met; three lineages at or above `seeker` (210).
+  `perfect` is beaten because it never goes a way it has not gone once it has a road.
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by

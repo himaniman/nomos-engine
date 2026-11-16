@@ -5729,6 +5729,7 @@ not counted as gone):
 | lineage 4 life 0 (the same land as lineage 0's): the brain, a road kept | 135 | 1.00 | 105 / 51 |
 | the brain, a thought afresh every tick (6b) | 31 | 1.00 | 86 / 70 |
 | lineage 4 life 1: the brain, a road kept | 116 | 1.00 | 82 / 74 |
+| the brain, a thought afresh every tick (6b) | 48 | 1.00 | 28 / 128 |
 
 - **The guess holds.** By the end of a life the brain has gone every open way of its land; the
   perfect memories leave 0.06-0.21 never gone. More than half the brain's first goings come on
@@ -5737,6 +5738,6 @@ not counted as gone):
   the room was not the room said. Its mistakes explore, toward the fruit. A perfect memory
   makes no such mistake and so never finds a shortcut once it has a road.
 - **Both brains explore so; only the one that keeps its roads eats.** A thought afresh every
-  tick goes through every way as well (86-115 first goings on a road), and eats 31-88.
+  tick goes through every way as well (28-115 first goings on a road), and eats 31-88.
   Exploring is not what keeping a road adds; using what was found is.
 - The brain also walks into walls on a road: 162-325 steps a life, a way it thought open.

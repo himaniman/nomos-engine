@@ -63,6 +63,7 @@ class Land:
     walls: float = 0.3      # the share of the places between two rooms where a wall stands
     trees: int = 0          # 0: one to every six rooms
     ticks: int = 0          # the length of a life; 0: forty ticks to every room
+    shift: float = 0.0      # at the half of a life this share of the walls opens and as many open places close
 
     @property
     def rooms(self) -> int:
@@ -111,6 +112,43 @@ def land(bits: int, shape: Land, gen: torch.Generator):
         nxt[a, way], nxt[b, (way + 2) % 4] = b, a
     trees = torch.randperm(n, generator=gen)[:shape.n_trees]
     return looks, nxt, trees, int(torch.randint(n, (1,), generator=gen))
+
+
+def moved(nxt: torch.Tensor, shape: Land, gen: torch.Generator) -> torch.Tensor:
+    """The land after a change in mid-life: a share `shape.shift` of its walls open, and as
+    many places that were open close, each only if the land still hangs together. The looks,
+    the trees and the room the body stands in stay as they were."""
+    n, s = nxt.shape[0], shape.side
+    gaps = [(r * s + c, r * s + c + 1) for r in range(s) for c in range(s - 1)]
+    gaps += [(r * s + c, (r + 1) * s + c) for r in range(s - 1) for c in range(s)]
+    way = lambda a, b: 1 if b == a + 1 else 2
+    walls = [(a, b) for a, b in gaps if int(nxt[a, way(a, b)]) == a]
+    opens = [(a, b) for a, b in gaps if int(nxt[a, way(a, b)]) == b]
+    new = nxt.clone()
+
+    def put(a, b, open_):
+        new[a, way(a, b)], new[b, (way(a, b) + 2) % 4] = (b, a) if open_ else (a, b)
+
+    def whole():
+        seen, edge = {0}, [0]
+        while edge:
+            edge = [int(new[r, w]) for r in edge for w in range(4) if int(new[r, w]) not in seen]
+            seen.update(edge)
+        return len(seen) == n
+
+    k = round(shape.shift * len(walls))
+    for i in torch.randperm(len(walls), generator=gen)[:k].tolist():
+        put(*walls[i], True)
+    closed = 0
+    for i in torch.randperm(len(opens), generator=gen).tolist():
+        if closed == k:
+            break
+        put(*opens[i], False)
+        if whole():
+            closed += 1
+        else:
+            put(*opens[i], True)
+    return new
 
 
 def roads(nxt: torch.Tensor) -> torch.Tensor:
@@ -342,12 +380,13 @@ class Mind(Blind):
 
 
 def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, start: int, ticks: int,
-         gen: torch.Generator, fruits: int = 0, watch=None) -> dict:
+         gen: torch.Generator, fruits: int = 0, watch=None, later: tuple | None = None) -> dict:
     """One life. {"meals": [the tick of each], "trips": [(shortest road, steps taken, the tick
     it ended)], "planned": ticks on which a thought found a road, "walked": (rooms, 4) how
     often each way out of each room was gone, "early": the share of ways gone by an eighth of
     the life, "thoughts": thoughts thought afresh}. `fruits`: the seed of the order in which the
-    trees bear. `watch(tick, room, fruit, way, planned)` is called before every step."""
+    trees bear. `watch(tick, room, fruit, way, planned)` is called before every step. `later`: (a tick,
+    the land's ways from that tick on): the land changes in mid-life."""
     far = roads(nxt)
     order = torch.Generator().manual_seed(fruits)       # the land's own dice, not the body's
     other = lambda room: int(trees[trees != room][torch.randint(int((trees != room).sum()), (1,), generator=order)])
@@ -356,6 +395,8 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
     out = {"meals": [], "trips": [], "planned": 0, "walked": torch.zeros(len(looks), 4)}
     mind.see(looks[room], -1)
     for t in range(ticks):
+        if later is not None and t == later[0]:         # the land changes under the body's feet
+            nxt, far = later[1], roads(later[1])
         if room == fruit:                       # it eats, and another tree bears
             out["meals"].append(t)
             out["trips"].append((trip, t - since, t))
@@ -507,11 +548,15 @@ def examine(arm: str, shape: Land, lives: int = 16, path: str | None = None, m: 
     for i in range(lives):
         gen = torch.Generator().manual_seed(seed + 1000 * shape.side + i)
         looks, nxt, trees, start = land(bits, shape, gen)
+        later, end = None, nxt
+        if shape.shift:                         # the change has dice of its own: the land is the same up to it
+            end = moved(nxt, shape, torch.Generator().manual_seed(seed + 1000 * shape.side + i + 7919))
+            later = (shape.life // 2, end)
         with torch.no_grad():
             mind = body_for(arm, model, m, looks, nxt, gen, **think)
-            life = live(mind, looks, nxt, trees, start, shape.life, gen, fruits=seed + i)
+            life = live(mind, looks, nxt, trees, start, shape.life, gen, fruits=seed + i, later=later)
             if arm in ARMS:
-                life["map"] = known_map(mind, looks, nxt, life["walked"])
+                life["map"] = known_map(mind, looks, end, life["walked"])
         rows.append(life)
     return summary(rows, shape.life)
 
@@ -539,6 +584,8 @@ def main() -> None:
     p.add_argument("--walls", type=float, default=0.3)
     p.add_argument("--trees", type=int, default=0, help="0: one to every six rooms")
     p.add_argument("--ticks", type=int, default=0, help="the length of a life; 0: forty to a room")
+    p.add_argument("--shift", type=float, default=0.0,
+                   help="at the half of a life this share of the walls opens and as many open places close")
     p.add_argument("--sizes", type=int, nargs="*", default=[256])
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--arm", choices=ARMS, default="thinks")
@@ -560,13 +607,13 @@ def main() -> None:
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    shape = Land(a.side, a.walls, a.trees, a.ticks)
+    shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
              "curious": a.curious, "keep": a.keep}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
-              + (f".ticks{a.ticks}" if a.ticks else ""))
+              + (f".ticks{a.ticks}" if a.ticks else "") + (f".shift{a.shift:g}" if a.shift else ""))
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
     if a.why:

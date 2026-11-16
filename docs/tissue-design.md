@@ -2022,6 +2022,35 @@ Side 8, a road kept, 4096 rooms a thought, five lineages, 16 lives:
 - **The 256-cell runs of 6f again** (side 10): the same figures to the last digit as the lines
   they printed (237.9 / 172.8 / 222.6 / 150.7 / 98.9). A life is a pure function of its seed.
 
+### Breadth 3: a land that changes under the body. Predictions before the run
+
+`--shift F` (`world.moved`): at the half of a life a share F of the land's walls opens and as
+many open places close (each only if the land still hangs together); looks, trees and the
+body's room stay. The change has dice of its own, so the land is the exam's up to it. What is
+asked: does a brain that learned a land unlearn it? Its wires hold a way that is now a wall,
+and a wall that is now a way; only walking tells it.
+
+Yardsticks in the changed lands (side 8; `oracle` is born knowing the land BEFORE the change
+and learns the rest by walking, as `perfect` does; meals in the last third, all after the
+change, against the same land unchanged):
+
+| last third of a life | `perfect` | `seeker` | born knowing (before) |
+|---|---|---|---|
+| unchanged | 99 | 107 | 127 |
+| shift 0.25 | 73 (0.74) | 76 (0.71) | 96 (0.76) |
+| shift 0.5 | 64 (0.65) | 57 (0.53) | 73 (0.58) |
+
+A table never tries a way it holds for a wall, so a wall that opened stays a wall to it for
+life; the brain's walked mistakes may find it.
+
+- **B6, shift 0.25** (256 cells, a road kept, 4096 rooms): the brain's last third at least 0.74
+  of its own unchanged last third (6e: 112 / 104 / 100 / 105 / 63) on four lineages, as well as
+  a perfect memory recovers or better.
+- **B7, shift 0.5**: at least 0.65 of it on three lineages.
+
+Prediction: both met; the doubt is that a plastic rule which held a land for 1280 ticks may
+hold on to it (the old link louder than one walk can overwrite).
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way

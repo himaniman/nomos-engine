@@ -973,3 +973,23 @@ def test_a_road_kept_is_walked_with_no_new_thought_until_a_room_is_not_the_room_
     mind.think(wanted, gen(4), root=(mind.state[0], looks[0]))
     assert mind.road == [(2, 111)] and mind.thoughts == n + 2
 
+
+@torch.no_grad()
+def test_a_land_that_changes_in_mid_life_still_hangs_together_and_keeps_its_count_of_walls():
+    from tissue import world
+    shape = world.Land(side=5, shift=0.5, ticks=80)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    after = world.moved(nxt, shape, gen(2))
+    walls = lambda w: int((w == torch.arange(25).unsqueeze(1)).sum())
+    assert walls(after) == walls(nxt) and not torch.equal(after, nxt)
+    assert int(world.roads(after).max()) < 25                       # every room still reached
+    for a in range(25):                                             # a way back undoes a way gone
+        for w in range(4):
+            b = int(after[a, w])
+            assert b == a or int(after[b, (w + 2) % 4]) == a
+    assert torch.equal(world.moved(nxt, shape, gen(2)), after)      # a pure function of its dice
+    body = world.Table((looks, nxt))                                # born knowing the land before
+    life = world.live(body, looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
+    again = world.live(world.Table((looks, nxt)), looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
+    assert life["meals"] == again["meals"] and len(life["meals"]) > 0
+

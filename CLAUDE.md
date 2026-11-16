@@ -721,7 +721,14 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   brain's false roads, walked, go through every open way of the land (its mistakes explore).
   STEP 6f (side 10, road kept, 4096 rooms): 256 cells 238/173/223/151/99, 512 cells
   301/267/289/224/193 meals (perfect 141, seeker 231): growth pays on every lineage; G1, G4
-  met, G2 missed by a hair, 1024 cells running. BREADTH from 2026-11-16 (the user's word):
+  met, G2 missed by a hair; 1024 cells 324/290/308/253/234 (G3 missed: x1.06-1.21 over 512).
+  BREADTH 1-3 (2026-11-16/17, `docs/tissue-design.md` "Breadth"): in a maze the brain eats
+  2.4-4.9x a perfect memory, in an open land about as much; one bit of slack in the match undoes
+  the road kept (70/80 lives locked); 21 trees: above both perfect memories. A KNEE: growth pays
+  x1.3-2.4 a doubling while cells < the land's ways, x1.04-1.21 after (sides 8 and 10; breadth 4
+  asks sides 6 and 12). A land that changes at half-life: a quarter of walls moved is taken as
+  well as a perfect memory does, half is not (0.37-0.55 of the last third): the brain unlearns
+  slowly; no forgetting was ever asked of the rule. BREADTH from 2026-11-16 (the user's word):
   many ideas, comparable records, for a later reading by a stronger model; record names carry
   a non-default land (`.walls0.5`) and a size other than 256 (`.m512`).
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a

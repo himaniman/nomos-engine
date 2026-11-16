@@ -1,0 +1,48 @@
+{
+ "note": "the runs' printed lines; their records were overwritten by the 256-cell runs of 6f repeated (one file name for both); runs repeated under .m1024 names",
+ "hold-s0": {
+  "meals": 323.8,
+  "thirds": [
+   32.7,
+   141.6,
+   149.6
+  ],
+  "line": "hold-s0 1024 | meals  323.8 | by third  32.7 141.6 149.6 | plan 0.88, a thought afresh 0.30 | ways gone by an eighth of the life 0.61 | lives with no meal in the last third 0 | trips, straight and steps per step of the shortest road: 1-2: 0.97 x3.7 (354) 3-4: 0.98 x1.3 (588) 5-8: 0.96 x1.2 (1757) 9+: 0.72 x1.5 (2482) | in the last third: 1-2: 1.00 x1.0 (159) 3-4: 1.00 x1.0 (272) 5-8: 0.98 x1.0 (832) 9+: 0.80 x1.1 (1130) | ways gone 1.00, right of them 0.99, of the rest 0.00; loud 5.21 / 0.00"
+ },
+ "hold-s1": {
+  "meals": 290.2,
+  "thirds": [
+   20.9,
+   120.1,
+   149.1
+  ],
+  "line": "hold-s1 1024 | meals  290.2 | by third  20.9 120.1 149.1 | plan 0.82, a thought afresh 0.36 | ways gone by an eighth of the life 0.56 | lives with no meal in the last third 0 | trips, straight and steps per step of the shortest road: 1-2: 0.97 x3.8 (314) 3-4: 0.98 x1.8 (527) 5-8: 0.95 x1.3 (1562) 9+: 0.70 x1.7 (2240) | in the last third: 1-2: 1.00 x1.0 (156) 3-4: 1.00 x1.0 (261) 5-8: 0.98 x1.0 (825) 9+: 0.83 x1.1 (1144) | ways gone 1.00, right of them 1.00, of the rest 0.12; loud 5.31 / 0.60"
+ },
+ "hold-s2": {
+  "meals": 307.9,
+  "thirds": [
+   29.0,
+   137.6,
+   141.3
+  ],
+  "line": "hold-s2 1024 | meals  307.9 | by third  29.0 137.6 141.3 | plan 0.86, a thought afresh 0.31 | ways gone by an eighth of the life 0.57 | lives with no meal in the last third 0 | trips, straight and steps per step of the shortest road: 1-2: 0.97 x3.2 (339) 3-4: 0.98 x1.8 (558) 5-8: 0.94 x1.2 (1665) 9+: 0.66 x1.6 (2365) | in the last third: 1-2: 1.00 x1.0 (150) 3-4: 1.00 x1.0 (254) 5-8: 0.96 x1.0 (796) 9+: 0.73 x1.2 (1061) | ways gone 1.00, right of them 1.00, of the rest 0.12; loud 5.24 / 0.59"
+ },
+ "hold-s3": {
+  "meals": 253.4,
+  "thirds": [
+   11.6,
+   94.4,
+   147.5
+  ],
+  "line": "hold-s3 1024 | meals  253.4 | by third  11.6  94.4 147.5 | plan 0.85, a thought afresh 0.38 | ways gone by an eighth of the life 0.57 | lives with no meal in the last third 0 | trips, straight and steps per step of the shortest road: 1-2: 0.97 x4.0 (289) 3-4: 0.95 x2.7 (466) 5-8: 0.94 x1.4 (1369) 9+: 0.64 x2.0 (1931) | in the last third: 1-2: 1.00 x1.0 (162) 3-4: 1.00 x1.0 (279) 5-8: 0.99 x1.0 (806) 9+: 0.81 x1.1 (1113) | ways gone 1.00, right of them 1.00, of the rest 0.00; loud 6.14 / 0.00"
+ },
+ "hold-s4": {
+  "meals": 233.8,
+  "thirds": [
+   20.9,
+   120.2,
+   92.6
+  ],
+  "line": "hold-s4 1024 | meals  233.8 | by third  20.9 120.2  92.6 | plan 0.85, a thought afresh 0.36 | ways gone by an eighth of the life 0.53 | lives with no meal in the last third 0 | trips, straight and steps per step of the shortest road: 1-2: 0.96 x6.5 (264) 3-4: 0.98 x2.1 (425) 5-8: 0.90 x1.4 (1255) 9+: 0.46 x2.2 (1797) | in the last third: 1-2: 1.00 x1.0 (96) 3-4: 1.00 x1.0 (159) 5-8: 0.90 x1.2 (517) 9+: 0.39 x1.9 (710) | ways gone 1.00, right of them 0.99, of the rest 0.00; loud 5.15 / 0.00"
+ }
+}

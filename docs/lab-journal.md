@@ -5803,3 +5803,62 @@ Side 8, 256 cells, a road kept, 4096 rooms, five lineages, 16 lives; one to two 
   is ever taken from my hand, whatever replaces it must be as strict.
 
 Breadth 2 (predictions in the note): 21 trees; 128 cells; the 256-cell runs of 6f again.
+
+## 2026-11-17 (07:00) — step 6f done, breadth 2 and 3: growth pays up to a knee where cells meet the land's ways; a large change in the land is unlearned slowly
+
+**6f, 1024 cells** (side 10, a road kept, 4096 rooms; seven to nine hours a run):
+
+| side 10, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 256 cells | 237.9 | 172.8 | 222.6 | 150.7 | 98.9 |
+| 512 cells | 301.1 | 267.4 | 289.3 | 224.0 | 192.6 |
+| 1024 cells | 323.8 | 290.2 | 307.9 | 253.4 | 233.8 |
+| 512 over 256 | 1.27 | 1.55 | 1.2999 | 1.49 | 1.95 |
+| 1024 over 512 | 1.08 | 1.09 | 1.06 | 1.13 | 1.21 |
+
+**G3 missed** (two lineages at 1.1 or more, three asked). Every lineage still gains. A SECOND
+FAULT IN MY RECORDS: the repeated 256-cell runs (new code, default size, no size in the name)
+wrote over the 1024-cell records (old code, no size in the name either). The printed lines are
+kept in `runs/tissue/hold/world10.thinks.budget4096.keep.m1024.printed.json`; the 1024 runs go
+again under `.m1024` names. METHOD: two runs in flight must never share a record name; the
+name now says the land and the size, and a code push to the VM does not change the names of
+runs already going.
+
+**Breadth 2** (side 8, a road kept, 4096 rooms):
+
+| side 8, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| 128 cells (B5) | 172.7 | 121.8 | 159.0 | 118.8 | 66.6 | 182 | 210 |
+| 256 cells (6e) | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 | | |
+| 512 cells (B8) | 250.1 | 234.6 | 241.2 | 213.5 | 191.1 | | |
+| 256 over 128 | 1.40 | 1.74 | 1.35 | 1.63 | 2.40 | | |
+| 512 over 256 | 1.04 | 1.11 | 1.13 | 1.10 | 1.19 | | |
+| 21 trees, 256 cells (B4) | 239.3 | 210.3 | 226.1 | 194.4 | 169.3 | 139 | 168 |
+
+- 21 trees: above both perfect memories on all five (predicted four and three).
+- 128 cells: 256 cells eat 1.35-2.40 times as much on all five (predicted four).
+- 256-cell runs of 6f again: the same to the last digit.
+- 512 cells: 1.15 times on one lineage (predicted four).
+
+THE KNEE: growth pays much while cells are fewer than the land's ways and little after (side 8,
+256 ways: x1.35-2.40 to 256 cells, x1.04-1.19 beyond; side 10, 400 ways: x1.27-1.95 to 512,
+x1.06-1.21 beyond). Breadth 4 asks it at sides 6 and 12.
+
+**Breadth 3, a land that changes at the half of a life** (side 8, 256 cells):
+
+| side 8, 256 cells, a road kept; meals in the last third (all after the change) | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| unchanged (6e) | 111.7 | 103.8 | 100.0 | 104.7 | 62.6 | 98.7 | 106.9 |
+| shift 0.25 (B6) | 80.7 | 80.6 | 83.6 | 72.4 | 49.4 | 73.1 | 76.4 |
+| over unchanged | 0.72 | 0.78 | 0.84 | 0.69 | 0.79 | 0.74 | 0.71 |
+| shift 0.5 (B7) | 41.4 | 49.6 | 54.6 | 38.9 | 23.1 | 64.4 | 56.9 |
+| over unchanged | 0.37 | 0.48 | 0.55 | 0.37 | 0.37 | 0.65 | 0.53 |
+| shift 0.5: lives locked of 16 | 2 | 0 | 1 | 2 | 2 | | |
+| shift 0.5: ways right at the end, of those gone (unchanged land 0.95-0.96), lineages 0 and 4 | 0.92 | | | | 0.86 | | |
+
+- Shift 0.25: 0.69-0.84 of the unchanged last third (perfect 0.74); B6 missed by one lineage.
+- Shift 0.5: 0.37-0.55 (perfect 0.65, seeker 0.53); B7 missed on all.
+
+At the end of the life the map is mostly right again (0.86-0.92), so what fails is the speed of
+unlearning: a link held for half a life is not undone by one walk. A brain in a changing world
+needs forgetting; nothing in the cell's rule was asked for it.

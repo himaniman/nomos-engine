@@ -527,6 +527,7 @@ def summary(lives: list, ticks: int) -> dict:
     res = {"meals": sum(len(life["meals"]) for life in lives) / n, "thirds": third,
            "trips": banded(trips), "late": banded([trip for trip in trips if trip[2] >= 2 * ticks // 3]),
            "per_life": [len(life["meals"]) for life in lives],
+           "meal_ticks": [life["meals"] for life in lives],         # from 2026-11-17: when each meal was eaten
            "late_per_life": [sum(1 for t in life["meals"] if t >= 2 * ticks // 3) for life in lives],
            "planned": sum(life["planned"] for life in lives) / (n * ticks),
            "early": sum(life.get("early", 0.0) for life in lives) / n,

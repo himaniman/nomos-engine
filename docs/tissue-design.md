@@ -1946,7 +1946,21 @@ already hold the land, 1024 add only what a vote of more cells adds to recall.
 - **G2: missed**, three of four: lineage 2 is at 1.2997 (289.31 over 222.6), lineage 0 at 1.27.
 - **G4: met**, on five; four lineages at 512 cells eat more than `seeker` (231), lineage 0 0.63
   of born knowing the land (476).
-- G3 waits for 1024 cells.
+- **G3 (2026-11-17): missed.** 1024 cells eat 1.1 times what 512 eat on two lineages (3: x1.13,
+  4: x1.21), not three; every lineage still gains (x1.06-1.21).
+
+| side 10, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 256 cells | 237.9 | 172.8 | 222.6 | 150.7 | 98.9 |
+| 512 cells | 301.1 | 267.4 | 289.3 | 224.0 | 192.6 |
+| 1024 cells | 323.8 | 290.2 | 307.9 | 253.4 | 233.8 |
+| 512 over 256 | 1.27 | 1.55 | 1.2999 | 1.49 | 1.95 |
+| 1024 over 512 | 1.08 | 1.09 | 1.06 | 1.13 | 1.21 |
+
+Growth pays at every step on every lineage and pays less at each: x1.27-1.95, then x1.06-1.21.
+The 1024-cell records were overwritten in turn (by the repeated 256-cell runs, written under one
+name); `runs/tissue/hold/world10.thinks.budget4096.keep.m1024.printed.json` keeps their printed
+lines, and the runs go again under `.m1024` names.
 
 Growth pays on every lineage, x1.27-1.95, and most on the weakest (4: x1.95); long trips get
 straighter with size on all five. The 256-cell records were overwritten by the 512-cell runs
@@ -2025,6 +2039,30 @@ Side 8, a road kept, 4096 rooms a thought, five lineages, 16 lives:
   at least 1.15 times what 256 eat (241 / 212 / 214 / 193 / 160) on four lineages. With B5
   that gives a curve of growth at one land: 128, 256, 512.
 
+**Outcome (2026-11-17).**
+
+| side 8, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| 128 cells (B5) | 172.7 | 121.8 | 159.0 | 118.8 | 66.6 | 182 | 210 |
+| 256 cells (6e) | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 | | |
+| 512 cells (B8) | 250.1 | 234.6 | 241.2 | 213.5 | 191.1 | | |
+| 256 over 128 | 1.40 | 1.74 | 1.35 | 1.63 | 2.40 | | |
+| 512 over 256 | 1.04 | 1.11 | 1.13 | 1.10 | 1.19 | | |
+| 21 trees, 256 cells (B4) | 239.3 | 210.3 | 226.1 | 194.4 | 169.3 | 139 | 168 |
+
+- **B4 (21 trees): met**, above `perfect` and `seeker` on all five lineages (predicted four and
+  three). The brain's figures hardly move with twice the trees; the yardsticks fall.
+- **B5 (128 cells): met**, 256 cells eat 1.35-2.40 times as much, on all five.
+- **The 256-cell runs of 6f again: met**, the same to the last digit (237.94 / 172.75 / 222.56 /
+  150.69 / 98.94). A life is a pure function of its seed.
+- **B8 (512 cells): missed**, 1.15 times on one lineage (4); x1.04-1.19.
+
+A KNEE, read across 6f and breadth 2: growth pays much while the brain has fewer cells than the
+land has ways and little after. Side 8 (256 ways): 128 to 256 cells x1.35-2.40, 256 to 512
+x1.04-1.19. Side 10 (400 ways): 256 to 512 x1.27-1.95, 512 to 1024 x1.06-1.21. That is what
+rung 1 measured in silence (about 0.7 links held per interneuron) seen from a world. A claim to
+test, breadth 4.
+
 ### Breadth 3: a land that changes under the body. Predictions before the run
 
 `--shift F` (`world.moved`): at the half of a life a share F of the land's walls opens and as
@@ -2053,6 +2091,48 @@ life; the brain's walked mistakes may find it.
 
 Prediction: both met; the doubt is that a plastic rule which held a land for 1280 ticks may
 hold on to it (the old link louder than one walk can overwrite).
+
+**Outcome (2026-11-17; records `runs/tissue/hold/hold-s*.world8.shift*.json`).**
+
+| side 8, 256 cells, a road kept; meals in the last third (all after the change) | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| unchanged (6e) | 111.7 | 103.8 | 100.0 | 104.7 | 62.6 | 98.7 | 106.9 |
+| shift 0.25 (B6) | 80.7 | 80.6 | 83.6 | 72.4 | 49.4 | 73.1 | 76.4 |
+| over unchanged | 0.72 | 0.78 | 0.84 | 0.69 | 0.79 | 0.74 | 0.71 |
+| shift 0.5 (B7) | 41.4 | 49.6 | 54.6 | 38.9 | 23.1 | 64.4 | 56.9 |
+| over unchanged | 0.37 | 0.48 | 0.55 | 0.37 | 0.37 | 0.65 | 0.53 |
+| shift 0.5: lives locked of 16 | 2 | 0 | 1 | 2 | 2 | | |
+| shift 0.5: ways right at the end, of those gone (unchanged land 0.95-0.96), lineages 0 and 4 | 0.92 | | | | 0.86 | | |
+
+- **B6: missed** by a little: 0.74 or more on three lineages, not four (0.69-0.84); in the last
+  third above `perfect` on three.
+- **B7: missed** outright: 0.37-0.55, every lineage below `perfect` and `seeker`.
+
+The doubt was the truth. A small change the brain takes about as well as a perfect memory; a
+large one it does not, though by the end of the life its map is again mostly right (0.86-0.92 of
+the ways gone). So it is the time it takes to unlearn: a link held for 1280 ticks is not undone
+by one walk. A brain that must live in a changing world needs forgetting it does not have; no
+switch for it exists yet.
+
+### Breadth 4: the knee asked at two more lands, and two old switches with a road kept
+
+A road kept, 4096 rooms a thought, five lineages, 16 lives. Records now hold the tick of every
+meal (`meal_ticks`), so a reader can draw any curve of a life without running it again.
+
+THE KNEE as a claim: growth pays at least 1.25 times a doubling while the brain has fewer cells
+than its land has ways (walls counted: four to a room), and at most 1.15 times once it has more.
+
+- **B9, side 6** (144 ways; `perfect` 121, `seeker` 172, born knowing 259) at 64, 128, 256 and
+  512 cells: 64 to 128 at least 1.25 on four lineages; 256 to 512 at most 1.15 on four. 128 to
+  256 straddles the knee: reported.
+- **B10, side 12** (576 ways, 5760 ticks; `perfect` 107, `seeker` 247, born knowing 601) at 256
+  and 512 cells: 512 over 256 at least 1.25 on four.
+- **B11, curiosity with a road kept** (side 8, 256 cells, `--curious 0.7`): within a tenth of a
+  road kept alone (241 / 212 / 214 / 193 / 160) on four lineages; with a road in the head on
+  0.85 of the ticks there is little left for curiosity to steer.
+- **B12, imagery with a road kept** (side 8, 256 cells, `--imagery`): reported, no bar. Before,
+  imagery helped the weak lineages and ruined lineage 3; a guess: the same.
+- **The 1024-cell runs of 6f again**, under `.m1024`: the same figures as their printed lines.
 
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 

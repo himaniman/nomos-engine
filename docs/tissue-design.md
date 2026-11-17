@@ -2342,6 +2342,33 @@ those never gone; under 0.5, 0.24-0.34 and 0.89-1.00. A way gone once is said ri
 of the askings (lineage 4) and louder with every walk, so a false "not known" mends itself by
 being walked.
 
+**Q is set at 0.4 from that look, before any life was lived with it**, and the bars are
+written before the exam and before the pilot's lines came back (a pilot on other lands, `--seed
+1`, eight lives, lineages 0 and 4, Q 0.3 / 0.4 / 0.5, was started first and is reported beside
+the exam: the VM was slower than I reckoned). A road kept, 4096 rooms, 16 lives, the exam's
+lands, five lineages:
+
+- **H1, side 8, 256 cells: the first third** (6e: 23.7 / 18.2 / 19.8 / 15.2 / 19.4; `explorer`
+  83): at least 40 meals on four lineages.
+- **H2, a life** (6e: 241.4 / 211.9 / 214.4 / 193.4 / 160.2; `explorer` 312): at least 1.10
+  times 6e's on four lineages.
+- **H3, ways gone by an eighth of a life** (6e: 0.54-0.58; `explorer` 0.82): at least 0.70 on
+  four lineages.
+- **H4, no lock**: at most one life of the 80 with no meal in its last third (6e: none).
+- **H5, side 12, 512 cells** (B10: 333.6 / 274.2 / 297.9 / 192.4 / 154.9; `explorer` 517): a
+  life at least 1.25 times B10's on four lineages. The bigger the land, the more of a life is
+  spent getting to know it.
+- **H6, the maze, 256 cells** (B1: 76.4 / 88.6 / 97.4 / 82.1 / 48.5; `explorer` 228): a life at
+  least 1.5 times B1's on four lineages (far enough from 1 for a maze's spread; the lives are
+  compared one by one as well).
+- **The dial**, side 8 at Q 0.3 and 0.5, no bar: a guess that 0.4 is the best of the three on
+  three lineages or more (0.3 misses half of what is not known, 0.5 calls a quarter of what is
+  known not known).
+
+Prediction: H1-H3 and H6 met; H5 met; H4 is the doubt. A way the brain cannot hold stays quiet
+however often it is walked, and 256 cells for 256 ways is at the knee: the body may go back to
+such a way for ever, a lock of a new kind.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it

@@ -5972,3 +5972,49 @@ METHOD: look at the spread over lives in a land before setting a bar on a ratio 
 sizes life by life on the same lands.
 
 The ledger is rebuilt: 190 rows.
+
+## 2026-11-17 (21:40) — the order chosen with the user; step 6g: a perfect memory that seeks what it does not know eats 0.81-0.89 of one born knowing the land
+
+**The order** (the user's word on my proposal, after breadth 5): wanting to know first (the road
+to a world), forgetting beside it on the VM, a thought as a wave in the tissue later. Read off
+the ledger before proposing: a grown brain in a land that does not change eats 0.85-0.91 of what
+one born knowing it eats (the last third, side 8, 512 cells; the weak lineage 0.66), and nearly
+all of the gap is the first third (10-28 meals against 127). No yardstick started faster.
+
+**Step 6g, a yardstick.** `explorer`: a perfect memory that, with no road to the fruit, goes by
+the ways it knows to the nearest room with a way it has never gone (`seeker` looks no farther
+than its own room). Predicted: at side 8 a first third of 40 and a life of 240, at side 12 a
+first third of 40 and a life of 330.
+
+| meals a life | `perfect` | `seeker` | `explorer` (by third) | born knowing | the brain, a road kept (cells) |
+|---|---|---|---|---|---|
+| side 6 | 121 | 172 | 221 (60 / 79 / 81) | 259 | 143-185 (512) |
+| side 8 | 182 | 210 | 312 (83 / 114 / 115) | 380 | 191-250 (512) |
+| side 10 | 141 | 231 | 412 (106 / 155 / 152) | 476 | 234-324 (1024) |
+| side 12 | 107 | 247 | 517 (129 / 195 / 193) | 601 | 155-334 (512) |
+| side 8, the maze | 20 | 54 | 228 (57 / 86 / 85) | 257 | 76-101 (512) |
+| side 8, the open land | 292 | 363 | 378 (103 / 136 / 138) | 469 | 268-334 (256) |
+| side 8, 21 trees | 139 | 168 | 328 (82 / 122 / 124) | 376 | 169-239 (256) |
+| side 8, shift 0.25 | 142 | 158 | 256 (83 / 89 / 85) | 326 | |
+| side 8, shift 0.5 | 120 | 121 | 213 (83 / 70 / 60) | 279 | |
+
+Both predictions met and both far too low (my estimate of what seeking is worth was off by a
+half). The old yardsticks came out the same to the digit in all nine lands.
+
+Three things it says:
+- Wanting to know is worth more than anything else measured in a world so far: with a perfect
+  memory, 0.81-0.89 of being born knowing the land.
+- "The brain beats a perfect memory because its mistakes explore" (breadth 1) was true of
+  memories that do not seek. Against one that seeks the brain is far behind, most of all in the
+  maze (228 against 76-101). `explorer` is the yardstick from here on.
+- It does not mend a land that changes: after half the walls move, the explorer's last third is
+  60 of its unchanged 115, no better than `perfect` (64). A table never doubts a wall. What a
+  changing land asks for is doubt: what was not met for long becoming not known again. Every
+  table already unlearns in one walk, so one-walk unlearning is not the cure; forgetting is.
+
+A pilot for the brain's side of it (lineages 0 and 4, 256 cells, side 8): in the dark a copy
+speaks of a way never gone about half as loud as of a way gone (2.1-2.5 against 3.8-4.8, the
+room it stands in 7.1-7.3), not in a whisper; the 0.0-0.6 in the records' `loud_never` was a
+mean over lives that had no way never gone left. A way gone once is said right 0.81 of the time
+on lineage 4 and all eight times on lineage 0; three or four walks make it 0.98. So one walk
+writes a way, or nearly.

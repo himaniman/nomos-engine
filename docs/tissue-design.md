@@ -2249,6 +2249,79 @@ A look the records now allow (`meal_ticks`), not a bar: meals per 160 ticks, mea
 - METHOD: look at the spread over lives in a land before setting a bar on a ratio there, and
   compare sizes life by life on the same lands.
 
+## After the breadth: the order chosen with the user (2026-11-17, evening)
+
+Read off the ledger before choosing: where the meals are lost. Side 8, meals by third of a life:
+
+| | first | second | last |
+|---|---|---|---|
+| born knowing the land | 127 | 125 | 127 |
+| the brain, 512 cells, a road kept (five lineages) | 10-28 | 89-112 | 84-116 |
+| `seeker` | 18 | 86 | 107 |
+| `perfect` | 13 | 70 | 99 |
+
+A grown brain in a land that does not change eats 0.85-0.91 of what one born knowing it eats
+(the weak lineage 0.66). Nearly all of the gap is the first third: getting to know the land. At
+side 12 the same (21 / 137 / 175 against 200 a third). No yardstick starts faster, because none
+looks for what it does not know farther than the room it stands in.
+
+The order, the user's word on my proposal:
+
+1. **Wanting to know** (the main line, on the road to a world): with no road to the fruit, go to
+   the nearest way not known. A yardstick first (step 6g), then the brain (6h). By hand: it is
+   the will.
+2. **Forgetting** (beside it, on the VM): what the old map is worth after a change, how many
+   walks undo a way that became a wall; then the search is asked. The one road where the
+   outcome would belong to the cell's rule.
+3. **A thought as a wave in the tissue** (later): can a brain hold many rooms at once.
+
+### Step 6g: a yardstick that seeks what it does not know. Prediction before the run
+
+`explorer` (`tissue/world.py`): a perfect memory, as `seeker`; with no road to the fruit it
+thinks of the nearest room, by ways it has gone, out of which there is a way it has never gone,
+and takes the first way of that road (`seeker` looks no farther than the room it stands in).
+With a road to the fruit it never seeks, as the others. The old yardsticks must come out the
+same to the digit.
+
+Predictions (the exam's lands, 16 lives):
+- side 8 (`seeker` 18 / 86 / 107 = 210; born knowing 127 a third): the first third at least 40,
+  a life at least 240; a guess, no bar: the last third no better than `seeker`'s, since both
+  stop seeking once a road to every tree is known.
+- side 12 (`seeker` 14 / 92 / 142 = 247; born knowing 200 a third): the first third at least
+  40, a life at least 330.
+
+**Outcome (2026-11-17; `runs/tissue/world*.yardsticks.json`, every land run again; the old
+yardsticks came out the same to the digit in all nine).**
+
+| meals a life | `perfect` | `seeker` | `explorer` (by third) | born knowing | the brain, a road kept, five lineages (cells) |
+|---|---|---|---|---|---|
+| side 6 | 121 | 172 | 221 (60 / 79 / 81) | 259 | 143-185 (512) |
+| side 8 | 182 | 210 | 312 (83 / 114 / 115) | 380 | 191-250 (512) |
+| side 10 | 141 | 231 | 412 (106 / 155 / 152) | 476 | 234-324 (1024) |
+| side 12 | 107 | 247 | 517 (129 / 195 / 193) | 601 | 155-334 (512) |
+| side 8, the maze | 20 | 54 | 228 (57 / 86 / 85) | 257 | 76-101 (512) |
+| side 8, the open land | 292 | 363 | 378 (103 / 136 / 138) | 469 | 268-334 (256) |
+| side 8, 21 trees | 139 | 168 | 328 (82 / 122 / 124) | 376 | 169-239 (256) |
+| side 8, shift 0.25 | 142 | 158 | 256 (83 / 89 / 85) | 326 (127 / 102 / 96) | |
+| side 8, shift 0.5 | 120 | 121 | 213 (83 / 70 / 60) | 279 (127 / 78 / 73) | |
+
+- **Both predictions met, and both far too low**: side 8, the first third 83 (40 asked) and a
+  life 312 (240); side 12, 129 and 517 (40 and 330). The guess was wrong: the last third is
+  above `seeker`'s (115 against 107, 193 against 142), because seeking as far as the nearest
+  way not known leaves a fuller map (0.82-0.87 of the ways gone by an eighth of a life against
+  0.50-0.59).
+- With a perfect memory, wanting to know is worth 0.81-0.89 of being born knowing the land, in
+  every land that does not change. The brain's lead over a perfect memory (the maze: x2.4-4.9)
+  was a lead over memories that do not seek: in the maze `explorer` eats 228 where the brain
+  eats 76-101. `explorer` is the yardstick to hold the brain against from here on.
+- A land that changes is NOT mended by it: after half the walls move its last third is 60
+  (0.53 of its unchanged 115), no better than `perfect` (64) or one born knowing the old land
+  (73). A table never doubts a wall: a wall that opened stays a wall to it for life, and it has
+  no way never gone left to seek. Every table unlearns a way in one walk, so what a changing
+  land asks for is not that. It is DOUBT: what was not met for long becoming not known again,
+  so that it is sought again. That is forgetting in the plain sense, and it is where the first
+  two roads meet (a yardstick for it first, when that road is taken).
+
 ## Where the world line stands (2026-11-17), for whoever decides the next step
 
 **What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract

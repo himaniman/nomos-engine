@@ -19,8 +19,10 @@ THE WILL, BY HAND: it wants the room where the fruit is, and is told what that r
 like (as in exam 5 a wanted room is named: a call of the fruit, if you like). Before every
 step it THINKS; if the thought finds a road it takes the first way of it, if not, a way at
 random (switches, all by hand and off unless asked for: `--curious`, with no road the way the
-brain speaks most quietly of; `--keep`, a road thought of is walked while it comes true). So a newborn, whose wires hold nothing, wanders; and what it wanders through is what
-it later thinks with.
+brain speaks most quietly of; `--keep`, a road thought of is walked while it comes true;
+`--explore`, with no road the thought leads to the nearest way the brain does not know). So a
+newborn, whose wires hold nothing, wanders; and what it wanders through is what it later
+thinks with.
 
 THE THINKING, BY HAND, on the map in the brain's own wires: copies of what its cells are
 saying now walk in the dark, wires still, one hop along every way, then one hop on from
@@ -32,8 +34,9 @@ Arms: `thinks` as above; `numb`, the same in a brain that does not feel its body
 Yardsticks, the same will with another memory: `blind` never has a plan and walks at
 random; `perfect` remembers every way it has ever gone and thinks on that; `seeker` is `perfect`
 that, with no road, takes a way it has never gone out of the room it is in, if there is
-one; `oracle` was born knowing every way of the land. In one land the fruit goes from tree to tree in the
-same order whoever lives there.
+one; `explorer` is `seeker` that, when there is none, goes by the ways it knows to the nearest
+room that has one; `oracle` was born knowing every way of the land. In one land the fruit goes
+from tree to tree in the same order whoever lives there.
 
 Per life: meals; meals in each third of it; and per TRIP (from one meal to the next) the
 shortest road and the steps taken.
@@ -53,7 +56,7 @@ from tissue.train import load
 
 WAYS = ((-1, 0), (0, 1), (1, 0), (0, -1))       # north, east, south, west: (row, column)
 ARMS = ("thinks", "numb")
-YARDSTICKS = ("blind", "perfect", "seeker", "oracle")
+YARDSTICKS = ("blind", "perfect", "seeker", "explorer", "oracle")
 
 
 @dataclass(frozen=True)
@@ -191,12 +194,14 @@ class Blind:
 
 class Table(Blind):
     """A perfect memory of every way gone: (look, way) -> look. With `whole` it was born
-    knowing every way of the land."""
+    knowing every way of the land. `curious`: with no road it takes a way it has never gone
+    out of the room it is in; `far`: and when that room has none, the first way of the
+    shortest road it knows to a room that has one."""
 
-    def __init__(self, whole: tuple | None = None, curious: bool = False):
+    def __init__(self, whole: tuple | None = None, curious: bool = False, far: bool = False):
         self.map: dict = {}
         self.at = None
-        self.curious = curious
+        self.curious, self.far = curious, far
         if whole:
             looks, nxt = whole
             ks = keys(looks)
@@ -232,7 +237,29 @@ class Table(Blind):
         new = [w for w in range(4) if (self.at, w) not in self.map] if self.curious else []
         if new:                                 # a way it has never gone out of this room
             return new[int(torch.randint(len(new), (1,), generator=gen))]
-        return int(torch.randint(4, (1,), generator=gen))
+        way = self.seek(gen) if self.far else None
+        return int(torch.randint(4, (1,), generator=gen)) if way is None else way
+
+    def seek(self, gen):
+        """The first way of a shortest road, by ways it has gone, to a room out of which there
+        is a way it has never gone; None: it has gone every way of every room it can reach."""
+        seen, edge = {self.at}, [(self.at, -1)]
+        while edge:
+            new, hits = [], []
+            for room, first in edge:
+                for w in range(4):
+                    to = self.map.get((room, w))
+                    if to is None or to in seen:
+                        continue
+                    f = w if first < 0 else first
+                    if any((to, v) not in self.map for v in range(4)):
+                        hits.append(f)
+                    new.append((to, f))
+            if hits:
+                return hits[int(torch.randint(len(hits), (1,), generator=gen))]
+            seen.update(to for to, _ in new)
+            edge = list({to: (to, f) for to, f in new}.values())
+        return None
 
 
 class Mind(Blind):
@@ -249,17 +276,24 @@ class Mind(Blind):
     `keep`, BY HAND: a road once thought of is kept and walked, a way a tick with no new
     thought, for as long as each room the body comes to is the room a copy said it would be
     and the wanted look is the same; at the first room that is not, the brain thinks afresh
-    (off: it thinks afresh on every tick and takes the first way only)."""
+    (off: it thinks afresh on every tick and takes the first way only).
+    `explore`, BY HAND: a thought that finds no road to the wanted look is not lost: the
+    nearest copy that spoke QUIETLY of its room (under this share of how loud the brain says
+    the room it stands in) marks a way the brain does not know, and the body takes the first
+    way of the road to it (kept as a road is, with `keep`). The will is given a second want:
+    with no road to the fruit, to know. It is not counted as a plan (`sought` counts it)."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
                  budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0,
-                 curious: float = 0.0, keep: bool = False):
+                 curious: float = 0.0, keep: bool = False, explore: float = 0.0):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
         self.brain, self.depth, self.budget, self.slack = brain, depth, budget, slack
         self.imagery, self.mumble, self.curious = imagery, mumble, curious
         self.voice = None                       # how loud it spoke one hop ahead by each way, last thought
         self.keep, self.road, self.goal, self.due = keep, [], None, None
+        self.explore, self.lead, self.roam = explore, None, False   # roam: the road in hand leads to a way not known
+        self.sought = 0                         # steps taken toward a way it does not know
         self.thoughts = 0                       # thoughts thought afresh, from where the brain is
         self.state = brain.born(1, gen)
         self.body = fork.Dendrites(brain, self.state, 4, numb=numb)
@@ -295,10 +329,14 @@ class Mind(Blind):
         where the brain is (the examiner's: a copy carried somewhere)."""
         act, here = root or (self.state[0], self.before[0])
         if root is None:
+            self.lead = None
             if self.keep:                       # the road in hand holds: its next way, and no thought
                 goal = key(wanted)
                 if self.road and goal == self.goal and key(here) == self.due:
                     (way, self.due), self.road = self.road[0], self.road[1:]
+                    if self.roam:               # a road to a way not known is no plan: `wonder` takes it
+                        self.lead = way
+                        return None
                     if trace is not None:
                         trace.append((0, None, (way,) + tuple(w for w, _ in self.road), None))
                     return way
@@ -310,9 +348,12 @@ class Mind(Blind):
         self.ended = "depth"
         seen, spent = {came[0][0]}, 0
         ways, said = [()], [()]                 # per copy: the ways of its road, the rooms it said on it
+        unknown, loud = None, 0.0               # the road to the nearest way spoken of quietly; how loud the brain is here
         for hops in range(self.depth + 1):
             north, says = self.hop(act, 0)      # what a copy says of its room is the same whatever the way
             keep, rooms = [0], [came[0][0]]
+            if not hops:
+                loud = float(says.abs().mean())
             if hops:                            # only now is it known what room each copy is in
                 rooms = keys(says)
                 if hops == 1:
@@ -327,8 +368,13 @@ class Mind(Blind):
                         trace.append((0, None, ways[j], None))
                     if self.keep and root is None:
                         road = list(zip(ways[j], said[j] + (rooms[j],)))
-                        self.due, self.road = road[0][1], road[1:]
+                        self.due, self.road, self.roam = road[0][1], road[1:], False
                     return int(first[j])
+                if self.explore and unknown is None:        # the nearest copies that do not know where they are
+                    low = (says.abs().mean(-1) < self.explore * loud).nonzero().flatten()
+                    if len(low):
+                        j = int(low[int(torch.randint(len(low), (1,), generator=gen))])
+                        unknown = list(zip(ways[j], said[j] + (rooms[j],)))
                 keep = []
                 clear = (says.abs().mean(-1) >= self.mumble).tolist()
                 for j, room in enumerate(rooms):
@@ -338,7 +384,7 @@ class Mind(Blind):
             spent += len(keep)
             if not keep or spent > self.budget:
                 self.ended = "budget" if keep else "rooms"
-                return None
+                return self.toward(unknown, root)
             pick = torch.tensor(keep)           # only the copies in new rooms go on, by every way
             act = {t: a[pick] for t, a in act.items()}
             if self.imagery and hops:           # each is shown the room it said, and goes on from that sight
@@ -353,9 +399,23 @@ class Mind(Blind):
             came = [(rooms[j], w) for w in range(4) for j in keep]
             ways = [ways[j] + (w,) for w in range(4) for j in keep]
             said = [said[j] + ((rooms[j],) if hops else ()) for _ in range(4) for j in keep]
+        return self.toward(unknown, root)
+
+    def toward(self, unknown: list | None, root) -> None:
+        """A thought has found no road to the wanted look. If it thought of a way the brain
+        does not know, the first way of the road to it is what `wonder` will take, and with
+        `keep` the rest of that road is kept. Always None: it is not a plan."""
+        if unknown and root is None:
+            self.lead = unknown[0][0]
+            if self.keep:
+                self.due, self.road, self.roam = unknown[0][1], unknown[1:], True
         return None
 
     def wonder(self, gen):
+        if self.lead is not None:               # toward the nearest way it does not know
+            way, self.lead = self.lead, None
+            self.sought += 1
+            return way
         if self.curious and self.voice is not None:
             way = int(self.voice.argmin())
             if float(self.voice[way]) < self.curious * float(self.voice.max()):
@@ -413,6 +473,7 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
         room = int(nxt[room, way])
         mind.see(looks[room], way)
     out["thoughts"] = getattr(mind, "thoughts", 0)
+    out["sought"] = getattr(mind, "sought", 0)
     return out
 
 
@@ -420,8 +481,9 @@ def body_for(arm: str, model, m: int, looks, nxt, gen, **think):
     """The memory an arm lives with."""
     if arm == "blind":
         return Blind()
-    if arm in ("perfect", "seeker", "oracle"):
-        return Table((looks, nxt) if arm == "oracle" else None, curious=arm == "seeker")
+    if arm in ("perfect", "seeker", "explorer", "oracle"):
+        return Table((looks, nxt) if arm == "oracle" else None, curious=arm in ("seeker", "explorer"),
+                     far=arm == "explorer")
     return Mind(model.grow(m), gen, numb=arm == "numb", **think)
 
 
@@ -531,7 +593,8 @@ def summary(lives: list, ticks: int) -> dict:
            "late_per_life": [sum(1 for t in life["meals"] if t >= 2 * ticks // 3) for life in lives],
            "planned": sum(life["planned"] for life in lives) / (n * ticks),
            "early": sum(life.get("early", 0.0) for life in lives) / n,
-           "thoughts": sum(life.get("thoughts", 0) for life in lives) / (n * ticks)}
+           "thoughts": sum(life.get("thoughts", 0) for life in lives) / (n * ticks),
+           "sought": sum(life.get("sought", 0) for life in lives) / (n * ticks)}
     maps = [life["map"] for life in lives if "map" in life]
     if maps:
         res["map"] = {k: sum(m[k] for m in maps) / len(maps) for k in maps[0]}
@@ -567,6 +630,7 @@ def show(name: str, res: dict) -> str:
                                    for band, r in bands.items())
     line = (f"{name:>18} | meals {res['meals']:6.1f} | by third " + " ".join(f"{x:5.1f}" for x in res["thirds"])
             + f" | plan {res['planned']:.2f}, a thought afresh {res['thoughts']:.2f}"
+            + (f", toward a way not known {res['sought']:.2f}" if res.get("sought") else "")
             + f" | ways gone by an eighth of the life {res['early']:.2f}"
             + f" | lives with no meal in the last third {sum(x == 0 for x in res['late_per_life'])}"
             + " | trips, straight and steps per step of the shortest road:"
@@ -602,6 +666,9 @@ def main() -> None:
                    help="by hand: with no road, the way it speaks most quietly of, if under this share of the loudest")
     p.add_argument("--keep", action="store_true",
                    help="by hand: a road thought of is walked with no new thought while every room is as a copy said")
+    p.add_argument("--explore", type=float, default=0.0,
+                   help="by hand: with no road to the fruit, toward the nearest way a copy speaks quietly of"
+                        " (under this share of how loud the brain says the room it stands in)")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--seed", type=int, default=90_000)
@@ -610,7 +677,7 @@ def main() -> None:
     torch.set_num_threads(a.threads)
     shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
-             "curious": a.curious, "keep": a.keep}
+             "curious": a.curious, "keep": a.keep, "explore": a.explore}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
@@ -646,7 +713,8 @@ def main() -> None:
     tag = (f".world{shape.side}{ground}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
            + (f".budget{a.budget}" if a.budget != 256 else "")
-           + (f".curious{a.curious:g}" if a.curious else "") + (".keep" if a.keep else "")
+           + (f".curious{a.curious:g}" if a.curious else "") + (f".explore{a.explore:g}" if a.explore else "")
+           + (".keep" if a.keep else "")
            # sizes other than the default are named too (from 2026-11-16: two runs of one genome at
            # two sizes wrote one file, and the later one took the other's place)
            + ("" if a.sizes == [256] else ".m" + "-".join(map(str, a.sizes))) + pilot)

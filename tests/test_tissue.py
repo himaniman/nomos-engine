@@ -943,6 +943,58 @@ def test_with_no_road_a_seeker_takes_a_way_never_gone_and_a_curious_brain_the_on
 
 
 @torch.no_grad()
+def test_with_no_road_an_explorer_goes_to_the_nearest_way_never_gone_and_a_brain_to_one_it_speaks_low_of():
+    from tissue import world
+    torch.manual_seed(0)
+    # three rooms in a row, every way of the first two gone, one way of the third never gone
+    body = world.Table(curious=True, far=True)
+    body.at = 0
+    body.map = {(0, w): 0 for w in range(4)} | {(1, w): 1 for w in range(4)} | {(2, w): 2 for w in (0, 2)}
+    body.map.update({(0, 1): 1, (1, 3): 0, (1, 1): 2, (2, 3): 1})
+    assert all(body.wonder(gen(k)) == 1 for k in range(8))  # east, toward the room with a way never gone
+    body.at = 2
+    assert all(body.wonder(gen(k)) == 1 for k in range(8))  # in that room: the way never gone itself
+    body.map[(2, 1)] = 2
+    assert body.seek(gen(0)) is None and {body.wonder(gen(k)) for k in range(40)} == {0, 1, 2, 3}
+    near = world.Table(curious=True)                        # a seeker looks no farther than its room
+    near.at, near.map = 0, {k: v for k, v in body.map.items() if k != (2, 1)}
+    assert {near.wonder(gen(k)) for k in range(40)} == {0, 1, 2, 3}
+    # a life: the yardstick eats no less than a seeker in the same land
+    shape = world.Land(side=5, ticks=600)
+    lives = {}
+    for arm in ("seeker", "explorer"):
+        looks, nxt, trees, start = world.land(12, shape, gen(1))
+        lives[arm] = world.live(world.body_for(arm, None, 0, looks, nxt, gen(2)), looks, nxt, trees, start,
+                                600, gen(3), fruits=7)
+    assert len(lives["explorer"]["meals"]) >= len(lives["seeker"]["meals"]) and lives["explorer"]["early"] > 0.5
+    # the brain: off, nothing changes; on, steps toward the unknown are counted and are no plan
+    shape = world.Land(side=3, ticks=60)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    for keep in (False, True):
+        plain = world.live(world.Mind(genome.grow(16), gen(2), budget=32, keep=keep), looks, nxt, trees, start,
+                           60, gen(3), fruits=5)
+        off = world.live(world.Mind(genome.grow(16), gen(2), budget=32, keep=keep, explore=0.0), looks, nxt, trees,
+                         start, 60, gen(3), fruits=5)
+        assert off["meals"] == plain["meals"] and torch.equal(off["walked"], plain["walked"]) and off["sought"] == 0
+        mind = world.Mind(genome.grow(16), gen(2), budget=32, keep=keep, explore=2.0)   # every copy is quiet
+        life = world.live(mind, looks, nxt, trees, start, 60, gen(3), fruits=5)
+        assert life["sought"] > 0 and life["sought"] + life["planned"] <= 60
+        again = world.Mind(genome.grow(16), gen(2), budget=32, keep=keep, explore=2.0)
+        assert world.live(again, looks, nxt, trees, start, 60, gen(3), fruits=5)["meals"] == life["meals"]
+    # a road to a way not known in hand: its ways come out through `wonder`, one a tick, and are no plan
+    wanted = looks[int(trees[0])]
+    mind.goal, mind.due, mind.road, mind.roam = world.key(wanted), world.key(mind.before[0]), [(2, 111), (3, 222)], True
+    n, sought = mind.thoughts, mind.sought
+    assert mind.think(wanted, gen(4)) is None and mind.lead == 2 and mind.thoughts == n
+    assert mind.wonder(gen(4)) == 2 and mind.lead is None and mind.sought == sought + 1
+    # the examiner's thought from a copy carried somewhere leaves no lead
+    mind.road = []
+    mind.think(wanted, gen(4), root=(mind.state[0], looks[0]))
+    assert mind.lead is None and mind.road == []
+
+
+@torch.no_grad()
 def test_a_road_kept_is_walked_with_no_new_thought_until_a_room_is_not_the_room_a_copy_said():
     from tissue import world
     torch.manual_seed(0)

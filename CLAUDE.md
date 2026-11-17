@@ -730,7 +730,14 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   asks sides 6 and 12). A land that changes at half-life: a quarter of walls moved is taken as
   well as a perfect memory does, half is not (0.37-0.55 of the last third): the brain unlearns
   slowly; no forgetting was ever asked of the rule. Breadth 4: the knee holds at sides 6 and 12
-  (flattens at about 1-2 cells per way); curiosity adds 4-7% to a road kept. READ FIRST for the
+  (flattens at about 1-2 cells per way; side 12: 512 over 256 cells x2.2-5.8 on all five);
+  curiosity adds 4-7% to a road kept. Breadth 5 in part (B13, side 12 at 1024 cells, was still
+  running on the VM on 2026-11-17 at 21:00: `out/jobs/b13-*`, collect it): more cells do not
+  unlearn faster (0.35-0.49 at 512 cells); right after the change the brain eats an eighth of
+  what it did and climbs back no faster than a newborn learns (the control, wires emptied at
+  the change, was not run); a maze does not move the knee as far as 16 lives can tell. METHOD:
+  lives in a maze eat or starve, so look at the spread over lives before setting a bar on a
+  ratio, and compare sizes life by life. READ FIRST for the
   world line: "Where the world line stands" at the end of `docs/tissue-design.md`; the data:
   `python -m tissue.ledger` -> `runs/tissue/world-ledger.csv`; VM queues: `infra/dev/queue.sh`.
   BREADTH from 2026-11-16 (the user's word):

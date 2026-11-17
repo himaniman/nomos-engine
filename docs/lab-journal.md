@@ -5903,3 +5903,72 @@ on the VM, never more than twenty at once.
 
 Breadth 5 queued (predictions in the note): side 12 at 1024 cells, unlearning at 512 cells, the
 maze at 512 cells. The note now ends with where the world line stands, for the next session.
+
+## 2026-11-17 (21:00) — breadth 5 in part: more cells do not unlearn faster, and after a change the brain climbs back as slowly as a newborn; a maze does not move the knee; breadth 4 closed
+
+Collected from the VM: B14 and B15 on five lineages, the two runs of side 12 at 512 cells that
+were still going, and the last three 1024-cell runs of 6f repeated. B13 (side 12 at 1024 cells)
+is seven hours into about a day and is still running (`out/jobs/b13-*`).
+
+**Breadth 4, closed.** Side 12 at 512 cells: 333.6 / 274.2 / 297.9 / 192.4 / 154.9 meals, x2.17 /
+3.79 / 2.23 / 3.93 / 5.80 over 256 cells: B10 met on all five (four asked), every lineage above
+`perfect` (107), three above `seeker` (247), no life locked. The 1024-cell runs of 6f again: all
+five the same to the digit as their printed lines.
+
+**B14, a land half moved at 512 cells** (side 8; the last third over the same brain's unchanged
+last third):
+
+| | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| 256 cells (B7) | 0.37 | 0.48 | 0.55 | 0.37 | 0.37 | 0.65 | 0.53 |
+| 512 cells (B14) | 0.40 | 0.48 | 0.39 | 0.35 | 0.49 | | |
+| 512 cells, meals in the last third | 46.4 | 54.3 | 42.2 | 39.8 | 41.2 | 64.4 | 56.9 |
+
+Predicted: within 0.1 of the 256-cell figure on four lineages. Three (lineage 2 falls by 0.15,
+lineage 4 rises by 0.13): missed by the letter; the five together 0.42 against 0.43. More cells
+do not unlearn faster.
+
+**A look at the curve of a life** (the records hold the tick of every meal now; 512 cells, shift
+0.5, meals per 160 ticks, the land changes at tick 1280):
+
+| from tick | 0 | 160 | 320 | 480 | 640 | 800 | 960 | 1120 | **1280** | 1440 | 1600 | 1760 | 1920 | 2080 | 2240 | 2400 | unchanged, last third |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lineage 0 | 0.2 | 0.8 | 1.6 | 5.6 | 9.8 | 14.9 | 18.8 | 21.6 | 2.6 | 2.9 | 3.2 | 3.6 | 5.7 | 8.9 | 13.5 | 14.2 | 21.7 |
+| 1 | 0.4 | 0.1 | 1.4 | 6.0 | 9.3 | 13.7 | 17.8 | 16.8 | 2.1 | 2.5 | 3.4 | 5.7 | 6.8 | 10.6 | 14.6 | 15.2 | 21.3 |
+| 2 | 0.2 | 1.5 | 2.9 | 6.5 | 12.6 | 16.1 | 17.2 | 19.5 | 2.5 | 2.6 | 2.7 | 5.3 | 5.9 | 7.6 | 10.2 | 11.7 | 20.1 |
+| 3 | 0.4 | 0.6 | 1.4 | 2.1 | 3.6 | 7.6 | 13.1 | 16.1 | 3.0 | 2.1 | 2.6 | 3.3 | 5.1 | 8.1 | 10.4 | 12.0 | 21.5 |
+| 4 | 0.6 | 0.4 | 2.1 | 4.2 | 6.2 | 11.4 | 14.4 | 18.5 | 2.8 | 2.5 | 3.2 | 5.0 | 6.6 | 8.5 | 9.9 | 10.2 | 15.7 |
+
+Right after the change the brain eats 0.12-0.19 of what it ate just before. It climbs back no
+faster than a newborn learns a land, on three lineages more slowly; in its second half-life it
+eats 0.63-1.04 of what it ate in its first. At the end it is at 0.52-0.70 of the unchanged pace
+and still climbing, so the bar's figure (a whole last third) is a mean over a climb. What B7
+called slow unlearning looks like this from inside a life: by this curve half a land moved costs
+about as much as being born again would. Whether the old map is worth anything at all after the
+change was not asked: a brain with its wires emptied at the change is the control, and the first
+thing to ask if this road is taken.
+
+**B15, the maze at 512 cells** (side 8, walls 0.5):
+
+| | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| 256 cells (B1) | 76.4 | 88.6 | 97.4 | 82.1 | 48.5 |
+| 512 cells (B15) | 93.1 | 101.2 | 96.1 | 87.6 | 76.2 |
+| 512 over 256 | 1.22 | 1.14 | 0.99 | 1.07 | 1.57 |
+| the same on the exam's land | 1.04 | 1.11 | 1.13 | 1.10 | 1.19 |
+| 512 less 256, meals, and its error over 16 lives | +17 +- 23 | +13 +- 22 | -1 +- 21 | +6 +- 13 | +28 +- 14 |
+
+Predicted: at most 1.2 on four lineages. Three (lineage 0 at 1.218, lineage 4 at 1.57): missed by
+the letter. But the bar was finer than a maze allows: a life there eats or nearly starves
+(spread over lives 45-73 meals against 29-38 on the exam's land), and which lives starve changes
+with the size of the brain (of the 1-6 starved lives of a lineage, 0-2 are the same at both
+sizes), so one lineage's ratio is known to 0.2-0.3. Only lineage 4's gain stands clear (12 lives
+of 16 up). The five together x1.16 in the maze, x1.11 on the exam's land: a harder land does not
+move the knee as far as 16 lives can tell. Long trips are straighter at 512 cells on every
+lineage (0.44-0.73 against 0.27-0.66) and the meals do not follow, which suggests that in a maze
+finding the ways binds, not holding them (a reading, not measured).
+
+METHOD: look at the spread over lives in a land before setting a bar on a ratio there; compare
+sizes life by life on the same lands.
+
+The ledger is rebuilt: 190 rows.

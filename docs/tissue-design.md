@@ -2134,7 +2134,8 @@ than its land has ways (walls counted: four to a room), and at most 1.15 times o
   imagery helped the weak lineages and ruined lineage 3; a guess: the same.
 - **The 1024-cell runs of 6f again**, under `.m1024`: the same figures as their printed lines.
 
-**Outcome, in part (2026-11-17; side 12 at 512 cells and three 1024 runs still going).**
+**Outcome (2026-11-17; side 12 at 512 cells on lineages 3 and 4 and three of the 1024 runs
+finished that evening and were written in then).**
 
 | a road kept, 4096 rooms; meals a life | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
 |---|---|---|---|---|---|---|---|---|
@@ -2144,14 +2145,15 @@ than its land has ways (walls counted: four to a room), and at most 1.15 times o
 | 512 cells | 157.6 | 171.2 | 185.2 | 176.9 | 143.3 | | | |
 | 128 / 64, 256 / 128, 512 / 256 | 1.18, 1.10, 0.90 | 1.44, 1.20, 1.04 | 1.2497, 1.20, 1.02 | 1.20, 1.26, 1.02 | 1.84, 1.22, 1.03 | | | |
 | side 12 (576 ways), 256 cells | 153.4 | 72.4 | 133.5 | 49.0 | 26.7 | 107 | 247 | 601 |
-| 512 cells | 333.6 | 274.2 | 297.9 | running | running | | | |
-| 512 / 256 | 2.17 | 3.79 | 2.23 | | | | | |
+| 512 cells | 333.6 | 274.2 | 297.9 | 192.4 | 154.9 | | | |
+| 512 / 256 | 2.17 | 3.79 | 2.23 | 3.93 | 5.80 | | | |
 
 - **B9, side 6: half met.** 64 to 128 cells at least 1.25 on two lineages, not four (lineage 2
   at 1.2497); 256 to 512 at most 1.15 on all five (met). At side 6 even 64 cells eat about as
   much as a perfect memory, and the curve flattens at 256 cells, not 144: the knee is nearer
   one to two cells per way than one.
-- **B10, side 12: met so far**, x2.2-3.8 on the three lineages finished.
+- **B10, side 12: met**, x2.2-5.8 on all five; no life locked. At 512 cells every lineage is
+  above `perfect` (107) and three are above `seeker` (247).
 
 | side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
 |---|---|---|---|---|---|
@@ -2166,7 +2168,8 @@ than its land has ways (walls counted: four to a room), and at most 1.15 times o
   faster (0.63-0.72 of the ways by an eighth of a life against 0.54-0.58).
 - **B12** (no bar): my guess (the weak helped, lineage 3 ruined) was wrong in its parts: lineage
   1 loses a quarter (three lives locked), lineage 3 and 4 gain.
-- The 1024-cell runs again: lineages 0 and 2 the same to the digit as their printed lines.
+- The 1024-cell runs again: all five the same to the digit as their printed lines (323.81 /
+  290.19 / 307.94 / 253.44 / 233.81).
 
 ### Breadth 5, set before leaving: the knee at side 12, unlearning with more cells, a maze with more cells
 
@@ -2180,6 +2183,71 @@ Queued on the VM with `infra/dev/queue.sh` (side 12 at 1024 cells is a day of ru
 - **B15, the maze at 512 cells**: 512 over 256 (76.4 / 88.6 / 97.4 / 82.1 / 48.5) at most 1.2 on
   four lineages, as the knee says for 256 ways; if it is more, the knee is about how hard the
   land is, not how many ways it has.
+
+**Outcome, in part (2026-11-17, 21:00; B13 is still running: five runs seven hours into about
+a day, logs `out/jobs/b13-*` on the VM, records will be `hold-s*.world12.*.keep.m1024.json`).**
+
+| side 8, a road kept, 4096 rooms; meals in the last third (all after the change) | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
+|---|---|---|---|---|---|---|---|
+| 512 cells, unchanged (B8) | 115.9 | 113.4 | 107.3 | 114.4 | 83.5 | 98.7 | 106.9 |
+| 512 cells, shift 0.5 (B14) | 46.4 | 54.3 | 42.2 | 39.8 | 41.2 | 64.4 | 56.9 |
+| over unchanged | 0.40 | 0.48 | 0.39 | 0.35 | 0.49 | 0.65 | 0.53 |
+| 256 cells, over unchanged (B7) | 0.37 | 0.48 | 0.55 | 0.37 | 0.37 | | |
+| 512 cells less 256 | +0.03 | +0.00 | -0.15 | -0.02 | +0.13 | | |
+| lives locked of 16: 256 / 512 cells | 2 / 2 | 0 / 0 | 1 / 2 | 2 / 2 | 2 / 1 | | |
+| ways right at the end, of those gone: 256 / 512 cells (unchanged land at 512: 0.98-0.99) | 0.92 / 0.92 | 0.94 / 0.93 | 0.92 / 0.93 | 0.92 / 0.92 | 0.86 / 0.92 | | |
+
+- **B14: missed by the letter, right in what it says.** Within 0.1 of the 256-cell figure on
+  three lineages, not four (lineage 2 falls by 0.15, lineage 4 rises by 0.13); the five
+  together 0.42 at 512 cells against 0.43 at 256. No lineage reaches `perfect` (0.65), and in
+  meals none reaches `seeker`. More cells do not unlearn faster.
+
+A look the records now allow (`meal_ticks`), not a bar: meals per 160 ticks, mean of 16 lives,
+512 cells, shift 0.5. The land changes at tick 1280; up to it the life is the unchanged one.
+
+| meals per 160 ticks, from tick | 0 | 160 | 320 | 480 | 640 | 800 | 960 | 1120 | **1280** | 1440 | 1600 | 1760 | 1920 | 2080 | 2240 | 2400 | unchanged, last third |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lineage 0 | 0.2 | 0.8 | 1.6 | 5.6 | 9.8 | 14.9 | 18.8 | 21.6 | 2.6 | 2.9 | 3.2 | 3.6 | 5.7 | 8.9 | 13.5 | 14.2 | 21.7 |
+| 1 | 0.4 | 0.1 | 1.4 | 6.0 | 9.3 | 13.7 | 17.8 | 16.8 | 2.1 | 2.5 | 3.4 | 5.7 | 6.8 | 10.6 | 14.6 | 15.2 | 21.3 |
+| 2 | 0.2 | 1.5 | 2.9 | 6.5 | 12.6 | 16.1 | 17.2 | 19.5 | 2.5 | 2.6 | 2.7 | 5.3 | 5.9 | 7.6 | 10.2 | 11.7 | 20.1 |
+| 3 | 0.4 | 0.6 | 1.4 | 2.1 | 3.6 | 7.6 | 13.1 | 16.1 | 3.0 | 2.1 | 2.6 | 3.3 | 5.1 | 8.1 | 10.4 | 12.0 | 21.5 |
+| 4 | 0.6 | 0.4 | 2.1 | 4.2 | 6.2 | 11.4 | 14.4 | 18.5 | 2.8 | 2.5 | 3.2 | 5.0 | 6.6 | 8.5 | 9.9 | 10.2 | 15.7 |
+
+- Right after the change the brain eats 0.12-0.19 of what it ate just before it.
+- It climbs back no faster than a newborn learns a land, and on three lineages more slowly (the
+  first 160 ticks with ten meals start 640-960 ticks after birth and 800-1120 after the
+  change). In the second half of its life it eats 0.63-1.04 of what it ate in the first (54.7 /
+  60.8 / 48.6 / 46.5 / 48.7 meals against 73.4 / 65.6 / 76.6 / 44.9 / 57.8).
+- At the end of the life it eats 0.52-0.70 of the unchanged pace and is still climbing: the
+  figure of the bar, a whole last third, is a mean over a climb.
+- Not asked, and the next thing to ask on this road: what the old map is WORTH. A brain whose
+  wires are emptied at the change (or one born then) has no false roads to walk; if it eats as
+  much in the half-life after, half a land moved has cost the brain all it knew.
+
+| side 8, the maze (walls 0.5), a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|---|---|---|---|
+| 256 cells (B1) | 76.4 | 88.6 | 97.4 | 82.1 | 48.5 | 20 | 54 | 257 |
+| 512 cells (B15) | 93.1 | 101.2 | 96.1 | 87.6 | 76.2 | | | |
+| 512 over 256 | 1.22 | 1.14 | 0.99 | 1.07 | 1.57 | | | |
+| the same on the exam's land (B8) | 1.04 | 1.11 | 1.13 | 1.10 | 1.19 | | | |
+| 512 less 256 in meals, and its error over the 16 lives (the same lands at both sizes) | +17 +- 23 | +13 +- 22 | -1 +- 21 | +6 +- 13 | +28 +- 14 | | | |
+| lives of 16 that eat more at 512 cells | 9 | 10 | 10 | 10 | 12 | | | |
+| lives with 5 meals or fewer in the last third: at 256 / at 512 (in both) | 6 / 5 (2) | 2 / 3 (0) | 2 / 3 (1) | 1 / 2 (1) | 4 / 3 (1) | | | |
+| trips of 9+ steps, straight: 256 / 512 cells | 0.66 / 0.73 | 0.46 / 0.68 | 0.51 / 0.64 | 0.52 / 0.64 | 0.27 / 0.44 | | | |
+
+- **B15: missed by the letter** (at most 1.2 on three lineages, not four: lineage 0 at 1.218,
+  lineage 4 at 1.57), **and the bar was finer than a maze allows.** A life in a maze eats or
+  nearly starves (spread over lives 45-73 meals at 512 cells against 29-38 on the exam's land),
+  and WHICH lives starve changes with the size of the brain (of the 1-6 starved lives of a
+  lineage, 0-2 are the same at both sizes). So one lineage's ratio is known to about 0.2-0.3.
+  Only lineage 4's gain stands clear of that. The five together: x1.16 in the maze, x1.11 on
+  the exam's land.
+- Read: a harder land does not move the knee as far as 16 lives can tell; the weakest lineage
+  gains most, as everywhere. Long trips are straighter at 512 cells on every lineage and the
+  meals do not follow, which suggests that in a maze what binds is finding the ways, not
+  holding them (ways gone by an eighth of a life: 0.31-0.37 at both sizes).
+- METHOD: look at the spread over lives in a land before setting a bar on a ratio there, and
+  compare sizes life by life on the same lands.
 
 ## Where the world line stands (2026-11-17), for whoever decides the next step
 
@@ -2206,15 +2274,18 @@ cells whose rule was never shown a world.
    of its land, where a perfect memory leaves 7-21% never gone. Worth most in a maze (x2.4-4.9),
    least in an open land.
 3. What ends a thought carries weight: one bit of slack in the match and 70 lives of 80 lock.
-4. GROWTH PAYS, up to a knee: doubling the cells pays x1.2-3.8 while the brain is small for its
+4. GROWTH PAYS, up to a knee: doubling the cells pays x1.2-5.8 while the brain is small for its
    land and x0.9-1.2 once it is not. The knee sits where cells are about one to two times the
    land's ways (side 6: 256 cells for 144 ways; side 8: 256 for 256; side 10: 512-1024 for 400;
    side 12: above 512 for 576, 1024 running). Below the knee every lineage gains; the weakest
-   gains most.
+   gains most. A maze of the same side does not move the knee as far as 16 lives can tell
+   (B15: lives in a maze eat or starve, so a lineage's ratio there is known to 0.2-0.3).
 5. The brain unlearns slowly: a quarter of the walls moved at half-life it takes about as well
    as a perfect memory; half moved, it falls to 0.37-0.55 of its unchanged last third (perfect
-   0.65) though its map is again mostly right by the end. Nothing in the cell's rule was ever
-   asked to forget.
+   0.65) though its map is again mostly right by the end. More cells do not mend it (B14: 0.35-
+   0.49 at 512 cells). The curve of a life says what it costs: right after the change the brain
+   eats an eighth to a fifth of what it did, and it climbs back no faster than a newborn learns
+   a land. Nothing in the cell's rule was ever asked to forget.
 6. Curiosity (with no road, the way the brain speaks most quietly of) helped when roads were
    rare (6c: x1.3) and adds 4-7% once a road is kept (B11). Imagery is mixed on every asking.
 
@@ -2227,7 +2298,9 @@ comes true (load-bearing, 1 above). Found by search: the cell's rule, and on two
 five in other exams the gate.
 
 **Roads open from here** (none chosen; the user decides in another session):
-- Forgetting: the one clear weakness found in a world (5 above).
+- Forgetting: the one clear weakness found in a world (5 above). Cheap to ask first, before any
+  mechanism: what the old map is worth after the change (the same brain with its wires emptied
+  at the change), and how many walks it takes to undo one way that became a wall.
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -2237,8 +2310,9 @@ five in other exams the gate.
 **Data for a reader.** `python -m tissue.ledger` writes `runs/tissue/world-ledger.csv`: one row
 per record of exam 6 (genome, land, switches, size, meals, thirds, locked lives, straightness,
 map, yardsticks of the same land). Records from 2026-11-17 hold the tick of every meal. Bars,
-predictions and outcomes are in this note (Exam 6, steps 6a-6f, Breadth 1-4) and in the
-journal; wrong predictions are written as such. Two record files were lost to a name clash
+predictions and outcomes are in this note (Exam 6, steps 6a-6f, Breadth 1-5) and in the
+journal; wrong predictions are written as such. B13 (side 12 at 1024 cells) was still running
+when this was last written (2026-11-17, 21:00). Two record files were lost to a name clash
 and repeated; see the journal of 2026-11-16 and 17.
 
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run

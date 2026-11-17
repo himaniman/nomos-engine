@@ -993,3 +993,14 @@ def test_a_land_that_changes_in_mid_life_still_hangs_together_and_keeps_its_coun
     again = world.live(world.Table((looks, nxt)), looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
     assert life["meals"] == again["meals"] and len(life["meals"]) > 0
 
+
+
+def test_the_ledger_reads_a_record_name_back_into_its_land_and_switches():
+    from tissue import ledger
+    row = ledger.parse("runs/tissue/hold/hold-s3.world8.walls0.5.shift0.25.thinks.slack1.budget4096.curious0.7.keep.m512.json")
+    assert row["genome"] == "hold-s3" and row["side"] == 8 and row["walls"] == 0.5 and row["shift"] == 0.25
+    assert row["slack"] == 1 and row["budget"] == 4096 and row["curious"] == 0.7 and row["keep"] and not row["imagery"]
+    plain = ledger.parse("hold-s0.world6.thinks.json")
+    assert plain["walls"] == 0.3 and plain["budget"] == 256 and not plain["keep"] and not plain["pilot"]
+    assert ledger.parse("runs/tissue/world8.yardsticks.json") is None
+    assert ledger.parse("hold-s0.world8.thinks.seed1.json")["pilot"]

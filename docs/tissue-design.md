@@ -2134,6 +2134,113 @@ than its land has ways (walls counted: four to a room), and at most 1.15 times o
   imagery helped the weak lineages and ruined lineage 3; a guess: the same.
 - **The 1024-cell runs of 6f again**, under `.m1024`: the same figures as their printed lines.
 
+**Outcome, in part (2026-11-17; side 12 at 512 cells and three 1024 runs still going).**
+
+| a road kept, 4096 rooms; meals a life | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|---|---|---|---|
+| side 6 (144 ways), 64 cells | 134.6 | 95.6 | 121.4 | 114.2 | 61.6 | 121 | 172 | 259 |
+| 128 cells | 159.2 | 137.6 | 151.7 | 136.9 | 113.2 | | | |
+| 256 cells | 175.1 | 165.1 | 181.8 | 172.7 | 138.6 | | | |
+| 512 cells | 157.6 | 171.2 | 185.2 | 176.9 | 143.3 | | | |
+| 128 / 64, 256 / 128, 512 / 256 | 1.18, 1.10, 0.90 | 1.44, 1.20, 1.04 | 1.2497, 1.20, 1.02 | 1.20, 1.26, 1.02 | 1.84, 1.22, 1.03 | | | |
+| side 12 (576 ways), 256 cells | 153.4 | 72.4 | 133.5 | 49.0 | 26.7 | 107 | 247 | 601 |
+| 512 cells | 333.6 | 274.2 | 297.9 | running | running | | | |
+| 512 / 256 | 2.17 | 3.79 | 2.23 | | | | | |
+
+- **B9, side 6: half met.** 64 to 128 cells at least 1.25 on two lineages, not four (lineage 2
+  at 1.2497); 256 to 512 at most 1.15 on all five (met). At side 6 even 64 cells eat about as
+  much as a perfect memory, and the curve flattens at 256 cells, not 144: the knee is nearer
+  one to two cells per way than one.
+- **B10, side 12: met so far**, x2.2-3.8 on the three lineages finished.
+
+| side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| a road kept (6e) | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 |
+| and curious 0.7 (B11) | 253.3 | 226.1 | 228.3 | 201.7 | 170.6 |
+| over a road kept | 1.05 | 1.07 | 1.06 | 1.04 | 1.07 |
+| ways gone by an eighth of the life: kept / and curious | 0.57 / 0.68 | 0.55 / 0.72 | 0.58 / 0.71 | 0.56 / 0.63 | 0.54 / 0.68 |
+| and imagery (B12) | 230.4 | 156.2 | 223.8 | 207.3 | 176.1 |
+| over a road kept | 0.95 | 0.74 | 1.04 | 1.07 | 1.10 |
+
+- **B11: met**, within a tenth on all five, and above on all five (x1.04-1.07): it explores
+  faster (0.63-0.72 of the ways by an eighth of a life against 0.54-0.58).
+- **B12** (no bar): my guess (the weak helped, lineage 3 ruined) was wrong in its parts: lineage
+  1 loses a quarter (three lives locked), lineage 3 and 4 gain.
+- The 1024-cell runs again: lineages 0 and 2 the same to the digit as their printed lines.
+
+### Breadth 5, set before leaving: the knee at side 12, unlearning with more cells, a maze with more cells
+
+Queued on the VM with `infra/dev/queue.sh` (side 12 at 1024 cells is a day of running):
+
+- **B13, side 12 at 1024 cells**: 1024 over 512 between 1.05 and 1.30 on four lineages (the
+  brain passes the land's 576 ways).
+- **B14, shift 0.5 at 512 cells** (side 8): the last third over the same brain's unchanged last
+  third (B8: 115.9 / 113.4 / 107.3 / 114.4 / 83.5) within 0.1 of what 256 cells did (0.37 / 0.48
+  / 0.55 / 0.37 / 0.37) on four lineages: more cells do not unlearn faster.
+- **B15, the maze at 512 cells**: 512 over 256 (76.4 / 88.6 / 97.4 / 82.1 / 48.5) at most 1.2 on
+  four lineages, as the knee says for 256 ways; if it is more, the knee is about how hard the
+  land is, not how many ways it has.
+
+## Where the world line stands (2026-11-17), for whoever decides the next step
+
+**What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract
+exams of rung 1 (8-64 interneurons, chains and an unbroken stream), never on a world. Grown to
+64-1024 cells, each is born into a walled land it has never seen (exam 6, `tissue/world.py`),
+told only what the room with the fruit looks like, and lives one life of 40 ticks a room with
+no study. Its wires learn the land as it walks; it thinks by a hand-made procedure on those
+wires; it acts on the thought.
+
+**What it does.** With a wide thought (4096 rooms) and a road kept (step 6e) it eats about as
+much as a perfect memory of every way it has gone, or more, in every land asked (sides 6-12,
+mazes, open lands, 10 or 21 trees), and 0.4-0.7 of what a body born knowing the land eats. No
+lineage, no land has the lock of 6b any more (except with slack in the match). All of it with
+cells whose rule was never shown a world.
+
+**What was learned, in the order it was found** (each in the journal, 2026-11-12..17):
+1. The depth of a thought was bound by my limit of rooms (6b's look), and a wider thought
+   alone made the body pass between two rooms forever (6b): WHEN to think is as much a part of
+   thinking as how. A road kept until it fails (6e) undid the lock and lifted the weak lineages
+   most (36-95 meals in 6a, 160-241 now).
+2. The brain beats a perfect memory because its mistakes explore: a false road through a way
+   never gone is walked toward the fruit, and by the end of a life it has gone every open way
+   of its land, where a perfect memory leaves 7-21% never gone. Worth most in a maze (x2.4-4.9),
+   least in an open land.
+3. What ends a thought carries weight: one bit of slack in the match and 70 lives of 80 lock.
+4. GROWTH PAYS, up to a knee: doubling the cells pays x1.2-3.8 while the brain is small for its
+   land and x0.9-1.2 once it is not. The knee sits where cells are about one to two times the
+   land's ways (side 6: 256 cells for 144 ways; side 8: 256 for 256; side 10: 512-1024 for 400;
+   side 12: above 512 for 576, 1024 running). Below the knee every lineage gains; the weakest
+   gains most.
+5. The brain unlearns slowly: a quarter of the walls moved at half-life it takes about as well
+   as a perfect memory; half moved, it falls to 0.37-0.55 of its unchanged last third (perfect
+   0.65) though its map is again mostly right by the end. Nothing in the cell's rule was ever
+   asked to forget.
+6. Curiosity (with no road, the way the brain speaks most quietly of) helped when roads were
+   rare (6c: x1.3) and adds 4-7% once a road is kept (B11). Imagery is mixed on every asking.
+
+**What is still by hand in the world**, with what it carries: a dendrite per way (the body's
+sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
+(`Plan.still`); the will (the wanted look is told; with no road, dice or curiosity); and the
+whole of thinking: copies of the brain walked breadth-first on its wires, a limit of rooms
+(4096), an exact match with the wanted look (load-bearing, 3 above), a road kept while it
+comes true (load-bearing, 1 above). Found by search: the cell's rule, and on two lineages of
+five in other exams the gate.
+
+**Roads open from here** (none chosen; the user decides in another session):
+- Forgetting: the one clear weakness found in a world (5 above).
+- Thinking into tissue: the procedure is now the largest hand-made part and the most
+  load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
+- The will into the brain: a fruit's look learned rather than told (hunger, reward).
+- The genome searched in the world: no genome was ever selected on a life in a land.
+- Larger lands past the knee: the knee says how many cells a land wants.
+
+**Data for a reader.** `python -m tissue.ledger` writes `runs/tissue/world-ledger.csv`: one row
+per record of exam 6 (genome, land, switches, size, meals, thirds, locked lives, straightness,
+map, yardsticks of the same land). Records from 2026-11-17 hold the tick of every meal. Bars,
+predictions and outcomes are in this note (Exam 6, steps 6a-6f, Breadth 1-4) and in the
+journal; wrong predictions are written as such. Two record files were lost to a name clash
+and repeated; see the journal of 2026-11-16 and 17.
+
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run
 
 The first hand-made part on the world's list to go, if a search will have it. In 4a the way
@@ -2249,6 +2356,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 6c curiosity in place of the dice (`--curious 0.7`, by hand: with no road, the way the brain speaks most quietly of) | done, C1, C2 met, C3 missed. 1.3-1.4 times the meals on four lineages of five (124 / 79 / 99 / 71 / 47), 0.58-0.62 of the ways gone by an eighth of a life in place of 0.47-0.51; the best is 0.59 of `seeker`. With 1024 rooms a thought as well: 173 / 97 / 123 / 71 / 80, and as many locked lives as before |
 | 6d the land of side 10 with both dials (512 cells) | done, L1 missed, L2 and L3 met: with curiosity and 1024 rooms a thought 167 / 92 / 109 / 49 / 71 meals where 6a gave 73 / 39 / 42 / 19 / 17; 1024 rooms alone does as much (162 / 79 / 135 / 56 / 64), curiosity alone little (x1.2-1.8) |
 | 6e a road kept (`--keep`, by hand: a road thought of is walked while every room is as a copy said) | done, K1-K4 met. Side 8, 4096 rooms: 241 / 212 / 214 / 193 / 160 meals (6b: 163 / 69 / 123 / 51 / 62), no life locked, every lineage at or above 0.88 of `perfect` and three at `seeker` or above |
+| 6f growth in a world (side 10, a road kept; 256, 512, 1024 cells) | done, G1 and G4 met, G2 and G3 missed by little. 238 / 173 / 223 / 151 / 99, then 301 / 267 / 289 / 224 / 193, then 324 / 290 / 308 / 253 / 234 meals: every lineage gains at every doubling, x1.27-1.95 then x1.06-1.21 |
+| breadth 1-4 (other lands, slack, a land that changes, the knee, old switches with a road kept) | the brain beats a perfect memory most in a maze (x2.4-4.9); one bit of slack locks 70 lives of 80; half the walls moved at half-life is unlearned slowly (0.37-0.55 of the last third); growth flattens where cells are one to two times the land's ways (sides 6, 8, 10, 12) |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

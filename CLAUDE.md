@@ -100,7 +100,8 @@ tissue/           THE CURRENT LINE (from 2026-11-11): a small genome unfolded in
                   (cells of the ring by tick, growth, what is said in the dark; out/tissue/)
                   · fork.py, seek.py exams 4 and 5 (rooms with ways out; a wanted room) ·
                   world.py exam 6, A WORLD (a walled land, trees, one life with no study) ·
-                  view.py a picture and a film of one life in a land.
+                  view.py a picture and a film of one life in a land ·
+                  ledger.py every record of exam 6 as one CSV row (runs/tissue/world-ledger.csv).
                   Design, ladder, rules, bars: docs/tissue-design.md
 cortex/           ONE player, a brain that grows itself (branch `cortex-design`):
                   tiles.py map · world.py physics + economy · senses.py the
@@ -728,7 +729,11 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   x1.3-2.4 a doubling while cells < the land's ways, x1.04-1.21 after (sides 8 and 10; breadth 4
   asks sides 6 and 12). A land that changes at half-life: a quarter of walls moved is taken as
   well as a perfect memory does, half is not (0.37-0.55 of the last third): the brain unlearns
-  slowly; no forgetting was ever asked of the rule. BREADTH from 2026-11-16 (the user's word):
+  slowly; no forgetting was ever asked of the rule. Breadth 4: the knee holds at sides 6 and 12
+  (flattens at about 1-2 cells per way); curiosity adds 4-7% to a road kept. READ FIRST for the
+  world line: "Where the world line stands" at the end of `docs/tissue-design.md`; the data:
+  `python -m tissue.ledger` -> `runs/tissue/world-ledger.csv`; VM queues: `infra/dev/queue.sh`.
+  BREADTH from 2026-11-16 (the user's word):
   many ideas, comparable records, for a later reading by a stronger model; record names carry
   a non-default land (`.walls0.5`) and a size other than 256 (`.m512`).
   STEP 4b (`Plan.body`, `tissue.train --arm fork`, six minutes a search): body cells read on a

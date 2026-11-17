@@ -5862,3 +5862,44 @@ x1.06-1.21 beyond). Breadth 4 asks it at sides 6 and 12.
 At the end of the life the map is mostly right again (0.86-0.92), so what fails is the speed of
 unlearning: a link held for half a life is not undone by one walk. A brain in a changing world
 needs forgetting; nothing in the cell's rule was asked for it.
+
+## 2026-11-17 (14:30) — breadth 4: the knee at sides 6 and 12; curiosity adds a little to a road kept; a ledger of every life in a land
+
+| a road kept, 4096 rooms; meals a life | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` | born knowing |
+|---|---|---|---|---|---|---|---|---|
+| side 6 (144 ways), 64 cells | 134.6 | 95.6 | 121.4 | 114.2 | 61.6 | 121 | 172 | 259 |
+| 128 cells | 159.2 | 137.6 | 151.7 | 136.9 | 113.2 | | | |
+| 256 cells | 175.1 | 165.1 | 181.8 | 172.7 | 138.6 | | | |
+| 512 cells | 157.6 | 171.2 | 185.2 | 176.9 | 143.3 | | | |
+| 128 / 64, 256 / 128, 512 / 256 | 1.18, 1.10, 0.90 | 1.44, 1.20, 1.04 | 1.2497, 1.20, 1.02 | 1.20, 1.26, 1.02 | 1.84, 1.22, 1.03 | | | |
+| side 12 (576 ways), 256 cells | 153.4 | 72.4 | 133.5 | 49.0 | 26.7 | 107 | 247 | 601 |
+| 512 cells | 333.6 | 274.2 | 297.9 | running | running | | | |
+| 512 / 256 | 2.17 | 3.79 | 2.23 | | | | | |
+
+- Side 6: 64 to 128 cells pays 1.25 times on two lineages (four predicted; lineage 2 at 1.2497),
+  256 to 512 at most 1.15 on all five (met). The curve flattens at 256 cells for 144 ways.
+- Side 12: 512 cells eat 2.2-3.8 times what 256 eat on the three lineages finished; 274-334
+  meals where a perfect memory eats 107 and one that seeks ways never gone 247.
+
+| side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| a road kept (6e) | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 |
+| and curious 0.7 (B11) | 253.3 | 226.1 | 228.3 | 201.7 | 170.6 |
+| over a road kept | 1.05 | 1.07 | 1.06 | 1.04 | 1.07 |
+| ways gone by an eighth of the life: kept / and curious | 0.57 / 0.68 | 0.55 / 0.72 | 0.58 / 0.71 | 0.56 / 0.63 | 0.54 / 0.68 |
+| and imagery (B12) | 230.4 | 156.2 | 223.8 | 207.3 | 176.1 |
+| over a road kept | 0.95 | 0.74 | 1.04 | 1.07 | 1.10 |
+
+- Curiosity on a road kept: +4-7% on all five (predicted: within a tenth; met), and faster
+  exploring.
+- Imagery on a road kept: lineage 1 loses a quarter, 3 and 4 gain; my guess was wrong.
+- The 1024-cell runs again: lineages 0 and 2 to the digit.
+
+**The ledger**: `python -m tissue.ledger` writes `runs/tissue/world-ledger.csv`, one row per
+record of exam 6 (175 rows today): the land, the switches, the size, meals by third, locked
+lives, straightness, the map, and the yardsticks of the same land. For the user's plan to have a
+stronger model read the breadth of it. `infra/dev/queue.sh` runs a file of `name|command` lines
+on the VM, never more than twenty at once.
+
+Breadth 5 queued (predictions in the note): side 12 at 1024 cells, unlearning at 512 cells, the
+maze at 512 cells. The note now ends with where the world line stands, for the next session.

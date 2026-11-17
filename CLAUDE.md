@@ -747,6 +747,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   dendrite of the cell's own. One lineage of five finds a use for it, a quarter of the
   hand-made dendrites and one hop deep (`runs/tissue/body/`); the dendrite per way stays by
   hand. Cheap to ask again: many starts, lives that pay for depth.
+  AFTER THE BREADTH (2026-11-17, the user's word on my proposal; note: "After the breadth"): the
+  order is (1) WANTING TO KNOW, (2) FORGETTING beside it on the VM, (3) a thought as a wave in
+  the tissue, later. Why: a grown brain in an unchanging land eats 0.85-0.91 of one born knowing
+  it; the gap is the first third of a life. STEP 6g DONE: yardstick `explorer` (a perfect
+  memory that with no road goes to the nearest way never gone) eats 0.81-0.89 of born-knowing
+  in every unchanging land (side 8: 312, side 12: 517, the maze: 228); it is THE YARDSTICK from
+  here on ("the brain beats a perfect memory" held only against memories that do not seek).
+  Forgetting by yardsticks: a table never doubts a wall, so after shift 0.5 the explorer's last
+  third is 60 of 115, and born again at the change (`--reborn`) it eats twice as much; `doubter`
+  (`--yardsticks --doubt T`, forgets a way not gone for T ticks) gets 105 at T 640. So a
+  changing land asks for slow forgetting IN a body that seeks: roads 1 and 2 are one.
+  STEP 6h SET UP, NOT COLLECTED: `--explore 0.4` (by hand: a thought with no road leads to the
+  nearest way a copy speaks quietly of), bars H1-H6 in the note; VM jobs `h6-*`, `p6h-*` (pilot),
+  `f1-reborn-*`, `f2-unlearn-*` (`python -m tissue.unlearn`), `f3-*`, `b13-*`: see the journal
+  entry of 2026-11-17 21:50 for how to collect. First pilot lines: the brain explores as fast as
+  the explorer and eats half as much in its first third (a way gone once is not yet known well
+  enough to think with). The desktop also runs other jobs of the user's: NOTHING heavy and
+  nothing that waits there (the harness stopped four background commands for low memory).
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

@@ -6018,3 +6018,62 @@ room it stands in 7.1-7.3), not in a whisper; the 0.0-0.6 in the records' `loud_
 mean over lives that had no way never gone left. A way gone once is said right 0.81 of the time
 on lineage 4 and all eight times on lineage 0; three or four walks make it 0.98. So one walk
 writes a way, or nearly.
+
+## 2026-11-17 (21:50) — the forgetting road by yardsticks: to a body that seeks, an old map is worth less than nothing, and doubt mends it; step 6h set up; the desktop ran short of memory
+
+**What the old map is worth** (`--shift 0.5 --reborn`, a look: at the change the body is born
+again where it stands, its memory empty; one born knowing is born knowing the land as it now is).
+Predicted: `perfect` born again eats less than with its table kept, `explorer` at least 1.5 times
+more. Meals in the half of a life after the change, side 8:
+
+| | kept its memory | born again | the land not changed |
+|---|---|---|---|
+| `perfect` | 74.2 | 39.1 | 136.8 |
+| `seeker` | 69.7 | 38.9 | 158.7 |
+| `explorer` | 71.6 | 140.1 | 170.6 |
+| born knowing: the old land / the land as it now is | 88.4 | 182.9 | 189.1 |
+
+Both met. The changed land is as rich as the old one (183 against 189 for one who knows it), so
+every memory loses more than half of what is there; and the one that seeks loses it to its own
+table, which holds walls it never doubts. The brain's five runs (512 cells) are on the VM.
+
+**A yardstick that doubts** (`--yardsticks --doubt T`: an explorer that no longer knows a way it
+has not gone for T ticks; nothing tells it the land changed). Predicted for T 640 at shift 0.5:
+a last third of 98 or more.
+
+| side 8, meals a life (by third) | `explorer` | `doubter`, T 320 | T 640 | T 1280 |
+|---|---|---|---|---|
+| shift 0.5 | 212.8 (83 / 70 / 60) | 235.6 (71 / 73 / 92) | 275.3 (83 / 88 / 105) | 269.3 (83 / 81 / 105) |
+| the land not changed | 311.8 (83 / 114 / 115) | 251.0 (71 / 95 / 85) | on the VM | on the VM |
+
+Met: 105. Doubt and the wish to know together take a land half moved almost whole (115 where
+nothing changed). My guess that the shortest span would be best after a change was wrong: at
+T 320 a way is lost before the body comes by it again, in both lands. So the forgetting a
+changing land asks for is slow, and it only pays in a body that seeks what it has forgotten:
+the first two roads are one road.
+
+**Step 6h set up** (`--explore Q`, by hand: a thought with no road to the fruit leads to the
+nearest way a copy speaks quietly of). A look first: a copy in the dark says a way never gone
+about half as loud as a way gone (2.0-2.5 against 3.8-4.8), so "not known" is a weaker signal
+in a brain than in a table. Q was set at 0.4 from that look and the bars H1-H6 were committed
+(19901c7) before a line of any life lived with it had come back. The pilot's first lines came
+after (other lands, 8 lives, lineage 0): 258.5 meals at Q 0.3 and 256.4 at Q 0.4, a first third
+of 41 and 36, ways gone by an eighth of a life 0.79 and 0.80; the explorer in those lands eats
+302 with a first third of 81 and 0.82 of the ways gone. A first reading, for the exam to check:
+it gets about as fast as the explorer and eats half as much in its first third. What it has
+gone once it does not yet know well enough to think with.
+
+**Operations.** At 21:40 the desktop ran short of memory (another job was running there) and
+the harness stopped my four background commands: two chains of the unlearning look, the doubter
+sweep (four of nine done) and a loop that waited on the VM. Nothing was lost but time; what was
+stopped went to the VM's queue. METHOD, once more: nothing heavy and nothing that waits on the
+desktop. A 256-cell life at side 8 is 40 seconds on the desktop and four minutes on the loaded
+VM, and it still belongs on the VM.
+
+**Running on the VM** (queues `out/jobs6.txt`, `out/jobs7.txt`, logs `out/jobs/`):
+`b13-*` side 12 at 1024 cells; `f1-reborn-m512-s*` the brain born again at the change;
+`f2-unlearn-s*` the walks that write and undo a way; `f3-*` the doubter where nothing changes
+and at shift 0.25; `p6h-*` the pilot; `h6-s8-q0.4-*`, `h6-s12-m512-q0.4-*`, `h6-maze-q0.4-*`,
+`h6-s8-q0.3-*`, `h6-s8-q0.5-*` the exam of step 6h. Collect: `infra/dev/vm.sh pull
+runs/tissue/hold`, and the yardsticks by `scp nomos:nomos-engine/runs/tissue/world8*doubt*.json
+runs/tissue/`.

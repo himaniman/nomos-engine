@@ -2386,6 +2386,23 @@ born again. Side 8, the exam's lands, 16 lives.
   / 48.7 meals in that half): born again it eats at least as much, on four lineages of five.
   The old map is worth nothing to it, or less.
 
+**Outcome for the yardsticks (2026-11-17; `runs/tissue/world8.shift0.5.reborn.yardsticks.json`;
+the brain's five runs are on the VM, `out/jobs/f1-reborn-m512-s*`).**
+
+| side 8, shift 0.5; meals in the half of a life after the change | kept its memory | born again | the land not changed |
+|---|---|---|---|
+| `perfect` | 74.2 | 39.1 | 136.8 |
+| `seeker` | 69.7 | 38.9 | 158.7 |
+| `explorer` | 71.6 | 140.1 | 170.6 |
+| born knowing: the old land / the land as it now is | 88.4 | 182.9 | 189.1 |
+
+- Both met: `perfect` born again eats half of what it eats with its table kept; `explorer`
+  born again eats twice as much (140 against 72).
+- The land after the change is as rich as before: one born knowing it as it now is eats 183 in
+  that half, against 189 where nothing changed. So every memory loses more than half of what
+  is there to eat, and the one that seeks loses it to its own table: to a body that wants to
+  know, what it knew of the old land is worth less than nothing (minus 68 meals).
+
 ### Forgetting, step 2: how many walks write a way, how many undo one. Predictions before the run
 
 `python -m tissue.unlearn` (a look, no exam): a life in a land that changes at its half; every
@@ -2416,6 +2433,22 @@ other lands (T 640, shift 0.5: a last third of 114 against the explorer's 73):
 - the land that does not change, T 640: a life at least 281 (0.9 of the explorer's 312):
   doubt costs little where nothing changes.
 - a guess, no bar: the shortest T is best after a change and worst without one.
+
+**Outcome, in part (2026-11-17; `runs/tissue/world8*.yardsticks.doubt*.json`; the land not
+changed at T 640 and 1280 and shift 0.25 are on the VM, `out/jobs/f3-*`: the desktop was short
+of memory and the runs there were stopped).**
+
+| side 8, meals a life (by third) | `explorer` | `doubter`, T 320 | T 640 | T 1280 |
+|---|---|---|---|---|
+| shift 0.5 | 212.8 (83 / 70 / 60) | 235.6 (71 / 73 / 92) | 275.3 (83 / 88 / 105) | 269.3 (83 / 81 / 105) |
+| the land not changed | 311.8 (83 / 114 / 115) | 251.0 (71 / 95 / 85) | | |
+
+- **Shift 0.5, T 640: met**, a last third of 105 (98 asked) where the explorer that never
+  doubts eats 60 and the same explorer in a land that never changed 115. Doubt and the wish to
+  know together take a land half moved almost whole.
+- The guess was wrong in its first half: the shortest span is the worst after a change as
+  well (92 in the last third against 105), and it costs a fifth of a life where nothing
+  changes (251 against 312). A way has to be held for longer than it takes to come by it again.
 
 ## Where the world line stands (2026-11-17), for whoever decides the next step
 

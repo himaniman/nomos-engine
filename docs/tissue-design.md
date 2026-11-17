@@ -2322,6 +2322,26 @@ yardsticks came out the same to the digit in all nine).**
   so that it is sought again. That is forgetting in the plain sense, and it is where the first
   two roads meet (a yardstick for it first, when that road is taken).
 
+### Step 6h: the brain wants to know. Pilot, then bars written before the run
+
+`--explore Q` (BY HAND, `Mind.toward` in `tissue/world.py`): a thought that finds no road to
+the wanted look no longer ends in the dice. Of the copies it made, the nearest one that spoke
+of its room more quietly than Q times how loud the brain says the room it stands in marks a
+way the brain does not know; the body takes the first way of the road to it, and with a road
+kept it walks that road with no new thought. Nothing is added to the thought itself: the same
+copies on the same wires, read once more for how sure they are. The will is given a second
+want. A step toward what is not known is not counted as a plan (`sought` counts it).
+
+What the brain has for "not known" is weaker than a table's. A look (lineages 0 and 4, 256
+cells, side 8, the exam's lands, copies followed along the true land): the brain says the room
+it stands in at 7.0-7.3 (the mean size of a bit), a copy in the dark says a way the body has
+gone at 3.8-4.8 and one it has never gone at 2.0-2.5: half as loud, not a whisper. (The 0.0-0.6
+that the records hold as `loud_never` is a mean over lives most of which had no way never gone
+left.) Under 0.4 of the brain's own loudness fall 0.07-0.14 of the ways gone and 0.67-0.86 of
+those never gone; under 0.5, 0.24-0.34 and 0.89-1.00. A way gone once is said right on 0.81
+of the askings (lineage 4) and louder with every walk, so a false "not known" mends itself by
+being walked.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it
@@ -2338,6 +2358,37 @@ born again. Side 8, the exam's lands, 16 lives.
 - The brain (512 cells, a road kept, 4096 rooms; kept its wires, B14: 54.7 / 60.8 / 48.6 / 46.5
   / 48.7 meals in that half): born again it eats at least as much, on four lineages of five.
   The old map is worth nothing to it, or less.
+
+### Forgetting, step 2: how many walks write a way, how many undo one. Predictions before the run
+
+`python -m tissue.unlearn` (a look, no exam): a life in a land that changes at its half; every
+40 ticks the examiner asks a copy carried into every room what lies by each way, and the ways
+are sorted by what the change did to them (closed, opened, a way still, a wall still) and by
+the walks since (before the change: since birth). Side 8, shift 0.5, 256 cells, a road kept,
+4096 rooms, the exam's lands, 8 lives, five lineages. Written after one pilot life on another
+land (lineage 0), so these are not blind:
+
+- Writing: a way gone once since birth is said right on more than half of the askings, gone
+  twice on 0.9 or more, on four lineages.
+- Undoing takes more walks than writing: a way that closed, gone once since the change, is
+  said right (the room the body stays in) on less than half; 0.9 is reached at 3-4 walks or
+  later, on four lineages.
+- A wall that opened: the brain goes more than half of them by the end of the life, on four
+  lineages (a table goes none: it holds them for walls).
+
+### Forgetting, step 3: a yardstick that doubts. Predictions before the run
+
+`doubter` (`--yardsticks --doubt T`): an `explorer` whose table no longer holds a way it has
+not gone for T ticks. Such a way is a way never gone again, and its will seeks it when it has
+no road to the fruit. Nothing tells it that the land has changed. T at 320, 640 and 1280 ticks
+(a life at side 8 is 2560), the exam's lands, 16 lives. Written after a look at four lives in
+other lands (T 640, shift 0.5: a last third of 114 against the explorer's 73):
+
+- shift 0.5, T 640: the last third at least 98 (0.85 of the explorer's last third in the
+  land that does not change, 115; the explorer that never doubts: 60).
+- the land that does not change, T 640: a life at least 281 (0.9 of the explorer's 312):
+  doubt costs little where nothing changes.
+- a guess, no bar: the shortest T is best after a change and worst without one.
 
 ## Where the world line stands (2026-11-17), for whoever decides the next step
 

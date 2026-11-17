@@ -15,7 +15,8 @@ Bottom row: where the body went in the first third of the life and in the last, 
 
 `--film`: the same life as a film, a frame a tick: its first ticks, then its last. The body,
 the fruit, where it has just been, and in orange the road it has thought of on that tick
-(no orange: the thought found none, and the step is a way at random).
+(no orange: the thought found none, and the step is a way at random; with `--explore`, in
+green the road to the nearest way it does not know).
 
 Nothing is measured here that the exam does not measure better; it is a thing to look at.
 """
@@ -33,8 +34,10 @@ from tissue.look import AXIS, DOTS, INK, INK2, MUTED, PLANE, PLUS, SURFACE, WRON
 from tissue.train import load
 
 NAMES = {"oracle": "born knowing every way", "thinks": "the brain", "perfect": "a perfect memory",
-         "blind": "never a plan", "seeker": "perfect, trying ways never gone"}
-SEEK = (150, 200, 120)                          # the seeker's line
+         "blind": "never a plan", "seeker": "perfect, trying ways never gone",
+         "explorer": "perfect, seeking the nearest way never gone"}
+SEEK = (150, 200, 120)                          # the seeker's line, and a road to a way not known
+FAR = (196, 160, 235)                           # the explorer's line
 
 
 def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_000, **think) -> dict:
@@ -58,7 +61,7 @@ def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_0
         says = mind.atlas(looks)
         rec["maps"][t] = {"gone": gone.clone(), "right": ((says > 0) == (looks[nxt] > 0)).all(-1)}
 
-    rec["film"] = []                            # per tick: (room, fruit, the road thought of)
+    rec["film"] = []                            # per tick: (room, fruit, the road thought of, the road to a way not known)
     plain = mind.think
 
     def thinking(wanted, g, trace=None):        # the same thought, its copies kept for the film
@@ -70,7 +73,8 @@ def record(path: str, shape: world.Land, m: int, life: int = 0, seed: int = 90_0
     mind.think = thinking
 
     def watch(t, room, fruit, way, planned):
-        rec["film"].append((room, fruit, road(rec["last"], room, nxt) if planned else []))
+        aim = [] if planned else road([(0, None, mind.aim, None)], room, nxt) if mind.aim else []
+        rec["film"].append((room, fruit, road(rec["last"], room, nxt) if planned else [], aim))
         if t in (ticks // 8, ticks // 3):
             know(t)
         fresh = any(hops for hops, *_ in rec["last"])          # a thought thought now, not a road kept
@@ -188,9 +192,9 @@ def draw(rec: dict, name: str, cells: int) -> Image.Image:
         if k:
             d.line([x, y0, x, y0 + ch], fill=AXIS, width=1)
     d.text((x0 + cw / 2 - 12, y0 + ch + 26), "tick", font=f_text, fill=MUTED)
-    inks = {"oracle": MUTED, "thinks": PLUS, "perfect": INK2, "blind": MUTED, "seeker": SEEK}
+    inks = {"oracle": MUTED, "thinks": PLUS, "perfect": INK2, "blind": MUTED, "seeker": SEEK, "explorer": FAR}
     ends = []
-    for arm in ("oracle", "seeker", "perfect", "blind", "thinks"):
+    for arm in ("oracle", "explorer", "seeker", "perfect", "blind", "thinks"):
         meals = rec["meals"][arm]
         pts = [(x0, y0 + ch)] + [(x0 + cw * t / ticks, y0 + ch - ch * (i + 1) / most) for i, t in enumerate(meals)]
         pts.append((x0 + cw, pts[-1][1]))
@@ -229,23 +233,27 @@ def film(rec: dict, name: str, cells: int, first: int = 140, last: int = 140, ta
     meals, frames = rec["meals"]["thinks"], []
     for part, span in (("newborn", range(0, min(first, ticks))), ("grown", range(max(0, ticks - last), ticks))):
         for t in span:
-            room, fruit, way = rec["film"][t]
+            room, fruit, way, aim = rec["film"][t]
             img = base.copy()
             d = ImageDraw.Draw(img, "RGBA")
             d.text((pad, 14), f"{name}, {cells} cells: {part}", font=f_head, fill=INK)
             d.text((pad, 38), f"tick {t}   meals {sum(1 for m in meals if m <= t)}   "
-                              + ("a road thought of" if way else "no road: a way at random"), font=f_text, fill=MUTED)
-            went = [r for r, _, _ in rec["film"][max(span[0], t - tail):t + 1]]
+                              + ("a road thought of" if way else "no road: toward a way it does not know" if aim
+                                 else "no road: a way at random"), font=f_text, fill=MUTED)
+            went = [r for r, *_ in rec["film"][max(span[0], t - tail):t + 1]]
             for i, (a, b) in enumerate(zip(went, went[1:])):
                 if a != b:
                     d.line([centre(a), centre(b)], fill=PLUS + (40 + 200 * i // max(1, len(went) - 1),), width=3)
             if way:
                 d.line([centre(r) for r in way], fill=DOTS + (200,), width=3)
+            if aim:
+                d.line([centre(r) for r in aim], fill=SEEK + (200,), width=3)
             x, y = centre(fruit)
             d.ellipse([x - 7, y - 7, x + 7, y + 7], fill=DOTS)
             x, y = centre(room)
             d.ellipse([x - 8, y - 8, x + 8, y + 8], fill=INK)
-            d.text((pad, top + side * cs + 12), "white: the body   orange: the fruit, and the road in its head",
+            d.text((pad, top + side * cs + 12), "white: the body   orange: the fruit, and the road in its head"
+                   + ("   green: toward the unknown" if any(a for *_, a in rec["film"]) else ""),
                    font=f_text, fill=MUTED)
             frames.append(img.convert("P", palette=Image.ADAPTIVE, colors=32))
         frames.extend([frames[-1]] * 6)         # a pause between the parts
@@ -264,13 +272,15 @@ def main() -> None:
     p.add_argument("--budget", type=int, default=256, help="how many rooms a thought may think of")
     p.add_argument("--curious", type=float, default=0.0, help="by hand, see tissue.world")
     p.add_argument("--keep", action="store_true", help="by hand, see tissue.world")
+    p.add_argument("--explore", type=float, default=0.0, help="by hand, see tissue.world")
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     rec = record(a.genome, world.Land(a.side), a.cells, a.life, a.seed,
-                 budget=a.budget, curious=a.curious, keep=a.keep)
+                 budget=a.budget, curious=a.curious, keep=a.keep, explore=a.explore)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    name = os.path.basename(a.genome).rsplit(".", 1)[0] + (", a road kept" if a.keep else "")
+    name = (os.path.basename(a.genome).rsplit(".", 1)[0] + (", a road kept" if a.keep else "")
+            + (", seeking what it does not know" if a.explore else ""))
     draw(rec, name, a.cells).save(a.out)
     if a.film:
         frames = film(rec, name, a.cells)

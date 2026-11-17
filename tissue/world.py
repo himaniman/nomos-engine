@@ -35,8 +35,9 @@ Yardsticks, the same will with another memory: `blind` never has a plan and walk
 random; `perfect` remembers every way it has ever gone and thinks on that; `seeker` is `perfect`
 that, with no road, takes a way it has never gone out of the room it is in, if there is
 one; `explorer` is `seeker` that, when there is none, goes by the ways it knows to the nearest
-room that has one; `oracle` was born knowing every way of the land. In one land the fruit goes
-from tree to tree in the same order whoever lives there.
+room that has one; `oracle` was born knowing every way of the land (`--doubt T` adds
+`doubter`, an `explorer` that no longer knows a way it has not gone for T ticks). In one land
+the fruit goes from tree to tree in the same order whoever lives there.
 
 Per life: meals; meals in each third of it; and per TRIP (from one meal to the next) the
 shortest road and the steps taken.
@@ -197,12 +198,15 @@ class Table(Blind):
     """A perfect memory of every way gone: (look, way) -> look. With `whole` it was born
     knowing every way of the land. `curious`: with no road it takes a way it has never gone
     out of the room it is in; `far`: and when that room has none, the first way of the
-    shortest road it knows to a room that has one."""
+    shortest road it knows to a room that has one. `doubt`: a way it has not gone for this
+    many ticks it no longer knows (0: it never forgets): a memory that doubts what it has
+    not met for long."""
 
-    def __init__(self, whole: tuple | None = None, curious: bool = False, far: bool = False):
+    def __init__(self, whole: tuple | None = None, curious: bool = False, far: bool = False, doubt: int = 0):
         self.map: dict = {}
         self.at = None
         self.curious, self.far = curious, far
+        self.doubt, self.clock, self.met = doubt, 0, {}     # met: (look, way) -> the tick it was last gone
         if whole:
             looks, nxt = whole
             ks = keys(looks)
@@ -212,6 +216,11 @@ class Table(Blind):
         now = key(look)
         if way >= 0 and self.at is not None:
             self.map[(self.at, way)] = now
+            if self.doubt:
+                self.clock += 1
+                self.met[(self.at, way)] = self.clock
+                for old in [k for k, t in self.met.items() if self.clock - t >= self.doubt]:
+                    del self.met[old], self.map[old]
         self.at = now
 
     def think(self, wanted, gen, trace=None):
@@ -295,6 +304,7 @@ class Mind(Blind):
         self.keep, self.road, self.goal, self.due = keep, [], None, None
         self.explore, self.lead, self.roam = explore, None, False   # roam: the road in hand leads to a way not known
         self.sought = 0                         # steps taken toward a way it does not know
+        self.aim: tuple = ()                    # the ways of the road to it, this tick (for a picture)
         self.thoughts = 0                       # thoughts thought afresh, from where the brain is
         self.state = brain.born(1, gen)
         self.body = fork.Dendrites(brain, self.state, 4, numb=numb)
@@ -330,13 +340,13 @@ class Mind(Blind):
         where the brain is (the examiner's: a copy carried somewhere)."""
         act, here = root or (self.state[0], self.before[0])
         if root is None:
-            self.lead = None
+            self.lead, self.aim = None, ()
             if self.keep:                       # the road in hand holds: its next way, and no thought
                 goal = key(wanted)
                 if self.road and goal == self.goal and key(here) == self.due:
                     (way, self.due), self.road = self.road[0], self.road[1:]
                     if self.roam:               # a road to a way not known is no plan: `wonder` takes it
-                        self.lead = way
+                        self.lead, self.aim = way, (way,) + tuple(w for w, _ in self.road)
                         return None
                     if trace is not None:
                         trace.append((0, None, (way,) + tuple(w for w, _ in self.road), None))
@@ -407,7 +417,7 @@ class Mind(Blind):
         does not know, the first way of the road to it is what `wonder` will take, and with
         `keep` the rest of that road is kept. Always None: it is not a plan."""
         if unknown and root is None:
-            self.lead = unknown[0][0]
+            self.lead, self.aim = unknown[0][0], tuple(w for w, _ in unknown)
             if self.keep:
                 self.due, self.road, self.roam = unknown[0][1], unknown[1:], True
         return None
@@ -491,9 +501,9 @@ def body_for(arm: str, model, m: int, looks, nxt, gen, **think):
     """The memory an arm lives with."""
     if arm == "blind":
         return Blind()
-    if arm in ("perfect", "seeker", "explorer", "oracle"):
-        return Table((looks, nxt) if arm == "oracle" else None, curious=arm in ("seeker", "explorer"),
-                     far=arm == "explorer")
+    if arm in ("perfect", "seeker", "explorer", "doubter", "oracle"):
+        return Table((looks, nxt) if arm == "oracle" else None, curious=arm in ("seeker", "explorer", "doubter"),
+                     far=arm in ("explorer", "doubter"), doubt=think.get("doubt", 0) if arm == "doubter" else 0)
     return Mind(model.grow(m), gen, numb=arm == "numb", **think)
 
 
@@ -670,6 +680,9 @@ def main() -> None:
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--arm", choices=ARMS, default="thinks")
     p.add_argument("--yardsticks", action="store_true", help="blind, perfect and oracle in the same lands")
+    p.add_argument("--doubt", type=int, default=0,
+                   help="with --yardsticks, one more: `doubter`, an explorer that no longer knows a way"
+                        " it has not gone for this many ticks")
     p.add_argument("--why", action="store_true",
                    help="a look, no exam: after each life, why a thought to a tree finds a road or does not")
     p.add_argument("--depth", type=int, default=24, help="how many hops a thought may go")
@@ -724,9 +737,12 @@ def main() -> None:
         return
     if a.yardsticks:
         res = {arm: examine(arm, shape, a.lives, seed=a.seed) for arm in YARDSTICKS}
+        if a.doubt:                             # one more, in a file of its own: an explorer that forgets
+            res["doubter"] = examine("doubter", shape, a.lives, seed=a.seed, doubt=a.doubt)
         for arm, row in res.items():
             print(show(arm, row))
-        with open(f"runs/tissue/world{shape.side}{ground}.yardsticks{pilot}.json", "w") as f:
+        with open(f"runs/tissue/world{shape.side}{ground}.yardsticks"
+                  + (f".doubt{a.doubt}" if a.doubt else "") + f"{pilot}.json", "w") as f:
             json.dump(res, f)
     tag = (f".world{shape.side}{ground}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")

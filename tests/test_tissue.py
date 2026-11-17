@@ -1057,6 +1057,30 @@ def test_a_land_that_changes_in_mid_life_still_hangs_together_and_keeps_its_coun
 
 
 
+@torch.no_grad()
+def test_a_look_at_unlearning_sorts_the_ways_by_what_the_change_did_and_by_the_walks_since(tmp_path):
+    from tissue import unlearn, world
+    from tissue.train import make
+    nxt = torch.tensor([[0, 1, 0, 0], [1, 1, 1, 0]])        # two rooms, a way between them
+    end = torch.tensor([[0, 0, 0, 0], [1, 1, 1, 1]])        # the way is walled up
+    assert unlearn.kinds(nxt, end).tolist() == [[3, 0, 3, 3], [3, 3, 3, 0]]
+    assert unlearn.kinds(end, nxt).tolist() == [[3, 1, 3, 3], [3, 3, 3, 1]] and unlearn.kinds(nxt, nxt)[0, 1] == 2
+    torch.manual_seed(0)
+    genome, _ = make("stream")
+    path = str(tmp_path / "blank.pt")
+    torch.save({"arm": "stream", "genome": genome.state_dict()}, path)
+    shape = world.Land(side=3, ticks=80, shift=0.5)
+    res = unlearn.look(path, shape, 16, lives=2, every=10, budget=16, keep=True)
+    assert set(res["ever"]) == set(unlearn.KINDS) and all(0 <= v <= 1 for v in res["ever"].values())
+    assert set(res["before"]) <= {"way", "wall", "closed", "opened"} and res["after"]
+    cells = [c for phase in ("before", "after") for row in res[phase].values() for c in row.values()]
+    assert all(c["n"] > 0 and 0 <= c["right"] <= 1 and 0 <= c["before"] <= 1 for c in cells)
+    # 2 lives, asked at 7 ticks of 80 (3 before the change, 4 after it), 36 ways each time
+    assert sum(c["n"] for c in cells) == 2 * 7 * 36
+    assert unlearn.look(path, shape, 16, lives=2, every=10, budget=16, keep=True) == res     # a pure function
+    assert "ways of each kind gone" in unlearn.show("blank 16", res)
+
+
 def test_the_ledger_reads_a_record_name_back_into_its_land_and_switches():
     from tissue import ledger
     row = ledger.parse("runs/tissue/hold/hold-s3.world8.walls0.5.shift0.25.thinks.slack1.budget4096.curious0.7.keep.m512.json")

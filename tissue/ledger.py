@@ -41,6 +41,7 @@ def parse(name: str) -> dict | None:
     for key in ("budget", "slack", "mumble", "curious", "explore", "seed"):
         hit = re.search(rf"\.{key}{NUM}", switches)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
+    row["reborn"] = ".reborn" in ground         # a look: the body born again when the land changed
     row["imagery"] = ".imagery" in switches
     row["keep"] = bool(re.search(r"\.keep(?=\.|$)", switches))
     row["ground"] = ground

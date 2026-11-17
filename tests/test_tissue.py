@@ -1044,6 +1044,16 @@ def test_a_land_that_changes_in_mid_life_still_hangs_together_and_keeps_its_coun
     life = world.live(body, looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
     again = world.live(world.Table((looks, nxt)), looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
     assert life["meals"] == again["meals"] and len(life["meals"]) > 0
+    # born again at the change: the old body is left where it stood, the new one knows nothing of before
+    old = world.Table()
+    life = world.live(old, looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after), reborn=world.Table)
+    new = life["body"]
+    assert new is not old and len(old.map) > 0 and int(life["walked"].sum()) == 40
+    assert len(new.map) <= 40 and all(v == world.key(looks[int(after[r, w])]) for r in range(25) for w in range(4)
+                                      for k, v in [((world.key(looks[r]), w), new.map.get((world.key(looks[r]), w)))]
+                                      if v is not None)             # all it knows is of the land as it is now
+    kept = world.live(world.Table(), looks, nxt, trees, start, 80, gen(3), fruits=5, later=(40, after))
+    assert kept["body"].map != new.map and [t for t in kept["meals"] if t < 40] == [t for t in life["meals"] if t < 40]
 
 
 

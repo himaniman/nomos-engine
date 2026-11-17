@@ -2322,6 +2322,23 @@ yardsticks came out the same to the digit in all nine).**
   so that it is sought again. That is forgetting in the plain sense, and it is where the first
   two roads meet (a yardstick for it first, when that road is taken).
 
+### Forgetting, step 1: what the old map is worth. Predictions before the runs
+
+`--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it
+stands, the same make of body with its memory empty (a brain: new wires; a table: no entries;
+one born knowing: knowing the land as it now is, the ceiling after a change). What is compared
+is the half of a life after the change: the body that kept its memory against the same body
+born again. Side 8, the exam's lands, 16 lives.
+
+- Yardsticks first. `perfect` born again eats less in that half than `perfect` that kept its
+  table (a table corrected a walk at a time is worth more than none to a body that explores by
+  the dice). `explorer` born again eats MORE, at least 1.5 times: a body that seeks would learn
+  the land as it is now within a few hundred ticks, and the table it kept holds walls it will
+  never doubt.
+- The brain (512 cells, a road kept, 4096 rooms; kept its wires, B14: 54.7 / 60.8 / 48.6 / 46.5
+  / 48.7 meals in that half): born again it eats at least as much, on four lineages of five.
+  The old map is worth nothing to it, or less.
+
 ## Where the world line stands (2026-11-17), for whoever decides the next step
 
 **What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract

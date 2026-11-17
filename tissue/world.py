@@ -67,6 +67,7 @@ class Land:
     trees: int = 0          # 0: one to every six rooms
     ticks: int = 0          # the length of a life; 0: forty ticks to every room
     shift: float = 0.0      # at the half of a life this share of the walls opens and as many open places close
+    reborn: bool = False    # a look: at that change the body is born again, its memory empty
 
     @property
     def rooms(self) -> int:
@@ -440,23 +441,31 @@ class Mind(Blind):
 
 
 def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, start: int, ticks: int,
-         gen: torch.Generator, fruits: int = 0, watch=None, later: tuple | None = None) -> dict:
+         gen: torch.Generator, fruits: int = 0, watch=None, later: tuple | None = None, reborn=None) -> dict:
     """One life. {"meals": [the tick of each], "trips": [(shortest road, steps taken, the tick
     it ended)], "planned": ticks on which a thought found a road, "walked": (rooms, 4) how
     often each way out of each room was gone, "early": the share of ways gone by an eighth of
-    the life, "thoughts": thoughts thought afresh}. `fruits`: the seed of the order in which the
+    the life, "thoughts": thoughts thought afresh, "sought": steps toward a way not known,
+    "body": the body at the end}. `fruits`: the seed of the order in which the
     trees bear. `watch(tick, room, fruit, way, planned)` is called before every step. `later`: (a tick,
-    the land's ways from that tick on): the land changes in mid-life."""
+    the land's ways from that tick on): the land changes in mid-life. `reborn`: at that tick
+    the body is born again: this is called and gives the new one, where the old one stands,
+    and the ways gone are counted afresh."""
     far = roads(nxt)
     order = torch.Generator().manual_seed(fruits)       # the land's own dice, not the body's
     other = lambda room: int(trees[trees != room][torch.randint(int((trees != room).sum()), (1,), generator=order)])
     room, fruit, since = start, other(start), 0
     trip = int(far[room, fruit])
     out = {"meals": [], "trips": [], "planned": 0, "walked": torch.zeros(len(looks), 4)}
+    gone = {"thoughts": 0, "sought": 0}                 # of a body that was, before it was born again
     mind.see(looks[room], -1)
     for t in range(ticks):
         if later is not None and t == later[0]:         # the land changes under the body's feet
             nxt, far = later[1], roads(later[1])
+            if reborn is not None:
+                gone = {k: n + getattr(mind, k, 0) for k, n in gone.items()}
+                mind, out["walked"] = reborn(), torch.zeros(len(looks), 4)
+                mind.see(looks[room], -1)
         if room == fruit:                       # it eats, and another tree bears
             out["meals"].append(t)
             out["trips"].append((trip, t - since, t))
@@ -472,8 +481,9 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
         out["walked"][room, way] += 1
         room = int(nxt[room, way])
         mind.see(looks[room], way)
-    out["thoughts"] = getattr(mind, "thoughts", 0)
-    out["sought"] = getattr(mind, "sought", 0)
+    out["thoughts"] = gone["thoughts"] + getattr(mind, "thoughts", 0)
+    out["sought"] = gone["sought"] + getattr(mind, "sought", 0)
+    out["body"] = mind
     return out
 
 
@@ -618,7 +628,10 @@ def examine(arm: str, shape: Land, lives: int = 16, path: str | None = None, m: 
             later = (shape.life // 2, end)
         with torch.no_grad():
             mind = body_for(arm, model, m, looks, nxt, gen, **think)
-            life = live(mind, looks, nxt, trees, start, shape.life, gen, fruits=seed + i, later=later)
+            # born again at the change: the same make of body, its memory empty (one born knowing: the new land)
+            again = (lambda: body_for(arm, model, m, looks, end, gen, **think)) if later and shape.reborn else None
+            life = live(mind, looks, nxt, trees, start, shape.life, gen, fruits=seed + i, later=later, reborn=again)
+            mind = life.pop("body")
             if arm in ARMS:
                 life["map"] = known_map(mind, looks, end, life["walked"])
         rows.append(life)
@@ -651,6 +664,8 @@ def main() -> None:
     p.add_argument("--ticks", type=int, default=0, help="the length of a life; 0: forty to a room")
     p.add_argument("--shift", type=float, default=0.0,
                    help="at the half of a life this share of the walls opens and as many open places close")
+    p.add_argument("--reborn", action="store_true",
+                   help="a look, with --shift: at the change the body is born again, its memory empty")
     p.add_argument("--sizes", type=int, nargs="*", default=[256])
     p.add_argument("--lives", type=int, default=16)
     p.add_argument("--arm", choices=ARMS, default="thinks")
@@ -675,13 +690,16 @@ def main() -> None:
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift)
+    if a.reborn and not a.shift:
+        p.error("--reborn is a look at a land that changes: give --shift")
+    shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift, a.reborn)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
              "curious": a.curious, "keep": a.keep, "explore": a.explore}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
-              + (f".ticks{a.ticks}" if a.ticks else "") + (f".shift{a.shift:g}" if a.shift else ""))
+              + (f".ticks{a.ticks}" if a.ticks else "") + (f".shift{a.shift:g}" if a.shift else "")
+              + (".reborn" if a.reborn else ""))
     print(f"{shape.side}x{shape.side} rooms ({4 * shape.rooms} ways), {shape.n_trees} trees,"
           f" {shape.life} ticks a life, {a.lives} lives")
     if a.why:

@@ -2184,8 +2184,7 @@ Queued on the VM with `infra/dev/queue.sh` (side 12 at 1024 cells is a day of ru
   four lineages, as the knee says for 256 ways; if it is more, the knee is about how hard the
   land is, not how many ways it has.
 
-**Outcome, in part (2026-11-17, 21:00; B13 is still running: five runs seven hours into about
-a day, logs `out/jobs/b13-*` on the VM, records will be `hold-s*.world12.*.keep.m1024.json`).**
+**Outcome (B14 and B15 on 2026-11-17; B13, which ran for 11 to 16 hours, on the 18th: below).**
 
 | side 8, a road kept, 4096 rooms; meals in the last third (all after the change) | lineage 0 | 1 | 2 | 3 | 4 | `perfect` | `seeker` |
 |---|---|---|---|---|---|---|---|
@@ -2248,6 +2247,29 @@ A look the records now allow (`meal_ticks`), not a bar: meals per 160 ticks, mea
   holding them (ways gone by an eighth of a life: 0.31-0.37 at both sizes).
 - METHOD: look at the spread over lives in a land before setting a bar on a ratio there, and
   compare sizes life by life on the same lands.
+
+**B13, collected 2026-11-18** (`hold-s*.world12.thinks.budget4096.keep.m1024.json`; 11 to 16
+hours a run).
+
+| side 12 (576 ways), a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| 256 cells | 153.4 | 72.4 | 133.5 | 49.0 | 26.7 | 517 | 601 |
+| 512 cells | 333.6 | 274.2 | 297.9 | 192.4 | 154.9 | | |
+| 1024 cells (B13) | 356.2 | 352.8 | 351.2 | 263.8 | 211.8 | | |
+| 1024 over 512 | 1.07 | 1.29 | 1.18 | 1.37 | 1.37 | | |
+| 1024 less 512 and its error over the 16 lives | +23 +- 11 | +79 +- 6 | +53 +- 5 | +71 +- 9 | +57 +- 12 | | |
+| the first third: 512 / 1024 cells | 21.1 / 18.0 | 13.5 / 17.9 | 15.5 / 22.7 | 6.7 / 7.1 | 8.7 / 14.6 | 129 | 201 |
+| the last third: 512 / 1024 cells | 175.1 / 183.3 | 155.1 / 183.2 | 159.3 / 166.2 | 140.3 / 174.7 | 59.2 / 88.7 | 193 | 199 |
+| trips of 9+ steps, straight: 512 / 1024 | 0.60 / 0.71 | 0.47 / 0.68 | 0.51 / 0.61 | 0.44 / 0.60 | 0.24 / 0.40 | | |
+
+- **B13: missed.** In the band (1.05-1.30) on three lineages; lineages 3 and 4 are above it
+  (1.37). Past the land's ways growth pays more here than it did at sides 8 and 10 (x1.04-1.21):
+  the knee is softer in a bigger land, and every difference but lineage 0's stands far clear of
+  its error.
+- All of the gain is in the later thirds. The first third hardly moves (7-23 meals at 1024
+  cells, 7-21 at 512): more cells do not make a young brain know its land sooner. In its last
+  third a brain of 1024 cells eats 0.83-0.92 of what one born knowing the land eats, on four
+  lineages.
 
 ## After the breadth: the order chosen with the user (2026-11-17, evening)
 
@@ -2369,6 +2391,65 @@ Prediction: H1-H3 and H6 met; H5 met; H4 is the doubt. A way the brain cannot ho
 however often it is walked, and 256 cells for 256 ways is at the knee: the body may go back to
 such a way for ever, a lock of a new kind.
 
+**Outcome (2026-11-18; records `runs/tissue/hold/hold-s*.world*.explore0.*.keep*.json`, the
+pilot's under `.seed1`).**
+
+| side 8, 256 cells, a road kept, 4096 rooms | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| a road kept (6e), meals a life | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 | 312 | 380 |
+| and seeking, Q 0.4 | 263.9 | 236.1 | 245.4 | 223.5 | 177.6 | | |
+| over 6e | 1.09 | 1.11 | 1.14 | 1.16 | 1.11 | | |
+| the first third: 6e / seeking | 23.7 / 40.6 | 18.2 / 36.6 | 19.8 / 42.6 | 15.2 / 21.6 | 19.4 / 35.1 | 83 | 127 |
+| the second third | 106.0 / 110.7 | 89.9 / 95.8 | 94.6 / 102.6 | 73.5 / 91.6 | 78.2 / 88.2 | 114 | 125 |
+| the last third | 111.7 / 112.6 | 103.8 / 103.8 | 100.0 / 100.1 | 104.7 / 110.2 | 62.6 / 54.2 | 115 | 127 |
+| ways gone by an eighth of a life | 0.57 / 0.79 | 0.55 / 0.79 | 0.58 / 0.79 | 0.56 / 0.71 | 0.54 / 0.76 | 0.82 | |
+| steps toward a way not known, of all ticks | 0.07 | 0.08 | 0.08 | 0.10 | 0.11 | | |
+| lives of 16 that eat more than in 6e | 14 | 16 | 16 | 14 | 13 | | |
+| the dial, meals at Q 0.3 / 0.5 | 264.4 / 265.1 | 231.2 / 234.4 | 247.5 / 240.9 | 226.2 / 218.5 | 176.2 / 173.5 | | |
+
+| the bigger land and the maze, Q 0.4 | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| side 12, 512 cells: a road kept (B10) | 333.6 | 274.2 | 297.9 | 192.4 | 154.9 | 517 | 601 |
+| and seeking | 356.2 | 297.4 | 320.9 | 224.2 | 173.8 | | |
+| over B10 | 1.07 | 1.08 | 1.08 | 1.17 | 1.12 | | |
+| the first third: B10 / seeking | 21.1 / 29.1 | 13.5 / 22.1 | 15.5 / 25.1 | 6.7 / 9.4 | 8.7 / 15.4 | 129 | 201 |
+| ways gone by an eighth of a life | 0.61 / 0.74 | 0.57 / 0.73 | 0.58 / 0.77 | 0.51 / 0.66 | 0.52 / 0.69 | 0.87 | |
+| the maze, 256 cells: a road kept (B1) | 76.4 | 88.6 | 97.4 | 82.1 | 48.5 | 228 | 257 |
+| and seeking | 164.3 | 140.6 | 145.4 | 125.2 | 81.6 | | |
+| over B1 | 2.15 | 1.59 | 1.49 | 1.53 | 1.68 | | |
+| ways gone by an eighth of a life | 0.37 / 0.76 | 0.34 / 0.73 | 0.36 / 0.75 | 0.36 / 0.62 | 0.31 / 0.69 | 0.82 | |
+| lives of 16 that eat more than in B1 | 16 | 16 | 16 | 14 | 14 | | |
+| lives with 5 meals or fewer in the last third: B1 / seeking | 6 / 0 | 2 / 0 | 2 / 0 | 1 / 0 | 4 / 1 | | |
+
+- **H1: missed.** A first third of 40 on two lineages (40.6, 42.6); 36.6 and 35.1 on two more,
+  21.6 on lineage 3. That is x1.4-2.2 over 6e's and half the explorer's at best.
+- **H2: met**, x1.09-1.16, 1.10 on four (lineage 0 at 1.093); in every lineage 13-16 lives of
+  16 eat more.
+- **H3: met** on all five, 0.71-0.79 of the ways by an eighth of a life (the explorer 0.82).
+- **H4: met.** No life locked, at any Q, in any land. The doubt did not come true.
+- **H5: missed** on all five: x1.07-1.17 at side 12, where 1.25 was asked and the explorer is
+  x2.1 over `seeker`.
+- **H6: met**, x1.49-2.15, 1.5 on four (lineage 2 at 1.494). The lock of the maze is gone (7
+  lives of 80 had no meal in their last third, none now).
+- **The dial**: no difference between Q 0.3, 0.4 and 0.5 that 16 lives can show (each is best
+  on one or two lineages). The guess that 0.4 would stand out was wrong.
+- The pilot on other lands (8 lives, written after the bars): lineage 0 x1.09-1.10 (235 to
+  256-259), lineage 4 x1.12-1.18 (151 to 169-178), the same picture.
+
+**What it says.** The young brain now gets about its land nearly as fast as the explorer does
+(0.71-0.79 of the ways by an eighth of a life against 0.82; at side 12, 0.66-0.77 against 0.87)
+and in its first third eats at most half of what the explorer eats at side 8 (22-43 against
+83) and at most a quarter at side 12 (9-29 against 129). So walking is no longer what holds a
+young brain back. A
+table knows a way when it has gone it once. The brain does not: the look of the forgetting
+road (step 2 below) says a way gone once is said right on 0.37-0.61 of the askings and one gone
+twice on 0.80-0.93, so a road of five hops through ways gone once comes out right about once in
+twenty. And this will walks a way once and holds it for known. Where the dice could not find
+the ways at all, the maze, seeking alone is worth x1.5-2.2 and ends the lock; where they could,
+it is worth a tenth. In the last third of a life nothing has changed: it speeds the start.
+NEXT on this road: one walk must write a way (asked of the search, the cell's rule), or the
+will must walk a new way until it is known.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it
@@ -2403,6 +2484,26 @@ the brain's five runs are on the VM, `out/jobs/f1-reborn-m512-s*`).**
   is there to eat, and the one that seeks loses it to its own table: to a body that wants to
   know, what it knew of the old land is worth less than nothing (minus 68 meals).
 
+**Outcome for the brain (2026-11-18; `hold-s*.world8.shift0.5.reborn.*.m512.json`).**
+
+| 512 cells, side 8, shift 0.5, a road kept | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| meals in the half-life after the change: kept its wires (B14) | 54.7 | 60.8 | 48.6 | 46.5 | 48.7 |
+| born again | 55.4 | 58.4 | 68.5 | 42.2 | 53.3 |
+| born again over kept | 1.01 | 0.96 | 1.41 | 0.91 | 1.10 |
+| the difference and its error over the 16 lives | +1 +- 10 | -2 +- 9 | +20 +- 13 | -4 +- 8 | +5 +- 7 |
+| meals in the first 480 ticks after the change: kept / born again | 8.7 / 3.3 | 8.0 / 2.9 | 7.8 / 5.3 | 7.7 / 3.3 | 8.5 / 2.7 |
+| meals per 160 ticks at the end of the life: kept / born again | 13.9 / 15.1 | 14.9 / 16.3 | 11.0 / 16.5 | 11.2 / 13.0 | 10.1 / 16.4 |
+| lives with no meal in the last third: kept / born again | 2 / 0 | 0 / 0 | 2 / 2 | 2 / 0 | 1 / 0 |
+
+- **Missed by the letter** (born again eats at least as much on three lineages, four asked),
+  **true in what it says**: no lineage's difference stands clear of its error. All a brain
+  knew of a land is worth nothing to it once half of that land has moved.
+- It is worth something at first and costs later: with its wires kept the brain eats 8 meals
+  in the first 480 ticks where the newborn eats 3 to 5, and by the end of the life the one born
+  again eats more per tick on all five lineages (13-16.5 against 10-15) and 2 of its lives are
+  locked against 7. The old map is a start and then a weight.
+
 ### Forgetting, step 2: how many walks write a way, how many undo one. Predictions before the run
 
 `python -m tissue.unlearn` (a look, no exam): a life in a land that changes at its half; every
@@ -2420,6 +2521,32 @@ land (lineage 0), so these are not blind:
 - A wall that opened: the brain goes more than half of them by the end of the life, on four
   lineages (a table goes none: it holds them for walls).
 
+**Outcome (2026-11-18; run on the VM, `hold-s*.unlearn8.shift0.5.json`). The share of askings
+on which the brain says the room that lies by a way now, by the walks it has had:**
+
+| 256 cells, side 8, shift 0.5, 8 lives | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| a way, since birth: gone once / twice / 3-4 times | 0.54 / 0.92 / 0.98 | 0.53 / 0.93 / 0.98 | 0.61 / 0.93 / 0.98 | 0.37 / 0.80 / 0.93 | 0.51 / 0.87 / 0.97 |
+| a wall, since birth: once / twice | 0.71 / 0.94 | 0.77 / 0.95 | 0.80 / 0.96 | 0.72 / 0.91 | 0.79 / 0.95 |
+| a way that closed, since the change: 1 / 2 / 3-4 / 5-8 | 0.23 / 0.47 / 0.91 / 1.00 | 0.00 / 0.35 / 0.92 / 0.98 | 0.01 / 0.61 / 0.93 / 0.99 | 0.43 / 0.68 / 0.84 / 0.90 | 0.00 / 0.52 / 0.73 / 0.80 |
+| a wall that opened: 1 / 2 / 3-4 / 5-8 | 0.00 / 0.40 / 0.91 / 1.00 | 0.00 / 0.23 / 0.91 / 0.98 | 0.01 / 0.27 / 0.96 / 1.00 | 0.02 / 0.30 / 0.79 / 0.95 | 0.00 / 0.14 / 0.64 / 0.78 |
+| gone once since the change, still said as before: closed / opened | 0.44 / 0.65 | 0.73 / 0.63 | 0.61 / 0.58 | 0.09 / 0.61 | 0.56 / 0.60 |
+| not changed and not gone since the change, still right: a way / a wall | 0.96 / 0.89 | 0.97 / 0.92 | 0.91 / 0.88 | 0.83 / 0.84 | 0.90 / 0.87 |
+| walls that opened, gone by the end of the life | 0.75 | 0.77 | 0.68 | 0.83 | 0.85 |
+
+- **Writing: half met.** Gone once, a way is said right on more than half of the askings on
+  four lineages (0.51-0.61; lineage 3: 0.37); gone twice, on 0.9 on three, not four (0.80-0.93).
+  A wall is written faster than a way (0.71-0.80 at one bump).
+- **Undoing: met** on all five. One walk of a way that closed leaves the brain saying neither
+  (the new on 0.00-0.43, the old still on 0.09-0.73); 0.9 comes at 3-4 walks on three
+  lineages, at 5-8 on lineage 3, never on lineage 4.
+- **Walls that opened: met** on all five: the brain goes 0.68-0.85 of them, where a table goes
+  none. Its dice and its false roads do try a wall.
+- So undoing costs about one walk more than writing, not ten: the rule is not what makes the
+  brain slow after a change (B7). And what did not change stays: 0.83-0.97 of it is still said
+  right. What is slow is that every way, new or changed, wants two to four walks, and that
+  nothing sends the body to look.
+
 ### Forgetting, step 3: a yardstick that doubts. Predictions before the run
 
 `doubter` (`--yardsticks --doubt T`): an `explorer` whose table no longer holds a way it has
@@ -2434,23 +2561,27 @@ other lands (T 640, shift 0.5: a last third of 114 against the explorer's 73):
   doubt costs little where nothing changes.
 - a guess, no bar: the shortest T is best after a change and worst without one.
 
-**Outcome, in part (2026-11-17; `runs/tissue/world8*.yardsticks.doubt*.json`; the land not
-changed at T 640 and 1280 and shift 0.25 are on the VM, `out/jobs/f3-*`: the desktop was short
-of memory and the runs there were stopped).**
+**Outcome (2026-11-17 and 18; `runs/tissue/world8*.yardsticks.doubt*.json`; five of the nine
+were run on the VM after the desktop ran short of memory: the old yardsticks, run again there
+beside each `doubter`, come out meal for meal as on the desktop).**
 
 | side 8, meals a life (by third) | `explorer` | `doubter`, T 320 | T 640 | T 1280 |
 |---|---|---|---|---|
+| the land not changed | 311.8 (83 / 114 / 115) | 251.0 (71 / 95 / 85) | 307.9 (83 / 113 / 112) | 311.5 (83 / 114 / 114) |
+| shift 0.25 | 256.4 (83 / 89 / 85) | 229.0 (71 / 76 / 83) | 280.2 (83 / 95 / 103) | 275.9 (83 / 95 / 98) |
 | shift 0.5 | 212.8 (83 / 70 / 60) | 235.6 (71 / 73 / 92) | 275.3 (83 / 88 / 105) | 269.3 (83 / 81 / 105) |
-| the land not changed | 311.8 (83 / 114 / 115) | 251.0 (71 / 95 / 85) | | |
 
 - **Shift 0.5, T 640: met**, a last third of 105 (98 asked) where the explorer that never
   doubts eats 60 and the same explorer in a land that never changed 115. Doubt and the wish to
   know together take a land half moved almost whole.
+- **The land not changed, T 640: met**, 308 meals (281 asked) against 312: doubt at that span
+  costs one meal in a hundred where nothing changes. At T 640 a life is worth 308, 280 and 275
+  meals in the three lands: such a memory hardly feels that half its land moved.
 - The guess was wrong in its first half: the shortest span is the worst after a change as
   well (92 in the last third against 105), and it costs a fifth of a life where nothing
   changes (251 against 312). A way has to be held for longer than it takes to come by it again.
 
-## Where the world line stands (2026-11-17), for whoever decides the next step
+## Where the world line stands (2026-11-18), for whoever decides the next step
 
 **What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract
 exams of rung 1 (8-64 interneurons, chains and an unbroken stream), never on a world. Grown to
@@ -2463,7 +2594,10 @@ wires; it acts on the thought.
 much as a perfect memory of every way it has gone, or more, in every land asked (sides 6-12,
 mazes, open lands, 10 or 21 trees), and 0.4-0.7 of what a body born knowing the land eats. No
 lineage, no land has the lock of 6b any more (except with slack in the match). All of it with
-cells whose rule was never shown a world.
+cells whose rule was never shown a world. THE YARDSTICK since step 6g is `explorer`, a perfect
+memory that seeks the nearest way it has never gone: 0.81-0.89 of born-knowing in every land
+that does not change. Against it the brain, given the same wish (6h), stands at 0.57-0.85 at
+side 8, 0.34-0.69 at side 12 and 0.36-0.72 in the maze.
 
 **What was learned, in the order it was found** (each in the journal, 2026-11-12..17):
 1. The depth of a thought was bound by my limit of rooms (6b's look), and a wider thought
@@ -2473,35 +2607,58 @@ cells whose rule was never shown a world.
 2. The brain beats a perfect memory because its mistakes explore: a false road through a way
    never gone is walked toward the fruit, and by the end of a life it has gone every open way
    of its land, where a perfect memory leaves 7-21% never gone. Worth most in a maze (x2.4-4.9),
-   least in an open land.
+   least in an open land. (True of memories that do not seek; see 7.)
 3. What ends a thought carries weight: one bit of slack in the match and 70 lives of 80 lock.
 4. GROWTH PAYS, up to a knee: doubling the cells pays x1.2-5.8 while the brain is small for its
    land and x0.9-1.2 once it is not. The knee sits where cells are about one to two times the
    land's ways (side 6: 256 cells for 144 ways; side 8: 256 for 256; side 10: 512-1024 for 400;
-   side 12: above 512 for 576, 1024 running). Below the knee every lineage gains; the weakest
-   gains most. A maze of the same side does not move the knee as far as 16 lives can tell
+   side 12: 512 to 1024 cells for 576 ways still pays x1.07-1.37, B13: the knee is softer in a
+   bigger land). Below the knee every lineage gains; the weakest gains most. More cells do not
+   make a young brain know its land sooner: the gain is in the later thirds of a life. A maze of the same side does not move the knee as far as 16 lives can tell
    (B15: lives in a maze eat or starve, so a lineage's ratio there is known to 0.2-0.3).
 5. The brain unlearns slowly: a quarter of the walls moved at half-life it takes about as well
    as a perfect memory; half moved, it falls to 0.37-0.55 of its unchanged last third (perfect
    0.65) though its map is again mostly right by the end. More cells do not mend it (B14: 0.35-
    0.49 at 512 cells). The curve of a life says what it costs: right after the change the brain
    eats an eighth to a fifth of what it did, and it climbs back no faster than a newborn learns
-   a land. Nothing in the cell's rule was ever asked to forget.
+   a land. Nothing in the cell's rule was ever asked to forget. The looks of 2026-11-18 say
+   what this is made of: a brain born again at the change eats as much in the half-life after
+   it as one that kept its wires (the old map is a start and then a weight); undoing a way
+   takes three or four walks where writing one takes two, so the rule is slower by a walk and
+   not by ten; and no table does better (the explorer's last third: 60 of 115), because a table
+   never doubts a wall. A memory that DOUBTS, no longer knowing a way it has not gone for 640
+   ticks, and seeks, takes a land half moved almost whole (105 of 115) and pays one meal in a
+   hundred where nothing changes.
 6. Curiosity (with no road, the way the brain speaks most quietly of) helped when roads were
    rare (6c: x1.3) and adds 4-7% once a road is kept (B11). Imagery is mixed on every asking.
+7. WANTING TO KNOW is where the meals are. A grown brain in a land that does not change eats
+   0.85-0.91 of what one born knowing it eats; the gap is the first third of a life. A perfect
+   memory that goes to the nearest way it has never gone eats 0.81-0.89 of born-knowing from
+   birth (6g). The same wish in the brain (6h: a thought with no road leads to the nearest way
+   a copy speaks quietly of) makes it get about its land nearly as fast as that explorer and
+   is worth x1.09-1.16 at side 8, x1.07-1.17 at side 12 and x1.5-2.2 in a maze, where it also
+   ends the last lock. It is worth so much less than in a table because a table knows a way
+   it has gone once and the brain does not: gone once, a way is said right on 0.37-0.61 of the
+   askings; gone twice, on 0.80-0.93. THE BINDING THING NOW IS HOW MANY WALKS WRITE A WAY.
 
 **What is still by hand in the world**, with what it carries: a dendrite per way (the body's
 sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
-(`Plan.still`); the will (the wanted look is told; with no road, dice or curiosity); and the
+(`Plan.still`); the will (the wanted look is told; with no road, dice, curiosity, or since 6h
+the road to the nearest way a copy speaks quietly of); and the
 whole of thinking: copies of the brain walked breadth-first on its wires, a limit of rooms
 (4096), an exact match with the wanted look (load-bearing, 3 above), a road kept while it
 comes true (load-bearing, 1 above). Found by search: the cell's rule, and on two lineages of
 five in other exams the gate.
 
-**Roads open from here** (none chosen; the user decides in another session):
-- Forgetting: the one clear weakness found in a world (5 above). Cheap to ask first, before any
-  mechanism: what the old map is worth after the change (the same brain with its wires emptied
-  at the change), and how many walks it takes to undo one way that became a wall.
+**Roads from here.** The order was chosen with the user on 2026-11-17 ("After the breadth"):
+wanting to know, forgetting beside it, a thought as a wave later.
+- Wanting to know, next: one walk must write a way. Asked of the search first (the cell's
+  rule; the searches never asked for a link shown once), or by hand in the will (a new way is
+  walked until it is known).
+- Forgetting, next: doubt in the brain. Wires that fade when a way is not met, so that what
+  fades is spoken of quietly and sought again; the yardstick says a span of about a quarter of
+  a life and warns against a short one. A mechanism by hand with an off-switch first, then the
+  search.
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -2511,9 +2668,8 @@ five in other exams the gate.
 **Data for a reader.** `python -m tissue.ledger` writes `runs/tissue/world-ledger.csv`: one row
 per record of exam 6 (genome, land, switches, size, meals, thirds, locked lives, straightness,
 map, yardsticks of the same land). Records from 2026-11-17 hold the tick of every meal. Bars,
-predictions and outcomes are in this note (Exam 6, steps 6a-6f, Breadth 1-5) and in the
-journal; wrong predictions are written as such. B13 (side 12 at 1024 cells) was still running
-when this was last written (2026-11-17, 21:00). Two record files were lost to a name clash
+predictions and outcomes are in this note (Exam 6, steps 6a-6h, Breadth 1-5, "After the
+breadth") and in the journal; wrong predictions are written as such. Two record files were lost to a name clash
 and repeated; see the journal of 2026-11-16 and 17.
 
 ### Step 4b: the body's sense, asked of a search. Plan, bars, prediction, before the run

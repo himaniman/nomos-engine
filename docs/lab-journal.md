@@ -6077,3 +6077,82 @@ and at shift 0.25; `p6h-*` the pilot; `h6-s8-q0.4-*`, `h6-s12-m512-q0.4-*`, `h6-
 `h6-s8-q0.3-*`, `h6-s8-q0.5-*` the exam of step 6h. Collect: `infra/dev/vm.sh pull
 runs/tissue/hold`, and the yardsticks by `scp nomos:nomos-engine/runs/tissue/world8*doubt*.json
 runs/tissue/`.
+
+## 2026-11-18 (12:40) — step 6h: a brain that seeks gets about its land as fast as a table, eats a tenth more, and half as much again in a maze; what binds now is how many walks write a way. B13 and the looks of the forgetting road collected
+
+Everything queued on the VM ran through (45 minutes a run at side 8 with a seeking brain, 5-7
+hours at side 12, 11-16 hours for B13). Records pulled, the ledger rebuilt (233 rows).
+
+**Step 6h** (`--explore 0.4`, by hand; a road kept, 4096 rooms, 16 lives, the exam's lands):
+
+| meals a life | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| side 8, 256 cells: a road kept (6e) | 241.4 | 211.9 | 214.4 | 193.4 | 160.2 | 312 | 380 |
+| and seeking | 263.9 | 236.1 | 245.4 | 223.5 | 177.6 | | |
+| over | 1.09 | 1.11 | 1.14 | 1.16 | 1.11 | | |
+| the first third: before / seeking | 23.7 / 40.6 | 18.2 / 36.6 | 19.8 / 42.6 | 15.2 / 21.6 | 19.4 / 35.1 | 83 | 127 |
+| ways gone by an eighth of a life | 0.57 / 0.79 | 0.55 / 0.79 | 0.58 / 0.79 | 0.56 / 0.71 | 0.54 / 0.76 | 0.82 | |
+| side 12, 512 cells: a road kept (B10) | 333.6 | 274.2 | 297.9 | 192.4 | 154.9 | 517 | 601 |
+| and seeking | 356.2 | 297.4 | 320.9 | 224.2 | 173.8 | | |
+| over | 1.07 | 1.08 | 1.08 | 1.17 | 1.12 | | |
+| the first third: before / seeking | 21.1 / 29.1 | 13.5 / 22.1 | 15.5 / 25.1 | 6.7 / 9.4 | 8.7 / 15.4 | 129 | 201 |
+| the maze, 256 cells: a road kept (B1) | 76.4 | 88.6 | 97.4 | 82.1 | 48.5 | 228 | 257 |
+| and seeking | 164.3 | 140.6 | 145.4 | 125.2 | 81.6 | | |
+| over | 2.15 | 1.59 | 1.49 | 1.53 | 1.68 | | |
+
+Bars: H1 (a first third of 40 on four) MISSED, two lineages; H2 (a life x1.10 on four) met; H3
+(0.70 of the ways by an eighth of a life) met on five; H4 (no lock) met, no life locked in any
+land at any Q; H5 (side 12 x1.25 on four) MISSED on all five; H6 (the maze x1.5 on four) met,
+and of the 7 lives of 80 that were locked there none is left. The dial (Q 0.3, 0.4, 0.5) makes
+no difference 16 lives can show. I predicted H1 and H5 met and doubted H4: wrong three times.
+
+What it says: the young brain now gets about its land nearly as fast as the explorer (0.71-0.79
+of the ways by an eighth of a life against 0.82) and eats half of what the explorer eats in its
+first third, a quarter at side 12. A table knows a way it has gone once; the brain does not
+(below: 0.37-0.61 right after one walk, 0.80-0.93 after two), and this will walks a new way
+once. Seeking alone is worth much where the dice could not find the ways (the maze) and a
+tenth where they could. THE BINDING THING NOW IS HOW MANY WALKS WRITE A WAY.
+
+**B13, side 12 at 1024 cells**: 356.2 / 352.8 / 351.2 / 263.8 / 211.8, over 512 cells x1.07 /
+1.29 / 1.18 / 1.37 / 1.37. Predicted in 1.05-1.30 on four lineages: three, two above. MISSED.
+Past the land's 576 ways growth still pays more than it did at sides 8 and 10; the knee is
+softer in a bigger land. The first third does not move (7-23 meals): more cells do not make a
+young brain know its land sooner.
+
+**The forgetting road, three looks.**
+
+1. What the old map is worth to the brain (512 cells, shift 0.5, born again at the change).
+   Meals in the half-life after: kept its wires 54.7 / 60.8 / 48.6 / 46.5 / 48.7, born again
+   55.4 / 58.4 / 68.5 / 42.2 / 53.3. Predicted at least as much on four lineages: three, MISSED
+   by the letter; no difference stands clear of its error (+1 +- 10, -2 +- 9, +20 +- 13, -4 +-
+   8, +5 +- 7). The old map is a start (8 meals in the first 480 ticks against 3-5) and then a
+   weight (at the end of the life the one born again eats more per tick on all five).
+2. The walks that write a way and undo one (`python -m tissue.unlearn`, 256 cells, 8 lives):
+
+| said right, by the walks | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| a way since birth: once / twice / 3-4 | 0.54 / 0.92 / 0.98 | 0.53 / 0.93 / 0.98 | 0.61 / 0.93 / 0.98 | 0.37 / 0.80 / 0.93 | 0.51 / 0.87 / 0.97 |
+| a way that closed, since the change: 1 / 2 / 3-4 / 5-8 | 0.23 / 0.47 / 0.91 / 1.00 | 0.00 / 0.35 / 0.92 / 0.98 | 0.01 / 0.61 / 0.93 / 0.99 | 0.43 / 0.68 / 0.84 / 0.90 | 0.00 / 0.52 / 0.73 / 0.80 |
+| a wall that opened: 1 / 2 / 3-4 / 5-8 | 0.00 / 0.40 / 0.91 / 1.00 | 0.00 / 0.23 / 0.91 / 0.98 | 0.01 / 0.27 / 0.96 / 1.00 | 0.02 / 0.30 / 0.79 / 0.95 | 0.00 / 0.14 / 0.64 / 0.78 |
+| walls that opened, gone by the end of the life | 0.75 | 0.77 | 0.68 | 0.83 | 0.85 |
+
+   Writing: half met (once: over a half on four; twice: 0.9 on three). Undoing: met. Walls that
+   opened: met (a table goes none). Undoing costs about a walk more than writing, not ten: the
+   rule is not what makes the brain slow after a change. What did not change stays (0.83-0.97
+   still right with no walk since).
+3. A yardstick that doubts, complete:
+
+| side 8, meals a life (the last third) | `explorer` | `doubter` T 320 | T 640 | T 1280 |
+|---|---|---|---|---|
+| the land not changed | 311.8 (115) | 251.0 (85) | 307.9 (112) | 311.5 (114) |
+| shift 0.25 | 256.4 (85) | 229.0 (83) | 280.2 (103) | 275.9 (98) |
+| shift 0.5 | 212.8 (60) | 235.6 (92) | 275.3 (105) | 269.3 (105) |
+
+   Both bars met. At T 640 doubt costs one meal in a hundred where nothing changes and a life
+   is worth 308, 280 and 275 meals in the three lands.
+
+**Where it leaves the two roads.** Both come down to the same two things in the cell: a way
+should be written in one walk, and what is not met should fade. The first is asked of the
+search next (no search ever showed a link once); the second is a mechanism (wires that fade)
+to be tried by hand with an off-switch, with the yardstick's warning that a short span is worse
+than none.

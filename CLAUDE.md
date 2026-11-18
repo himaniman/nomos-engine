@@ -758,13 +758,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   third is 60 of 115, and born again at the change (`--reborn`) it eats twice as much; `doubter`
   (`--yardsticks --doubt T`, forgets a way not gone for T ticks) gets 105 at T 640. So a
   changing land asks for slow forgetting IN a body that seeks: roads 1 and 2 are one.
-  STEP 6h SET UP, NOT COLLECTED: `--explore 0.4` (by hand: a thought with no road leads to the
-  nearest way a copy speaks quietly of), bars H1-H6 in the note; VM jobs `h6-*`, `p6h-*` (pilot),
-  `f1-reborn-*`, `f2-unlearn-*` (`python -m tissue.unlearn`), `f3-*`, `b13-*`: see the journal
-  entry of 2026-11-17 21:50 for how to collect. First pilot lines: the brain explores as fast as
-  the explorer and eats half as much in its first third (a way gone once is not yet known well
-  enough to think with). The desktop also runs other jobs of the user's: NOTHING heavy and
-  nothing that waits there (the harness stopped four background commands for low memory).
+  STEP 6h DONE (2026-11-18): `--explore 0.4` (by hand: a thought with no road leads to the
+  nearest way a copy speaks quietly of) makes the brain get about its land nearly as fast as
+  the explorer (0.71-0.79 of the ways by an eighth of a life against 0.82) and is worth x1.09-
+  1.16 at side 8, x1.07-1.17 at side 12 (bar missed) and x1.5-2.2 in the maze, where the last
+  lock is gone; no dial between Q 0.3 and 0.5. It eats half of the explorer's first third:
+  THE BINDING THING NOW IS HOW MANY WALKS WRITE A WAY (`python -m tissue.unlearn`: gone once a
+  way is said right 0.37-0.61, twice 0.80-0.93; undoing takes 3-4 walks, one more than
+  writing). B13: side 12, 1024 over 512 cells x1.07-1.37 (the knee is softer in a bigger land).
+  The brain born again at the change eats as much after it as one that kept its wires (the
+  old map: a start, then a weight). `doubter` at T 640 costs 1% where nothing changes and
+  takes shift 0.5 at 105 of 115 in the last third; T 320 is worse than no doubt. NEXT: one
+  walk must write a way (ask the search: no search ever showed a link once); wires that fade
+  (by hand, off-switch) for doubt. The desktop also runs other jobs of the user's: NOTHING
+  heavy and nothing that waits there (the harness stopped four background commands for low
+  memory on 2026-11-17); a 256-cell life is 40 s there and 4 min on the loaded VM.
   The table in the design note says where the ladder stands.
   Commits go to branch `tissue`. The lines below are the OLD plan, kept as history.
 - Next: a smarter model setting direction over DeepSeek's cheap mutations;

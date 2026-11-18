@@ -38,7 +38,7 @@ def make(arm: str, **switches):
     `switches` override the plan's off-switches (learn, off, taught_only)."""
     if arm == "tissue":
         return Tissue(replace(RUNG0, **switches)), Task()
-    if arm in ("chain", "stream"):      # the same brain; only the life it is searched on differs
+    if arm in ("chain", "stream", "walk"):      # the same brain; only the life it is searched on differs
         return Tissue(replace(RUNG1, **switches), CHAIN_TASK), CHAIN_TASK
     if arm == "fork":                   # that brain with a sense of its body: two ways unless told
         return Tissue(replace(RUNG1, **{"body": 2, **switches}), CHAIN_TASK), CHAIN_TASK
@@ -80,7 +80,8 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
           vary: bool = False, fan: int = 0, sizes: tuple = TRAIN_SIZES,
           load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0,
           spoken: bool = False, gate: float = 0.0, anneal: int = 0,
-          told: str = "always", sleep: int = 0, sleep_hand: float = 0.0) -> None:
+          told: str = "always", sleep: int = 0, sleep_hand: float = 0.0, laps: tuple = (1, 3),
+          ways: int = 4) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -100,9 +101,13 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     the place ("always", "seen": only with the eyes open, "study": only while a loop is
     first walked round). `sleep`: a sleep cell beside every so many interneurons; it is born
     saying "awake" to all of them (a genome from `init` that has none gets it so), or, with
-    `sleep_hand`, set by hand to a gate at that nearness."""
+    `sleep_hand`, set by hand to a gate at that nearness. Walk arm: the stream brain lives
+    exam 4 with the hand-made dendrite per way (`ways` of them), as it lives in a land; each
+    life has `laps[0]` to `laps[1]` laps, drawn, so that with 1 among them a link shown once
+    is asked for; `hops` and `vary` as in the stream; 1/8 to 2 links per interneuron."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
+    lap_range = tuple(laps)             # (the stream and fork arms draw `laps` of their own below)
     model, task = (make(arm, fan=fan, reach=reach, field=field, spoken=spoken, gate=gate,
                         sleep=sleep) if fan else make(arm))
     if init:
@@ -152,6 +157,16 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             lived = fork.run_life(model.grow(m), items, nxt, walk, gen, body="felt")
             logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
             answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
+        elif arm == "walk":             # 1/8 .. 2 links per interneuron, a dendrite per way by hand
+            from tissue import fork
+            rooms = max(2, round(m * 2 ** (float(u[1]) * 4 - 3) / ways))
+            n_laps = lap_range[0] + int(torch.rand(1, generator=gen) * (lap_range[1] - lap_range[0] + 1))
+            closed = max(1, hops >> int(torch.rand(1, generator=gen) * 4)) if vary else hops
+            walk = fork.Walk(rooms, ways, n_laps, blinks=6 if closed <= 8 else 3, open=3, closed=closed)
+            items, nxt = fork.world(task.d_out, walk, batch, gen)
+            lived = fork.run_life(model.grow(m), items, nxt, walk, gen, body="dendrites")
+            logits = torch.cat([lived["echo"][0], lived["closed"][0]], dim=1)
+            answers = torch.cat([lived["echo"][1], lived["closed"][1]], dim=1)
         elif arm == "chain":            # 1/8 .. 1 link per interneuron, chains of 1..hops links
             length = 1 + int(u[2] * hops)
             k = max(1, round(m * 2 ** (float(u[1]) * 3 - 3)))
@@ -195,7 +210,8 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                         "reach": reach, "field": field, "spoken": spoken, "gate": gate,
                         "anneal": anneal, "lean": model.plan.lean if arm == "stream" else 1.0,
                         "told": told, "sleep": sleep, "body": model.plan.body,
-                        "sizes": list(sizes), "load": list(load), "genome": model.state_dict()}, out)
+                        "sizes": list(sizes), "load": list(load), "laps": list(lap_range), "ways": ways,
+                        "genome": model.state_dict()}, out)
     log.close()
 
 
@@ -203,7 +219,8 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--arm", default="tissue",
                    help='"tissue", "chain", "stream", "fork" (the stream brain with a sense of its'
-                        ' body, in a world of forks) or "gru<hidden>"')
+                        ' body, in a world of forks), "walk" (the stream brain in a world of forks,'
+                        ' a dendrite per way by hand) or "gru<hidden>"')
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--hops", type=int, default=1,
@@ -235,6 +252,9 @@ def main() -> None:
                    help="with --field: a sleep cell beside every this many interneurons")
     p.add_argument("--sleep-hand", type=float, default=0.0,
                    help="with --sleep: start from a sleep cell set by hand to a gate at this nearness")
+    p.add_argument("--laps", type=int, nargs=2, default=[1, 3],
+                   help="walk arm: the fewest and the most laps of a life's study (drawn)")
+    p.add_argument("--ways", type=int, default=4, help="walk arm: ways out of a room")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
@@ -242,7 +262,7 @@ def main() -> None:
     train(a.arm, a.seed, a.steps, a.out, hops=a.hops, echo=a.echo, idle=a.idle, init=a.init,
           vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
           field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal, told=a.told,
-          sleep=a.sleep, sleep_hand=a.sleep_hand)
+          sleep=a.sleep, sleep_hand=a.sleep_hand, laps=tuple(a.laps), ways=a.ways)
 
 
 if __name__ == "__main__":

@@ -886,6 +886,22 @@ def test_a_search_on_forks_runs_saves_and_the_genome_comes_back_with_its_body(tm
     assert len(res[16]["k90"]) == 3
 
 
+def test_a_search_asks_for_a_link_shown_once_in_a_world_of_forks_with_a_dendrite_per_way(tmp_path):
+    from tissue import fork
+    from tissue.train import load, train
+    stream_genome = tmp_path / "stream.pt"
+    train("stream", 0, 2, stream_genome, batch=2, hops=2, sizes=(8,))
+    before = torch.load(stream_genome, weights_only=True)["genome"]
+    out = tmp_path / "walk.pt"
+    train("walk", 0, 4, out, batch=2, hops=4, vary=True, sizes=(8, 16), init=str(stream_genome), laps=(1, 1))
+    model, task, saved = load(str(out), still=True)
+    assert saved["arm"] == "walk" and saved["laps"] == [1, 1] and saved["ways"] == 4 and model.plan.body == 0
+    assert set(saved["genome"]) == set(before)              # the same brain: only the life differs
+    assert any(not torch.equal(saved["genome"][k], before[k]) for k in before)     # the slope came through the dendrites
+    res = fork.examine(str(out), [16], fork.Walk(rooms=1, ways=4, laps=1, closed=2), lives=2, body="dendrites")
+    assert len(res[16]["k90"]) == 3
+
+
 @torch.no_grad()
 def test_cells_that_belong_to_a_way_by_hand_speak_only_when_the_body_went_their_way():
     from tissue import fork

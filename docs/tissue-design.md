@@ -2450,6 +2450,47 @@ it is worth a tenth. In the last third of a life nothing has changed: it speeds 
 NEXT on this road: one walk must write a way (asked of the search, the cell's rule), or the
 will must walk a new way until it is known.
 
+### Step 6i: one walk must write a way. Asked first with no search, then of the search. Predictions and bars before the runs
+
+Where the two walks come from. The lineage genomes were found in the stream (exam 2). There
+every loop is walked round two or three times, and where one loop is left for another the
+stream shows a pair that is not a link, seen once: a coincidence. A rule found there was
+taught not to believe a pair it has seen once (the stream's own perfect memory "needs two
+laps: after one, a link and a coincidence have each been seen once and nothing tells them
+apart"). In a land there are no coincidences: the body goes a way and comes to the room behind
+it, every time. No search was ever shown a link once and asked for it.
+
+**Asked first, no search**: exam 4 (forks, `python -m tissue.fork --ways 4 --body dendrites`:
+rooms with four ways, a dendrite per way by hand as in a land, a study with no jump in it)
+lived with ONE lap (`--laps 1`) and with three, beside the records' two. Prediction: with one
+lap the lineage genomes hold less than a quarter of what they hold with two (K90 at hop 1, 256
+cells, two laps: 857 / 926 / 935 / 647 / 891 links) on four lineages; with three laps no less
+than with two.
+
+**The search** (`tissue.train --arm walk`, new): the stream brain lives exam 4 with the
+hand-made dendrite per way, four ways, 1/8 to 2 links per interneuron (a land of side 8 asks a
+link per cell of a brain of 256), and each life has one, two or three laps, drawn. Closings of
+16 ticks and shorter (`--hops 16 --vary`), brains of 8-64 cells, 4000 steps, started from each
+lineage genome (`--init`). One thing is asked that was not: a link shown once. Bars, at sizes
+no search saw and in lands no search saw:
+
+- **W1, one lap is enough**: exam 4 with one lap, 256 cells, K90 at hop 1 at least half of
+  what the lineage genome holds with two laps (429 / 463 / 467 / 324 / 446), on four lineages.
+- **W2, nothing paid for it**: with two laps, 256 cells, K90 at hop 1 and at hop 4 at least
+  0.8 of the lineage genome's (hop 4: 417 / 361 / 439 / 202 / 338), on four lineages.
+- **W3, in a land** (the look `tissue.unlearn`, side 8, 256 cells): a way gone once since
+  birth is said right on at least 0.85 of the askings (0.54 / 0.53 / 0.61 / 0.37 / 0.51), on
+  four lineages.
+- **W4, a life** (side 8, 256 cells, a road kept, 4096 rooms, seeking at 0.4): a first third
+  of at least 55 meals on three lineages (6h: 40.6 / 36.6 / 42.6 / 21.6 / 35.1; `explorer` 83)
+  and a life no smaller than 6h's (263.9 / 236.1 / 245.4 / 223.5 / 177.6) on four.
+- **W5, the bigger land** (side 12, 512 cells): a life at least 1.15 times 6h's (356.2 / 297.4
+  / 320.9 / 224.2 / 173.8) on three lineages.
+
+Prediction: W1 and W3 met, W4 met. W2 is the doubt: a rule that believes at once may hold
+less, and a thought may hold less far in the dark when the search's closings are 16 ticks and
+not 32. W5 open.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it

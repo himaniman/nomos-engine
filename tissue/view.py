@@ -35,7 +35,7 @@ from tissue.train import load
 
 NAMES = {"oracle": "born knowing every way", "thinks": "the brain", "perfect": "a perfect memory",
          "blind": "never a plan", "seeker": "perfect, trying ways never gone",
-         "explorer": "perfect, seeking the nearest way never gone"}
+         "explorer": "perfect, seeking the unknown"}
 SEEK = (150, 200, 120)                          # the seeker's line, and a road to a way not known
 FAR = (196, 160, 235)                           # the explorer's line
 
@@ -264,6 +264,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("genome")
     p.add_argument("--side", type=int, default=6)
+    p.add_argument("--walls", type=float, default=0.3, help="the share of walls: 0.5 a maze, 0.1 an open land")
     p.add_argument("--cells", type=int, default=256)
     p.add_argument("--life", type=int, default=0, help="which of the exam's lands")
     p.add_argument("--seed", type=int, default=90_000)
@@ -276,11 +277,11 @@ def main() -> None:
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    rec = record(a.genome, world.Land(a.side), a.cells, a.life, a.seed,
+    rec = record(a.genome, world.Land(a.side, a.walls), a.cells, a.life, a.seed,
                  budget=a.budget, curious=a.curious, keep=a.keep, explore=a.explore)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     name = (os.path.basename(a.genome).rsplit(".", 1)[0] + (", a road kept" if a.keep else "")
-            + (", seeking what it does not know" if a.explore else ""))
+            + (", seeking what it does not know" if a.explore else "") + (", a maze" if a.walls >= 0.5 else ""))
     draw(rec, name, a.cells).save(a.out)
     if a.film:
         frames = film(rec, name, a.cells)

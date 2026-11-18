@@ -768,9 +768,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   writing). B13: side 12, 1024 over 512 cells x1.07-1.37 (the knee is softer in a bigger land).
   The brain born again at the change eats as much after it as one that kept its wires (the
   old map: a start, then a weight). `doubter` at T 640 costs 1% where nothing changes and
-  takes shift 0.5 at 105 of 115 in the last third; T 320 is worse than no doubt. NEXT: one
-  walk must write a way (ask the search: no search ever showed a link once); wires that fade
-  (by hand, off-switch) for doubt. The desktop also runs other jobs of the user's: NOTHING
+  takes shift 0.5 at 105 of 115 in the last third; T 320 is worse than no doubt.
+  STEP 6i SET UP, NOT COLLECTED (2026-11-18): one walk must write a way. Cause found in the
+  search: the lineage genomes come from the stream, where a pair seen once may be the seam
+  between two loops, so the rule was taught not to believe what it saw once. New search arm
+  `tissue.train --arm walk` (the stream brain in a world of forks with the hand-made dendrite
+  per way, 1-3 laps a life, started from each lineage genome), bars W1-W5 in the note. VM queue
+  `out/jobs8.txt`, logs `out/jobs/i6-*`: exam 4 with one and three laps for the lineage genomes
+  (`i6-hold-laps*`), then per lineage the search and its chain (exam 4, `tissue.unlearn`, a life
+  at side 8 and at side 12: `i6-walk-s*`, genomes and records in `runs/tissue/walk/`). Collect:
+  `infra/dev/vm.sh pull runs/tissue/walk` and `pull runs/tissue/hold`.
+  FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
+  on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
+  quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell
+  to speak quietly of what it is no longer sure of. No exam run on it.
+  The desktop also runs other jobs of the user's: NOTHING
   heavy and nothing that waits there (the harness stopped four background commands for low
   memory on 2026-11-17); a 256-cell life is 40 s there and 4 min on the loaded VM.
   The table in the design note says where the ladder stands.

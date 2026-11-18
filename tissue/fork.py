@@ -141,7 +141,8 @@ class Dendrites:
     """BY HAND: a dendrite from the other interneurons per way. On a tick only the dendrite
     of the way just gone is heard and learns; when the body was carried (way -1) none is.
     The brain's own state holds whichever dendrite is live, so the cell and its rule are
-    untouched. `numb`: one dendrite whatever the way (a brain that does not feel its body)."""
+    untouched. `numb`: one dendrite whatever the way (a brain that does not feel its body).
+    Under `Plan.fade` the dendrites that are not live fade as the live one does."""
 
     def __init__(self, brain, state, ways: int, numb: bool = False):
         self.inner = next(i for i, blk in enumerate(brain.t.plan.blocks) if blk.pre == blk.post)
@@ -158,7 +159,10 @@ class Dendrites:
         live = torch.zeros_like(self.bank[:, 0])
         live[gone] = self.bank[self.rows[gone], which]
         state, out = brain.tick((state[0], {**state[1], self.inner: live}, state[2]), cue, teach, flag, on)
+        plan = brain.t.plan
         if keep:
+            if plan.fade and plan.learn and (on or not plan.still):     # on the ticks the live one fades
+                self.bank = self.bank * (1 - plan.fade)
             self.bank[self.rows[gone], which] = state[1][self.inner][gone]
         return state, out
 

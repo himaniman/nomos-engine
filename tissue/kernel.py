@@ -86,6 +86,9 @@ class Plan:
     #                     wired at birth to every interneuron by an innate wire of that
     #                     individual; an interneuron reads them on a dendrite of their own, a
     #                     number beside its other inputs. 0: no such sense
+    fade: float = 0.0   # by hand: FORGETTING. On a tick on which wires may change, every plastic
+    #                     wire first loses this share of itself, so what is not met again fades
+    #                     and is spoken of more quietly (a land that changes: exam 6). 0: never
     # off-switches, for controls and ablations
     learn: bool = True              # False: no plastic wire ever changes
     off: tuple[int, ...] = ()       # blocks (by index) whose wires stay as they were born
@@ -297,7 +300,7 @@ class Grown:
                 if b.plastic:
                     if plan.learn and i not in plan.off and not (plan.still and not on):
                         signal = said[..., j] * flag if plan.taught_only and t == "O" else said[..., j]
-                        new_wires[i] = wires[i] + signal.unsqueeze(-1) * heard[i]
+                        new_wires[i] = wires[i] * (1 - plan.fade) + signal.unsqueeze(-1) * heard[i]
                     j += 1
         return (new_act, new_wires, sources), new_act["O"]
 

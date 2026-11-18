@@ -2622,6 +2622,37 @@ beside each `doubter`, come out meal for meal as on the desktop).**
   well (92 in the last third against 105), and it costs a fifth of a life where nothing
   changes (251 against 312). A way has to be held for longer than it takes to come by it again.
 
+### Forgetting, step 4: wires that fade. A pilot, and why no exam was run on it
+
+`Plan.fade` (BY HAND, off unless asked; `--fade F` in a land): on a tick the brain sees, every
+plastic wire first loses the share F of itself, the dendrites of the ways not gone as well. No
+wire fades in thought. It is the plainest forgetting there is, and with seeking (6h) it was
+meant to be the brain's `doubter`: what fades is spoken of quietly and sought again.
+
+A pilot before any bar: ONE life of lineage 0, 256 cells, a land of side 8 that does not change
+(other dice than the exam's), a road kept, seeking at 0.4. Every 80 ticks the examiner asks a
+copy carried into every room what lies by each way; the ways sorted by the ticks since the
+body last went them:
+
+| fade a tick | meals (by third) | gone 0-80 ticks ago: right / loud | 160-320 | 320-640 | 640-1280 | never gone: loud |
+|---|---|---|---|---|---|---|
+| 0 | 234 (41 / 99 / 94) | 0.99 / 5.2 | 0.95 / 4.9 | 0.90 / 4.7 | 0.89 / 4.6 | 2.6 |
+| 0.001 | 163 (31 / 70 / 62) | 0.99 / 4.6 | 0.92 / 4.0 | 0.77 / 3.6 | 0.44 / 3.2 | 2.5 |
+| 0.003 | 57 (12 / 20 / 25) | 0.99 / 4.0 | 0.62 / 2.8 | 0.14 / 2.4 | 0.05 / 2.4 | 2.2 |
+
+- A wire that fades makes the brain WRONG about a way long before it makes it quiet. At 0.001 a
+  way not gone for 640 ticks is said right on 0.44 of the askings and still at 3.2, where what
+  was never gone is said at 2.5. A table that doubts drops a way whole; a brain that fades goes
+  on saying a room, and the wrong one. Its false roads cost a third of the meals where nothing
+  changed (one life; the size of it is not measured).
+- With no fading at all the brain already forgets a little: a way not gone for 1280 ticks is
+  said right on 0.81 (0.99 when fresh).
+- So fading alone is not the brain's doubt. Doubt needs the brain to speak QUIETLY of what it
+  is no longer sure of before it speaks wrongly of it, and that is the cell's affair: what it
+  says when its wires say little. The search's error does punish a wrong word said loudly;
+  whether the walk arm of 6i, which loads a brain past what it can hold, buys some of that is
+  looked at when 6i is in. No exam is run on fading as it is; the switch stays, off.
+
 ## Where the world line stands (2026-11-18), for whoever decides the next step
 
 **What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract

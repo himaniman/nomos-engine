@@ -622,11 +622,13 @@ def summary(lives: list, ticks: int) -> dict:
 
 
 def examine(arm: str, shape: Land, lives: int = 16, path: str | None = None, m: int = 256,
-            seed: int = 90_000, bits: int = 12, **think) -> dict:
-    """`lives` lives of one arm, each in a land of its own: the same lands whatever the arm."""
+            seed: int = 90_000, bits: int = 12, fade: float = 0.0, **think) -> dict:
+    """`lives` lives of one arm, each in a land of its own: the same lands whatever the arm.
+    `fade`, BY HAND (`Plan.fade`): the share of itself every plastic wire of the brain loses
+    on a tick it sees."""
     model = None
     if arm in ARMS:
-        model, task, _ = load(path, still=True)
+        model, task, _ = load(path, still=True, **({"fade": fade} if fade else {}))
         bits = task.d_out
     rows = []
     for i in range(lives):
@@ -699,6 +701,8 @@ def main() -> None:
                         " (under this share of how loud the brain says the room it stands in)")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
+    p.add_argument("--fade", type=float, default=0.0,
+                   help="by hand, forgetting: the share of itself every plastic wire loses on a tick the brain sees")
     p.add_argument("--seed", type=int, default=90_000)
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
@@ -748,14 +752,14 @@ def main() -> None:
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
            + (f".budget{a.budget}" if a.budget != 256 else "")
            + (f".curious{a.curious:g}" if a.curious else "") + (f".explore{a.explore:g}" if a.explore else "")
-           + (".keep" if a.keep else "")
+           + (".keep" if a.keep else "") + (f".fade{a.fade:g}" if a.fade else "")
            # sizes other than the default are named too (from 2026-11-16: two runs of one genome at
            # two sizes wrote one file, and the later one took the other's place)
            + ("" if a.sizes == [256] else ".m" + "-".join(map(str, a.sizes))) + pilot)
     for path in a.genomes:
         res = {}
         for m in a.sizes:
-            res[m] = examine(a.arm, shape, a.lives, path, m, seed=a.seed, **think)
+            res[m] = examine(a.arm, shape, a.lives, path, m, seed=a.seed, fade=a.fade, **think)
             print(show(f"{path.split('/')[-1][:-3]} {m}", res[m]), flush=True)
         with open(path.rsplit(".", 1)[0] + tag + ".json", "w") as f:
             json.dump({str(m): row for m, row in res.items()}, f)

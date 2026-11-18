@@ -1074,6 +1074,33 @@ def test_a_land_that_changes_in_mid_life_still_hangs_together_and_keeps_its_coun
 
 
 @torch.no_grad()
+def test_wires_that_fade_lose_a_share_of_themselves_on_a_tick_that_is_seen_and_none_in_thought():
+    from tissue import world
+    torch.manual_seed(0)
+    plain = Tissue(replace(RUNG1, still=True), ITEM)
+    fading = Tissue(replace(RUNG1, still=True, fade=0.5), ITEM)
+    fading.load_state_dict(plain.state_dict())
+    looks, nxt, trees, start = world.land(12, world.Land(side=3, ticks=40), gen(1))
+    a, b = world.Mind(plain.grow(16), gen(2), budget=16), world.Mind(fading.grow(16), gen(2), budget=16)
+    for mind in (a, b):
+        mind.see(looks[0], -1)
+        mind.see(looks[1], 1)
+    assert torch.equal(a.body.bank, b.body.bank) and float(a.body.bank[:, 1].abs().sum()) > 0
+    for mind in (a, b):
+        mind.see(looks[2], 2)                               # another way is gone: the first one's dendrite is not live
+    assert torch.allclose(b.body.bank[:, 1], a.body.bank[:, 1] * 0.5)
+    held = b.body.bank.clone()
+    b.think(looks[int(trees[0])], gen(4))
+    b.atlas(looks)
+    assert torch.equal(held, b.body.bank)                   # a thought is not a tick that is seen
+    off = Tissue(replace(RUNG1, still=True, fade=0.0), ITEM)
+    off.load_state_dict(plain.state_dict())
+    life = lambda t: world.live(world.Mind(t.grow(16), gen(2), budget=16), looks, nxt, trees, start, 40, gen(3), fruits=5)
+    one, two = life(plain), life(off)
+    assert one["meals"] == two["meals"] and torch.equal(one["walked"], two["walked"])
+
+
+@torch.no_grad()
 def test_a_look_at_unlearning_sorts_the_ways_by_what_the_change_did_and_by_the_walks_since(tmp_path):
     from tissue import unlearn, world
     from tissue.train import make

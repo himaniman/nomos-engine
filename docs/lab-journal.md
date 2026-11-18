@@ -6156,3 +6156,30 @@ should be written in one walk, and what is not met should fade. The first is ask
 search next (no search ever showed a link once); the second is a mechanism (wires that fade)
 to be tried by hand with an off-switch, with the yardstick's warning that a short span is worse
 than none.
+
+## 2026-11-18 (13:10) — forgetting by hand, a pilot: a wire that fades makes the brain wrong about a way before it makes it quiet. Step 6i set up
+
+**Wires that fade** (`Plan.fade`, `--fade F`, by hand, off unless asked: on a tick the brain
+sees, every plastic wire loses the share F of itself). Meant as the brain's `doubter`: what
+fades is spoken of quietly, and the seeking of 6h goes and looks. One life of lineage 0 on a
+pilot land that does not change, seeking at 0.4, the ways sorted by the ticks since last gone:
+
+| fade a tick | meals (by third) | gone 0-80 ticks ago: right / loud | 160-320 | 320-640 | 640-1280 | never gone: loud |
+|---|---|---|---|---|---|---|
+| 0 | 234 (41 / 99 / 94) | 0.99 / 5.2 | 0.95 / 4.9 | 0.90 / 4.7 | 0.89 / 4.6 | 2.6 |
+| 0.001 | 163 (31 / 70 / 62) | 0.99 / 4.6 | 0.92 / 4.0 | 0.77 / 3.6 | 0.44 / 3.2 | 2.5 |
+| 0.003 | 57 (12 / 20 / 25) | 0.99 / 4.0 | 0.62 / 2.8 | 0.14 / 2.4 | 0.05 / 2.4 | 2.2 |
+
+A table that doubts drops a way whole. A brain that fades goes on saying a room, the wrong
+one, and louder than it says what it never knew: its false roads cost a third of the meals
+(one life, not a measure). So fading alone is not doubt; doubt needs the cell to speak quietly
+of what it is no longer sure of, before it speaks wrongly. No exam was run on fading as it is.
+
+**Step 6i set up** (one walk must write a way). The cause was in the search: the lineage
+genomes come from the stream, where a loop is walked two or three times and a pair seen once
+may be the seam between two loops; the rule was taught not to believe what it saw once. A land
+has no such seams. New: `tissue.train --arm walk`, the stream brain in a world of forks with
+the hand-made dendrite per way, one to three laps a life, 1/8 to 2 links per interneuron,
+started from each lineage genome. Bars W1-W5 in the note, committed (1d89bb2) before any run.
+On the VM (`out/jobs8.txt`): exam 4 with one lap and with three for the lineage genomes, then
+per lineage the search, exam 4, the look `tissue.unlearn`, and a life at side 8 and at side 12.

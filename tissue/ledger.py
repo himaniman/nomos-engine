@@ -2,7 +2,7 @@
 
     python -m tissue.ledger [--out runs/tissue/world-ledger.csv]
 
-Reads `runs/tissue/hold/*.world*.json` (one file per genome, land and arm; inside, one result
+Reads `runs/tissue/*/*.world*.json` (one file per genome, land and arm; inside, one result
 per size of brain) and the yardsticks of the same land (`runs/tissue/world*.yardsticks*.json`),
 and writes one row per (genome, land, switches, size). What a record's name says is parsed back
 into columns: the land (side, walls, trees, ticks, shift), the arm, and the switches of thought
@@ -21,7 +21,7 @@ import re
 
 NUM = r"(\d+(?:\.\d+)?)"
 DEFAULTS = {"walls": 0.3, "trees": 0, "ticks": 0, "shift": 0.0, "budget": 256, "slack": 0,
-            "mumble": 0.0, "curious": 0.0, "explore": 0.0, "seed": 90_000}
+            "mumble": 0.0, "curious": 0.0, "explore": 0.0, "fade": 0.0, "seed": 90_000}
 
 
 def parse(name: str) -> dict | None:
@@ -38,7 +38,7 @@ def parse(name: str) -> dict | None:
     for key in ("walls", "trees", "ticks", "shift"):
         hit = re.search(rf"\.{key}{NUM}", ground)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
-    for key in ("budget", "slack", "mumble", "curious", "explore", "seed"):
+    for key in ("budget", "slack", "mumble", "curious", "explore", "fade", "seed"):
         hit = re.search(rf"\.{key}{NUM}", switches)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
     row["reborn"] = ".reborn" in ground         # a look: the body born again when the land changed
@@ -93,7 +93,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--out", default="runs/tissue/world-ledger.csv")
     a = p.parse_args()
-    table = rows(glob.glob("runs/tissue/hold/*.world*.json"))
+    table = rows(glob.glob("runs/tissue/*/*.world*.json"))
     with open(a.out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(table[0]))
         w.writeheader()

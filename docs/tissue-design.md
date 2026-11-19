@@ -2805,6 +2805,14 @@ have (16 lives, a road kept, 4096 rooms, seeking at 0.4 where there is seeking; 
   way in one walk is not what a changing land lacks.
 - **K5, side 12, 512 cells**: more than the walk genomes' (441.2 / 406.2 / 428.2 / 333.1 /
   356.1) on four, lineages 3 and 4 by the most.
+- **K6, the knee** (added the same evening, before any of it ran; seeking at 0.4; logs
+  `out/jobs/k6-m128-*`, `k6-m512-*`, `k6-s12m256-*`, `k6-s12m1024-*`): side 8 at 128 and 512
+  cells, side 12 at 256 and 1024. Side 8: 256 over 128 cells x1.2-1.4 on four lineages, 512
+  over 256 at most x1.06 on four (the last third is at born-knowing already; only the first
+  third can grow), three lineages at 512 cells at the explorer's 312 or above. Side 12: 512
+  over 256 at least x1.4 on four, 1024 over 512 x1.08-1.20 on four; at 1024 cells a life of at
+  least 465 (0.9 of the explorer's) on three and a last third at the explorer's 193 or above
+  on four.
 
 ### Forgetting, step 5: doubt by hand. A look, a pilot, then bars
 
@@ -2859,6 +2867,57 @@ written before it: where nothing changes, the line alone adds a little to the fi
 `--sure` alone costs under 3% of a life and with fading at 0.0003 under 5%; in the land half
 moved, the three together lift the half-life after the change by a third or more over the
 base, and no two of them do. Fading at 0.001 is too fast (the yardstick's T 320).
+
+**The exam, set before the pilot is read** (the user asked for the VM to be given a night's
+work at once, 2026-11-19, so the choice the pilot was to make is written as a rule and the exam
+is run for every setting the rule can pick). The exam's lands, 16 lives, `twice-s0..4`, 256
+cells, side 8, a road kept, 4096 rooms (on the VM, `out/jobs11.txt`, logs `out/jobs/d5-*`):
+
+- the land that does not change and shift 0.5: the line at 0.6 and at 0.7; each with `--sure`;
+  the three together at (0.6, 0.0003), (0.7, 0.0003), (0.7, 0.0005); and, at shift 0.5 only,
+  those three with `--sure` off. The base (the line at 0.4, nothing else) is step 6k's.
+- shift 0.25: the base and the three settings with all three parts.
+
+**The rule that picks.** Of the three settings with all three parts, the one with the most
+meals in the half-life after the change in the PILOT (the mean of the two genomes), among those
+whose life in the pilot's land that does not change is at least 0.95 of the base's there; if
+none is, the one with the largest sum of the two lives. Fading at 0.001 is in the pilot to show
+the fast end and cannot be picked. The bars are for the setting picked; the others are
+reported as the dial.
+
+- **D1, a land half moved**: meals in the half-life after the change at least 1.3 times the
+  base's on four lineages, and at least 100 on three (the `doubter` 135, the `explorer` 72).
+- **D2, where nothing changes**: a life at least 0.95 of the base's (304.8 / 309.0 / 306.9 /
+  292.3 / 309.9) on four lineages.
+- **D3, no lock**: at most 2 lives of 80 with no meal in the last third at shift 0.5.
+- **D4, every part is needed**: with the fading off (the same line, `--sure`) and with `--sure`
+  off (the same line and fading) the half-life after the change is smaller than with all
+  three, each on four lineages.
+- **D5, a quarter moved** (shift 0.25; `explorer` 256, `doubter` 280): a life no smaller than
+  the base's on four lineages.
+
+Prediction: D1 met in its first half (the three together do lift the half-life after the
+change by a third) and missed in its second (100 meals is the doubter's country); D3 and D5
+met; D2 is the doubt (one life under fading at 0.0003 lost an eighth of its meals, with
+nothing left out of its thoughts); D4 met for the fading, open for `--sure`.
+
+### Step 6l: more search with the body. Predictions before the runs
+
+Step 6j says the rule wants to be searched with the body it lives with, and 4000 steps of
+that did more than anything since the road kept. Two questions, the same arm as the control
+(`tissue.train --arm walk --laps 2 3 --hops 16 --vary`), each followed by exam 4, the look
+`tissue.unlearn`, a life at side 8 and one at side 12 with 512 cells (seeking at 0.4, a road
+kept; on the VM, logs `out/jobs/l6-*`):
+
+- **`long-s0..4`**: 8000 steps more, from each control genome. Does more of it still pay?
+  Prediction: exam 4, two laps, 256 cells, K90 four hops deep at least 1.1 times the control's
+  on three lineages; at side 8 nothing a life can show (within 2% of the control's on four:
+  it ends its life at born-knowing already); at side 12 with 512 cells, below the knee, at
+  least 3% more on three.
+- **`fresh-s0..4`**: 8000 steps from random starts, no lineage behind them. Is the history of
+  the lineage (chains, the stream, long closings) needed once the search lives with the body?
+  Prediction: three of five reach 280 meals at side 8 (the control: 292-310), and at least one
+  fails outright (under 150), as two random starts of five failed in the stream.
 
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 

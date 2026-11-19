@@ -811,6 +811,16 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   with and without seeking, side 12 at 512 cells). Collect both: `infra/dev/vm.sh pull
   runs/tissue/walk` and `pull runs/tissue` is too much: pull `runs/tissue/walk`, then scp the
   two yardstick files.
+  A NIGHT'S QUEUE ON TOP (the user's ask, started 2026-11-19 ~21:30 local, about 15-16 hours;
+  `out/jobs11.txt`, queue log `out/jobs/queue11.log`; all predictions in the note): (1) THE
+  EXAM OF DOUBT, set before the pilot was read: a written rule picks the setting from the
+  pilot, bars D1-D5 are for the one picked ("Forgetting, step 5"); exam lands, `twice-s0..4`,
+  the still land, shift 0.5 and 0.25, logs `out/jobs/d5-*`. (2) K6, the knee for the control
+  genomes (`k6-m128`, `k6-m512`, `k6-s12m256`, `k6-s12m1024`). (3) STEP 6l, more search with the
+  body: `long-s0..4` (8000 steps more from each control genome) and `fresh-s0..4` (8000 steps
+  from random starts), each with exam 4, `tissue.unlearn`, a life at side 8 and at side 12
+  with 512 cells (`out/jobs/l6-*`, genomes in `runs/tissue/walk/`). TO COLLECT: pull
+  `runs/tissue/walk`; read the pilot first and apply the rule BEFORE opening the exam records.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

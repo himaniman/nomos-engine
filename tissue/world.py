@@ -291,13 +291,19 @@ class Mind(Blind):
     nearest copy that spoke QUIETLY of its room (under this share of how loud the brain says
     the room it stands in) marks a way the brain does not know, and the body takes the first
     way of the road to it (kept as a road is, with `keep`). The will is given a second want:
-    with no road to the fruit, to know. It is not counted as a plan (`sought` counts it)."""
+    with no road to the fruit, to know. It is not counted as a plan (`sought` counts it).
+    `sure`, BY HAND, with `explore`: what a copy says quietly (under that same share) is not
+    believed. It is no road to the fruit, and no copy goes on from it: the brain thinks only
+    with what it is sure of, and what it is not sure of is what it goes to look at."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
                  budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0,
-                 curious: float = 0.0, keep: bool = False, explore: float = 0.0):
+                 curious: float = 0.0, keep: bool = False, explore: float = 0.0, sure: bool = False):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
+        if sure and not explore:
+            raise ValueError("`sure` needs the line `explore` draws between loud and quiet")
+        self.sure = sure
         self.brain, self.depth, self.budget, self.slack = brain, depth, budget, slack
         self.imagery, self.mumble, self.curious = imagery, mumble, curious
         self.voice = None                       # how loud it spoke one hop ahead by each way, last thought
@@ -372,6 +378,9 @@ class Mind(Blind):
                 if trace is not None:
                     trace.extend((hops, a, w, b) for (a, w), b in zip(came, rooms))
                 hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
+                quiet = says.abs().mean(-1) < self.explore * loud
+                if self.sure:                   # what is said quietly is no road to the fruit
+                    hit = hit & ~quiet
                 if bool(hit.any()):
                     hits = hit.nonzero().flatten()
                     j = int(hits[int(torch.randint(len(hits), (1,), generator=gen))])
@@ -382,12 +391,12 @@ class Mind(Blind):
                         self.due, self.road, self.roam = road[0][1], road[1:], False
                     return int(first[j])
                 if self.explore and unknown is None:        # the nearest copies that do not know where they are
-                    low = (says.abs().mean(-1) < self.explore * loud).nonzero().flatten()
+                    low = quiet.nonzero().flatten()
                     if len(low):
                         j = int(low[int(torch.randint(len(low), (1,), generator=gen))])
                         unknown = list(zip(ways[j], said[j] + (rooms[j],)))
                 keep = []
-                clear = (says.abs().mean(-1) >= self.mumble).tolist()
+                clear = ((says.abs().mean(-1) >= self.mumble) & ~(quiet if self.sure else torch.zeros_like(quiet))).tolist()
                 for j, room in enumerate(rooms):
                     if clear[j] and room not in seen:
                         seen.add(room)
@@ -699,6 +708,9 @@ def main() -> None:
     p.add_argument("--explore", type=float, default=0.0,
                    help="by hand: with no road to the fruit, toward the nearest way a copy speaks quietly of"
                         " (under this share of how loud the brain says the room it stands in)")
+    p.add_argument("--sure", action="store_true",
+                   help="by hand, with --explore: what a copy says quietly is not believed (no road, and no copy"
+                        " goes on from it)")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--fade", type=float, default=0.0,
@@ -709,9 +721,11 @@ def main() -> None:
     torch.set_num_threads(a.threads)
     if a.reborn and not a.shift:
         p.error("--reborn is a look at a land that changes: give --shift")
+    if a.sure and not a.explore:
+        p.error("--sure needs the line --explore draws between loud and quiet")
     shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift, a.reborn)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
-             "curious": a.curious, "keep": a.keep, "explore": a.explore}
+             "curious": a.curious, "keep": a.keep, "explore": a.explore, "sure": a.sure}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
@@ -752,7 +766,7 @@ def main() -> None:
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
            + (f".budget{a.budget}" if a.budget != 256 else "")
            + (f".curious{a.curious:g}" if a.curious else "") + (f".explore{a.explore:g}" if a.explore else "")
-           + (".keep" if a.keep else "") + (f".fade{a.fade:g}" if a.fade else "")
+           + (".sure" if a.sure else "") + (".keep" if a.keep else "") + (f".fade{a.fade:g}" if a.fade else "")
            # sizes other than the default are named too (from 2026-11-16: two runs of one genome at
            # two sizes wrote one file, and the later one took the other's place)
            + ("" if a.sizes == [256] else ".m" + "-".join(map(str, a.sizes))) + pilot)

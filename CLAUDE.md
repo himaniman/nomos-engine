@@ -784,18 +784,33 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   counts bits, a land asks for a whole room). NOT SETTLED: the walk arm is also the first
   search that lived with the dendrites, so a control (`--laps 2 3`) and the old exam (the
   stream) are step 6j.
-  STEP 6j RUNNING ON THE VM, NOT COLLECTED (started 2026-11-19 10:18 local; predictions J1-J9
-  in the note, "Step 6j"): the control genomes `runs/tissue/walk/twice-s0..4.pt` and their
-  chain (`out/jobs/j6-twice-s*`), the stream for the walk genomes (`j6-stream-s*`), and the
-  walk genomes in the old lands: no seeking (`j6-plain`), the maze (`j6-maze`), shift 0.5 with
-  and without seeking and the lineage genomes with seeking (`j6-shift`, `j6-shiftplain`,
-  `j6-shifthold`), side 8 at 128 and 512 cells (`j6-m128`, `j6-m512`), side 12 at 256 and 1024
-  (`j6-s12m256`, `j6-s12m1024`: the 1024 runs take half a day). Queue `out/run9.sh` (stage a
-  `out/jobs9a.txt`, stage b `out/jobs9b.txt` once the searches end), its log
-  `out/jobs/queue9.log`; two looks with no bar: fading with the new genome
-  (`out/jobs/j6-fade-walk-s0.log`) and how loud a copy in thought says a way gone and one
-  never gone (`out/jobs/j6-loud-walk.log`: is Q 0.4 still the line for the new genomes?). Collect: `infra/dev/vm.sh pull runs/tissue/walk` and
-  `pull runs/tissue/hold`.
+  STEP 6j DONE (2026-11-19, evening): THE CONTROL UNDID MY ACCOUNT OF 6i. `twice-s0..4.pt`
+  (`runs/tissue/walk/`: the same search, two or three laps and never one) write a way in one
+  walk as well (0.90-0.94), undo one better (0.95-0.99), and eat 305 / 309 / 307 / 292 / 310 at
+  side 8 with a last third of 125 on ALL five lineages (born knowing 127): the gain came from
+  searching the rule WITH THE DENDRITES it lives with, not from a link shown once. THE CONTROL
+  GENOMES ARE THE BEST IN A LAND AND ARE CARRIED ON. METHOD: a part added by hand changes what
+  the rule should be; search again with it in place. Walk genomes elsewhere: no seeking 242-279
+  (seeking worth only x1.05-1.12 now), the maze 152-205 (explorer 228), side 8 at 128 / 512
+  cells 199-255 / 285-323, side 12 at 256 / 1024 cells 140-306 / 388-487 (explorer 517): the
+  knee as before. In the stream (no body) the new genomes lose the dark walk and hold x2-3 in
+  thought. IN A LAND THAT CHANGES THE BRAIN IS NOW A TABLE THAT NEVER DOUBTS: shift 0.5, 158-204
+  a life (explorer 213, `doubter` T 640 275), 71-81 meals in the half-life after the change
+  against 135. That is the largest gap left.
+  FORGETTING, STEP 5, DOUBT BY HAND, RUNNING (started 2026-11-19 ~21:40 local): `--fade F`
+  (slow), the line `--explore Q` at 0.6-0.7 (0.4 catches a fifth of what the control genomes
+  do not know), and NEW `--sure` (`Mind.sure`: what a copy says quietly is not believed, no
+  road and no copy goes on from it). With the new genomes loudness falls with the age of a
+  wire. A PILOT on other lands (`--seed 1`, 8 lives, `twice-s0`, `twice-s4`, eleven settings,
+  the land still and shift 0.5; yardsticks with the doubter beside it): VM queue
+  `out/run10.sh`, `out/jobs10a.txt`, logs `out/jobs/k5-*`, records
+  `runs/tissue/walk/twice-s*.world8*.seed1.json` and `runs/tissue/world8*.yardsticks.doubt640.
+  seed1.json`. No bars yet: read the pilot, pick F and Q, write bars, then the exam's lands.
+  STEP 6k beside it (predictions K1-K5 in the note): the control genomes in the old lands
+  (`out/jobs10b.txt`, logs `out/jobs/k6-*`: the stream, side 8 no seeking, the maze, shift 0.5
+  with and without seeking, side 12 at 512 cells). Collect both: `infra/dev/vm.sh pull
+  runs/tissue/walk` and `pull runs/tissue` is too much: pull `runs/tissue/walk`, then scp the
+  two yardstick files.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

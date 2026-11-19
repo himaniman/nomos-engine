@@ -6227,3 +6227,56 @@ round from my doubt: nothing was paid in exam 4, two laps hold more and four hop
 it is the first search that lived with the dendrites, in forks, at loads of up to two links
 per interneuron, and holding with two laps rose as well. A control that differs in the laps
 alone, and the old exam (the stream) for the new genomes, are step 6j.
+
+## 2026-11-19 (21:30) — step 6j: the control undoes my account of 6i. A search that never shows a link once writes a way in one walk just as well and ends every lineage's life at born-knowing; what was missing was a search with the body. In a land that changes the brain is now a table that never doubts
+
+**The control** (`twice-s0..4`: the search of 6i seed for seed, two or three laps a life and
+never one). I had written that the one lap is what makes one walk write (J2) and that the
+control would eat less (J3). Both missed:
+
+| 256 cells; lineage genome / walk genome / control | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| a way gone once, said right | 0.54 / 0.92 / 0.92 | 0.53 / 0.92 / 0.94 | 0.61 / 0.93 / 0.91 | 0.37 / 0.80 / 0.90 | 0.51 / 0.91 / 0.90 |
+| a way that closed, gone once since | 0.23 / 0.87 / 0.96 | 0.00 / 0.88 / 0.99 | 0.01 / 0.88 / 0.95 | 0.43 / 0.64 / 0.97 | 0.00 / 0.85 / 0.99 |
+| side 8, seeking: meals a life (explorer 312) | 264 / 311 / 305 | 236 / 295 / 309 | 245 / 302 / 307 | 224 / 264 / 292 | 178 / 272 / 310 |
+| the last third (born knowing 127) | 113 / 126 / 125 | 104 / 119 / 125 | 100 / 119 / 125 | 110 / 120 / 125 | 54 / 95 / 125 |
+| long trips straight, the last third | 0.66 / 0.95 / 0.92 | 0.59 / 0.79 / 0.97 | 0.49 / 0.81 / 0.95 | 0.67 / 0.88 / 0.98 | 0.15 / 0.47 / 0.96 |
+
+The seams of the stream were not it. The lineage genomes had never been searched with the
+dendrite per way that was set on them by hand in 4a; any search that lives with it writes a way
+in one walk, and the one never shown a link once does the rest better. The five lineages no
+longer differ (292-310 meals). The one lap buys 2-7 meals in the first third and holding at
+heavy loads shown once, and costs depth. METHOD: a part added by hand changes what the rule
+should be; search again with the part in place before judging either. The control genomes are
+carried on.
+
+**The stream** for the walk genomes: recall one hop on kept (0.87-1.13 of the lineage's), the
+walk in the dark lost at every load (about six bits in a hundred a hop even with 8 items in 256
+cells), items held in thought x2.1-3.4. J4 and J5 met by the letter; the reason I gave (seams
+believed) is not shown: the stream has no body, and these genomes walk with the dendrite.
+
+**The walk genomes in the old lands** (the note has the tables):
+- No seeking, side 8: 279 / 275 / 271 / 242 / 258 (6e: 241 / 212 / 214 / 193 / 160). Seeking is
+  worth x1.05-1.12 to them, LESS than to the old genomes (I said more): when one walk writes a
+  way, a walk by the dice is not wasted.
+- The maze: 205 / 187 / 190 / 160 / 152, x1.25-1.87 of 6h's (explorer 228). J7 met.
+- The knee stands where it stood. Side 8: 128 / 256 / 512 cells 255 / 311 / 323 for lineage 0,
+  a doubling x1.22-1.39 and then x1.04-1.10; three lineages at 512 cells eat as much as the
+  explorer. Side 12: 256 / 512 / 1024 cells 306 / 441 / 487 for lineage 0 (explorer 517),
+  x1.44-2.38 and then x1.10-1.16.
+- A land half moved at half-life: 196 / 200 / 204 / 158 / 197 with seeking, the explorer 213,
+  the doubter (T 640) 275. In the half-life after the change 71-81 meals against the doubter's
+  135; the curve is the explorer's (20-23 meals per 160 ticks, then 2-5, then 13-18 by the
+  end; the doubter is back at 18-20 within 480 ticks). Seeking adds nothing after the change.
+
+**Two looks.** Fading with the new genomes costs as much as before (a third of the meals at
+0.001 a tick), but loudness now falls step by step with the age of a wire, and a way is still
+right on 0.96 of the askings when it is at 0.73 of the root's loudness. In thought the walk
+genomes say a way never gone at 0.25-0.54 of the root's loudness and the control genomes at
+0.42-0.60, so the line of 0.4 catches half of what the first do not know and a fifth of what
+the second do not; the line is 0.6-0.7.
+
+**Next: doubt by hand** (the note, "Forgetting, step 5"): wires that fade slowly, the line
+where a fading way is still right, and a thought that does not believe what is said quietly
+(`--sure`, new). A pilot on other lands first (on the VM), then bars. Beside it step 6k: the
+control genomes in the old lands.

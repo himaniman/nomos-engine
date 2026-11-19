@@ -1010,6 +1010,34 @@ def test_with_no_road_an_explorer_goes_to_the_nearest_way_never_gone_and_a_brain
     assert mind.lead is None and mind.road == []
 
 
+def test_a_brain_sure_of_nothing_never_plans_and_one_sure_of_all_thinks_as_before():
+    from tissue import world
+    import pytest
+    shape = world.Land(side=3, ticks=60)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(16), gen(2), sure=True)           # no line between loud and quiet
+    for keep in (False, True):
+        live = lambda **sw: world.live(world.Mind(genome.grow(16), gen(2), budget=32, keep=keep, **sw), looks, nxt,
+                                       trees, start, 60, gen(3), fruits=5)
+        # a line under everything said: nothing is quiet, so being sure changes nothing
+        low, low_sure = live(explore=1e-6), live(explore=1e-6, sure=True)
+        assert low_sure["meals"] == low["meals"] and torch.equal(low_sure["walked"], low["walked"])
+        assert low_sure["planned"] == low["planned"] and low_sure["sought"] == 0
+        # a line above everything said: every copy is quiet, none is believed, no road is ever a plan
+        none = live(explore=1e6, sure=True)
+        assert none["planned"] == 0 and none["sought"] > 0
+        assert live(explore=1e6)["planned"] >= 0                 # believed, the same quiet copies may be a road
+    # no copy goes on from a quiet one: the thought ends after its first hop
+    mind = world.Mind(genome.grow(16), gen(2), budget=32, explore=1e6, sure=True)
+    trace = []
+    with torch.no_grad():
+        mind.see(looks[start], 0)
+        assert mind.think(looks[int(trees[0])], gen(4), trace=trace) is None and mind.ended == "rooms"
+    assert trace and {hops for hops, *_ in trace} == {1}
+
+
 @torch.no_grad()
 def test_a_road_kept_is_walked_with_no_new_thought_until_a_room_is_not_the_room_a_copy_said():
     from tissue import world

@@ -6,7 +6,7 @@ Reads `runs/tissue/*/*.world*.json` (one file per genome, land and arm; inside, 
 per size of brain) and the yardsticks of the same land (`runs/tissue/world*.yardsticks*.json`),
 and writes one row per (genome, land, switches, size). What a record's name says is parsed back
 into columns: the land (side, walls, trees, ticks, shift), the arm, and the switches of thought
-(budget, slack, imagery, mumble, curious, explore, keep), the seed of the lands. A column a
+(budget, slack, imagery, mumble, curious, explore, sure, keep, fade), the seed of the lands. A column a
 record does not have (older records lack `early`, `thoughts`, `sought`, `meal_ticks`) is left
 empty.
 """
@@ -44,6 +44,7 @@ def parse(name: str) -> dict | None:
     row["reborn"] = ".reborn" in ground         # a look: the body born again when the land changed
     row["imagery"] = ".imagery" in switches
     row["keep"] = bool(re.search(r"\.keep(?=\.|$)", switches))
+    row["sure"] = bool(re.search(r"\.sure(?=\.|$)", switches))
     row["ground"] = ground
     row["pilot"] = row["seed"] != DEFAULTS["seed"]
     return row

@@ -784,6 +784,17 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   counts bits, a land asks for a whole room). NOT SETTLED: the walk arm is also the first
   search that lived with the dendrites, so a control (`--laps 2 3`) and the old exam (the
   stream) are step 6j.
+  STEP 6j RUNNING ON THE VM, NOT COLLECTED (started 2026-11-19 10:18 local; predictions J1-J9
+  in the note, "Step 6j"): the control genomes `runs/tissue/walk/twice-s0..4.pt` and their
+  chain (`out/jobs/j6-twice-s*`), the stream for the walk genomes (`j6-stream-s*`), and the
+  walk genomes in the old lands: no seeking (`j6-plain`), the maze (`j6-maze`), shift 0.5 with
+  and without seeking and the lineage genomes with seeking (`j6-shift`, `j6-shiftplain`,
+  `j6-shifthold`), side 8 at 128 and 512 cells (`j6-m128`, `j6-m512`), side 12 at 256 and 1024
+  (`j6-s12m256`, `j6-s12m1024`: the 1024 runs take half a day). Queue `out/run9.sh` (stage a
+  `out/jobs9a.txt`, stage b `out/jobs9b.txt` once the searches end), its log
+  `out/jobs/queue9.log`; a look with no bar, fading with the new genome:
+  `out/jobs/j6-fade-walk-s0.log`. Collect: `infra/dev/vm.sh pull runs/tissue/walk` and
+  `pull runs/tissue/hold`.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

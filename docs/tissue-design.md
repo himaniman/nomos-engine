@@ -2592,6 +2592,68 @@ brackets).**
   one lap is asked by a control that differs in the laps alone (step 6j). Not asked yet either:
   whether the new genomes still live the stream and hold a thought as the lineage did (exam 2).
 
+### Step 6j: what in the walk arm did it, and the new genomes in the old lands. Predictions before the runs
+
+Nothing new in the code. Three questions asked of the genomes of 6i, on the VM (`out/jobs9a.txt`,
+`out/jobs9b.txt`, logs `out/jobs/j6-*`; started 2026-11-19).
+
+**The control** (`runs/tissue/walk/twice-s0..4.pt`): the same search, seed for seed, with two or
+three laps a life and never one (`--laps 2 3`), then the same chain (exam 4 with one lap and
+with two, the look `tissue.unlearn`, a life at side 8 with seeking).
+
+- **J1**: with two laps, K90 at hop 1 and at hop 4 (256 cells) is at least 0.9 of the walk
+  genomes' on four lineages. The gain with two laps came from living with the dendrites.
+- **J2**: a way gone once since birth is said right on less than 0.80 of the askings on four
+  lineages (walk: 0.92 / 0.92 / 0.93 / 0.80 / 0.91; lineage: 0.54 / 0.53 / 0.61 / 0.37 / 0.51).
+  The one lap is what makes one walk write.
+- **J3**: at side 8 the first third is smaller than the walk genomes' (64.8 / 62.7 / 66.2 / 31.6
+  / 63.9) on four lineages, and the life as well.
+
+If J2 and J3 are missed, the seams of the stream are not what 6i mended: any search that lives
+with the dendrites would have done.
+
+**The old exam** (exam 2, the stream: `tissue.exam --stream --idle 64 --lives 16`, 64 and 256
+cells; the lineage genomes there: K90 at hop 1 40-42 and 148-209, at hop 4 18-24 and 39-81,
+items held in thought through 64 dark ticks 13-24 and 63-91). Written after one look (lineage
+0, 64 cells, four lives: hop 1 nearly kept, hop 4 not, twice as many items held), so not blind:
+
+- **J4**: K90 at hop 1 at least 0.8 of the lineage's at both sizes on four lineages, and K90 at
+  hop 4 under half of it on four. A rule that believes a pair seen once believes the seams
+  between loops: the price of 6i is paid in the world the lineage came from, not in a land,
+  where nothing is a coincidence.
+- **J5**: items held in thought no fewer than the lineage's, on four.
+
+**The new genomes in the old lands** (16 lives, a road kept, 4096 rooms, the exam's lands):
+
+- **J6, no seeking** (side 8, 256 cells; 6e: 241.4 / 211.9 / 214.4 / 193.4 / 160.2): more than
+  6e's on four lineages; seeking worth more to a brain that writes at once, with over without
+  at least 1.15 on four (lineage genomes: 1.09-1.16); and the first third without seeking no
+  more than 1.5 times 6e's (23.7 / 18.2 / 19.8 / 15.2 / 19.4): the rule alone does not find
+  the ways.
+- **J7, the maze** (walls 0.5, 256 cells, seeking; 6h: 164.3 / 140.6 / 145.4 / 125.2 / 81.6;
+  `explorer` 228): at least 1.2 times 6h's on four lineages, at least 182 (0.8 of the
+  explorer's) on three, and no life with 5 meals or fewer in its last third.
+- **J8, a land half moved at half-life** (shift 0.5, side 8, 256 cells; `explorer` 212.8 with a
+  last third of 60, `doubter` at T 640 275.3 and 105). Three arms: the new genomes without
+  seeking (B7: 122.4 / 114.3 / 126.1 / 89.3 / 80.8; the look of 6i gave 169 / 193 / 177 / 132 /
+  182 on eight of these lives, so not blind), the new genomes with seeking, and the lineage
+  genomes with seeking for the pair. Without seeking: at least 1.3 times B7's on four. With
+  seeking: a life of at least 200 on three, a last third of at least 60 on four and under 95
+  on all five (one walk undoes a way, but nothing sends the body to look at what it holds for
+  known); the new genomes over the lineage's, both seeking, at least 1.3 on four.
+- **J9, the knee again** (seeking): side 8 at 128 and 512 cells, side 12 at 256 and 1024. Side
+  8: 256 over 128 cells at least x1.3 on four; 512 over 256 at most x1.10 on lineages 0-2 (they
+  are at the explorer's) and more than that on 3 and 4 (the weaker the lineage, the more a
+  doubling pays, as before). Side 12: 512 over 256 at least x1.4 on four; 1024 over 512
+  x1.10-1.25 on four, with a first third of at least 85 on three (60-70 now; `explorer` 129)
+  and a life of at least 465 (0.9 of the explorer's) on three.
+
+**A look beside it, no bar**: the pilot of "Forgetting, step 4" again with the new genome
+(`walk-s0`, the same land and life, fade 0 / 0.001 / 0.003). A guess: a wire that fades still
+makes the brain wrong before it makes it quiet (nothing marks how old a wire is), and costs
+fewer meals than it cost the lineage genome, because a way said wrongly is written again in
+one walk.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it

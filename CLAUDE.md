@@ -792,8 +792,9 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   `j6-shifthold`), side 8 at 128 and 512 cells (`j6-m128`, `j6-m512`), side 12 at 256 and 1024
   (`j6-s12m256`, `j6-s12m1024`: the 1024 runs take half a day). Queue `out/run9.sh` (stage a
   `out/jobs9a.txt`, stage b `out/jobs9b.txt` once the searches end), its log
-  `out/jobs/queue9.log`; a look with no bar, fading with the new genome:
-  `out/jobs/j6-fade-walk-s0.log`. Collect: `infra/dev/vm.sh pull runs/tissue/walk` and
+  `out/jobs/queue9.log`; two looks with no bar: fading with the new genome
+  (`out/jobs/j6-fade-walk-s0.log`) and how loud a copy in thought says a way gone and one
+  never gone (`out/jobs/j6-loud-walk.log`: is Q 0.4 still the line for the new genomes?). Collect: `infra/dev/vm.sh pull runs/tissue/walk` and
   `pull runs/tissue/hold`.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it

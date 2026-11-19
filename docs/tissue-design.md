@@ -2491,6 +2491,107 @@ Prediction: W1 and W3 met, W4 met. W2 is the doubt: a rule that believes at once
 less, and a thought may hold less far in the dark when the search's closings are 16 ticks and
 not 32. W5 open.
 
+**Outcome, asked first with no search (2026-11-19; `runs/tissue/hold/hold-s*.fork4x4.laps{1,3}.
+dendrites.json`, run on the VM).**
+
+| exam 4, four ways, 256 cells, the lineage genomes | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| K90 at hop 1: one lap / two / three | 573 / 857 / 1022 | 520 / 926 / 1120 | 584 / 935 / 1122 | 301 / 647 / 907 | 473 / 891 / 1105 |
+| one lap over two | 0.67 | 0.56 | 0.63 | 0.47 | 0.53 |
+| K90 at hop 4: one lap / two / three | 201 / 417 / 532 | 156 / 361 / 469 | 230 / 439 / 546 | 75 / 202 / 328 | 139 / 338 / 460 |
+| 256 links shown once, bits right at hop 1 / hop 4 | 0.98 / 0.85 | 0.97 / 0.80 | 0.98 / 0.88 | 0.92 / 0.66 | 0.96 / 0.77 |
+
+- **The prediction was wrong.** Shown once, the lineage genomes hold not a quarter but a half to
+  two thirds of what they hold shown twice (0.47-0.67 at hop 1; 0.37-0.53 four hops deep).
+  Three laps hold x1.19-1.40 of two, as said. So the rule does not wait for a second showing: it
+  writes a link a part at a time, and every showing adds.
+- Why a land still wanted two walks: exam 4 counts bits (K90 is where nine bits of ten are
+  right) and a thought in a land asks for a whole room, bit for bit. With a link per cell shown
+  once, 0.92-0.98 of the bits are right one hop on and 0.66-0.88 four hops on: enough for a
+  count, not for a road.
+
+**Outcome of the search (2026-11-19; five genomes `runs/tissue/walk/walk-s0..4.pt`, 4000 steps,
+48 minutes each on the VM; their records beside them; the lineage genomes' figures in
+brackets).**
+
+| sizes and worlds no search saw | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| exam 4, 256 cells, ONE lap: K90 at hop 1 | 665 | 703 | 719 | 444 | 698 |
+| over the lineage genome's with two laps (W1 asks 0.5) | 0.78 | 0.76 | 0.77 | 0.69 | 0.78 |
+| over the lineage genome's with one lap | 1.16 | 1.35 | 1.23 | 1.47 | 1.47 |
+| two laps: K90 at hop 1 / hop 4 | 951 / 558 | 1039 / 566 | 1026 / 600 | 829 / 341 | 1029 / 577 |
+| over the lineage genome's (W2 asks 0.8) | 1.11 / 1.34 | 1.12 / 1.57 | 1.10 / 1.37 | 1.28 / 1.69 | 1.15 / 1.70 |
+| one lap, 512 cells: K90 at hop 1 | 1236 (1048) | 1331 (965) | 1416 (1052) | 714 (390) | 1285 (808) |
+| in a land (side 8, 256 cells): a way gone once / twice since birth, said right | 0.92 / 0.98 (0.54 / 0.92) | 0.92 / 0.97 (0.53 / 0.93) | 0.93 / 0.98 (0.61 / 0.93) | 0.80 / 0.96 (0.37 / 0.80) | 0.91 / 0.98 (0.51 / 0.87) |
+| a wall bumped once | 0.96 (0.71) | 0.96 (0.77) | 0.96 (0.80) | 0.93 (0.72) | 0.96 (0.79) |
+| a way that closed, gone once / twice since the change | 0.87 / 1.00 (0.23 / 0.47) | 0.88 / 1.00 (0.00 / 0.35) | 0.88 / 1.00 (0.01 / 0.61) | 0.64 / 0.94 (0.43 / 0.68) | 0.85 / 0.99 (0.00 / 0.52) |
+| a wall that opened, gone once / twice | 0.78 / 1.00 (0.00 / 0.40) | 0.80 / 1.00 (0.00 / 0.23) | 0.78 / 1.00 (0.01 / 0.27) | 0.47 / 0.97 (0.02 / 0.30) | 0.60 / 0.99 (0.00 / 0.14) |
+| walls that opened, gone by the end of the life | 0.56 (0.75) | 0.65 (0.77) | 0.70 (0.68) | 0.73 (0.83) | 0.74 (0.85) |
+| how loud a copy says a way never gone / gone once | 3.5 / 5.6 (2.8 / 3.7) | 3.1 / 5.7 (3.1 / 4.2) | 3.1 / 5.5 (3.0 / 3.9) | 4.1 / 5.7 (3.6 / 4.3) | 3.7 / 5.9 (3.2 / 3.9) |
+| meals in that life (half the walls moved at half-life, a road kept, no seeking, 8 lives) | 169 (120) | 193 (125) | 177 (130) | 132 (96) | 182 (94) |
+
+| a life, a road kept, 4096 rooms, seeking at 0.4, 16 lives | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| side 8, 256 cells: the lineage genome (6h) | 263.9 | 236.1 | 245.4 | 223.5 | 177.6 | 312 | 380 |
+| the genome of the walk arm | 310.9 | 294.8 | 302.1 | 264.1 | 272.3 | | |
+| over 6h | 1.18 | 1.25 | 1.23 | 1.18 | 1.53 | | |
+| the first third: 6h / walk | 40.6 / 64.8 | 36.6 / 62.7 | 42.6 / 66.2 | 21.6 / 31.6 | 35.1 / 63.9 | 83 | 127 |
+| the second third | 110.7 / 120.6 | 95.8 / 112.8 | 102.6 / 116.6 | 91.6 / 112.5 | 88.2 / 112.9 | 114 | 125 |
+| the last third | 112.6 / 125.5 | 103.8 / 119.3 | 100.1 / 119.2 | 110.2 / 120.1 | 54.2 / 95.4 | 115 | 127 |
+| ways gone by an eighth of a life | 0.79 / 0.83 | 0.79 / 0.82 | 0.79 / 0.83 | 0.71 / 0.75 | 0.76 / 0.82 | 0.82 | |
+| trips of 9 steps and more walked straight, the last third | 0.66 / 0.95 | 0.59 / 0.79 | 0.49 / 0.81 | 0.67 / 0.88 | 0.15 / 0.47 | 0.87 | 1.00 |
+| the difference a life and its error; lives of 16 that eat more | +47 +- 2; 16 | +59 +- 3; 16 | +57 +- 3; 16 | +41 +- 3; 16 | +95 +- 4; 16 | | |
+| side 12, 512 cells: the lineage genome (6h) | 356.2 | 297.4 | 320.9 | 224.2 | 173.8 | 517 | 601 |
+| the genome of the walk arm | 441.2 | 406.2 | 428.2 | 333.1 | 356.1 | | |
+| over 6h | 1.24 | 1.37 | 1.33 | 1.49 | 2.05 | | |
+| the first third: 6h / walk | 29.1 / 59.9 | 22.1 / 61.8 | 25.1 / 69.9 | 9.4 / 16.7 | 15.4 / 62.3 | 129 | 201 |
+| the second third | 150.8 / 187.1 | 117.6 / 167.8 | 143.2 / 180.8 | 63.4 / 128.9 | 101.3 / 171.3 | 195 | 201 |
+| the last third | 176.2 / 194.2 | 157.8 / 176.6 | 152.6 / 177.6 | 151.4 / 187.4 | 57.1 / 122.4 | 193 | 199 |
+| ways gone by an eighth of a life | 0.74 / 0.82 | 0.73 / 0.81 | 0.77 / 0.81 | 0.66 / 0.71 | 0.69 / 0.81 | 0.87 | |
+| lives of 16 that eat more | 16 | 16 | 16 | 16 | 16 | | |
+
+- **W1: met** on all five, 0.69-0.78. Read with the wrong prediction above: unsearched, four
+  lineage genomes already stood at the bar (0.47-0.67). What the search added with one lap is
+  x1.16-1.47.
+- **W2: met** on all five, and the other way round from my doubt: shown twice the new genomes
+  hold MORE, x1.10-1.28 one hop on and x1.34-1.70 four hops on. Nothing was paid in exam 4.
+- **W3: met** on four: a way gone once is said right on 0.91-0.93 of the askings (lineage 3:
+  0.80), where it was 0.37-0.61.
+- **W4: met.** A first third of 62.7-66.2 on four lineages (55 asked; lineage 3: 31.6), and a
+  life x1.18-1.53 of 6h's: all 80 lives eat more than the same life in 6h.
+- **W5: met** on all five, x1.24-2.05; all 80 lives eat more.
+
+**What it says.**
+- One walk now writes a way, and one walk undoes one: a way that closed, gone once since the
+  change, is said right on 0.85-0.88 (lineage 3: 0.64) where the lineage genomes said neither
+  the old room nor the new. Nobody asked for the undoing; it came with the writing.
+- Against the `explorer` the brain now stands at 0.85-1.00 of a life at side 8 (lineage 0: 310.9
+  against 311.8) and 0.64-0.85 at side 12 with 512 cells. Its first third is 0.75-0.80 of the
+  explorer's at side 8 on four lineages and about half at side 12 (60-70 against 129), where
+  512 cells are fewer than the land's 576 ways.
+- In the last third at side 8 four lineages eat as much as the explorer or more (119-126 against
+  115; life by life +11 +- 4 for lineage 0, +5 +- 4 for lineages 1-3), and lineage 0 is at what
+  one born knowing the land eats (127). The explorer stops seeking once it has a road to every
+  tree and goes on walking the roads of a map it never finished (its long trips are straight
+  0.87 of the time); the brain goes on finding ways.
+- The lineages keep their order: lineage 3 writes worst by every measure (0.80 gone once, a
+  first third of 32 and 17) and gains least early; lineage 4, whose last third was the worst,
+  gains most (54 to 95, 57 to 122) and still walks its long trips least straight (0.47).
+- Fewer false roads, fewer walls tried: by the end of a life in a land half moved the new
+  genomes have gone 0.56-0.74 of the walls that opened, the lineage genomes 0.68-0.85. A brain
+  that knows its land better explores less by mistake. It needs the wish to know, and in a land
+  that changes it needs doubt, as a table does.
+- For the forgetting road: the line between known and not known is drawn after one walk (a copy
+  says a way never gone at 3.1-4.1 and one gone once at 5.5-5.9; the lineage genomes 2.8-3.6
+  and 3.7-4.3). But a way that closed and has not been gone since is said as it was, at 6.3-6.8,
+  as loud as any: nothing in the brain marks how old a wire is.
+- **A caution on the cause.** The walk arm differs from the lineage's searches in more than
+  the one lap: it is the first search that lived with the hand-made dendrites, in a world of
+  forks, at loads up to two links per interneuron. Holding with TWO laps rose as well, and four
+  hops deep most of all, which a link shown once does not explain. How much of the gain is the
+  one lap is asked by a control that differs in the laps alone (step 6j). Not asked yet either:
+  whether the new genomes still live the stream and hold a thought as the lineage did (exam 2).
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it
@@ -2653,10 +2754,13 @@ body last went them:
   whether the walk arm of 6i, which loads a brain past what it can hold, buys some of that is
   looked at when 6i is in. No exam is run on fading as it is; the switch stays, off.
 
-## Where the world line stands (2026-11-18), for whoever decides the next step
+## Where the world line stands (2026-11-19), for whoever decides the next step
 
 **What exists.** Five genomes (`runs/tissue/hold/hold-s0..4.pt`) found by gradient on abstract
-exams of rung 1 (8-64 interneurons, chains and an unbroken stream), never on a world. Grown to
+exams of rung 1 (8-64 interneurons, chains and an unbroken stream), never on a world, and
+since step 6i five more (`runs/tissue/walk/walk-s0..4.pt`), each searched on from one of those
+in a world of forks where a link may be shown once (still 8-64 interneurons, still no land).
+Grown to
 64-1024 cells, each is born into a walled land it has never seen (exam 6, `tissue/world.py`),
 told only what the room with the fruit looks like, and lives one life of 40 ticks a room with
 no study. Its wires learn the land as it walks; it thinks by a hand-made procedure on those
@@ -2669,7 +2773,8 @@ lineage, no land has the lock of 6b any more (except with slack in the match). A
 cells whose rule was never shown a world. THE YARDSTICK since step 6g is `explorer`, a perfect
 memory that seeks the nearest way it has never gone: 0.81-0.89 of born-knowing in every land
 that does not change. Against it the brain, given the same wish (6h), stands at 0.57-0.85 at
-side 8, 0.34-0.69 at side 12 and 0.36-0.72 in the maze.
+side 8, 0.34-0.69 at side 12 and 0.36-0.72 in the maze with the lineage genomes, and with the
+genomes of step 6i at 0.85-1.00 at side 8 and 0.64-0.85 at side 12 (512 cells).
 
 **What was learned, in the order it was found** (each in the journal, 2026-11-12..17):
 1. The depth of a thought was bound by my limit of rooms (6b's look), and a wider thought
@@ -2712,6 +2817,17 @@ side 8, 0.34-0.69 at side 12 and 0.36-0.72 in the maze.
    ends the last lock. It is worth so much less than in a table because a table knows a way
    it has gone once and the brain does not: gone once, a way is said right on 0.37-0.61 of the
    askings; gone twice, on 0.80-0.93. THE BINDING THING NOW IS HOW MANY WALKS WRITE A WAY.
+8. ONE WALK CAN WRITE A WAY, and the search finds the rule when asked (6i). No search had ever
+   shown a link once: the lineage came from the stream, where a pair seen once may be the seam
+   between two loops. Searched on in a world of forks with one to three laps a life, all five
+   lineages say a way gone once right on 0.80-0.93 of the askings, undo a way in one walk as
+   well, and hold MORE when shown twice (x1.1-1.3, four hops deep x1.3-1.7). A life at side 8
+   is 264-311 meals (the explorer 312, born knowing 380), at side 12 with 512 cells 333-441
+   (517, 601); all 160 lives eat more than with the lineage genome. In the last third at side 8
+   four lineages eat as much as the explorer or more, and one as much as a body born knowing
+   the land. What is left of the gap is the first third: 0.75-0.80 of the explorer's at side 8,
+   half at side 12. Not settled: how much of the gain is the one lap and how much the search's
+   having lived with the dendrites at all (the control and the old exam are step 6j).
 
 **What is still by hand in the world**, with what it carries: a dendrite per way (the body's
 sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
@@ -2724,13 +2840,15 @@ five in other exams the gate.
 
 **Roads from here.** The order was chosen with the user on 2026-11-17 ("After the breadth"):
 wanting to know, forgetting beside it, a thought as a wave later.
-- Wanting to know, next: one walk must write a way. Asked of the search first (the cell's
-  rule; the searches never asked for a link shown once), or by hand in the will (a new way is
-  walked until it is known).
-- Forgetting, next: doubt in the brain. Wires that fade when a way is not met, so that what
-  fades is spoken of quietly and sought again; the yardstick says a span of about a quarter of
-  a life and warns against a short one. A mechanism by hand with an off-switch first, then the
-  search.
+- Wanting to know: one walk writes a way now (6i). Next there: the control and the old lands
+  for the new genomes (6j), then the first third in a big land (cells, or a will that goes
+  back over a new way).
+- Forgetting, next: doubt in the brain. The new genomes undo a way in one walk, so what a
+  changing land still asks is that something send the body to look: a way not met for long
+  must come to be spoken of quietly. Wires that fade made the lineage genomes wrong before
+  quiet (step 4); nothing in the brain marks how old a wire is. The yardstick says a span of
+  about a quarter of a life and warns against a short one. A mechanism by hand with an
+  off-switch first, then the search (a world of forks whose ways change is the place to ask).
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -2740,7 +2858,7 @@ wanting to know, forgetting beside it, a thought as a wave later.
 **Data for a reader.** `python -m tissue.ledger` writes `runs/tissue/world-ledger.csv`: one row
 per record of exam 6 (genome, land, switches, size, meals, thirds, locked lives, straightness,
 map, yardsticks of the same land). Records from 2026-11-17 hold the tick of every meal. Bars,
-predictions and outcomes are in this note (Exam 6, steps 6a-6h, Breadth 1-5, "After the
+predictions and outcomes are in this note (Exam 6, steps 6a-6i, Breadth 1-5, "After the
 breadth") and in the journal; wrong predictions are written as such. Two record files were lost to a name clash
 and repeated; see the journal of 2026-11-16 and 17.
 
@@ -2861,6 +2979,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 6e a road kept (`--keep`, by hand: a road thought of is walked while every room is as a copy said) | done, K1-K4 met. Side 8, 4096 rooms: 241 / 212 / 214 / 193 / 160 meals (6b: 163 / 69 / 123 / 51 / 62), no life locked, every lineage at or above 0.88 of `perfect` and three at `seeker` or above |
 | 6f growth in a world (side 10, a road kept; 256, 512, 1024 cells) | done, G1 and G4 met, G2 and G3 missed by little. 238 / 173 / 223 / 151 / 99, then 301 / 267 / 289 / 224 / 193, then 324 / 290 / 308 / 253 / 234 meals: every lineage gains at every doubling, x1.27-1.95 then x1.06-1.21 |
 | breadth 1-4 (other lands, slack, a land that changes, the knee, old switches with a road kept) | the brain beats a perfect memory most in a maze (x2.4-4.9); one bit of slack locks 70 lives of 80; half the walls moved at half-life is unlearned slowly (0.37-0.55 of the last third); growth flattens where cells are one to two times the land's ways (sides 6, 8, 10, 12) |
+| 6g, 6h wanting to know (yardstick `explorer`; `--explore 0.4`, by hand) | done. A perfect memory that seeks the nearest way it has never gone eats 0.81-0.89 of born-knowing: the yardstick from here on. The brain given the same wish gets about its land nearly as fast and eats x1.09-1.16 at side 8, x1.07-1.17 at side 12, x1.5-2.2 in a maze (H2, H3, H4, H6 met; H1, H5 missed), because a way gone once is said right on 0.37-0.61 of the askings |
+| 6i one walk writes a way (search arm `walk`: forks with a dendrite per way, a link shown once) | done, W1-W5 met. Gone once a way is said right 0.80-0.93; side 8: 264-311 meals (the explorer 312), side 12 at 512 cells: 333-441 (517); all 160 lives eat more than with the lineage genome. The prediction asked first was wrong (the lineage genomes hold half with one lap, not a quarter). The control and the old exam: 6j |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

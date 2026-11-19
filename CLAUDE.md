@@ -769,15 +769,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   The brain born again at the change eats as much after it as one that kept its wires (the
   old map: a start, then a weight). `doubter` at T 640 costs 1% where nothing changes and
   takes shift 0.5 at 105 of 115 in the last third; T 320 is worse than no doubt.
-  STEP 6i SET UP, NOT COLLECTED (2026-11-18): one walk must write a way. Cause found in the
-  search: the lineage genomes come from the stream, where a pair seen once may be the seam
-  between two loops, so the rule was taught not to believe what it saw once. New search arm
-  `tissue.train --arm walk` (the stream brain in a world of forks with the hand-made dendrite
-  per way, 1-3 laps a life, started from each lineage genome), bars W1-W5 in the note. VM queue
-  `out/jobs8.txt`, logs `out/jobs/i6-*`: exam 4 with one and three laps for the lineage genomes
-  (`i6-hold-laps*`), then per lineage the search and its chain (exam 4, `tissue.unlearn`, a life
-  at side 8 and at side 12: `i6-walk-s*`, genomes and records in `runs/tissue/walk/`). Collect:
-  `infra/dev/vm.sh pull runs/tissue/walk` and `pull runs/tissue/hold`.
+  STEP 6i DONE (2026-11-19): ONE WALK WRITES A WAY, found by the search when asked. New search
+  arm `tissue.train --arm walk` (the stream brain in a world of forks with the hand-made
+  dendrite per way, 1-3 laps a life, 4000 steps from each lineage genome): genomes
+  `runs/tissue/walk/walk-s0..4.pt`, THE BEST GENOMES FOR A LAND NOW. Gone once a way is said
+  right 0.80-0.93 (was 0.37-0.61), one walk undoes a way too, two laps hold MORE (x1.1-1.3, four
+  hops deep x1.3-1.7). With `--keep --explore 0.4`, 4096 rooms: side 8, 256 cells 311 / 295 /
+  302 / 264 / 272 meals (6h: 264 / 236 / 245 / 224 / 178; `explorer` 312, born knowing 380);
+  side 12, 512 cells 441 / 406 / 428 / 333 / 356 (6h 356 / 297 / 321 / 224 / 174; explorer
+  517); all 160 lives eat more; W1-W5 met. The last third at side 8 is at the explorer's or
+  above on four lineages (it stops seeking once it has a road to every tree). What is left is
+  the first third (0.75-0.80 of the explorer's at side 8, half at side 12). My "asked first"
+  prediction was wrong: the lineage genomes hold half with one lap, not a quarter (exam 4
+  counts bits, a land asks for a whole room). NOT SETTLED: the walk arm is also the first
+  search that lived with the dendrites, so a control (`--laps 2 3`) and the old exam (the
+  stream) are step 6j.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

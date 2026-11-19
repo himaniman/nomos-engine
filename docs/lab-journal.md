@@ -6183,3 +6183,47 @@ the hand-made dendrite per way, one to three laps a life, 1/8 to 2 links per int
 started from each lineage genome. Bars W1-W5 in the note, committed (1d89bb2) before any run.
 On the VM (`out/jobs8.txt`): exam 4 with one lap and with three for the lineage genomes, then
 per lineage the search, exam 4, the look `tissue.unlearn`, and a life at side 8 and at side 12.
+
+## 2026-11-19 (10:20) — step 6i: asked for a link shown once, the search finds a rule that writes a way in one walk; a life at side 8 is at the explorer's, every bar met; my prediction of where the old genomes stood was wrong
+
+**Asked first, no search** (exam 4, four ways, the dendrite per way, 256 cells, the lineage
+genomes with one lap, two and three). Predicted: one lap holds less than a quarter of two.
+Wrong: K90 at hop 1 is 573 / 520 / 584 / 301 / 473 with one lap against 857 / 926 / 935 / 647 /
+891 with two (0.47-0.67), and 0.37-0.53 four hops deep; three laps hold x1.19-1.40 of two. The
+rule writes a link a part at a time and every showing adds. A land wanted two walks because a
+thought asks for a whole room, bit for bit: with a link per cell shown once 0.92-0.98 of the
+bits are right one hop on and 0.66-0.88 four hops on.
+
+**The search** (`tissue.train --arm walk`, 4000 steps from each lineage genome, 48 minutes
+each; genomes `runs/tissue/walk/walk-s0..4.pt`). All five bars met:
+
+| | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| W1, one lap, K90 at hop 1 over the old genome's with two laps (0.5 asked) | 0.78 | 0.76 | 0.77 | 0.69 | 0.78 |
+| W2, two laps, over the old genome's, hop 1 / hop 4 (0.8 asked) | 1.11 / 1.34 | 1.12 / 1.57 | 1.10 / 1.37 | 1.28 / 1.69 | 1.15 / 1.70 |
+| W3, a way gone once said right (0.85 asked; was 0.37-0.61) | 0.92 | 0.92 | 0.93 | 0.80 | 0.91 |
+| W4, side 8, 256 cells: the first third (55 asked; 6h 22-43; explorer 83) | 64.8 | 62.7 | 66.2 | 31.6 | 63.9 |
+| a life (6h: 264 / 236 / 245 / 224 / 178; explorer 312; born knowing 380) | 310.9 | 294.8 | 302.1 | 264.1 | 272.3 |
+| W5, side 12, 512 cells: a life (6h: 356 / 297 / 321 / 224 / 174; explorer 517) | 441.2 | 406.2 | 428.2 | 333.1 | 356.1 |
+| over 6h (1.15 asked) | 1.24 | 1.37 | 1.33 | 1.49 | 2.05 |
+
+All 160 lives eat more than the same life with the old genome. W2 came out the other way
+round from my doubt: nothing was paid in exam 4, two laps hold more and four hops deep most.
+
+**What else the records say.**
+- One walk undoes a way as well: a way that closed, gone once since the change, is said right
+  on 0.85-0.88 (lineage 3: 0.64); the old genomes said neither room. In a land half moved, a
+  road kept and no seeking, 8 lives: 169 / 193 / 177 / 132 / 182 meals against 120 / 125 / 130 /
+  96 / 94.
+- The last third at side 8 is 119-126 on four lineages, at the explorer's 115 or above it
+  (+11 +- 4 a life for lineage 0, +5 +- 4 for lineages 1-3) and for lineage 0 at what one born
+  knowing the land eats (127). The explorer stops seeking once it has a road to every tree and
+  its long trips are straight 0.87 of the time; the brain goes on finding ways.
+- A brain that knows its land better tries fewer walls by mistake: walls that opened, gone by
+  the end of a life, 0.56-0.74 against 0.68-0.85.
+- Lineage 3 writes worst by every measure and its first third is half the others'.
+
+**What is not settled.** The walk arm differs from the old searches in more than the one lap:
+it is the first search that lived with the dendrites, in forks, at loads of up to two links
+per interneuron, and holding with two laps rose as well. A control that differs in the laps
+alone, and the old exam (the stream) for the new genomes, are step 6j.

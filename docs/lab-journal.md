@@ -6280,3 +6280,49 @@ the second do not; the line is 0.6-0.7.
 where a fading way is still right, and a thought that does not believe what is said quietly
 (`--sure`, new). A pilot on other lands first (on the VM), then bars. Beside it step 6k: the
 control genomes in the old lands.
+
+## 2026-11-20 (13:40) — doubt by hand works: fading wires, a line and a thought that leaves out what is said quietly bring the brain back after half its land has moved; the control genomes in every land; five random starts of five live in a land
+
+A night's queue on the VM (16 hours), set before the pilot was read: the choice the pilot was
+to make was written as a rule and the exam run for every setting the rule could pick.
+
+**Forgetting, step 5.** Three hand-made parts: wires that fade (`--fade`), a line under which a
+way is held for not known (`--explore`), and NEW `--sure`: what a copy says under that line is
+no road and no copy goes on from it. The pilot (other lands, two genomes, eleven settings)
+picked the line at 0.6 with fading at 0.0003 a tick: 0.974 of the base's life where nothing
+changes, 110 meals in the half-life after the change against 82. Then the exam's lands, the
+control genomes of five lineages, 16 lives:
+
+| | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | `doubter` |
+|---|---|---|---|---|---|---|---|
+| half the walls moved: meals in the half-life after, base / doubt | 72 / 111 | 85 / 121 | 79 / 117 | 79 / 104 | 91 / 111 | 72 | 135 |
+| a life there | 192 / 225 | 206 / 240 | 199 / 235 | 184 / 205 | 215 / 233 | 213 | 275 |
+| nothing changes: a life | 305 / 288 | 309 / 291 | 307 / 293 | 292 / 276 | 310 / 294 | 312 | 308 |
+
+D1 met in both halves (x1.22-1.54; all five over 100: I had said that half missed), D3 met (no
+life of 80 without a meal at its end; the base 7), D4 met (alone fading gives x1.06-1.24 and
+`--sure` x0.90-1.20, together x1.22-1.54), D2 missed by a hair (0.942-0.955 where 0.95 was
+asked: doubt costs 5-6% where nothing changes, the table 1%), D5 level (a quarter moved: the
+brain without doubt already eats 125-136 after the change, the doubter 140). After the change
+the doubting brain is back at 19-20 meals per 160 ticks in 800 ticks (the table: 480; the brain
+without doubt ends its life at 16). The line at 0.7 is too greedy: it calls a fifth of what is
+known not known and costs 9-22% where nothing changes.
+
+**Step 6k, the control genomes everywhere.** In the stream they lose the dark walk exactly as
+the walk genomes did and hold x2-4 the items in thought: it is the dendrite, not the one lap
+(K1). The maze 180-195 (explorer 228), side 12 with 512 / 1024 cells 392-443 / 430-479
+(explorer 517), half the walls moved 184-215: alike across lineages in every land. The knee:
+side 8 x1.14-1.24 then x1.03-1.04, side 12 x1.30-1.73 then x1.08-1.10; 128 cells at side 8
+eat 236-270. Seeking at 0.4 is worth x1.05-1.13 (I had said under 1.10 on four). At side 12
+with 1024 cells the last two thirds are at born-knowing (192-199 of 200) and the first is
+40-82 against the explorer's 129.
+
+**Step 6l, more search with the body.** 8000 steps more from each control genome (`long`):
+0-4% more meals at side 8, 2-8% at side 12 with 512 cells; every lineage up, the ones that
+were behind by most. 8000 steps from random starts with no lineage behind them (`fresh`): all
+five live in a land, 258-303 meals at side 8 (the control 292-310) and 300-425 at side 12. I
+had said one would fail. The lineage is a head start of 2-12% (4-24% in the bigger land),
+nearly all in the first third; it is not a need.
+
+**Next**: by the lesson of 6j, the rule searched with the hand-made parts of doubt in place:
+wires that fade, in a world of forks whose ways change ("Forgetting, step 6").

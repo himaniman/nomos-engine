@@ -2814,6 +2814,49 @@ have (16 lives, a road kept, 4096 rooms, seeking at 0.4 where there is seeking; 
   least 465 (0.9 of the explorer's) on three and a last third at the explorer's 193 or above
   on four.
 
+**Outcome (2026-11-20; `twice-s*` records in `runs/tissue/walk/`; walk genome / control).**
+
+| | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | born knowing |
+|---|---|---|---|---|---|---|---|
+| the stream, 256 cells, K90 at hop 1: lineage / walk / control | 194 / 174 / 158 | 209 / 188 / 170 | 208 / 187 / 159 | 148 / 167 / 148 | 199 / 190 / 159 | | |
+| K90 at hop 4 | 81 / 0 / 0 | 70 / 0 / 0 | 78 / 0 / 0 | 39 / 0 / 0 | 64 / 0 / 0 | | |
+| items held in thought through 64 dark ticks | 82 / 274 / 264 | 71 / 217 / 277 | 91 / 210 / 277 | 63 / 151 / 162 | 82 / 209 / 262 | | |
+| side 8, no seeking | 278.6 / 272.9 | 275.3 / 286.2 | 270.5 / 292.1 | 241.7 / 262.9 | 258.4 / 274.6 | 312 | 380 |
+| the control: with seeking over without | 1.12 | 1.08 | 1.05 | 1.11 | 1.13 | | |
+| the maze, seeking | 204.6 / 190.0 | 187.0 / 194.7 | 189.8 / 194.4 | 160.3 / 179.8 | 152.4 / 189.7 | 228 | 257 |
+| shift 0.5, seeking | 195.9 / 192.1 | 200.2 / 206.4 | 204.2 / 199.4 | 158.2 / 184.2 | 197.1 / 214.7 | 213 | |
+| side 12, 512 cells, seeking | 441.2 / 423.2 | 406.2 / 434.2 | 428.2 / 432.0 | 333.1 / 391.9 | 356.1 / 442.8 | 517 | 601 |
+| the control, side 8, cells 128 / 256 / 512 | 252 / 305 / 315 | 270 / 309 / 321 | 265 / 307 / 318 | 236 / 292 / 304 | 266 / 310 / 319 | 312 | 380 |
+| a doubling | 1.21, 1.03 | 1.14, 1.04 | 1.16, 1.04 | 1.24, 1.04 | 1.16, 1.03 | | |
+| the control, side 12, cells 256 / 512 / 1024 | 297 / 423 / 464 | 330 / 434 / 474 | 320 / 432 / 472 | 226 / 392 / 430 | 341 / 443 / 479 | 517 | 601 |
+| a doubling | 1.43, 1.10 | 1.31, 1.09 | 1.35, 1.09 | 1.73, 1.10 | 1.30, 1.08 | | |
+| side 12, 1024 cells, by third | 72 / 196 / 196 | 82 / 197 / 195 | 76 / 199 / 198 | 40 / 192 / 197 | 82 / 199 / 198 | 129 / 195 / 193 | 201 / 201 / 199 |
+
+- **K1: met.** The control genomes lose the walk in the dark of the stream just as the walk
+  genomes did (0.93 / 0.88 / 0.83 / 0.79 of the bits right at hops 1-4 with 8 items in 256
+  cells) and hold x2.0-3.9 of the lineage's items in thought. It is the dendrite, not the one
+  lap: a brain searched with a body walks with its body.
+- **K2: met in its first part, missed in its second.** Without seeking the control eats no
+  less than the walk genomes on four lineages; seeking at 0.4 is worth x1.05-1.13 to it,
+  under 1.10 on two lineages and not four. The line that catches a fifth of what is not known
+  is enough to lead the body there.
+- **K3: met in its first part; the second by a hair.** The maze: more than the walk genomes on
+  four; two lineages at 194 and more, two at 190.
+- **K4: met.** In a land half moved the control eats within a tenth of the walk genomes on
+  four lineages (lineage 3: x1.16), a last third of 61-79.
+- **K5: met.** Side 12 with 512 cells: more on four, lineages 3 and 4 by 59 and 87 meals.
+- **K6: the shape met, two figures missed.** Side 8: 256 over 128 cells x1.14-1.24 (x1.2-1.4
+  said: two lineages), 512 over 256 x1.03-1.04, and four lineages at 512 cells above the
+  explorer's 312. Side 12: 512 over 256 x1.30-1.73 (1.4 said on four: two), 1024 over 512
+  x1.08-1.10; at 1024 cells three lineages at 465 or more and every last third at 195-198
+  (the explorer 193, born knowing 199). I had the small brains too small: 128 cells of the
+  control at side 8 eat 236-270, more than 256 cells of the lineage genomes did.
+- With the control genomes the lineages are alike in every land asked (the maze 180-195, side
+  12 with 512 cells 392-443, with 1024 cells 430-479). Lineage 0 is the one that was better
+  served by the search with one lap, by 6 to 23 meals in every land. In a big land all that
+  is left of the gap to born-knowing is the first third: 40-82 meals against the explorer's
+  129, with the other two thirds at 192-199 of 200.
+
 ### Forgetting, step 5: doubt by hand. A look, a pilot, then bars
 
 What a land that changes asks, by the yardsticks: no longer to hold for known a way not gone
@@ -2901,6 +2944,80 @@ change by a third) and missed in its second (100 meals is the doubter's country)
 met; D2 is the doubt (one life under fading at 0.0003 lost an eighth of its meals, with
 nothing left out of its thoughts); D4 met for the fading, open for `--sure`.
 
+**The pilot (2026-11-20; `twice-s0`, `twice-s4`, lands of `--seed 1`, 8 lives; meals).**
+
+| setting | the land still: a life | shift 0.5: a life | the half-life after the change |
+|---|---|---|---|
+| the line at 0.4 (the base) | 294 / 301 | 198 / 200 | 84 / 81 |
+| the line at 0.6 | 297 / 302 | 187 / 195 | 72 / 74 |
+| the line at 0.7 | 295 / 303 | 201 / 207 | 87 / 87 |
+| 0.6, `--sure` | 297 / 300 | 208 / 205 | 87 / 82 |
+| 0.7, `--sure` | 271 / 295 | 185 / 173 | 79 / 56 |
+| 0.6, `--sure`, fading 0.0003 | 278 / 302 | 227 / 226 | 118 / 102 |
+| 0.7, `--sure`, fading 0.0003 | 262 / 282 | 212 / 242 | 115 / 126 |
+| 0.7, `--sure`, fading 0.0005 | 243 / 268 | 185 / 209 | 107 / 108 |
+| 0.7, `--sure`, fading 0.001 | 113 / 156 | 66 / 130 | 32 / 69 |
+| 0.6, fading 0.0003, nothing left out | 263 / 273 | 214 / 200 | 108 / 86 |
+| 0.7, fading 0.0003, nothing left out | 263 / 272 | 216 / 214 | 111 / 101 |
+| `explorer` / `doubter`, T 640 | 302 / 300 | 203 / 274 | 66 / 137 |
+
+**The rule picks the line at 0.6 with `--sure` and fading at 0.0003**: its life where nothing
+changes is 0.974 of the base's (the other two: 0.913 and 0.858, not let in) and its half-life
+after the change 110 meals against the base's 82. The pick was made before any record of the
+exam was opened. The guesses: the line alone does nothing (right); `--sure` alone costs nothing
+at 0.6 and 2-8% at 0.7; the three together lift the half-life after the change by x1.30-1.46
+(right); "no two of them do" was wrong in part: fading with the line and nothing left out
+lifts it x1.18-1.29, but costs a tenth of a life where nothing changes, and `--sure` takes
+most of that cost away. Fading at 0.001 is far too fast (right).
+
+**The exam (2026-11-20; the exam's lands, 16 lives, `twice-s0..4`; base / the setting picked).**
+
+| | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | `doubter`, T 640 |
+|---|---|---|---|---|---|---|---|
+| shift 0.5, meals in the half-life after the change | 72.2 / 110.9 | 84.9 / 120.9 | 78.6 / 116.5 | 79.2 / 104.4 | 90.8 / 111.0 | 71.6 | 134.8 |
+| over the base | 1.54 | 1.42 | 1.48 | 1.32 | 1.22 | | |
+| the difference a life and its error; lives of 16 that eat more | +39 +- 9; 15 | +36 +- 8; 15 | +38 +- 9; 15 | +25 +- 9; 10 | +20 +- 8; 12 | | |
+| the same half-life with the fading off / with `--sure` off | 85.2 / 89.4 | 88.0 / 98.5 | 85.1 / 90.8 | 95.0 / 86.5 | 81.9 / 96.1 | | |
+| shift 0.5, a life | 192.1 / 224.7 | 206.4 / 240.1 | 199.4 / 234.6 | 184.2 / 205.3 | 214.7 / 232.7 | 212.8 | 275.3 |
+| the last third | 61 / 93 | 72 / 100 | 67 / 99 | 64 / 92 | 79 / 95 | 60 | 105 |
+| lives with no meal in the last third | 2 / 0 | 2 / 0 | 1 / 0 | 2 / 0 | 0 / 0 | 1 | 0 |
+| the land still, a life | 304.8 / 288.0 | 309.0 / 291.2 | 306.9 / 293.1 | 292.3 / 275.5 | 309.9 / 293.7 | 311.8 | 307.9 |
+| over the base | 0.945 | 0.942 | 0.955 | 0.942 | 0.948 | | 0.99 |
+| the land still, by third, the setting picked | 56 / 116 / 116 | 62 / 115 / 114 | 61 / 116 / 116 | 43 / 116 / 117 | 64 / 115 / 115 | 83 / 114 / 115 | 83 / 113 / 112 |
+| shift 0.25, a life | 255.4 / 249.3 | 251.3 / 255.4 | 256.6 / 254.6 | 240.5 / 230.8 | 248.9 / 256.7 | 256.4 | 280.2 |
+| shift 0.25, the half-life after the change | 135.4 / 135.5 | 129.8 / 136.2 | 135.9 / 136.4 | 135.5 / 129.9 | 125.1 / 135.0 | 115.2 | 139.8 |
+
+Meals per 160 ticks from the change on, the mean of the five lineages (21-23 before it): the
+base 3.7, 4.8, 6.6, 9.2, 11.2, 13.7, 15.7, 16.3; the setting picked 4.1, 6.6, 10.5, 15.5,
+17.6, 19.6, 18.9, 19.9; the `doubter` 6.2, 11.9, 17.9, 20.4, 19.6, 18.7, 19.9, 20.1.
+
+- **D1: met, in both halves** (I had the second missed): x1.22-1.54 over the base, 1.3 on
+  four, and 104-121 meals on all five, 0.77-0.90 of what the table that doubts eats.
+- **D2: missed by a hair.** Where nothing changes a life is 0.942-0.955 of the base's, 0.95 on
+  one lineage. Doubt costs the brain 5-6%, the table 1%: the last third falls from 125 to
+  115, which is the explorer's.
+- **D3: met.** No life of the 80 ends without a meal (the base: 7).
+- **D4: met for both parts, on all five lineages.** Alone, fading lifts the half-life after
+  the change x1.06-1.24 and `--sure` x0.90-1.20; together x1.22-1.54.
+- **D5: missed by the letter, level in fact**: with a quarter of the walls moved two lineages
+  of five eat no less with doubt, and no difference stands clear of its error (-10 to +8, +- 6
+  to 11). There the brain with no doubt already eats 125-136 in the half-life after the
+  change, above the explorer's 115 and near the doubter's 140: what its own slips find is
+  most of what moved.
+- The dial, as said it would be reported: the line at 0.7 with fading costs 9-22% where
+  nothing changes (at 0.0005: 14-38%) and lineage 3 falls apart after a change (125 and 89
+  meals a life): it calls a fifth of what is known not known. The line alone, 0.6 or 0.7,
+  changes nothing in either land (0.99-1.01). `--sure` alone costs 0-3% at 0.6 and 3-8% at
+  0.7. The pilot's pick is the best of the three on the exam's lands as well.
+
+**What it says.** Doubt by hand works. A brain whose wires fade slowly, which holds for not
+known what it says quietly and leaves it out of its thoughts, comes back after half its land
+has moved to the rate of a table that doubts (19-20 meals per 160 ticks, 22 before the change)
+in 800 ticks, where the table takes 480 and the brain without doubt never does (16 at the end
+of its life). Each of the three parts is needed, and no life locks. It costs 5-6% of a life
+where nothing changes. All three parts are by hand; by the lesson of 6j the rule should now
+be searched with them in place.
+
 ### Step 6l: more search with the body. Predictions before the runs
 
 Step 6j says the rule wants to be searched with the body it lives with, and 4000 steps of
@@ -2918,6 +3035,32 @@ kept; on the VM, logs `out/jobs/l6-*`):
   the lineage (chains, the stream, long closings) needed once the search lives with the body?
   Prediction: three of five reach 280 meals at side 8 (the control: 292-310), and at least one
   fails outright (under 150), as two random starts of five failed in the stream.
+
+**Outcome (2026-11-20; `runs/tissue/walk/long-s*`, `fresh-s*`; control / long / fresh).**
+
+| | lineage (or start) 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| exam 4, two laps, 256 cells, K90 four hops deep | 514 / 571 / 438 | 570 / 558 / 415 | 548 / 556 / 327 | 412 / 475 / 302 | 558 / 582 / 484 |
+| in a land: a way gone once, said right | 0.92 / 0.93 / 0.83 | 0.94 / 0.94 / 0.91 | 0.91 / 0.93 / 0.77 | 0.90 / 0.91 / 0.76 | 0.90 / 0.93 / 0.93 |
+| side 8, seeking: meals a life | 304.8 / 313.3 / 291.7 | 309.0 / 309.3 / 289.6 | 306.9 / 310.6 / 274.4 | 292.3 / 303.4 / 258.1 | 309.9 / 311.8 / 302.6 |
+| the first third | 60 / 64 / 46 | 61 / 62 / 49 | 60 / 62 / 39 | 46 / 56 / 30 | 62 / 63 / 56 |
+| side 12, 512 cells | 423.2 / 449.4 / 402.4 | 434.2 / 443.1 / 399.6 | 432.0 / 447.1 / 350.1 | 391.9 / 421.4 / 299.6 | 442.8 / 454.5 / 424.5 |
+| long over the control: side 8, side 12 | 1.03, 1.06 | 1.00, 1.02 | 1.01, 1.04 | 1.04, 1.08 | 1.01, 1.03 |
+| fresh over the control: side 8, side 12 | 0.96, 0.95 | 0.94, 0.92 | 0.89, 0.81 | 0.88, 0.76 | 0.98, 0.96 |
+
+- **`long`: more search pays a little.** Four hops deep x1.1 on two lineages, not three
+  (missed). At side 8 every lineage eats more, by 0 to 11 meals (within 2% on three; lineages
+  0 and 3 gain 3-4%); at side 12 with 512 cells 2-8% more, 3% on three (met). The gain is
+  where the brain is small for its land and in the lineages that were behind; the search's own
+  error hardly moves (0.012 to 0.007-0.012). `long-s0..4` are the best genomes in a land by
+  that little; the records of doubt are on `twice`, which stays the base.
+- **`fresh`: no start fails.** Three reach 280 at side 8 as said (292, 290, 303), and the two
+  that do not eat 274 and 258, more than any lineage genome ate before 6i. I had said one
+  would fail outright. For the first time five random starts of five give a brain that lives
+  in a land. The lineage behind the control (chains, the stream, long closings) is worth
+  2-12% at side 8 and 4-24% at side 12, nearly all of it in the first third (30-56 meals
+  against 46-62): it helps a way gone once be said right (0.76-0.93 against 0.90-0.94).
+  It is not needed; it is a head start.
 
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
@@ -3159,10 +3302,24 @@ side 8.
    maze 152-205 (228); the knee stands where it stood. Seeking is worth less now (x1.05-1.12):
    when one walk writes, the dice find the ways. The price is in the old exam: in the stream,
    with no body, the new genomes lose the walk in the dark (and hold x2-3 the items in thought).
-9. IN A LAND THAT CHANGES THE BRAIN IS NOW A TABLE THAT NEVER DOUBTS (6j): half the walls moved
-   at half-life, it eats 158-204 a life where the explorer eats 213 and a memory that doubts
-   275, and 71-81 against 135 in the half-life after the change. One walk undoes a way, so the
-   rule is not what is slow; nothing sends the body to look. This is the largest gap left.
+9. IN A LAND THAT CHANGES THE BRAIN WAS A TABLE THAT NEVER DOUBTS (6j): half the walls moved
+   at half-life, it eats 158-215 a life where the explorer eats 213 and a memory that doubts
+   275, and 72-91 against 135 in the half-life after the change. One walk undoes a way, so the
+   rule is not what is slow; nothing sends the body to look.
+10. DOUBT BY HAND WORKS ("Forgetting, step 5"): wires that fade slowly (0.0003 a tick), a line
+   at 0.6 of the brain's own loudness under which a way is held for not known, and a thought
+   that leaves out what is said under that line (`--sure`). Picked on other lands by a rule
+   written beforehand, on the exam's lands it lifts the half-life after the change to 104-121
+   meals on all five lineages (0.77-0.90 of the table that doubts), no life locks, each part
+   is needed, and the brain is back at the doubter's rate 800 ticks after the change. It costs
+   5-6% of a life where nothing changes (the table: 1%), and with a quarter of the walls moved
+   it neither helps nor costs. All three parts are by hand.
+11. THE SEARCH WITH THE BODY, pushed (6k, 6l): the control genomes are alike in every land (the
+   maze 180-195 of the explorer's 228; side 12: 392-443 with 512 cells, 430-479 with 1024, of
+   517), and need fewer cells (128 cells at side 8 eat 236-270). 8000 steps more add 0-4% at
+   side 8 and 2-8% at side 12. Five random starts of five, no lineage behind them, give a
+   brain that lives in a land (258-303 at side 8): the lineage is a head start worth 2-12%,
+   not a need. In a big land what is left of the gap to born-knowing is the first third.
 
 **What is still by hand in the world**, with what it carries: a dendrite per way (the body's
 sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
@@ -3177,11 +3334,10 @@ five in other exams the gate.
 wanting to know, forgetting beside it, a thought as a wave later.
 - Wanting to know: nearly done where nothing changes (6i, 6j). Left there: the first third in
   a big land, and the line of seeking set for the new genomes (0.6-0.7, not 0.4).
-- Forgetting, NOW: doubt in the brain, by hand first ("Forgetting, step 5"): wires that fade
-  slowly, the line put where a fading way is still right, and a thought that does not believe
-  what is said quietly (`--sure`). With the new genomes loudness falls with the age of a wire,
-  so age can be read. Then the search: 6j says a hand-made part wants the rule searched again
-  with it, in a world of forks whose ways change.
+- Forgetting, NOW: doubt by hand works (10 above). Next, the search: 6j says a hand-made part
+  wants the rule searched again with it in place, so the rule is searched with wires that
+  fade, in a world of forks whose ways change ("Forgetting, step 6"): can it make doubt cost
+  less where nothing changes and catch more of what has changed.
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -3315,6 +3471,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 6g, 6h wanting to know (yardstick `explorer`; `--explore 0.4`, by hand) | done. A perfect memory that seeks the nearest way it has never gone eats 0.81-0.89 of born-knowing: the yardstick from here on. The brain given the same wish gets about its land nearly as fast and eats x1.09-1.16 at side 8, x1.07-1.17 at side 12, x1.5-2.2 in a maze (H2, H3, H4, H6 met; H1, H5 missed), because a way gone once is said right on 0.37-0.61 of the askings |
 | 6i one walk writes a way (search arm `walk`: forks with a dendrite per way, a link shown once) | done, W1-W5 met. Gone once a way is said right 0.80-0.93; side 8: 264-311 meals (the explorer 312), side 12 at 512 cells: 333-441 (517); all 160 lives eat more than with the lineage genome. The prediction asked first was wrong (the lineage genomes hold half with one lap, not a quarter). The control and the old exam: 6j |
 | 6j the control of 6i, the stream, the new genomes in the old lands | done; J1, J4, J5, J7 met, J2, J3 missed, J6, J8, J9 in part. The control (never shown a link once) writes a way in one walk as well and eats 292-310 at side 8 on all five lineages with a last third at born-knowing: the gain of 6i came from searching the rule with the dendrites, not from the one lap. In the stream the new genomes lose the dark walk and hold x2-3 the items. In a land half moved the brain is a table that never doubts (158-204 against the doubter's 275) |
+| forgetting 5: doubt by hand (`--fade`, the line `--explore 0.6`, `--sure`) | done; D1, D3, D4 met, D2 missed by a hair, D5 level. Half the walls moved: 104-121 meals in the half-life after the change on all five lineages (the base 72-91, the table that doubts 135), no life locked, each part needed; 5-6% of a life where nothing changes |
+| 6k, 6l the control genomes everywhere; more search | done. The control genomes are alike in every land and lose the dark walk of the stream as the walk genomes do (it is the dendrite); the knee as before, with fewer cells needed. 8000 steps more: 0-8% more meals. Five random starts of five live in a land (258-303 at side 8): the lineage is a head start, not a need |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

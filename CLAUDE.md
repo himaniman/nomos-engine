@@ -797,30 +797,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   thought. IN A LAND THAT CHANGES THE BRAIN IS NOW A TABLE THAT NEVER DOUBTS: shift 0.5, 158-204
   a life (explorer 213, `doubter` T 640 275), 71-81 meals in the half-life after the change
   against 135. That is the largest gap left.
-  FORGETTING, STEP 5, DOUBT BY HAND, RUNNING (started 2026-11-19 ~21:40 local): `--fade F`
-  (slow), the line `--explore Q` at 0.6-0.7 (0.4 catches a fifth of what the control genomes
-  do not know), and NEW `--sure` (`Mind.sure`: what a copy says quietly is not believed, no
-  road and no copy goes on from it). With the new genomes loudness falls with the age of a
-  wire. A PILOT on other lands (`--seed 1`, 8 lives, `twice-s0`, `twice-s4`, eleven settings,
-  the land still and shift 0.5; yardsticks with the doubter beside it): VM queue
-  `out/run10.sh`, `out/jobs10a.txt`, logs `out/jobs/k5-*`, records
-  `runs/tissue/walk/twice-s*.world8*.seed1.json` and `runs/tissue/world8*.yardsticks.doubt640.
-  seed1.json`. No bars yet: read the pilot, pick F and Q, write bars, then the exam's lands.
-  STEP 6k beside it (predictions K1-K5 in the note): the control genomes in the old lands
-  (`out/jobs10b.txt`, logs `out/jobs/k6-*`: the stream, side 8 no seeking, the maze, shift 0.5
-  with and without seeking, side 12 at 512 cells). Collect both: `infra/dev/vm.sh pull
-  runs/tissue/walk` and `pull runs/tissue` is too much: pull `runs/tissue/walk`, then scp the
-  two yardstick files.
-  A NIGHT'S QUEUE ON TOP (the user's ask, started 2026-11-19 ~21:30 local, about 15-16 hours;
-  `out/jobs11.txt`, queue log `out/jobs/queue11.log`; all predictions in the note): (1) THE
-  EXAM OF DOUBT, set before the pilot was read: a written rule picks the setting from the
-  pilot, bars D1-D5 are for the one picked ("Forgetting, step 5"); exam lands, `twice-s0..4`,
-  the still land, shift 0.5 and 0.25, logs `out/jobs/d5-*`. (2) K6, the knee for the control
-  genomes (`k6-m128`, `k6-m512`, `k6-s12m256`, `k6-s12m1024`). (3) STEP 6l, more search with the
-  body: `long-s0..4` (8000 steps more from each control genome) and `fresh-s0..4` (8000 steps
-  from random starts), each with exam 4, `tissue.unlearn`, a life at side 8 and at side 12
-  with 512 cells (`out/jobs/l6-*`, genomes in `runs/tissue/walk/`). TO COLLECT: pull
-  `runs/tissue/walk`; read the pilot first and apply the rule BEFORE opening the exam records.
+  FORGETTING, STEP 5 DONE (2026-11-20): DOUBT BY HAND WORKS. Three hand-made parts, each
+  with its off-switch: `--fade 0.0003` (wires fade slowly), the line `--explore 0.6`, and
+  `--sure` (`Mind.sure`: what a copy says under the line is no road and no copy goes on from
+  it). The setting was picked on other lands by a rule written before the pilot was read; on
+  the exam's lands (`twice-s0..4`, 16 lives) with half the walls moved it eats 111 / 121 / 117 /
+  104 / 111 in the half-life after the change (the base 72-91, `explorer` 72, `doubter` 135),
+  225 / 240 / 235 / 205 / 233 a life (275), no life locked, each part needed, back at the
+  doubter's rate 800 ticks after the change; D1, D3, D4 met. It costs 5-6% where nothing
+  changes (288 / 291 / 293 / 276 / 294 against 305-310; D2 missed by a hair) and is level at a
+  quarter moved (D5). The line at 0.7 is too greedy; fading at 0.001 far too fast.
+  STEPS 6k, 6l DONE: the control genomes are alike in every land (the maze 180-195, side 12
+  with 512 / 1024 cells 392-443 / 430-479, explorer 517) and lose the dark walk of the stream
+  as the walk genomes do (it is the dendrite). The knee: side 8 x1.14-1.24 then x1.03-1.04,
+  side 12 x1.30-1.73 then x1.08-1.10. `long-s0..4` (8000 steps more) eat 0-8% more: the best
+  genomes by a little; `twice` stays the base (the doubt records are on it). `fresh-s0..4`
+  (random starts, no lineage): all five live in a land (258-303 at side 8): the lineage is a
+  head start, not a need. METHOD kept: when a pilot must be read while nobody is there, write
+  the rule that picks beforehand and run the exam for everything the rule can pick.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

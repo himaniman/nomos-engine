@@ -815,6 +815,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (random starts, no lineage): all five live in a land (258-303 at side 8): the lineage is a
   head start, not a need. METHOD kept: when a pilot must be read while nobody is there, write
   the rule that picks beforehand and run the exam for everything the rule can pick.
+  FORGETTING, STEPS 6 AND 7, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-20 ~14:30 local,
+  about 11 hours; bars S1-S5 and the predictions in the note). STEP 6, THE RULE SEARCHED WITH
+  DOUBT'S PARTS IN PLACE: new in `fork.Walk`: `wander` (after the study a walk by ways at
+  random, eyes open) and `hazard` (ways come to lead somewhere new, untold); `tissue.train
+  --arm walk --fade F --wander LO HI --hazard H` (fade and hazard counted a lap); the look
+  `python -m tissue.stale` (how right and how loud a brain is of fresh ways and of stale
+  ones). Asked first: without fading the control genomes say a changed way as loudly as any;
+  with fading by hand an old way is quieter. Genomes `runs/tissue/walk/doubt-s0..4.pt` and
+  controls `fade-s*`, `change-s*`; queue `out/run12.sh` (`out/jobs12a.txt` the searches,
+  `out/jobs12c.txt` their exams once the searches end), logs `out/jobs/f6-*`. For S3, S4 read
+  the pilot (`doubt-s{0,4}.*.seed1.json`) and apply step 5's rule to pick the line (0.5, 0.6,
+  0.7) BEFORE opening the exam records. STEP 7, breadth of doubt by hand with the control
+  genomes: fading at 0.0001 and 0.0002, and side 12 with 512 cells (`out/jobs12b.txt`, logs
+  `out/jobs/g7-*`; yardsticks `runs/tissue/world12*.yardsticks.doubt*.json`). Collect: pull
+  `runs/tissue/walk`, scp the `world12*doubt*` yardstick files.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

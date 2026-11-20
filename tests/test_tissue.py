@@ -1161,3 +1161,41 @@ def test_the_ledger_reads_a_record_name_back_into_its_land_and_switches():
     assert plain["walls"] == 0.3 and plain["budget"] == 256 and not plain["keep"] and not plain["pilot"]
     assert ledger.parse("runs/tissue/world8.yardsticks.json") is None
     assert ledger.parse("hold-s0.world8.thinks.seed1.json")["pilot"]
+
+
+def test_a_land_of_forks_changes_under_a_walk_and_a_search_lives_it_with_wires_that_fade(tmp_path):
+    from tissue import fork, stale, train as tr
+    walk = fork.Walk(rooms=6, ways=2, laps=2, blinks=3, open=3, closed=2)
+    items, nxt = fork.world(12, walk, 4, gen(0))
+    rows = torch.arange(4)
+    plain = fork.script(nxt, walk, gen(1))
+    # a hazard with no walk after the study is nothing: the life is the life it was, tick for tick
+    same = fork.script(nxt, replace(walk, hazard=0.5), gen(1))
+    assert len(same) == len(plain)
+    assert all(a[0] == b[0] and torch.equal(a[2], b[2]) and torch.equal(a[3], b[3]) for a, b in zip(plain, same))
+    # a walk with no hazard: as many ticks more as asked, each by a way of the land; nothing asked is stale
+    notes = {}
+    roam = fork.script(nxt, replace(walk, wander=1.5), gen(1), notes)
+    n, study = round(1.5 * walk.links), 1 + walk.laps * walk.links
+    assert len(roam) == len(plain) + n
+    for t in range(study, study + n):
+        assert roam[t][0] == "study" and roam[t][1]
+        assert torch.equal(roam[t][2], nxt[rows, roam[t - 1][2], roam[t][3]])
+    assert len(notes["stale"]) == len(notes["age"]) == walk.blinks * walk.closed
+    assert not any(bool(x.any()) for x in notes["stale"]) and all(bool((a >= 0).all()) for a in notes["age"])
+    # with a hazard the land changes under the body: some of what is asked in the dark is stale,
+    # and the land that was handed in is left as it was
+    before, notes = nxt.clone(), {}
+    fork.script(nxt, replace(walk, wander=1.5, hazard=0.2), gen(1), notes)
+    assert torch.equal(nxt, before) and any(bool(x.any()) for x in notes["stale"])
+    # the search lives such a life with wires that fade, and what it saves says so
+    out = tmp_path / "g.pt"
+    tr.train("walk", 0, 2, out, hops=4, vary=True, laps=(2, 3), sizes=(8, 16), fade=0.3, wander=(1.0, 2.0),
+             hazard=0.3)
+    saved = torch.load(out, weights_only=True)
+    assert saved["searched_fade"] == 0.3 and saved["wander"] == [1.0, 2.0] and saved["hazard"] == 0.3
+    # the look tells the ways that are as the body left them from those that have changed since
+    res = stale.look(str(out), [16], lives=8, hazard=0.5, fade=0.3)[16]
+    fresh = sum(v["n"] for v in res["fresh"].values())
+    assert res["stale"]["n"] > 0 and fresh > 0 and res["stale"]["n"] + fresh == res["all"]["n"]
+    assert res["error"] > 0

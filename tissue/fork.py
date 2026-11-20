@@ -54,6 +54,10 @@ class Walk:
     blinks: int = 8      # test: times the eyes close
     open: int = 3        # rooms seen before each closing
     closed: int = 4      # ticks each closing lasts
+    wander: float = 0.0  # after the study the body walks on by ways drawn at random, its eyes
+    #                      open, for this many times the land's links in ticks
+    hazard: float = 0.0  # on each of those ticks every way comes to lead somewhere new with
+    #                      this chance, and nobody tells the brain: a land that changes
 
     @property
     def links(self) -> int:
@@ -91,10 +95,15 @@ def tour(nxt: torch.Tensor, start: int, gen: torch.Generator) -> list:
     return path[-2::-1]
 
 
-def script(nxt: torch.Tensor, walk: Walk, gen: torch.Generator) -> list:
+def script(nxt: torch.Tensor, walk: Walk, gen: torch.Generator, notes: dict | None = None) -> list:
     """The world's side of a life, the same whoever lives it: per tick (kind, seen,
     room (B,), way (B,)) with kind in "study" | "echo" | "closed"; `way` is the way just
-    gone, -1 when the body was carried."""
+    gone, -1 when the body was carried. With `walk.wander` the study is followed by a walk
+    by ways drawn at random (kind "study": seen, not asked), during which the land changes
+    under the body (`walk.hazard`); the test is then of the land as it has become. `notes`,
+    the examiner's: it gets, per closed tick, "stale" (B,): the way gone into that tick has
+    changed since the body last went it with its eyes open, and "age" (B,): the ticks since
+    it did, in times the land's links."""
     b = nxt.shape[0]
     rows = torch.arange(b)
     start = torch.randint(walk.rooms, (b,), generator=gen)
@@ -104,13 +113,36 @@ def script(nxt: torch.Tensor, walk: Walk, gen: torch.Generator) -> list:
     for t in range(walk.laps * walk.links):
         ticks.append(("study", True, torch.tensor([lap[t][0] for lap in laps]),
                       torch.tensor([lap[t][1] for lap in laps])))
+    roam = round(walk.wander * walk.links)
+    stale = torch.zeros(nxt.shape, dtype=torch.bool)    # ways changed since the body last went them
+    last = torch.zeros(nxt.shape)                       # the tick of the wander it last did (the study: 0)
+    room = ticks[-1][2]
+    if roam:
+        nxt = nxt.clone()
+    for t in range(1, roam + 1):
+        if walk.hazard:
+            new = torch.randint(walk.rooms, nxt.shape, generator=gen)
+            moved = (torch.rand(nxt.shape, generator=gen) < walk.hazard) & (new != nxt)
+            nxt = torch.where(moved, new, nxt)
+            stale |= moved
+        way = torch.randint(walk.ways, (b,), generator=gen)
+        stale[rows, room, way], last[rows, room, way] = False, t
+        room = nxt[rows, room, way]
+        ticks.append(("study", True, room, way))
+    if notes is not None:
+        notes.update(stale=[], age=[])
     for _ in range(walk.blinks):
         room = torch.randint(walk.rooms, (b,), generator=gen)
         ticks.append(("echo", True, room, torch.full((b,), -1)))
         for k in range(walk.open + walk.closed - 1):
             way = torch.randint(walk.ways, (b,), generator=gen)
-            room = nxt[rows, room, way]
             seen = k < walk.open - 1
+            if notes is not None and not seen:
+                notes["stale"].append(stale[rows, room, way].clone())
+                notes["age"].append((roam - last[rows, room, way]) / walk.links)
+            if seen:                            # gone with the eyes open: the brain has seen both ends
+                stale[rows, room, way], last[rows, room, way] = False, roam
+            room = nxt[rows, room, way]
             ticks.append(("echo" if seen else "closed", seen, room, way))
     return ticks
 
@@ -168,9 +200,9 @@ class Dendrites:
 
 
 def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: torch.Generator,
-             body: str = "cells") -> dict:
+             body: str = "cells", notes: dict | None = None) -> dict:
     """Live the walk. {kind: (said, true)} for kind in "echo" | "closed", each (B, ticks of
-    that kind, bits); "closed" is ordered blink by blink, hop by hop.
+    that kind, bits); "closed" is ordered blink by blink, hop by hop. `notes`: see `script`.
 
     `body`, how the way just gone reaches the brain:
       "cells"      on sensory cells of its own, beside the eyes' (`embodied`); what an
@@ -191,7 +223,7 @@ def run_life(brain, items: torch.Tensor, nxt: torch.Tensor, walk: Walk, gen: tor
         raise ValueError(f"body must be one of {BODIES}, not {body!r}")
     b, d = items.shape[0], items.shape[-1]
     rows = torch.arange(b)
-    ticks = script(nxt, walk, gen)              # the world first: the same for any brain
+    ticks = script(nxt, walk, gen, notes)       # the world first: the same for any brain
     state = brain.born(b, gen)
     silent = torch.zeros(b, d)
     said: dict = {"echo": [], "closed": []}

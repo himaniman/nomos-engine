@@ -3062,6 +3062,89 @@ kept; on the VM, logs `out/jobs/l6-*`):
   against 46-62): it helps a way gone once be said right (0.76-0.93 against 0.90-0.94).
   It is not needed; it is a head start.
 
+### Forgetting, step 6: the rule searched with the parts of doubt in place. Asked first, then bars before the runs
+
+Step 6j's lesson, applied: the three parts of doubt were set on genomes that never lived with
+them. Here the rule is searched with wires that fade, in a world of forks whose ways change.
+
+**The world** (`fork.Walk.wander`, `hazard`, new): after the study the body walks on by ways
+drawn at random with its eyes open, for one to two laps' worth of ticks (a lap: as many ticks
+as the land has links), and on every tick each way comes to lead somewhere new with a small
+chance. Nobody tells the brain. The test is of the land as it has become, so some of what is
+asked in the dark is STALE: changed since the body last went that way, and not to be known.
+The error of the search (softplus) punishes a wrong word said loudly, so a brain that speaks
+quietly of what is likely stale is paid for it; and what is likely stale is what is old.
+**The wires fade** in the search as in a land (`Plan.fade`, by hand). Fading and hazard are
+counted a lap, so that the age of a wire means the same in a land of 8 links and one of 128:
+0.3 each (a wire loses three tenths of itself in a lap; a way has changed within a lap with
+chance 0.3). In a land of side 8 the fading of step 5 is 0.08 a lap: the search's is four
+times as fast. BY HAND: the fading, its rate, the hazard, the walk at random.
+
+**Asked first, no search** (the look `python -m tissue.stale`, new: 256 cells, half a link per
+cell, a walk of a lap and a half; the control genomes of lineages 0 and 3, 16 lives; bits
+right / loudness one hop into the dark):
+
+| | fresh, gone within half a lap | half a lap to a lap ago | a lap to two ago | stale | the error |
+|---|---|---|---|---|---|
+| no fading | 1.00 / 7.0-7.4 | 0.99-1.00 / 6.9-7.2 | 1.00 / 6.8-7.2 | 0.50 / 6.9-7.3 | 0.50-0.53 |
+| fading 0.3 a lap | 1.00 / 6.0 | 0.98-0.99 / 5.4-5.5 | 0.95-0.98 / 4.4-4.6 | 0.50-0.51 / 4.9-5.2 | 0.39 |
+
+With no fading a way that has changed is said as loudly as one that has not. With fading by
+hand an old way is quieter, so the error falls by a quarter; a stale way is still said at
+about five where a calibrated brain would whisper. That is what the search can mend.
+
+**The searches** (`tissue.train --arm walk --laps 2 3 --hops 16 --vary`, 4000 steps from each
+control genome; on the VM, `out/jobs12a.txt`, logs `out/jobs/f6-*`):
+
+- `doubt-s0..4`: `--fade 0.3 --wander 1 2 --hazard 0.3`;
+- `fade-s0..4`, a control: the wires fade and the land does not change (`--fade 0.3 --wander
+  1 2`);
+- `change-s0..4`, a control: the land changes and the wires do not fade (`--wander 1 2
+  --hazard 0.3`). What 8000 steps of search with neither do is step 6l's `long`.
+
+Each then sits the look `tissue.stale` (with fading and without), exam 4 with two laps, and
+the exam's lands at side 8 (256 cells, 16 lives, a road kept, 4096 rooms; the land still and
+shift 0.5): the base (the line at 0.4, nothing else) and the three parts at step 5's setting
+(0.6, `--sure`, 0.0003); the `doubt` genomes also with the line at 0.5 and at 0.7, and a
+pilot on other lands (`--seed 1`, 8 lives, `doubt-s0` and `doubt-s4`) from which the rule of
+step 5 picks their line among 0.5, 0.6 and 0.7. Bars S3 and S4 are for the line picked.
+
+- **S1, in forks**: the `doubt` genomes' error one hop into the dark, under fading at 0.3 a
+  lap, is under 0.8 of the control genomes' there, and a way gone within half a lap is still
+  right on 0.98 of the bits, on four lineages.
+- **S2, nothing paid**: exam 4, two laps, no fading, 256 cells: K90 at hop 1 and four hops
+  deep at least 0.9 of the control genome's, on four lineages.
+- **S3, in a land doubt costs less**: where nothing changes, the base life is at least 0.98
+  of the control genome's (304.8 / 309.0 / 306.9 / 292.3 / 309.9) and the life with the three
+  parts at least 0.97 of that base (the control genomes: 0.942-0.955), each on four lineages.
+- **S4, and catches more**: half the walls moved, the three parts: at least 120 meals in the
+  half-life after the change on three lineages (the control genomes: 110.9 / 120.9 / 116.5 /
+  104.4 / 111.0; the `doubter` 135).
+- **S5, which part of the search did it**: at step 5's setting, the genomes searched with
+  fading alone and those searched with change alone eat less in that half-life than `doubt`,
+  each on four lineages.
+
+Prediction: S1 met (it is the error the search sees); S2 met on three or four; S3 met in its
+first half, the second open; S4 missed (a land's fading is a quarter as fast a lap as the
+search's, and a land asks for whole rooms); S5 missed for the fading: by 6j, living with the
+part is what matters, and `fade` will do most of what `doubt` does.
+
+### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
+
+Breadth for step 5's setting, the control genomes, 16 lives (on the VM, `out/jobs12b.txt`,
+logs `out/jobs/g7-*`):
+
+- **Slower fading** (side 8, the line at 0.6, `--sure`; the land still and shift 0.5): at
+  0.0002 a tick a life where nothing changes is at least 0.96 of the base's and the half-life
+  after the change at least 1.2 times the base's, each on four lineages; at 0.0001, at least
+  0.98 and under 1.2 on four (too slow to matter in a life of 2560 ticks).
+- **A bigger land** (side 12, 512 cells, a life of 5760 ticks; the same setting; yardsticks
+  with the `doubter` at T 640 and at T 1440, a quarter of that life): the half-life after
+  half the walls have moved at least 1.3 times the base's on three lineages; where nothing
+  changes a life at least 0.92 of the base's (423.2 / 434.2 / 432.0 / 391.9 / 442.8) on four.
+  A bigger land has more ways to keep fresh at the same fading, so doubt should cost more
+  there.
+
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
 `--shift 0.5 --reborn` (a look, `Land.reborn`): at the change the body is born again where it

@@ -3129,6 +3129,100 @@ first half, the second open; S4 missed (a land's fading is a quarter as fast a l
 search's, and a land asks for whole rooms); S5 missed for the fading: by 6j, living with the
 part is what matters, and `fade` will do most of what `doubt` does.
 
+**Outcome (2026-11-21; `runs/tissue/walk/doubt-s*`, `fade-s*`, `change-s*`; 95 minutes a search).
+The search did what the error asked and not what I meant, and in a land its genomes are worse
+than the ones they started from.**
+
+In forks (the look, 256 cells, five lineages; the error one hop into the dark, and how loudly
+a way is said: gone within half a lap / a lap to two ago / stale):
+
+| | the control (`twice`) | `doubt` | `fade` | `change` |
+|---|---|---|---|---|
+| no fading: the error | 0.46-0.54 | 0.25-0.26 | 0.38-0.47 | 0.25-0.26 |
+| loudness | 7.0-8.1 / 6.9-8.0 / 6.9-8.0 | 2.8-3.1 / 2.9-3.1 / 2.8-3.1 | 5.9-6.8 / 5.2-6.8 / 5.2-6.8 | 3.0-3.2 / 2.7-3.1 / 2.8-3.1 |
+| fading 0.3 a lap: the error | 0.35-0.39 | 0.24-0.26 | 0.36-0.38 | 0.29-0.32 |
+| loudness | 6.0-6.7 / 4.6-5.3 / 4.8-5.6 | 2.5-2.8 / 2.0-2.3 / 2.1-2.4 | 5.3-5.8 / 4.1-5.1 / 4.3-5.1 | 2.0-2.4 / 1.4-1.7 / 1.5-1.8 |
+| a way gone since half a lap / a lap to two ago, bits right (fading) | 1.00 / 0.96-0.98 | 1.00 / 0.94-0.99 | 0.99-1.00 / 0.88-0.98 | 0.98-1.00 / 0.82-0.93 |
+
+In a land (side 8, 256 cells, 16 lives; control / `doubt` / `fade` / `change`):
+
+| | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| exam 4, two laps, K90 at hop 1 / hop 4 over the control's: `doubt` | 1.00 / 1.13 | 0.90 / 1.05 | 0.88 / 0.74 | 0.86 / 0.83 | 0.93 / 0.98 |
+| the same: `fade`; `change` | 0.71 / 0.52; 0.59 / 0.31 | 0.75 / 0.72; 0.89 / 0.70 | 0.60 / 0.40; 0.67 / 0.31 | 0.47 / 0.41; 0.80 / 0.69 | 0.68 / 0.57; 0.91 / 0.70 |
+| a way that closed, gone once since, said right (no fading) | 0.96 / 0.99 / 0.86 / 0.63 | 0.99 / 0.76 / 0.98 / 0.91 | 0.95 / 0.66 / 0.58 / 0.74 | 0.97 / 0.68 / 0.44 / 0.78 | 0.99 / 0.42 / 0.83 / 0.92 |
+| nothing changes, the base (no fading): a life | 305 / 314 / 208 / 189 | 309 / 307 / 297 / 231 | 307 / 190 / 96 / 197 | 292 / 218 / 143 / 225 | 310 / 124 / 236 / 233 |
+| nothing changes, the three parts at 0.6 | 288 / 285 / 242 / 6 | 291 / 277 / 295 / 7 | 293 / 214 / 179 / 8 | 276 / 248 / 209 / 16 | 294 / 109 / 278 / 12 |
+| half the walls moved, the three parts at 0.6: the half-life after | 111 / 119 / 91 / 2 | 121 / 122 / 91 / 3 | 117 / 79 / 71 / 3 | 104 / 91 / 79 / 5 | 111 / 13 / 96 / 5 |
+| `doubt` at the line the pilot picked (0.5): a life still; the half-life after | 304; 109 | 298; 118 | 208; 73 | 233; 84 | 123; 16 |
+
+- **S1: met by the letter, not in what it was for.** The error of the `doubt` genomes is
+  0.63-0.73 of the control's and a fresh way is still right. But they did not learn to tell
+  old from new: they learned to say EVERYTHING in a low voice (2.5-2.8 where the control says
+  6.0-6.7), and a stale way is 0.82-0.86 as loud as a fresh one, as it is for the control
+  under fading by hand (0.80-0.84). The genomes searched with change and no fading did the
+  same. In the world I made a way is stale one asking in five whatever its age, so the least
+  error is a low voice for all; the error pays for quietness as such.
+- **S2: missed.** K90 at hop 1 and four hops deep is 0.9 of the control's on three lineages
+  each, not four; the two controls of the search lose a third to a half.
+- **S3: missed where it matters.** The base life is 1.03 / 0.99 / 0.62 / 0.74 / 0.40 of the
+  control's. (With the three parts at the line picked, 0.97-1.09 of that base on four
+  lineages: the letter of the second half, of a base that has fallen.)
+- **S4: missed.** No lineage reaches 120 meals at the line picked (109 / 118 / 73 / 84 / 16;
+  at 0.6 two do, by a hair: 119 and 122).
+- **S5: met by the letter**: at step 5's setting `fade` eats less after the change than
+  `doubt` on four lineages and `change` on all five. All three eat less than the control. The
+  `change` genomes with `--sure` plan nothing at all (6-16 meals a life): a brain that says
+  everything quietly is sure of nothing.
+
+**What it says.** (1) Score what the teacher teaches, once more: an error that punishes a
+loud wrong word, in a world where anything may be wrong, teaches a low voice, not doubt. The
+land's own change is of another kind: nothing moves for half a life, then half the walls at
+once. (2) A rule searched with wires that fade fast leans on the fading: without it, or with a
+quarter of it, a way that closed is no longer undone in one walk (0.42-0.76 where it was
+0.95-0.99). The search's fading was 0.3 a lap and the land's 0.08. (3) Lineages 0 and 1 took
+no harm (lineage 0 even eats 9 +- 1 meals more with no doubt at all); 2, 3 and 4 lost a
+quarter to more than half. Asked again below with those two things mended; if that fails too
+the three parts stay by hand, as the gate does.
+
+### Forgetting, step 6', asked again with what it lacked. Bars before the runs
+
+Two changes, nothing else:
+
+- **The land's own kind of change** (`fork.Walk.burst`, new): in every other world, at one
+  tick of the walk drawn at random, a share of the ways come to lead somewhere new AT ONCE
+  (half of them); in the other worlds nothing changes at all. So a loud word of a fresh way
+  is right, and what is old is stale only where there was a change.
+- **The land's own fading**: 0.08 a lap (0.0003 a tick at side 8), not 0.3.
+
+`doubt2-s0..4` (`--fade 0.08 --wander 1 2 --burst 0.5`) and a control `fade2-s0..4` (the same
+fading and walk, no change), 4000 steps from each control genome; then the look, exam 4, the
+look `tissue.unlearn`, and the exam's lands as in step 6 (the base; the three parts with the
+line at 0.5, 0.6, 0.7 for `doubt2`, at 0.6 for `fade2`; a pilot on other lands from which
+step 5's rule picks the line). On the VM: `out/jobs13a.txt`, `out/jobs13c.txt`, logs
+`out/jobs/h6-*`.
+
+- **T1, in forks, and not by a low voice** (the look with the burst, fading 0.08 a lap, 256
+  cells): the error one hop into the dark under 0.9 of the control genomes' there, and a way
+  gone within half a lap said at least 0.8 as loudly as the control genomes say it, each on
+  four lineages.
+- **T2, nothing paid**: exam 4, two laps, no fading: K90 at hop 1 and four hops deep at least
+  0.9 of the control's on four lineages.
+- **T3, nothing lost in a land**: where nothing changes the base life at least 0.98 of the
+  control's on four lineages, and with the three parts at the line picked at least 0.96 of
+  that base on four (the control genomes: 0.942-0.955).
+- **T4, more caught**: half the walls moved, the three parts: at least 120 meals in the
+  half-life after the change on three lineages.
+
+Prediction: T2 met; T3 met in its first half; T1 open (the voice may still drop); T4 missed:
+I expect the control's 104-121 again, because what the rule can add to fading by hand is
+small. If T3 and T4 are both missed, the search is not asked a third time.
+
+A look beside it, the diagnosis of step 6 tested: the `doubt` genomes of step 6 in a land
+with the fading they were searched with (0.3 a lap, 0.0012 a tick; the line at 0.4, nothing
+left out). If they lean on their fading, lineages 2, 3 and 4 eat more with it than without
+(190 / 218 / 124 where nothing changes). Logs `out/jobs/h6-lean-*`.
+
 ### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
 
 Breadth for step 5's setting, the control genomes, 16 lives (on the VM, `out/jobs12b.txt`,
@@ -3144,6 +3238,29 @@ logs `out/jobs/g7-*`):
   changes a life at least 0.92 of the base's (423.2 / 434.2 / 432.0 / 391.9 / 442.8) on four.
   A bigger land has more ways to keep fresh at the same fading, so doubt should cost more
   there.
+
+**Outcome (2026-11-21; `twice-s*` records; base / the three parts).**
+
+| | lineage 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| side 8, nothing changes, a life over the base: fading 0.0001 / 0.0002 / 0.0003 | 0.96 / 1.00 / 0.95 | 0.96 / 0.95 / 0.94 | 0.97 / 0.98 / 0.96 | 0.99 / 0.93 / 0.94 | 0.98 / 0.98 / 0.95 |
+| side 8, half moved, the half-life after: 0.0001 / 0.0002 / 0.0003 (the base 72-91) | 94 / 111 / 111 | 104 / 111 / 121 | 89 / 104 / 117 | 100 / 93 / 104 | 90 / 103 / 111 |
+| side 12, 512 cells, nothing changes, a life (`explorer` 517, `doubter` T 1440: 504) | 423 / 343 | 434 / 288 | 432 / 346 | 392 / 103 | 443 / 389 |
+| side 12, half moved, the half-life after (`explorer` 78; `doubter` T 640: 94, T 1440: 217) | 101 / 111 | 94 / 91 | 80 / 129 | 64 / 37 | 91 / 145 |
+| side 12, half moved, lives with no meal in the last third | 1 / 0 | 1 / 0 | 2 / 0 | 5 / 0 | 2 / 0 |
+
+- **Slower fading: both predictions missed.** At 0.0002 a life costs 0-7% (0.96 asked on four
+  lineages: three) and the half-life after the change is x1.13-1.53 of the base's (1.2 on
+  three, four asked); at 0.0001 it still costs 1-4% and still lifts that half-life x0.99-1.30.
+  A slower fading buys back little of the cost and gives up part of the gain: the cost is not
+  the fading's speed, it is what is left out of a thought. 0.0003 stays.
+- **The bigger land: both missed, and the yardstick says why.** At side 12 the same fading a
+  tick costs 12-74% where nothing changes and lifts the half-life after the change on two
+  lineages of five. The table that doubts shows the same thing: a span of 640 ticks, right at
+  side 8, is worse than no doubt at all at side 12 (194 meals a life against the explorer's
+  305), and a quarter of that land's life, 1440 ticks, is right (441). **Doubt has to be
+  counted by the land: so much a lap, not so much a tick.** 0.0003 a tick is 0.08 a lap at
+  side 8 and 0.17 at side 12; asked next at 0.08 a lap there (0.00013 a tick).
 
 ### Forgetting, step 1: what the old map is worth. Predictions before the runs
 
@@ -3417,10 +3534,14 @@ five in other exams the gate.
 wanting to know, forgetting beside it, a thought as a wave later.
 - Wanting to know: nearly done where nothing changes (6i, 6j). Left there: the first third in
   a big land, and the line of seeking set for the new genomes (0.6-0.7, not 0.4).
-- Forgetting, NOW: doubt by hand works (10 above). Next, the search: 6j says a hand-made part
-  wants the rule searched again with it in place, so the rule is searched with wires that
-  fade, in a world of forks whose ways change ("Forgetting, step 6"): can it make doubt cost
-  less where nothing changes and catch more of what has changed.
+- Forgetting: doubt by hand works (10 above) and must be counted a lap, not a tick (step 7).
+  The search with its parts in place failed once (step 6: an error that punishes a loud wrong
+  word where anything may be wrong teaches a low voice, and a rule searched with fast fading
+  leans on it) and is asked once more with the land's own kind of change and the land's own
+  fading (step 6'). If that fails the three parts stay by hand.
+- A thought as a wave, NEXT: the third road of the order. Thinking is the largest hand-made
+  part (copies walked breadth-first, 4096 rooms a thought). First a ceiling by hand: can one
+  state of the tissue hold many rooms at once and step them all a hop.
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -3556,6 +3677,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 6j the control of 6i, the stream, the new genomes in the old lands | done; J1, J4, J5, J7 met, J2, J3 missed, J6, J8, J9 in part. The control (never shown a link once) writes a way in one walk as well and eats 292-310 at side 8 on all five lineages with a last third at born-knowing: the gain of 6i came from searching the rule with the dendrites, not from the one lap. In the stream the new genomes lose the dark walk and hold x2-3 the items. In a land half moved the brain is a table that never doubts (158-204 against the doubter's 275) |
 | forgetting 5: doubt by hand (`--fade`, the line `--explore 0.6`, `--sure`) | done; D1, D3, D4 met, D2 missed by a hair, D5 level. Half the walls moved: 104-121 meals in the half-life after the change on all five lineages (the base 72-91, the table that doubts 135), no life locked, each part needed; 5-6% of a life where nothing changes |
 | 6k, 6l the control genomes everywhere; more search | done. The control genomes are alike in every land and lose the dark walk of the stream as the walk genomes do (it is the dendrite); the knee as before, with fewer cells needed. 8000 steps more: 0-8% more meals. Five random starts of five live in a land (258-303 at side 8): the lineage is a head start, not a need |
+| forgetting 6: the rule searched with fading wires in forks whose ways change | failed, S2-S4 missed (S1, S5 met by the letter). The search learned a low voice for everything, not doubt of what is old, and three lineages of five eat a quarter to a half less in a land than the genomes they started from. Asked again (6') with the land's own kind of change and fading |
+| forgetting 7: doubt by hand at slower fadings and in a bigger land | done, predictions missed. Slower fading buys back little of the cost. At side 12 the same fading a tick costs 12-74% of a life: doubt must be counted a lap (the table that doubts says the same: T 640 is worse than no doubt there, T 1440 right) |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

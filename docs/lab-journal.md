@@ -6326,3 +6326,38 @@ nearly all in the first third; it is not a need.
 
 **Next**: by the lesson of 6j, the rule searched with the hand-made parts of doubt in place:
 wires that fade, in a world of forks whose ways change ("Forgetting, step 6").
+
+## 2026-11-21 (13:20) — the search with doubt's parts in place fails: it learns a low voice, not doubt, and its genomes are worse in a land; doubt by hand must be counted a lap, not a tick
+
+**Forgetting, step 6.** New world (`fork.Walk.wander`, `hazard`): after the study the body walks
+on while ways come to lead somewhere new, untold; the walk arm searched with wires that fade
+(0.3 a lap, a hazard of 0.3 a lap), 4000 steps from each control genome (`doubt-s*`), with
+two controls (fading alone, change alone). New look `python -m tissue.stale`.
+
+- In forks the error fell as asked (0.24-0.26 against the control's 0.35-0.39 under fading),
+  and that is the trap: the genomes say everything at 2.5-2.8 where the control says 6.0-6.7,
+  a stale way 0.82-0.86 as loud as a fresh one, no better than fading by hand already gives.
+  In a world where one asking in five is of a way that changed, whatever its age, the least
+  error is a low voice. S1 met by the letter only.
+- In a land they are worse than the genomes they started from: with no doubt at all 314 / 307
+  / 190 / 218 / 124 meals where nothing changes (the control 305 / 309 / 307 / 292 / 310); with
+  the three parts after half the walls moved 119 / 122 / 79 / 91 / 13 against 111 / 121 / 117 /
+  104 / 111. S2, S3, S4 missed. The genomes searched with change and no fading plan nothing
+  under `--sure` (6-16 meals a life): a brain that says everything quietly is sure of nothing.
+- A rule searched with fast fading leans on it: with none, a way that closed is undone in one
+  walk on 0.42-0.76 of the askings on four lineages (the control 0.95-0.99).
+
+Lessons: score what the teacher teaches (a third time); search at the land's own rates; a
+change in a land is rare and sudden, not a steady drizzle. Asked again as step 6' with a burst
+of change in every other world and fading at the land's 0.08 a lap.
+
+**Forgetting, step 7** (doubt by hand, the control genomes). Slower fading does not buy the
+cost back: at 0.0001 a tick a life still costs 1-4% and the half-life after a change is still
+x1.0-1.3 the base's; at 0.0002, 0-7% and x1.1-1.5. At side 12 (512 cells) the fading that
+worked at side 8 costs 12-74% of a life where nothing changes. The yardstick says the same
+of a table: the `doubter` with T 640 eats 194 a life at side 12 after a change (the explorer
+305), with T 1440, a quarter of that land's life, 441. Doubt is so much a lap, not so much a
+tick. Both of my predictions for step 7 missed.
+
+**Next**: step 6' (the search asked again), doubt by hand at side 12 at 0.08 a lap, and the
+first look of the third road: can one state of the tissue hold many rooms at once.

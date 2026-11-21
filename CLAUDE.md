@@ -815,21 +815,19 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   (random starts, no lineage): all five live in a land (258-303 at side 8): the lineage is a
   head start, not a need. METHOD kept: when a pilot must be read while nobody is there, write
   the rule that picks beforehand and run the exam for everything the rule can pick.
-  FORGETTING, STEPS 6 AND 7, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-20 ~14:30 local,
-  about 11 hours; bars S1-S5 and the predictions in the note). STEP 6, THE RULE SEARCHED WITH
-  DOUBT'S PARTS IN PLACE: new in `fork.Walk`: `wander` (after the study a walk by ways at
-  random, eyes open) and `hazard` (ways come to lead somewhere new, untold); `tissue.train
-  --arm walk --fade F --wander LO HI --hazard H` (fade and hazard counted a lap); the look
-  `python -m tissue.stale` (how right and how loud a brain is of fresh ways and of stale
-  ones). Asked first: without fading the control genomes say a changed way as loudly as any;
-  with fading by hand an old way is quieter. Genomes `runs/tissue/walk/doubt-s0..4.pt` and
-  controls `fade-s*`, `change-s*`; queue `out/run12.sh` (`out/jobs12a.txt` the searches,
-  `out/jobs12c.txt` their exams once the searches end), logs `out/jobs/f6-*`. For S3, S4 read
-  the pilot (`doubt-s{0,4}.*.seed1.json`) and apply step 5's rule to pick the line (0.5, 0.6,
-  0.7) BEFORE opening the exam records. STEP 7, breadth of doubt by hand with the control
-  genomes: fading at 0.0001 and 0.0002, and side 12 with 512 cells (`out/jobs12b.txt`, logs
-  `out/jobs/g7-*`; yardsticks `runs/tissue/world12*.yardsticks.doubt*.json`). Collect: pull
-  `runs/tissue/walk`, scp the `world12*doubt*` yardstick files.
+  FORGETTING, STEP 6 FAILED (2026-11-21): the rule searched with doubt's parts in place
+  (`tissue.train --arm walk --fade 0.3 --wander 1 2 --hazard 0.3`, new `fork.Walk.wander` and
+  `hazard`, new look `python -m tissue.stale`; genomes `doubt-s*`, controls `fade-s*`,
+  `change-s*`). It learned a LOW VOICE FOR EVERYTHING, not doubt of what is old (the error
+  fell as asked: S1 by the letter), and in a land three lineages of five eat a quarter to a
+  half less than the control genomes (`doubt` base 314 / 307 / 190 / 218 / 124; S2-S4 missed).
+  Why: an error that punishes a loud wrong word where anything may be wrong teaches quietness
+  (score what the teacher teaches, again); and a rule searched with fast fading leans on it
+  (the search's 0.3 a lap against the land's 0.08). DO NOT USE the `doubt`, `fade`, `change`
+  genomes; `twice` stays the base. STEP 7 DONE: slower fading (0.0001, 0.0002) buys back
+  little of doubt's cost; at side 12 the fading of side 8 costs 12-74% of a life: DOUBT MUST BE
+  COUNTED A LAP, NOT A TICK (0.08 a lap; the `doubter` says the same: T 640 is worse than no
+  doubt at side 12, T 1440 right).
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

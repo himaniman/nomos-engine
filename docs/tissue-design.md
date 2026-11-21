@@ -3223,6 +3223,87 @@ with the fading they were searched with (0.3 a lap, 0.0012 a tick; the line at 0
 left out). If they lean on their fading, lineages 2, 3 and 4 eat more with it than without
 (190 / 218 / 124 where nothing changes). Logs `out/jobs/h6-lean-*`.
 
+**Step 6' was NOT RUN: decided by a count before the search (2026-11-21, the same day).** The
+world was built (`fork.Walk.burst`, tested, off unless asked) and the control genomes looked
+at in it first, as the method asks. Under the land's own fading (0.08 a lap) they say a way
+gone within half a lap at 6.9-7.2 and one not gone for two laps and more at 6.3-6.7: within a
+life of the search (three to seven laps; a land's is ten) the age of a wire moves the voice by
+7%. Now the error. With one voice L for all and a share q of the askings stale, it is
+(1 - q) log(1 + e^-L) + q (log(1 + e^L) + log(1 + e^-L)) / 2, least at L = 2.2 when q is 0.17
+(a burst in the last lap of the walk) and at 4.5 when q is 0.025 (a burst anywhere in a long
+walk); the control genomes speak at 7. So the error pulls the whole voice down to a third
+long before a 7% difference between old and new can earn anything, which is what step 6 did
+and why. A search of this kind cannot be asked for doubt while age is marked so faintly in a
+life as short as the search's. **The three parts of doubt stay by hand**, as the gate does.
+What would change the count: an age the cell can read sharply (a mark of its own, not the
+strength of the wire it is written in), or a search whose lives are as long as a land's.
+The look `h6-lean` is still run.
+
+### Forgetting, step 8: doubt by hand counted a lap. Predictions before the runs
+
+The control genomes, 16 lives, the line at 0.6, `--sure` (on the VM, `out/jobs13.txt`, logs
+`out/jobs/h8-*`):
+
+- **Side 12, 512 cells, fading 0.08 a lap** (0.00014 a tick): where nothing changes a life at
+  least 0.92 of the base's (423.2 / 434.2 / 432.0 / 391.9 / 442.8) on four lineages (at 0.0003
+  a tick: 0.26-0.88); half the walls moved, the half-life after the change at least 1.2 times
+  the base's (101 / 94 / 80 / 64 / 91) on three (the `doubter`, T 1440: 217).
+- **A maze that changes** (walls 0.5, shift 0.5, side 8, 256 cells, 0.0003 a tick; yardsticks
+  with the `doubter` at T 640): the half-life after the change at least 1.2 times the base's
+  on three lineages, no life locked with doubt.
+- **The best genomes** (`long-s0..4`, side 8, the three parts at step 5's setting): within 3%
+  of the control genomes' with doubt on four lineages, in the land still (288 / 291 / 293 /
+  276 / 294) and in the half-life after half the walls moved (111 / 121 / 117 / 104 / 111).
+
+## A thought as a wave (the third road of the order, from 2026-11-21)
+
+Thinking in exam 6 is the largest hand-made part: copies of the brain, one for every room
+thought of (up to 4096), walked breadth-first by the examiner, an exact match with the wanted
+look, a road kept. The question of this road: can the TISSUE hold a thought, many rooms in one
+state, and step it? First a ceiling by hand, before any mechanism.
+
+### Wave, step 1: one state for many rooms. A look by hand, then guesses before the runs
+
+By hand (a scratch look, not yet a module): a thought is FOUR states, one per first way out
+of the room the body stands in. Each is stepped a hop at a time in the dark by all four ways
+at once; the four states that come of it are averaged into one and brought back to the size
+of a single copy's state (a gain, by hand). Such a state is a wave: a superposition of every
+room a walk of that many steps may have reached. A room is in a wave when the wave's
+interneurons lie along that room's code (the cosine with what a copy's interneurons say when
+it has hopped into that room in the dark). The first way whose wave reaches the wanted room
+first is taken. Sixteen ticks of the brain a hop, where the copies cost as many as there are
+rooms. A second arm, `--refract`, by hand: a wave is kept clear of what the waves before it
+were (no way back), so that it stays a front.
+
+One life (`twice-s0`, 256 cells, side 8, asked at ticks 1200 and 2400 for every room of the
+land as the wanted one), seen before these guesses were written:
+
+- A room has ONE code, seen or thought of: the cosine between the two is 0.99.
+- N codes laid over one another are told from the rest of the land: with N at 8 a member lies
+  at 0.38 along the mix and another room at 0.07 (a member above another on 0.995 of the
+  pairs); at 16, 0.29 and 0.09 (0.957); at 32, 0.24 and 0.11 (0.892). So one state of 256
+  cells holds about 8 to 16 rooms.
+- A wave stepped by the brain's own wires: at depth 2 it holds 4 rooms at 0.49 against 0.04
+  for the rest, at depth 3 9 rooms at 0.27 against 0.06, at depth 4 16 rooms at 0.20 against
+  0.09; from depth 6 on nothing is told apart. The first way is right for a room 1 step away
+  on 1.00 of the askings, 2 steps 0.89-1.00, 3 steps 0.62-0.69, 4 steps 0.53 at best, and at
+  chance beyond (chance: 0.33-0.45, the share of ways that begin a shortest road).
+- Kept clear of where it has been, the wave is a front of 3 to 9 rooms, and it dies at the
+  same depth (0.23 against 0.08 at depth 4, 0.11 against 0.04 at depth 6). So it is not the
+  number of rooms that ends a wave: stepping a mix through the cells loses it.
+
+**The look in full** (five lineages, 256 / 512 / 1024 cells, 4 lives, both arms; on the VM,
+logs `out/jobs/w1-*`, records `runs/tissue/walk/twice-s*.wave*.json`). Guesses:
+
+- growth pays for what one state can hold: the N at which a member is still above another
+  room on 0.95 of the pairs doubles with the cells (16 at 256 cells, 32 at 512, 64 at 1024);
+- and for depth a little: the last depth at which a wave lies twice as much along its own
+  rooms as along the rest (4 at 256 cells) is one hop more at 1024, on four lineages;
+- the first way for a room 3 steps away is right on at least 0.8 of the askings at 1024 cells
+  (0.62-0.69 at 256) on four lineages, and beyond 6 steps at chance at every size.
+
+### Forgetting, step 8, the look `h6-lean`, and wave step 1 are what runs on the VM now.
+
 ### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
 
 Breadth for step 5's setting, the control genomes, 16 lives (on the VM, `out/jobs12b.txt`,

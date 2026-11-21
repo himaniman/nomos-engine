@@ -1199,3 +1199,13 @@ def test_a_land_of_forks_changes_under_a_walk_and_a_search_lives_it_with_wires_t
     fresh = sum(v["n"] for v in res["fresh"].values())
     assert res["stale"]["n"] > 0 and fresh > 0 and res["stale"]["n"] + fresh == res["all"]["n"]
     assert res["error"] > 0
+    # the land's own kind of change: in about every other world a share of the ways at once, in the rest none
+    walk8 = fork.Walk(rooms=6, ways=2, laps=2, blinks=6, open=3, closed=2, wander=1.5, burst=1.0)
+    items, nxt = fork.world(12, walk8, 64, gen(0))
+    notes = {}
+    fork.script(nxt, walk8, gen(1), notes)
+    struck = torch.stack(notes["stale"], 1).any(1)          # worlds where something asked was stale
+    assert 8 < int(struck.sum()) < 56
+    tr.train("walk", 0, 2, out, hops=4, vary=True, laps=(2, 3), sizes=(8, 16), fade=0.08, wander=(1.0, 2.0), burst=0.5)
+    assert torch.load(out, weights_only=True)["burst"] == 0.5
+    assert stale.look(str(out), [16], lives=8, hazard=0.0, burst=0.5, fade=0.08)[16]["all"]["n"] > 0

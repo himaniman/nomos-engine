@@ -58,6 +58,8 @@ class Walk:
     #                      open, for this many times the land's links in ticks
     hazard: float = 0.0  # on each of those ticks every way comes to lead somewhere new with
     #                      this chance, and nobody tells the brain: a land that changes
+    burst: float = 0.0   # the land's own kind of change: in every other world (drawn), at one
+    #                      tick of that walk, this share of the ways lead somewhere new AT ONCE
 
     @property
     def links(self) -> int:
@@ -119,7 +121,15 @@ def script(nxt: torch.Tensor, walk: Walk, gen: torch.Generator, notes: dict | No
     room = ticks[-1][2]
     if roam:
         nxt = nxt.clone()
+    if roam and walk.burst:
+        when = torch.randint(1, 2 * roam + 1, (b,), generator=gen)      # past the walk's end: never
+        other = torch.randint(walk.rooms, nxt.shape, generator=gen)
+        struck = torch.rand(nxt.shape, generator=gen) < walk.burst
     for t in range(1, roam + 1):
+        if walk.burst:
+            moved = (when == t).view(b, 1, 1) & struck & (other != nxt)
+            nxt = torch.where(moved, other, nxt)
+            stale |= moved
         if walk.hazard:
             new = torch.randint(walk.rooms, nxt.shape, generator=gen)
             moved = (torch.rand(nxt.shape, generator=gen) < walk.hazard) & (new != nxt)

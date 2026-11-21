@@ -81,7 +81,8 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
           load: tuple = (0.25, 2.0), reach: int = 0, field: int = 0,
           spoken: bool = False, gate: float = 0.0, anneal: int = 0,
           told: str = "always", sleep: int = 0, sleep_hand: float = 0.0, laps: tuple = (1, 3),
-          ways: int = 4, fade: float = 0.0, wander: tuple = (0.0, 0.0), hazard: float = 0.0) -> None:
+          ways: int = 4, fade: float = 0.0, wander: tuple = (0.0, 0.0), hazard: float = 0.0,
+          burst: float = 0.0) -> None:
     """`hops`, `echo` (chain arm): the longest chain trained on, and whether the echo of
     the first item (hop 0) is part of the error along with the hops. Stream arm: `hops` is
     how long the eyes stay closed, `idle` a long closing between study and test; the echo
@@ -111,7 +112,10 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
     (`hazard`): the error then punishes a wrong word said loudly of a way that has changed,
     so that doubt can pay. `fade` and `hazard` are counted A LAP (as many ticks as the land
     has links: the share of itself a wire loses in that time, and the chance that a way
-    changes in it), so that the age of a wire means the same in a small land and a big one."""
+    changes in it), so that the age of a wire means the same in a small land and a big one.
+    `burst`: the land's own kind of change instead: in every other life, at one tick of that
+    walk, this share of the ways lead somewhere new at once, and in the other lives nothing
+    changes, so a loud word of a way just gone is right."""
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     lap_range = tuple(laps)             # (the stream and fork arms draw `laps` of their own below)
@@ -172,7 +176,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
             roam = (wander[0] + float(torch.rand(1, generator=gen)) * (wander[1] - wander[0])
                     if wander[1] > 0 else 0.0)
             walk = fork.Walk(rooms, ways, n_laps, blinks=6 if closed <= 8 else 3, open=3, closed=closed,
-                             wander=roam, hazard=hazard / (rooms * ways))
+                             wander=roam, hazard=hazard / (rooms * ways), burst=burst)
             if fade:
                 model.plan = replace(model.plan, fade=fade / (rooms * ways))
             items, nxt = fork.world(task.d_out, walk, batch, gen)
@@ -223,7 +227,7 @@ def train(arm: str, seed: int, steps: int, out: Path, batch: int = 32, lr: float
                         "anneal": anneal, "lean": model.plan.lean if arm == "stream" else 1.0,
                         "told": told, "sleep": sleep, "body": model.plan.body,
                         "sizes": list(sizes), "load": list(load), "laps": list(lap_range), "ways": ways,
-                        "searched_fade": fade, "wander": list(wander), "hazard": hazard,
+                        "searched_fade": fade, "wander": list(wander), "hazard": hazard, "burst": burst,
                         "genome": model.state_dict()}, out)
     log.close()
 
@@ -276,6 +280,9 @@ def main() -> None:
                         " the land's links in ticks (drawn)")
     p.add_argument("--hazard", type=float, default=0.0,
                    help="walk arm: in a lap's worth of ticks of that walk a way leads somewhere new with this chance")
+    p.add_argument("--burst", type=float, default=0.0,
+                   help="walk arm: in every other life, at one tick of that walk, this share of the ways"
+                        " lead somewhere new at once")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--threads", type=int, default=2)
     a = p.parse_args()
@@ -284,7 +291,7 @@ def main() -> None:
           vary=a.vary, fan=a.fan, sizes=tuple(a.sizes), load=tuple(a.load), reach=a.reach,
           field=a.field, spoken=a.spoken, gate=a.gate, anneal=a.anneal, told=a.told,
           sleep=a.sleep, sleep_hand=a.sleep_hand, laps=tuple(a.laps), ways=a.ways, fade=a.fade,
-          wander=tuple(a.wander), hazard=a.hazard)
+          wander=tuple(a.wander), hazard=a.hazard, burst=a.burst)
 
 
 if __name__ == "__main__":

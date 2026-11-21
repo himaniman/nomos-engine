@@ -827,7 +827,24 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   genomes; `twice` stays the base. STEP 7 DONE: slower fading (0.0001, 0.0002) buys back
   little of doubt's cost; at side 12 the fading of side 8 costs 12-74% of a life: DOUBT MUST BE
   COUNTED A LAP, NOT A TICK (0.08 a lap; the `doubter` says the same: T 640 is worse than no
-  doubt at side 12, T 1440 right).
+  doubt at side 12, T 1440 right). STEP 6' (the search asked again with the land's own kind of
+  change, `fork.Walk.burst`, and fading) was NOT RUN, decided by a count: the error pulls the
+  whole voice down to a third long before the 7% by which age moves it in a search's short
+  life can earn anything. THE THREE PARTS OF DOUBT STAY BY HAND.
+  A THOUGHT AS A WAVE, THE THIRD ROAD, BEGUN (2026-11-21; note: "A thought as a wave"). A look
+  by hand (scratch `wave.py`, on the VM as `out/tissue.wave.py`, not yet a module): a thought as FOUR
+  states, one per first way, each stepped by all four ways at once and averaged: a
+  superposition of rooms. One life at 256 cells: a room has one code seen or thought of (0.99);
+  one state holds 8-16 rooms tellably; a wave finds the first way 1-3 steps away (1.00 / 0.9 /
+  0.65) and dies by depth 5-6 whether or not it is kept a front (`--refract`): stepping a mix
+  loses it, not the number of rooms.
+  RUNNING ON THE VM, NOT COLLECTED (started 2026-11-21 ~14:00 local, about 6 hours;
+  `out/jobs13.txt`, queue log `out/jobs/queue13.log`): the wave look in full (`w1-*`: five
+  lineages, 256 / 512 / 1024 cells, both arms; records `runs/tissue/walk/twice-s*.wave*.json`);
+  forgetting step 8, doubt by hand counted a lap (`h8-*`: side 12 at 0.00014 a tick, a maze
+  that changes with its yardsticks `runs/tissue/world8.walls0.5.shift0.5.yardsticks.doubt640.
+  json`, the `long` genomes with doubt); the look `h6-lean-*` (step 6's `doubt` genomes with
+  the fading they were searched with). Predictions and guesses in the note.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

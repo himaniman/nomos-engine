@@ -1,7 +1,8 @@
 """A look at doubt in a world of forks whose ways change (no exam).
 
     python -m tissue.stale GENOME.pt ... [--ways 4] [--sizes 64 256] [--wander 1.5]
-                                         [--hazard 0.3] [--fade 0.3] [--load 0.5] [--lives 32]
+                                         [--hazard 0.3] [--burst 0] [--fade 0.3] [--load 0.5]
+                                         [--lives 32]
 
 Exam 4's life with a dendrite per way, and then the body walks on by ways drawn at random
 with its eyes open while, unknown to the brain, ways come to lead somewhere new
@@ -34,7 +35,7 @@ AGES = ((0.0, 0.5), (0.5, 1.0), (1.0, 2.0), (2.0, 1e9))    # ticks since last go
 
 
 def look(path: str, sizes, ways: int = 4, wander: float = 1.5, hazard: float = 0.3, fade: float = 0.0,
-         links: float = 0.5, lives: int = 32, seed: int = 72_000, closed: int = 4) -> dict:
+         links: float = 0.5, lives: int = 32, seed: int = 72_000, closed: int = 4, burst: float = 0.0) -> dict:
     """{m: {"fresh": {age band: {"n", "right", "loud"}}, "stale": {"n", "right", "loud"},
     "all": {...}, "error", "error_fresh", "error_stale"}}, one hop into the dark."""
     out = {}
@@ -42,7 +43,7 @@ def look(path: str, sizes, ways: int = 4, wander: float = 1.5, hazard: float = 0
         rooms = max(2, round(m * links / ways))
         model, task, _ = load(path, **({"fade": fade / (rooms * ways)} if fade else {}))
         walk = fork.Walk(rooms, ways, laps=2, blinks=max(8, rooms), open=3, closed=closed,
-                         wander=wander, hazard=hazard / (rooms * ways))
+                         wander=wander, hazard=hazard / (rooms * ways), burst=burst)
         gen = torch.Generator().manual_seed(seed + m)
         items, nxt = fork.world(task.d_out, walk, lives, gen)
         notes: dict = {}
@@ -83,6 +84,8 @@ def main() -> None:
     p.add_argument("--sizes", type=int, nargs="*", default=[64, 256])
     p.add_argument("--wander", type=float, default=1.5, help="the walk after the study, in times the land's links")
     p.add_argument("--hazard", type=float, default=0.3, help="the chance a lap that a way leads somewhere new")
+    p.add_argument("--burst", type=float, default=0.0,
+                   help="in every other world, at one tick of the walk, this share of the ways change at once")
     p.add_argument("--fade", type=float, default=0.0, help="by hand: the share of itself a wire loses a lap")
     p.add_argument("--load", type=float, default=0.5, help="links per interneuron")
     p.add_argument("--lives", type=int, default=32)
@@ -90,11 +93,12 @@ def main() -> None:
     p.add_argument("--threads", type=int, default=4)
     a = p.parse_args()
     torch.set_num_threads(a.threads)
-    tag = (f".stale{a.ways}.w{a.wander:g}.h{a.hazard:g}" + (f".fade{a.fade:g}" if a.fade else "")
+    tag = (f".stale{a.ways}.w{a.wander:g}.h{a.hazard:g}" + (f".b{a.burst:g}" if a.burst else "")
+           + (f".fade{a.fade:g}" if a.fade else "")
            + (f".load{a.load:g}" if a.load != 0.5 else ""))
     print("one hop into the dark: bits right, loudness (askings)")
     for path in a.genomes:
-        res = look(path, a.sizes, a.ways, a.wander, a.hazard, a.fade, a.load, a.lives, a.seed)
+        res = look(path, a.sizes, a.ways, a.wander, a.hazard, a.fade, a.load, a.lives, a.seed, burst=a.burst)
         print(f"\n{path}  {tag.strip('.')}")
         for m, row in res.items():
             print(show(m, row), flush=True)

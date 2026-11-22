@@ -6361,3 +6361,30 @@ tick. Both of my predictions for step 7 missed.
 
 **Next**: step 6' (the search asked again), doubt by hand at side 12 at 0.08 a lap, and the
 first look of the third road: can one state of the tissue hold many rooms at once.
+
+## 2026-11-22 (13:30) — a wave holds sixteen rooms at any size: the code is the look, and more cells do not widen it; doubt counted a lap works in the bigger land
+
+**Wave, step 1** (a look by hand; five lineages, 256 / 512 / 1024 cells). A thought as four
+states, one per first way, each stepped by all four ways at once and averaged.
+
+- A room has one code, seen or thought of (cosine 0.96-0.98).
+- Sixteen codes over one another are told from the rest on 0.93-0.97 of the pairs at 256 cells
+  and 0.96-0.99 at 1024; a member lies along the mix at 0.3 and another room at 0.1 AT EVERY
+  SIZE. I had guessed the number would double with the cells. It does not: a room's code is its
+  look, 12 bits, spread over the cells, and more cells spread the same dimensions wider. The
+  same wall as rung 2's "a placeless brain holds 18 items at any size".
+- A wave by depth is the same at every size. Kept clear of where it has been (a front of 4-7
+  rooms) it gives the first way to a room 3 steps away on 0.70-0.88 of the askings, 4 steps
+  0.47-0.75, 5 steps 0.39-0.61 (chance 0.3); the plain wave 0.44-0.70, 0.24-0.60, near chance.
+
+**Forgetting, step 8.** Doubt by hand counted a lap (0.08): side 12 with 512 cells, nothing
+changes 0.90-1.00 of the base (it was 0.26-0.88 at the same fading a tick as side 8), half the
+walls moved x1.41-1.78 in the half-life after on all five lineages, no life locked (the base
+11 of 80). A maze that changes: the brain without doubt and the explorer both starve (8-19 and
+11 meals after the change), with doubt 22-32, the table that doubts 102. The `long` genomes
+with doubt: level with `twice`. Step 6' was not run (a count before the search says the error
+pulls the whole voice down before age can earn anything); the look of step 6's genomes under
+their own fading bears the diagnosis out for one lineage of three.
+
+**Next**: a life lived on waves (`--wave`, by hand): no copies, four states, a thought afresh
+on every tick. And, for the claim of the line, a code that gains dimensions with the cells.

@@ -3255,6 +3255,36 @@ The control genomes, 16 lives, the line at 0.6, `--sure` (on the VM, `out/jobs13
   of the control genomes' with doubt on four lineages, in the land still (288 / 291 / 293 /
   276 / 294) and in the half-life after half the walls moved (111 / 121 / 117 / 104 / 111).
 
+**Outcome (2026-11-22; base / doubt).**
+
+| | lineage 0 | 1 | 2 | 3 | 4 | `explorer` | `doubter` |
+|---|---|---|---|---|---|---|---|
+| side 12, 512 cells, 0.08 a lap: nothing changes, a life | 423 / 419 | 434 / 413 | 432 / 429 | 392 / 354 | 443 / 444 | 517 | 504 (T 1440) |
+| over the base (at 0.0003 a tick: 0.26-0.88) | 0.99 | 0.95 | 0.99 | 0.90 | 1.00 | | |
+| side 12, half moved: the half-life after | 101 / 151 | 94 / 156 | 80 / 142 | 64 / 91 | 91 / 145 | 78 | 217 |
+| side 12, half moved: a life; lives with no meal at its end | 234 / 286; 1 / 0 | 235 / 288; 1 / 0 | 220 / 282; 2 / 0 | 165 / 169; 5 / 0 | 242 / 299; 2 / 0 | 305; 6 | 441; 0 |
+| a maze that changes (side 8): the half-life after | 19 / 28 | 8 / 32 | 12 / 24 | 10 / 22 | 8 / 28 | 11 | 102 (T 640) |
+| a maze that changes: a life; lives with no meal at its end | 86 / 99; 4 / 2 | 79 / 109; 10 / 1 | 83 / 102; 3 / 2 | 65 / 77; 6 / 3 | 73 / 104; 7 / 1 | 113; 9 | 203; 0 |
+| `long` over `twice`, both with doubt: a life still; the half-life after a change | 1.04; 1.06 | 1.01; 0.90 | 1.00; 0.98 | 1.04; 0.98 | 1.01; 1.13 | | |
+
+- **Counted a lap, doubt works in the bigger land: both met.** At 0.08 a lap a life where
+  nothing changes is 0.90-1.00 of the base's (0.92 on four lineages), the half-life after half
+  the walls moved x1.41-1.78 of the base's on all five, and no life of 80 ends without a meal
+  (the base: 11). Still 0.42-0.72 of what the table that doubts eats there.
+- **A maze that changes: met in its first part.** Without doubt everything starves there, the
+  explorer too (11 meals in the half-life after; 9 lives of 16 locked). Doubt lifts the brain
+  x1.5-4.0 (22-32 meals) on all five; 9 lives of 80 still end without a meal (I said none; the
+  base: 30). The table that doubts eats 102: in a maze a closed way costs a long way round,
+  and the brain's doubt finds a quarter of what the table's does.
+- **`long` with doubt**: level with `twice` (a life still x1.00-1.04, within 3% on three
+  lineages and above it on two; the half-life after a change x0.90-1.13). By the letter both
+  missed; no difference that five lineages show.
+- The look `h6-lean` (step 6's `doubt` genomes with the fading they were searched with, 0.0012
+  a tick): lineage 4 does lean on it (124 meals to 204 where nothing changes; its map right
+  on 0.22 of the ways gone without fading and 0.86 with), the other four eat LESS with it (314
+  / 307 / 190 / 218 to 221 / 230 / 156 / 116). The diagnosis of step 6 holds for one lineage
+  of the three that broke.
+
 ## A thought as a wave (the third road of the order, from 2026-11-21)
 
 Thinking in exam 6 is the largest hand-made part: copies of the brain, one for every room
@@ -3302,7 +3332,132 @@ logs `out/jobs/w1-*`, records `runs/tissue/walk/twice-s*.wave*.json`). Guesses:
 - the first way for a room 3 steps away is right on at least 0.8 of the askings at 1024 cells
   (0.62-0.69 at 256) on four lineages, and beyond 6 steps at chance at every size.
 
-### Forgetting, step 8, the look `h6-lean`, and wave step 1 are what runs on the VM now.
+**Outcome (2026-11-22; five lineages, 4 lives each; `twice-s*.wave.{plain,front}.m*.json`).**
+
+| cells | 256 | 512 | 1024 |
+|---|---|---|---|
+| a room's code seen along its code thought of | 0.97-0.98 | 0.96-0.98 | 0.96-0.98 |
+| 16 codes over one another: a member / another room along the mix | 0.29-0.32 / 0.07-0.13 | 0.28-0.32 / 0.07-0.14 | 0.28-0.32 / 0.07-0.14 |
+| a member above another room, share of pairs: 16 codes; 32 codes | 0.93-0.97; 0.83-0.89 | 0.95-0.99; 0.87-0.94 | 0.96-0.99; 0.89-0.95 |
+| the plain wave at depth 3 / 4 / 5: rooms held; along its rooms / the rest | 8: 0.32 / 0.06; 13: 0.23 / 0.07; 19: 0.19 / 0.07 | 8: 0.31 / 0.06; 14: 0.23 / 0.07; 20: 0.18 / 0.07 | 8: 0.31 / 0.07; 14: 0.23 / 0.07; 21: 0.19 / 0.08 |
+| the front at depth 3 / 5 / 7: rooms held; along its rooms / the rest | 4: 0.38 / 0.04; 6: 0.19 / 0.04; 7: 0.11 / 0.03 | 4: 0.39 / 0.05; 7: 0.19 / 0.04; 7: 0.10 / 0.03 | 4: 0.38 / 0.05; 7: 0.20 / 0.05; 7: 0.11 / 0.03 |
+| the first way right, a room 2 / 3 / 4 / 5 steps away: the plain wave | 0.96-1.00 / 0.44-0.70 / 0.30-0.47 / 0.14-0.31 | 0.95-1.00 / 0.49-0.70 / 0.31-0.45 / 0.12-0.37 | 0.96-1.00 / 0.61-0.70 / 0.24-0.60 / 0.18-0.53 |
+| the same: the front (chance 0.28-0.30) | 0.98-1.00 / 0.70-0.87 / 0.48-0.65 / 0.40-0.55 | 0.97-1.00 / 0.79-0.88 / 0.47-0.66 / 0.39-0.49 | 0.96-1.00 / 0.80-0.84 / 0.58-0.75 / 0.43-0.61 |
+
+- **Growth does not pay for what one state can hold: the first guess was wrong.** Sixteen codes
+  laid over one another are told from the rest about as well at 1024 cells as at 256; a member
+  lies along the mix at 0.3 and another room at 0.1 at every size. Two rooms' codes are as
+  alike in a big brain as in a small one: a room's code is its LOOK (12 bits) spread over the
+  cells, and more cells spread the same few dimensions wider. It is the figure of rung 2 again
+  ("a placeless brain holds 18 items at any size"): a dense code does not use more cells for
+  more things at once; places did.
+- **Nor for depth: the second guess was wrong.** A wave lies along its own rooms and along the
+  rest by the same figures at every size, hop for hop.
+- **The third guess: right for the front, wrong for the plain wave.** Kept clear of where it
+  has been, a wave gives the first way to a room 3 steps away on 0.80-0.84 of the askings at
+  1024 cells on all five lineages (0.70-0.87 at 256), 4 steps 0.58-0.75 (0.48-0.65), 5 steps
+  0.43-0.61 (0.40-0.55); the plain wave 0.61-0.70 at 3 steps and near chance at 5. The front
+  is the better thought at every size and distance, and a little better with more cells.
+- So the ceiling of a wave in THIS tissue is set by its code, not its size: about 16 rooms a
+  state, a front that tells the way three or four steps out. Two roads follow. (1) Use it as
+  it is: a body that thinks afresh on every tick needs the way to be right when the fruit is
+  near and only better than chance when it is far; a life lived on waves is asked next. (2)
+  Give the code more dimensions as the brain grows (sparse codes, or places as in rung 2), so
+  that a bigger brain holds a bigger wave: the claim of the line, asked of thinking.
+
+### Wave, step 2: a life lived on waves. A pilot, a rule that picks, bars before the exam
+
+`--wave LINE` (BY HAND, `Mind.ripple` in `tissue/world.py`, new): the thought is four waves and
+no copies. The brain is shown the wanted look in thought and what its interneurons say then is
+the code sought (a room has one code, seen or thought of). From the room it stands in, one
+state per first way; at each depth the first wave to lie along the code sought by more than
+LINE gives the way; else every wave is stepped by all four ways at once, averaged, kept clear
+of what the waves before it were, and brought back to the size of one copy's state. No road is
+kept: the brain thinks afresh on every tick, `--depth` waves deep at most (10 asked). With no
+wave reaching, the dice or `--curious`. Sixteen ticks of the brain a hop; nothing in it knows
+how many rooms the land has. BY HAND: all of it; what is NOT by hand any more is the list of
+rooms thought of, one copy each.
+
+The pilot (other lands, `--seed 1`, 8 lives, `twice-s0`, `twice-s4`, side 8, 256 cells): the
+line at 0.15, 0.25, 0.35, each with the dice and with `--curious 0.7`. **The rule that picks**:
+the setting with the most meals a life (the mean of the two genomes). The exam is run for all
+six settings on the exam's lands (five lineages, 16 lives), and at 1024 cells with the line at
+0.25 and the dice; the bars are for the setting picked (on the VM, `out/jobs14.txt`, logs
+`out/jobs/w2-*`).
+
+- **V1, a life on waves**: at least 140 meals on three lineages (half of what the same genomes
+  eat thinking with copies and no seeking: 273-292; `perfect` 182, a blind walker 7).
+- **V2, near the fruit it is a thought**: trips of 3-4 steps walked straight on at least 0.8 of
+  them in the last third of a life, on four lineages.
+- **V3, no lock**: at most 2 lives of 80 with no meal in the last third.
+- A guess, no bar: 1024 cells eat no more than 1.15 times 256 (the wave is no wider there).
+
+Prediction: V1 open (my guess is 120-200 meals), V2 met, V3 met (a body that thinks afresh on
+every tick and takes the dice when no wave reaches does not stand still).
+
+**Outcome (2026-11-22): it fails at the pilot, and the exam is not run.** Two lives of
+`twice-s0` on the pilot's lands, the dice with no wave reaching: with the line at 0.25 a way is
+given on 0.92 of the ticks and the body eats 0.5 meals a life (a wave that does not hold the
+room passes so low a line, and the body is passed to and fro); at 0.35, 7 meals; at 0.45 and
+0.6, 4 meals with a way given on 0.00 of the ticks (a blind walker: 6). In a life lived with
+copies the same `ripple` does give the first way to a neighbouring room every time, so the
+part works; its reach is too short to live on. No way of reading the four waves mends it (two
+lives, by the true distance of the room: the first wave over a line, the best wave at any
+depth, within six hops, discounted by depth: 0.94-1.00 at 2 steps, 0.63-0.77 at 3, 0.42-0.67
+at 4, and from 6 steps on 0.2-0.5 where chance is 0.35). V1 cannot be met by an order of
+size. The pilot is run in full for the record (`out/jobs/w2-*`).
+
+### Wave, step 3: thinking as dreams. A look by hand, a pilot of two lives, then bars
+
+What the tissue does well in the dark is WALK: one state, one room after another, right hop
+after hop. So, by hand, a thought with no list of rooms and no copy per room (`--dreams K`,
+`Mind.dream` in `tissue/world.py`, new): K walks in the dark from the room the brain stands in,
+each by ways drawn at random (never straight back by the way just come), all a step at a
+time, `--depth` steps at most. The first walk to come upon the wanted look gives its first way,
+and its ways are the road, kept as any road is. With `--explore`, the first walk to speak
+quietly marks a way not known. Nothing in it knows what rooms there are or which were thought
+of before. BY HAND: the dice of the walks, and the noting of which walk met the look first.
+(K walks at once are K copies of the brain's activity, on one set of wires; they could as well
+be K walks one after another.)
+
+The look (scratch `dream.py`, one life of `twice-s0`, 256 cells, side 8, walks of 16 steps,
+every room of the land as the wanted one; the first way right, of all askings, by the true
+distance of the room):
+
+| walks | 2 steps | 3 | 4 | 5 | 6 | 7 | 8 | 9-10 |
+|---|---|---|---|---|---|---|---|---|
+| 16, never straight back | 0.89 | 0.62 | 0.63 | 0.59 | 0.20 | 0.14 | 0.00 | 0.05 |
+| 64 | 1.00 | 1.00 | 0.89 | 0.88 | 0.60 | 0.50 | 0.25 | 0.11 |
+| 256 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.64 | 0.58 | 0.17 |
+| 256, any way | 1.00 | 1.00 | 1.00 | 0.88 | 0.80 | 0.50 | 0.33 | 0.22 |
+| four waves, the front (step 1) | 0.98 | 0.80 | 0.57 | 0.47 | 0.4 | 0.4 | 0.4 | |
+
+Two pilot lives on dreams (`twice-s0`, the pilot's lands, a road kept, seeking at 0.4, walks of
+16 steps), seen before the bars: 64 dreams 84 meals, 256 dreams 127 (copies, the same will:
+294). The body goes toward a way not known on 0.31-0.38 of its ticks (with copies: 0.07): a
+thought that does not find the fruit by chance takes the fruit for out of reach and goes to
+look at something else.
+
+**The look in full** (five lineages, 256 / 512 / 1024 cells; `out/jobs/w3-look-*`, records
+`twice-s*.dream.m*.json`). **The pilot** (other lands, `--seed 1`, 8 lives, `twice-s0`,
+`twice-s4`, 256 cells, a road kept): 64 / 256 / 1024 dreams of 16 and of 32 steps, each with
+seeking at 0.4 and with the dice alone. **The rule that picks**: the most meals a life, the
+mean of the two genomes, among the five settings the exam is run for: 64, 256 and 1024 dreams
+of 32 steps with seeking; 256 of 16 steps with seeking; 256 of 32 steps with the dice. The
+exam: those five on the exam's lands, five lineages, 16 lives (`out/jobs14.txt`, logs
+`out/jobs/w3-*`). Bars for the setting picked:
+
+- **R1, a life on dreams**: at least 0.6 of the same genome's life on copies with seeking
+  (304.8 / 309.0 / 306.9 / 292.3 / 309.9: so 183 / 185 / 184 / 175 / 186) on four lineages.
+- **R2, no lock**: at most 2 lives of 80 with no meal in the last third.
+- **R3, more dreams, more meals**: with walks of 32 steps and seeking, 256 dreams eat more than
+  64 and 1024 more than 256, each on four lineages. A dial the brain can turn with what it
+  can afford.
+
+Prediction: R2 and R3 met; R1 open (two lives at 256 dreams of 16 steps gave 0.43; longer
+walks and more of them should lift it, my guess is 0.5-0.7).
+
+(Forgetting step 8, the look `h6-lean` and wave step 1 ran on the VM on 2026-11-21; wave step 2 next.)
 
 ### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
 
@@ -3760,6 +3915,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | 6k, 6l the control genomes everywhere; more search | done. The control genomes are alike in every land and lose the dark walk of the stream as the walk genomes do (it is the dendrite); the knee as before, with fewer cells needed. 8000 steps more: 0-8% more meals. Five random starts of five live in a land (258-303 at side 8): the lineage is a head start, not a need |
 | forgetting 6: the rule searched with fading wires in forks whose ways change | failed, S2-S4 missed (S1, S5 met by the letter). The search learned a low voice for everything, not doubt of what is old, and three lineages of five eat a quarter to a half less in a land than the genomes they started from. Asked again (6') with the land's own kind of change and fading |
 | forgetting 7: doubt by hand at slower fadings and in a bigger land | done, predictions missed. Slower fading buys back little of the cost. At side 12 the same fading a tick costs 12-74% of a life: doubt must be counted a lap (the table that doubts says the same: T 640 is worse than no doubt there, T 1440 right) |
+| forgetting 8: doubt by hand counted a lap | done. Side 12 with 512 cells at 0.08 a lap: 0.90-1.00 of the base where nothing changes, x1.4-1.8 in the half-life after half the walls moved, no life locked. A maze that changes: x1.5-4.0, a quarter of the table that doubts. Step 6' (the search asked again) not run, decided by a count: the three parts stay by hand |
+| wave 1: one state for many rooms (a look by hand) | done. A room has one code seen or thought of; one state holds about 16 rooms AT ANY SIZE (a room's code is its look spread over the cells); a wave kept clear of where it has been gives the first way 3 steps out on 0.8 of the askings, 4 steps 0.5-0.75, and little beyond. Growth does not pay for a wave in this code |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

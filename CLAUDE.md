@@ -838,13 +838,23 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   one state holds 8-16 rooms tellably; a wave finds the first way 1-3 steps away (1.00 / 0.9 /
   0.65) and dies by depth 5-6 whether or not it is kept a front (`--refract`): stepping a mix
   loses it, not the number of rooms.
-  RUNNING ON THE VM, NOT COLLECTED (started 2026-11-21 ~14:00 local, about 6 hours;
-  `out/jobs13.txt`, queue log `out/jobs/queue13.log`): the wave look in full (`w1-*`: five
-  lineages, 256 / 512 / 1024 cells, both arms; records `runs/tissue/walk/twice-s*.wave*.json`);
-  forgetting step 8, doubt by hand counted a lap (`h8-*`: side 12 at 0.00014 a tick, a maze
-  that changes with its yardsticks `runs/tissue/world8.walls0.5.shift0.5.yardsticks.doubt640.
-  json`, the `long` genomes with doubt); the look `h6-lean-*` (step 6's `doubt` genomes with
-  the fading they were searched with). Predictions and guesses in the note.
+  WAVE STEP 1 IN FULL (2026-11-22): ONE STATE HOLDS ABOUT 16 ROOMS AT ANY SIZE (256, 512, 1024
+  cells alike): a room's code is its look, 12 bits, spread over the cells, the wall of rung 2
+  again. A wave kept clear of where it has been gives the first way 3 steps out on 0.8, 4 steps
+  0.5-0.75. WAVE STEP 2, a life on waves (`--wave LINE`, `Mind.ripple`): FAILS, 0.5-7 meals a
+  life (reach too short, or the body passed to and fro). FORGETTING STEP 8 DONE: doubt counted
+  a lap (0.08) works at side 12 (0.90-1.00 where nothing changes, x1.4-1.8 after a change); a
+  maze that changes: x1.5-4.0 but a quarter of the doubter's.
+  WAVE STEP 3, THINKING AS DREAMS, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-22 ~14:30
+  local, about 8 hours): `--dreams K` (`Mind.dream`, by hand): K walks in the dark by ways at
+  random, `--depth` steps; the first to come upon the wanted look gives its way and its road;
+  no list of rooms. A look (one life): 256 dreams give the first way right up to 6 steps away
+  every time; two pilot lives: 127 meals at 256 dreams of 16 steps (copies 294). Queue
+  `out/jobs14.txt`, log `out/jobs/queue14.log`: the look in full (`w3-look-*`, scratch
+  `out/tissue.dream.py`, records `twice-s*.dream.m*.json`), the pilot (`w3-pilot-*`, lands of
+  `--seed 1`), the exam for five settings (`w3-exam-*`), the pilot of wave step 2 for the
+  record (`w2-*`). TO COLLECT: read the pilot, apply the written rule (most meals among the
+  five exam settings) BEFORE opening the exam; bars R1-R3 in the note ("Wave, step 3").
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

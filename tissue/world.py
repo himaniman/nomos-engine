@@ -294,13 +294,36 @@ class Mind(Blind):
     with no road to the fruit, to know. It is not counted as a plan (`sought` counts it).
     `sure`, BY HAND, with `explore`: what a copy says quietly (under that same share) is not
     believed. It is no road to the fruit, and no copy goes on from it: the brain thinks only
-    with what it is sure of, and what it is not sure of is what it goes to look at."""
+    with what it is sure of, and what it is not sure of is what it goes to look at.
+    `wave`, BY HAND, a thought with NO copies (`ripple`): four states, one per first way out
+    of the room the brain stands in, each stepped a hop at a time by all four ways at once
+    and averaged, so that a state is a superposition of every room a walk of that length may
+    have reached; a wave is kept clear of what the waves before it were (a front) and brought
+    back to the size of one copy's state. The first wave to lie along the code of the wanted
+    look (what the interneurons say when the brain is shown that look in thought) by more
+    than `wave` (a cosine) gives the way. No road comes of it, so none is kept: the brain
+    thinks afresh on every tick, `depth` waves deep at most.
+    `dreams`, BY HAND, a thought with no list of rooms (`dream`): that many walks in the dark
+    from the room the brain stands in, each by ways drawn at random (never straight back by
+    the way just come), all a step at a time, `depth` steps at most. The first walk to come
+    upon the wanted look gives its first way, and its ways are the road (kept with `keep`).
+    Nothing in it knows what rooms there are or which were thought of already; what is by
+    hand is the dice of the walks and the noting of which walk met the look first. With
+    `explore`, the first walk to speak quietly marks a way not known; with `sure`, what a
+    walk says quietly is not the wanted look."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
                  budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0,
-                 curious: float = 0.0, keep: bool = False, explore: float = 0.0, sure: bool = False):
+                 curious: float = 0.0, keep: bool = False, explore: float = 0.0, sure: bool = False,
+                 wave: float = 0.0, dreams: int = 0):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
+        if dreams and (wave or imagery or mumble):
+            raise ValueError("a thought of dreams is walks in the dark, nothing else")
+        self.dreams = dreams
+        if wave and (keep or explore or imagery or mumble or slack):
+            raise ValueError("a thought of waves has no copies: no road to keep, no copy to hear or to show")
+        self.wave = wave
         if sure and not explore:
             raise ValueError("`sure` needs the line `explore` draws between loud and quiet")
         self.sure = sure
@@ -337,6 +360,72 @@ class Mind(Blind):
         state, out = self.brain.tick((act, wires, self.state[2]), silent, silent, 0.0, 0.0)
         return state[0], out
 
+    def dream(self, wanted, gen):
+        """The first way by walks in the dark (`dreams`), or None when no walk comes upon
+        the `wanted` look within `depth` steps (then, with `explore`, toward the first way a
+        walk spoke quietly of)."""
+        k = self.dreams
+        act = {t: x.expand(k, -1).clone() for t, x in self.state[0].items()}
+        loud = float(self.hop(self.state[0], 0)[1].abs().mean())
+        way = torch.randint(4, (k,), generator=gen)
+        took, said = [], []                     # per step: the way each walk took, the room it said it reached
+        unknown = None
+        self.ended = "depth"
+        for _ in range(self.depth):
+            new = {t: torch.empty_like(x) for t, x in act.items()}
+            for v in range(4):                  # every walk goes by its own way
+                pick = (way == v).nonzero().flatten()
+                if len(pick):
+                    kid = self.hop({t: x[pick] for t, x in act.items()}, v)[0]
+                    for t in new:
+                        new[t][pick] = kid[t]
+            act = new
+            says = self.hop(act, 0)[1]
+            took.append(way)
+            said.append(says)
+            quiet = says.abs().mean(-1) < self.explore * loud
+            hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
+            if self.sure:
+                hit = hit & ~quiet
+            if bool(hit.any()) or (self.explore and unknown is None and bool(quiet.any())):
+                found = bool(hit.any())
+                some = (hit if found else quiet).nonzero().flatten()
+                j = int(some[int(torch.randint(len(some), (1,), generator=gen))])
+                road = [(int(w[j]), key(s[j])) for w, s in zip(took, said)]
+                if found:
+                    if self.keep:
+                        self.due, self.road, self.roam = road[0][1], road[1:], False
+                    return road[0][0]
+                unknown = road
+            back = (way + 2) % 4                # the next way: any but straight back
+            way = (back + 1 + torch.randint(3, (k,), generator=gen)) % 4
+        return self.toward(unknown, None)
+
+    def ripple(self, wanted):
+        """The first way by four waves and no copies (`wave`), or None when none of them
+        comes to lie along the code of the `wanted` look within `depth` hops."""
+        calm = {**self.state[1], self.body.inner: torch.zeros_like(self.body.bank[:, 0])}
+        shown, _ = self.deaf.tick((self.state[0], calm, self.state[2]), wanted.unsqueeze(0), self.before, 1.0, 1.0)
+        code = shown[0]["I"][0]
+        code = code / code.norm().clamp_min(1e-9)
+        waves = {t: torch.cat([self.hop(self.state[0], w)[0][t] for w in range(4)]) for t in self.state[0]}
+        size = {t: x.pow(2).mean().sqrt() for t, x in waves.items()}
+        past = []
+        for _ in range(self.depth):
+            front = waves["I"] / waves["I"].norm(dim=1, keepdim=True).clamp_min(1e-9)
+            along = front @ code
+            if float(along.max()) > self.wave:
+                return int(along.argmax())
+            past.append(front)
+            kids = [self.hop(waves, v)[0] for v in range(4)]
+            waves = {t: torch.stack([kid[t] for kid in kids]).mean(0) for t in waves}
+            for old in past:                    # no way back: what a wave was, it is not again
+                waves["I"] = waves["I"] - (waves["I"] * old).sum(1, keepdim=True) * old
+            for t, x in waves.items():          # back to the size of one copy's state
+                if float(size[t]) > 0:
+                    waves[t] = x * (size[t] / x.pow(2).mean(1, keepdim=True).sqrt().clamp_min(1e-9))
+        return None
+
     def think(self, wanted, gen, trace=None, root=None):
         """The first way of the shortest road the brain can think of to the `wanted` look, or
         None (`self.ended` then says why: "rooms", nothing new to think of; "budget"; "depth").
@@ -359,6 +448,11 @@ class Mind(Blind):
                     return way
                 self.road, self.goal = [], goal
             self.thoughts += 1
+            if self.wave:
+                self.ended = "waves"
+                return self.ripple(wanted)
+            if self.dreams:
+                return self.dream(wanted, gen)
         act = {t: a.clone() for t, a in act.items()}        # one copy, in the room it is in
         first = torch.tensor([-1])              # per copy: the first way of its road
         came = [(key(here), -1)]                # per copy: (the room it came from, by which way)
@@ -711,6 +805,12 @@ def main() -> None:
     p.add_argument("--sure", action="store_true",
                    help="by hand, with --explore: what a copy says quietly is not believed (no road, and no copy"
                         " goes on from it)")
+    p.add_argument("--wave", type=float, default=0.0,
+                   help="by hand: a thought of four waves and no copies; the first wave to lie along the wanted"
+                        " look's code by more than this (a cosine) gives the way; --depth waves deep")
+    p.add_argument("--dreams", type=int, default=0,
+                   help="by hand: a thought of this many walks in the dark by ways at random, --depth steps"
+                        " long; the first to come upon the wanted look gives its first way and its road")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--fade", type=float, default=0.0,
@@ -725,7 +825,8 @@ def main() -> None:
         p.error("--sure needs the line --explore draws between loud and quiet")
     shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift, a.reborn)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
-             "curious": a.curious, "keep": a.keep, "explore": a.explore, "sure": a.sure}
+             "curious": a.curious, "keep": a.keep, "explore": a.explore, "sure": a.sure, "wave": a.wave,
+             "dreams": a.dreams}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
@@ -765,6 +866,8 @@ def main() -> None:
     tag = (f".world{shape.side}{ground}.{a.arm}" + (f".slack{a.slack}" if a.slack else "")
            + (".imagery" if a.imagery else "") + (f".mumble{a.mumble:g}" if a.mumble else "")
            + (f".budget{a.budget}" if a.budget != 256 else "")
+           + (f".wave{a.wave:g}.depth{a.depth}" if a.wave else "")
+           + (f".dreams{a.dreams}.depth{a.depth}" if a.dreams else "")
            + (f".curious{a.curious:g}" if a.curious else "") + (f".explore{a.explore:g}" if a.explore else "")
            + (".sure" if a.sure else "") + (".keep" if a.keep else "") + (f".fade{a.fade:g}" if a.fade else "")
            # sizes other than the default are named too (from 2026-11-16: two runs of one genome at

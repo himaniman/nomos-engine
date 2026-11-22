@@ -21,7 +21,8 @@ import re
 
 NUM = r"(\d+(?:\.\d+)?)"
 DEFAULTS = {"walls": 0.3, "trees": 0, "ticks": 0, "shift": 0.0, "budget": 256, "slack": 0,
-            "mumble": 0.0, "curious": 0.0, "explore": 0.0, "fade": 0.0, "seed": 90_000}
+            "mumble": 0.0, "curious": 0.0, "explore": 0.0, "fade": 0.0, "wave": 0.0, "dreams": 0, "depth": 24,
+            "seed": 90_000}
 
 
 def parse(name: str) -> dict | None:
@@ -38,7 +39,7 @@ def parse(name: str) -> dict | None:
     for key in ("walls", "trees", "ticks", "shift"):
         hit = re.search(rf"\.{key}{NUM}", ground)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
-    for key in ("budget", "slack", "mumble", "curious", "explore", "fade", "seed"):
+    for key in ("budget", "slack", "mumble", "curious", "explore", "fade", "wave", "dreams", "depth", "seed"):
         hit = re.search(rf"\.{key}{NUM}", switches)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
     row["reborn"] = ".reborn" in ground         # a look: the body born again when the land changed

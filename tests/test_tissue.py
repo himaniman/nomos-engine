@@ -1209,3 +1209,62 @@ def test_a_land_of_forks_changes_under_a_walk_and_a_search_lives_it_with_wires_t
     tr.train("walk", 0, 2, out, hops=4, vary=True, laps=(2, 3), sizes=(8, 16), fade=0.08, wander=(1.0, 2.0), burst=0.5)
     assert torch.load(out, weights_only=True)["burst"] == 0.5
     assert stale.look(str(out), [16], lives=8, hazard=0.0, burst=0.5, fade=0.08)[16]["all"]["n"] > 0
+
+
+def test_a_thought_of_four_waves_has_no_copies_and_leaves_the_brain_as_it_was():
+    from tissue import world
+    import pytest
+    shape = world.Land(side=3, ticks=80)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(16), gen(2), wave=0.3, keep=True)     # no road comes of a wave
+    with torch.no_grad():
+        # a line no cosine can pass: no wave ever gives a way, and the life is a blind walk with a brain
+        none = world.live(world.Mind(genome.grow(16), gen(2), wave=1.5, depth=4), looks, nxt, trees, start, 80,
+                          gen(3), fruits=5)
+        assert none["planned"] == 0
+        # a line under every cosine: the first depth always gives a way, so every tick is a plan
+        mind = world.Mind(genome.grow(16), gen(2), wave=-1.5, depth=4)
+        life = world.live(mind, looks, nxt, trees, start, 80, gen(3), fruits=5)
+        assert life["planned"] > 0 and mind.thoughts >= life["planned"]
+        again = world.live(world.Mind(genome.grow(16), gen(2), wave=-1.5, depth=4), looks, nxt, trees, start, 80,
+                           gen(3), fruits=5)
+        assert again["meals"] == life["meals"] and torch.equal(again["walked"], life["walked"])
+        # thinking changes nothing in the brain
+        before = {t: x.clone() for t, x in mind.state[0].items()}
+        bank = mind.body.bank.clone()
+        way = mind.ripple(looks[int(trees[0])])
+        assert way in (0, 1, 2, 3)
+        assert all(torch.equal(before[t], mind.state[0][t]) for t in before) and torch.equal(bank, mind.body.bank)
+
+
+def test_a_thought_of_dreams_is_walks_in_the_dark_and_the_soonest_gives_its_way_and_its_road():
+    from tissue import world
+    import pytest
+    shape = world.Land(side=3, ticks=80)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(16), gen(2), dreams=8, wave=0.3)
+    with torch.no_grad():
+        for keep in (False, True):
+            live = lambda: world.live(world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=keep), looks, nxt,
+                                      trees, start, 80, gen(3), fruits=5)
+            life, again = live(), live()                    # a pure function of its dice
+            assert again["meals"] == life["meals"] and torch.equal(again["walked"], life["walked"])
+            assert life["planned"] + life["sought"] <= 80
+        # one bit of slack more than the look has: every walk meets the wanted look at its first step
+        mind = world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=True, slack=12)
+        mind.see(looks[start], -1)
+        before = {t: x.clone() for t, x in mind.state[0].items()}
+        way = mind.think(looks[int(trees[0])], gen(4))
+        assert way in (0, 1, 2, 3) and mind.road == [] and mind.due is not None and not mind.roam
+        assert all(torch.equal(before[t], mind.state[0][t]) for t in before)        # the brain is as it was
+        # a look no walk can meet (no slack, a wanted look of all zeros matches nothing by sign... every bit must)
+        lost = world.Mind(genome.grow(16), gen(2), dreams=8, depth=3, explore=1e6)
+        lost.see(looks[start], -1)
+        none = lost.think(-looks[start] * 0 + 1e-9 * looks[start].sign() * -1, gen(4))
+        assert none is None or none in (0, 1, 2, 3)
+        if none is None:                                    # every walk is quiet: a lead toward what is not known
+            assert lost.lead in (0, 1, 2, 3)

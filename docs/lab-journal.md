@@ -6428,5 +6428,12 @@ and a new one begins where the brain stands). The pilot is asked for `sure` and 
 exam is run for everything the rule can pick, at 64, 256 and 1024 dreams. Records now count
 `hops`, what thinking costs. Beside it: dreams as they are at side 12.
 
+The same look at 1024 dreams (in after the bars were written): more dreams, more false roads
+(0.51 of the first third's ticks), and what a false road is: in thought a way not known leaves
+the walk in the room it was in, as a wall would. Where the way is a wall the road is true;
+where it is not, the body comes out somewhere else. One life to time the queue, on a land of
+neither kind and after the bars were pushed: 137 meals as they are, 247 with cut, again and
+sure at 0.5, thinking 2.5 times as dear.
+
 Method, small: a check that lives are the same before and after a change of the code fooled me
 for a minute because the genome of the check was drawn without a seed. Seed what is compared.

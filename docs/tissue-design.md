@@ -3622,6 +3622,10 @@ they are). At 1024 dreams, a guess and no bar: the setting picked eats x1.15-1.3
 dreams as they are do on the same lives, 0.8-0.9 of copies. The cost, a guess: `again` makes
 thinking three times as dear in hops.
 
+(To time the queue, one life on a land of neither kind, `--seed 2`, `twice-s0`, 256 dreams,
+seen after the bars were written and pushed: as they are 137 meals at 2 300 hops of thought a
+tick; cut, again and sure at 0.5, 247 meals at 5 700 hops a tick. One life.)
+
 **Dreams as they are in the bigger land** (running beside, `out/jobs15.txt`, logs
 `out/jobs/w4-big-*`): side 12, 512 cells, `twice-s0`, `twice-s4`, 8 lives, 256 and 1024 dreams
 of 32 steps with seeking. A guess: 1024 dreams eat 0.35-0.5 of what copies do on the same

@@ -864,7 +864,11 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   are at side 12 (`w4-big-*`, 8 lives). TO COLLECT: read the pilot, apply the written rule (of
   the four settings with cut and again: no sure, sure at 0.4 / 0.5 / 0.6, the most meals)
   BEFORE opening the exam; bars M1-M6 in the note ("Wave, step 4"). Records now count `hops`
-  (what thinking costs).
+  (what thinking costs). One life seen after the bars (a land of `--seed 2`, 256 dreams): 137
+  meals as they are, 247 mended, thinking 2.5 times as dear. Also to read:
+  `out/jobs/w4-why-dice.log` on the VM (a look at a life that locks on dreams with the dice
+  alone, four such lives of 80 in step 3). Picture of step 3: `out/tissue/dreams.png`
+  (scratch `dreams_png.py`, PIL).
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

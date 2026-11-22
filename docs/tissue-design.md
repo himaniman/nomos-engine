@@ -3558,6 +3558,17 @@ the two lives are the pilot's own to the meal, 148 and 137). Seen before the bar
   been gone: the walk is 14-20 steps deep in the dark and its voice has sunk under the line.
   The body walks toward nothing on 0.07-0.11 of its ticks.
 
+The same look at 1024 dreams (two lives, the pilot's own, 172 and 157 meals; it came in after
+the bars below were written and before any run of step 4 was read): MORE DREAMS, MORE FALSE
+ROADS. Ticks on a false road by thirds 0.51 / 0.25 / 0.10 (256 dreams: 0.39 / 0.18 / 0.05), on a
+true one 0.16 / 0.74 / 0.87; true roads 9 steps and more away 1.46-1.56 times the shortest,
+1.04-1.07 with loops cut. And what a false road is shows: in the first third a TRUE road goes
+by 0.6 ways never gone on average. In thought a way not known leaves the walk in the room it
+was in, its voice a little lower, as a wall would; where that way is a wall the road is true,
+where it is not the body comes out somewhere else. So a young brain's false roads are walks
+through ways it does not know, taken for walls; they do send the body through new ways, with
+no aim (step 6e's "its mistakes explore", seen from inside).
+
 **Three parts, BY HAND**, each with its off-switch (`Mind.dream` in `tissue/world.py`):
 
 - `--cut`: the road a walk gives has its loops cut.

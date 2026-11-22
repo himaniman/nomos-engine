@@ -6388,3 +6388,45 @@ their own fading bears the diagnosis out for one lineage of three.
 
 **Next**: a life lived on waves (`--wave`, by hand): no copies, four states, a thought afresh
 on every tick. And, for the claim of the line, a code that gains dimensions with the cells.
+
+## 2026-11-22 (21:40) — a life can be lived on dreams: walks in the dark at random, no list of rooms, two thirds of a life on copies; a look at where it loses, and three parts by hand to mend it
+
+**Wave, step 3** (`--dreams K`, the control genomes, side 8, 256 cells). The pilot was read
+first and the written rule applied: of the five settings the exam was run for, 1024 dreams of
+32 steps with seeking eat most on the pilot's lands (207 meals; 256 dreams 170, 64 dreams 130;
+copies there 294-301). Then the exam was opened.
+
+- R1 met: 208 / 212 / 212 / 192 / 219 meals a life, 0.66-0.71 of the same genome's life on
+  copies, on all five lineages (the bar was 0.6 on four; my guess 0.5-0.7).
+- R2 met: no life of 80 locked. R3 met: 64 -> 256 -> 1024 dreams, x1.29-1.38 and x1.18-1.23 on
+  all five lineages, 319 lives of 320 eat more at each step up.
+- Walks twice as long buy 2-5%. Seeking is worth x1.3-1.5 to dreams (to copies x1.05-1.12); the
+  dice alone lock four lives of 80, not looked into.
+- The look in full, three sizes: a brain of 1024 cells dreams no farther than one of 256 (256
+  walks of 16 steps, the first way right 5 / 7 / 9-10 steps away: 0.88 / 0.61 / 0.33 against
+  0.91 / 0.73 / 0.36). A dream's reach is bought with walks.
+- The pilot of wave step 2 in full: 0.1-5 meals a life, as the two lives had said. Its
+  `--curious` arm was no arm (curiosity listens to copies one hop ahead; waves have none): the
+  same lives to the meal. My mistake in the setting up.
+
+**A look before the next guess** (`dreamwhy.py`: every thought of a life noted, its road walked
+in the true land; two lives at 256 dreams, the pilot's own lives to the meal). Three things,
+each with its share of the ticks:
+
+- Roads too long: 1.3-1.9 times the shortest; with their loops cut 1.05-1.10.
+- False roads: 0.39 of the ticks of the first third (0.18, 0.05 later). A walk comes upon the
+  wanted look where that room is not; two of three such walks never spoke under the line on
+  their way, and say the look at 0.6 of loud where a true road says it at 0.73-0.84.
+- False leads: late in life every way "not known" a thought leads to has been gone; the walk
+  is 14-20 steps deep and its voice has sunk under the line (0.07-0.11 of the ticks).
+
+**Wave, step 4, set up** (bars M1-M6 in the note, written before the runs). Three parts by
+hand, each with its off-switch: `--cut` (loops cut out of the road), `--again` (with a road in
+hand the brain dreams on, and a shorter road, or a road to the fruit in place of one to a way
+not known, takes its place), `--sure` whole for dreams (a walk that speaks quietly ends there
+and a new one begins where the brain stands). The pilot is asked for `sure` and its line; the
+exam is run for everything the rule can pick, at 64, 256 and 1024 dreams. Records now count
+`hops`, what thinking costs. Beside it: dreams as they are at side 12.
+
+Method, small: a check that lives are the same before and after a change of the code fooled me
+for a minute because the genome of the check was drawn without a seed. Seed what is compared.

@@ -310,17 +310,31 @@ class Mind(Blind):
     Nothing in it knows what rooms there are or which were thought of already; what is by
     hand is the dice of the walks and the noting of which walk met the look first. With
     `explore`, the first walk to speak quietly marks a way not known; with `sure`, what a
-    walk says quietly is not the wanted look."""
+    walk says quietly is not the wanted look, and the walk ENDS there (what it would say
+    after is of rooms the brain does not know): a new walk begins from the room the brain
+    stands in, so a road is always through what the brain is sure of.
+    `cut`, BY HAND, with `dreams`: the road a walk gives has its loops cut. Where the walk
+    says a room it has said before (or the room it began in), what lay between is left out.
+    `again`, BY HAND, with `dreams` and `keep`: with a road in hand the brain dreams on, on
+    every tick. A road to the wanted look takes the place of a road to a way not known, and
+    a shorter road (walks no longer than what is left of the one in hand, less a step) the
+    place of a longer. A thought is never done; the road in hand is only the best so far.
+    `hops` counts what thinking costs: every tick of every copy or walk in the dark."""
 
     def __init__(self, brain, gen: torch.Generator, numb: bool = False, depth: int = 24,
                  budget: int = 256, slack: int = 0, imagery: bool = False, mumble: float = 0.0,
                  curious: float = 0.0, keep: bool = False, explore: float = 0.0, sure: bool = False,
-                 wave: float = 0.0, dreams: int = 0):
+                 wave: float = 0.0, dreams: int = 0, cut: bool = False, again: bool = False):
         if not brain.t.plan.still:
             raise ValueError("a thought needs its wires still: load the genome with still=True")
         if dreams and (wave or imagery or mumble):
             raise ValueError("a thought of dreams is walks in the dark, nothing else")
-        self.dreams = dreams
+        if (cut or again) and not dreams:
+            raise ValueError("`cut` and `again` are of a thought of dreams")
+        if again and not keep:
+            raise ValueError("`again` betters the road in hand: it needs `keep`")
+        self.dreams, self.cut, self.again = dreams, cut, again
+        self.hops = 0                           # ticks of thought: one copy (or walk), one hop in the dark
         if wave and (keep or explore or imagery or mumble or slack):
             raise ValueError("a thought of waves has no copies: no road to keep, no copy to hear or to show")
         self.wave = wave
@@ -354,24 +368,42 @@ class Mind(Blind):
         """Every copy in `act` goes one hop in the dark by `way`: (what its cells say after,
         what it said it saw BEFORE the hop: the room it was in)."""
         f = act["I"].shape[0]
+        self.hops += f
         bank = self.body.bank[:, 0 if self.body.numb else way]
         wires = {**self.state[1], self.body.inner: bank}
         silent = torch.zeros(f, self.bits)
         state, out = self.brain.tick((act, wires, self.state[2]), silent, silent, 0.0, 0.0)
         return state[0], out
 
-    def dream(self, wanted, gen):
+    @staticmethod
+    def trim(road: list, here: int) -> list:
+        """A road, [(way, the room said)], from the room `here`, with its loops cut."""
+        rooms, out = [here], []
+        for way, room in road:
+            if room in rooms:                   # it has been here: what lay between is left out
+                at = rooms.index(room)
+                rooms, out = rooms[:at + 1], out[:at]
+            else:
+                rooms.append(room)
+                out.append((way, room))
+        return out or road
+
+    def dream(self, wanted, gen, most: int | None = None):
         """The first way by walks in the dark (`dreams`), or None when no walk comes upon
         the `wanted` look within `depth` steps (then, with `explore`, toward the first way a
-        walk spoke quietly of)."""
+        walk spoke quietly of). `most`: a dream dreamt AGAIN with a road in hand: walks of so
+        many steps at most, only a road to the wanted look counts, and with none nothing is
+        touched."""
         k = self.dreams
         act = {t: x.expand(k, -1).clone() for t, x in self.state[0].items()}
         loud = float(self.hop(self.state[0], 0)[1].abs().mean())
         way = torch.randint(4, (k,), generator=gen)
         took, said = [], []                     # per step: the way each walk took, the room it said it reached
+        since = torch.zeros(k, dtype=torch.long)        # per walk: the step it began at (`sure`: walks end and begin)
         unknown = None
-        self.ended = "depth"
-        for _ in range(self.depth):
+        if most is None:
+            self.ended = "depth"
+        for step in range(self.depth if most is None else most):
             new = {t: torch.empty_like(x) for t, x in act.items()}
             for v in range(4):                  # every walk goes by its own way
                 pick = (way == v).nonzero().flatten()
@@ -387,19 +419,27 @@ class Mind(Blind):
             hit = ((says > 0) == (wanted > 0)).sum(-1) >= self.bits - self.slack
             if self.sure:
                 hit = hit & ~quiet
-            if bool(hit.any()) or (self.explore and unknown is None and bool(quiet.any())):
+            if bool(hit.any()) or (self.explore and most is None and unknown is None and bool(quiet.any())):
                 found = bool(hit.any())
                 some = (hit if found else quiet).nonzero().flatten()
+                some = some[since[some] == since[some].max()]           # the walks that came by the fewest steps
                 j = int(some[int(torch.randint(len(some), (1,), generator=gen))])
-                road = [(int(w[j]), key(s[j])) for w, s in zip(took, said)]
+                road = [(int(took[i][j]), key(said[i][j])) for i in range(int(since[j]), step + 1)]
                 if found:
+                    if self.cut:
+                        road = self.trim(road, key(self.before[0]))
                     if self.keep:
                         self.due, self.road, self.roam = road[0][1], road[1:], False
                     return road[0][0]
                 unknown = road
             back = (way + 2) % 4                # the next way: any but straight back
             way = (back + 1 + torch.randint(3, (k,), generator=gen)) % 4
-        return self.toward(unknown, None)
+            if self.sure and bool(quiet.any()):         # a walk that has spoken quietly ends; one begins where the brain is
+                for t in act:
+                    act[t][quiet] = self.state[0][t]
+                since[quiet] = step + 1
+                way[quiet] = torch.randint(4, (int(quiet.sum()),), generator=gen)
+        return self.toward(unknown, None) if most is None else None
 
     def ripple(self, wanted):
         """The first way by four waves and no copies (`wave`), or None when none of them
@@ -439,6 +479,10 @@ class Mind(Blind):
             if self.keep:                       # the road in hand holds: its next way, and no thought
                 goal = key(wanted)
                 if self.road and goal == self.goal and key(here) == self.due:
+                    if self.again and (self.roam or len(self.road) > 1):        # it dreams on, the road in hand
+                        better = self.dream(wanted, gen, most=self.depth if self.roam else len(self.road) - 1)
+                        if better is not None:
+                            return better
                     (way, self.due), self.road = self.road[0], self.road[1:]
                     if self.roam:               # a road to a way not known is no plan: `wonder` takes it
                         self.lead, self.aim = way, (way,) + tuple(w for w, _ in self.road)
@@ -559,6 +603,7 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
     it ended)], "planned": ticks on which a thought found a road, "walked": (rooms, 4) how
     often each way out of each room was gone, "early": the share of ways gone by an eighth of
     the life, "thoughts": thoughts thought afresh, "sought": steps toward a way not known,
+    "hops": what its thinking cost (ticks of copies or walks in the dark),
     "body": the body at the end}. `fruits`: the seed of the order in which the
     trees bear. `watch(tick, room, fruit, way, planned)` is called before every step. `later`: (a tick,
     the land's ways from that tick on): the land changes in mid-life. `reborn`: at that tick
@@ -570,7 +615,7 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
     room, fruit, since = start, other(start), 0
     trip = int(far[room, fruit])
     out = {"meals": [], "trips": [], "planned": 0, "walked": torch.zeros(len(looks), 4)}
-    gone = {"thoughts": 0, "sought": 0}                 # of a body that was, before it was born again
+    gone = {"thoughts": 0, "sought": 0, "hops": 0}      # of a body that was, before it was born again
     mind.see(looks[room], -1)
     for t in range(ticks):
         if later is not None and t == later[0]:         # the land changes under the body's feet
@@ -596,6 +641,7 @@ def live(mind, looks: torch.Tensor, nxt: torch.Tensor, trees: torch.Tensor, star
         mind.see(looks[room], way)
     out["thoughts"] = gone["thoughts"] + getattr(mind, "thoughts", 0)
     out["sought"] = gone["sought"] + getattr(mind, "sought", 0)
+    out["hops"] = gone["hops"] + getattr(mind, "hops", 0)
     out["body"] = mind
     return out
 
@@ -717,7 +763,8 @@ def summary(lives: list, ticks: int) -> dict:
            "planned": sum(life["planned"] for life in lives) / (n * ticks),
            "early": sum(life.get("early", 0.0) for life in lives) / n,
            "thoughts": sum(life.get("thoughts", 0) for life in lives) / (n * ticks),
-           "sought": sum(life.get("sought", 0) for life in lives) / (n * ticks)}
+           "sought": sum(life.get("sought", 0) for life in lives) / (n * ticks),
+           "hops": sum(life.get("hops", 0) for life in lives) / (n * ticks)}    # from 2026-11-22: the cost of thought a tick
     maps = [life["map"] for life in lives if "map" in life]
     if maps:
         res["map"] = {k: sum(m[k] for m in maps) / len(maps) for k in maps[0]}
@@ -759,6 +806,7 @@ def show(name: str, res: dict) -> str:
     line = (f"{name:>18} | meals {res['meals']:6.1f} | by third " + " ".join(f"{x:5.1f}" for x in res["thirds"])
             + f" | plan {res['planned']:.2f}, a thought afresh {res['thoughts']:.2f}"
             + (f", toward a way not known {res['sought']:.2f}" if res.get("sought") else "")
+            + (f", hops of thought a tick {res['hops']:.0f}" if res.get("hops") else "")
             + f" | ways gone by an eighth of the life {res['early']:.2f}"
             + f" | lives with no meal in the last third {sum(x == 0 for x in res['late_per_life'])}"
             + " | trips, straight and steps per step of the shortest road:"
@@ -810,7 +858,13 @@ def main() -> None:
                         " look's code by more than this (a cosine) gives the way; --depth waves deep")
     p.add_argument("--dreams", type=int, default=0,
                    help="by hand: a thought of this many walks in the dark by ways at random, --depth steps"
-                        " long; the first to come upon the wanted look gives its first way and its road")
+                        " long; the first to come upon the wanted look gives its first way and its road"
+                        " (with --sure a walk that speaks quietly ends and a new one begins)")
+    p.add_argument("--cut", action="store_true",
+                   help="by hand, with --dreams: the road a walk gives has its loops cut")
+    p.add_argument("--again", action="store_true",
+                   help="by hand, with --dreams and --keep: with a road in hand the brain dreams on, on every"
+                        " tick, and takes a road to the fruit over one to a way not known, a shorter over a longer")
     p.add_argument("--imagery", action="store_true",
                    help="by hand: in thought a copy is shown what it has just said, as if it saw it")
     p.add_argument("--fade", type=float, default=0.0,
@@ -823,10 +877,14 @@ def main() -> None:
         p.error("--reborn is a look at a land that changes: give --shift")
     if a.sure and not a.explore:
         p.error("--sure needs the line --explore draws between loud and quiet")
+    if (a.cut or a.again) and not a.dreams:
+        p.error("--cut and --again are of a thought of dreams: give --dreams")
+    if a.again and not a.keep:
+        p.error("--again betters the road in hand: give --keep")
     shape = Land(a.side, a.walls, a.trees, a.ticks, a.shift, a.reborn)
     think = {"depth": a.depth, "budget": a.budget, "slack": a.slack, "imagery": a.imagery, "mumble": a.mumble,
              "curious": a.curious, "keep": a.keep, "explore": a.explore, "sure": a.sure, "wave": a.wave,
-             "dreams": a.dreams}
+             "dreams": a.dreams, "cut": a.cut, "again": a.again}
     pilot = "" if a.seed == 90_000 else f".seed{a.seed}"        # not the exam's lands: a look
     # a land not of the default make is named in every record of it
     ground = ((f".walls{a.walls:g}" if a.walls != 0.3 else "") + (f".trees{a.trees}" if a.trees else "")
@@ -868,6 +926,7 @@ def main() -> None:
            + (f".budget{a.budget}" if a.budget != 256 else "")
            + (f".wave{a.wave:g}.depth{a.depth}" if a.wave else "")
            + (f".dreams{a.dreams}.depth{a.depth}" if a.dreams else "")
+           + (".cut" if a.cut else "") + (".again" if a.again else "")
            + (f".curious{a.curious:g}" if a.curious else "") + (f".explore{a.explore:g}" if a.explore else "")
            + (".sure" if a.sure else "") + (".keep" if a.keep else "") + (f".fade{a.fade:g}" if a.fade else "")
            # sizes other than the default are named too (from 2026-11-16: two runs of one genome at

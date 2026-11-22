@@ -46,6 +46,8 @@ def parse(name: str) -> dict | None:
     row["imagery"] = ".imagery" in switches
     row["keep"] = bool(re.search(r"\.keep(?=\.|$)", switches))
     row["sure"] = bool(re.search(r"\.sure(?=\.|$)", switches))
+    row["cut"] = bool(re.search(r"\.cut(?=\.|$)", switches))
+    row["again"] = bool(re.search(r"\.again(?=\.|$)", switches))
     row["ground"] = ground
     row["pilot"] = row["seed"] != DEFAULTS["seed"]
     return row
@@ -78,6 +80,7 @@ def rows(paths: list[str]) -> list[dict]:
                 "planned": round(res.get("planned", 0.0), 4),
                 "thought_afresh": round(res["thoughts"], 4) if "thoughts" in res else "",
                 "sought": round(res["sought"], 4) if "sought" in res else "",
+                "hops_a_tick": round(res["hops"], 1) if "hops" in res else "",
                 "early_ways_gone": round(res["early"], 4) if "early" in res else "",
                 "far9_straight": round(every["straight"], 4) if every else "",
                 "far9_straight_late": round(late["straight"], 4) if late else "",

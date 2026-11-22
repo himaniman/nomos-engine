@@ -1268,3 +1268,54 @@ def test_a_thought_of_dreams_is_walks_in_the_dark_and_the_soonest_gives_its_way_
         assert none is None or none in (0, 1, 2, 3)
         if none is None:                                    # every walk is quiet: a lead toward what is not known
             assert lost.lead in (0, 1, 2, 3)
+
+
+def test_dreams_mended_a_walk_ends_at_what_is_not_known_a_road_has_its_loops_cut_and_the_brain_dreams_on():
+    from tissue import world
+    import pytest
+    # a road with its loops cut: from room 1 by 5, 7, back to 5, on to 9, into a wall, 4, back to 1, then 4 and 2
+    road = [(0, 5), (1, 7), (2, 5), (3, 9), (0, 9), (1, 4), (2, 1), (3, 4), (0, 2)]
+    assert world.Mind.trim(road, 1) == [(3, 4), (0, 2)]
+    assert world.Mind.trim(road[:4], 1) == [(0, 5), (3, 9)]
+    assert world.Mind.trim([(0, 5), (1, 5), (2, 6)], 1) == [(0, 5), (2, 6)]     # into a wall: that step is left out
+    assert world.Mind.trim([(0, 1)], 1) == [(0, 1)]                             # nothing would be left: as it was
+    shape = world.Land(side=3, ticks=80)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(16), gen(2), cut=True)                           # of dreams only
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(16), gen(2), dreams=8, again=True)               # no road in hand to better
+    wanted = looks[int(trees[0])]
+    with torch.no_grad():
+        for kw in (dict(cut=True), dict(again=True), dict(explore=0.4, sure=True),
+                   dict(explore=0.4, sure=True, cut=True, again=True)):
+            live = lambda: world.live(world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=True, slack=7, **kw),
+                                      looks, nxt, trees, start, 80, gen(3), fruits=5)
+            life, again = live(), live()                    # a pure function of its dice
+            assert again["meals"] == life["meals"] and torch.equal(again["walked"], life["walked"])
+            assert life["hops"] > 0 and again["hops"] == life["hops"]
+        # sure of nothing: every walk ends at its first step, none is a road, and the lead is one step long
+        mind = world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=True, slack=12, explore=1e6, sure=True)
+        mind.see(looks[start], -1)
+        assert mind.think(wanted, gen(4)) is None and mind.lead in (0, 1, 2, 3) and mind.road == [] and mind.roam
+        # a road in hand, and with twelve bits of slack every walk meets the wanted look at its first step
+        for roam in (False, True):
+            for again in (False, True):
+                mind = world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=True, slack=12, again=again)
+                mind.see(looks[start], -1)
+                mind.goal, mind.due, mind.roam = world.key(wanted), world.key(looks[start]), roam
+                mind.road = [(0, 111), (1, 222), (2, 333)]
+                way = mind.think(wanted, gen(4))
+                if again:                                   # dreamt again: a road of one step takes its place
+                    assert way in (0, 1, 2, 3) and mind.road == [] and not mind.roam
+                elif roam:                                  # a road to a way not known is walked, and is no plan
+                    assert way is None and mind.lead == 0 and len(mind.road) == 2
+                else:
+                    assert way == 0 and len(mind.road) == 2
+        # one step left of the road in hand: nothing shorter to dream of, and no thought is spent
+        mind = world.Mind(genome.grow(16), gen(2), dreams=8, depth=6, keep=True, slack=12, again=True)
+        mind.see(looks[start], -1)
+        mind.goal, mind.due, mind.road = world.key(wanted), world.key(looks[start]), [(3, 111)]
+        spent = mind.hops
+        assert mind.think(wanted, gen(4)) == 3 and mind.hops == spent

@@ -845,16 +845,26 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   life (reach too short, or the body passed to and fro). FORGETTING STEP 8 DONE: doubt counted
   a lap (0.08) works at side 12 (0.90-1.00 where nothing changes, x1.4-1.8 after a change); a
   maze that changes: x1.5-4.0 but a quarter of the doubter's.
-  WAVE STEP 3, THINKING AS DREAMS, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-22 ~14:30
-  local, about 8 hours): `--dreams K` (`Mind.dream`, by hand): K walks in the dark by ways at
-  random, `--depth` steps; the first to come upon the wanted look gives its way and its road;
-  no list of rooms. A look (one life): 256 dreams give the first way right up to 6 steps away
-  every time; two pilot lives: 127 meals at 256 dreams of 16 steps (copies 294). Queue
-  `out/jobs14.txt`, log `out/jobs/queue14.log`: the look in full (`w3-look-*`, scratch
-  `out/tissue.dream.py`, records `twice-s*.dream.m*.json`), the pilot (`w3-pilot-*`, lands of
-  `--seed 1`), the exam for five settings (`w3-exam-*`), the pilot of wave step 2 for the
-  record (`w2-*`). TO COLLECT: read the pilot, apply the written rule (most meals among the
-  five exam settings) BEFORE opening the exam; bars R1-R3 in the note ("Wave, step 3").
+  WAVE STEP 3 DONE (2026-11-22, evening): A LIFE CAN BE LIVED ON DREAMS. `--dreams K`
+  (`Mind.dream`, by hand): K walks in the dark by ways at random, `--depth` steps, the soonest
+  to come upon the wanted look gives its way and its road; no list of rooms, no copy per
+  room. The rule picked 1024 dreams of 32 steps with seeking: 208 / 212 / 212 / 192 / 219 meals
+  (0.66-0.71 of the life on copies), no life locked, R1-R3 met on all five lineages; 64 / 256 /
+  1024 dreams a dial (0.39-0.45 / 0.54-0.58 / 0.66-0.71). A dream's reach is bought with WALKS,
+  not cells (1024 cells dream no farther than 256). A look (scratch `dreamwhy.py`, on the VM
+  `out/tissue.dreamwhy.py`) says where it loses: roads 1.3-1.9 times the shortest (1.05-1.10
+  with loops cut); false roads in a young brain (0.39 of the first third's ticks); false leads
+  late (a walk's voice sunk in the dark).
+  WAVE STEP 4, DREAMS MENDED, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-22 ~21:45
+  local, 13 hours or more): three parts by hand, `--cut` (loops cut), `--again` (the brain
+  dreams on with a road in hand, a shorter road takes its place), `--sure` whole for dreams (a
+  walk that speaks quietly ends, a new one begins). Queue `out/jobs16.txt`, log
+  `out/jobs/queue16.log`: the pilot `w4-pilot-*` (lands of `--seed 1`, 256 dreams), the exam
+  `w4-exam-k{64,256,1024}-*` (1024 dreams: 8 lives). Beside it `out/jobs15.txt`: dreams as they
+  are at side 12 (`w4-big-*`, 8 lives). TO COLLECT: read the pilot, apply the written rule (of
+  the four settings with cut and again: no sure, sure at 0.4 / 0.5 / 0.6, the most meals)
+  BEFORE opening the exam; bars M1-M6 in the note ("Wave, step 4"). Records now count `hops`
+  (what thinking costs).
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

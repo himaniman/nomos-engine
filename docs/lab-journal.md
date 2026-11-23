@@ -6437,3 +6437,32 @@ sure at 0.5, thinking 2.5 times as dear.
 
 Method, small: a check that lives are the same before and after a change of the code fooled me
 for a minute because the genome of the check was drawn without a seed. Seed what is compared.
+
+## 2026-11-23 (14:30) — dreams mended come within a tenth of copies: loops cut, dreaming on with a road in hand, walks that end at what is not known; 64 dreams mended beat 1024 as they were
+
+**Wave, step 4** (the pilot read first, the written rule applied, then the exam). The rule
+picks cut, again and sure with the line at 0.5 (280 meals on the pilot's lands; 0.6: 279; no
+sure: 265; as they are 170; copies 298). On the exam's lands, 256 dreams: 282 / 291 / 288 / 264 /
+291 meals a life, 0.90-0.94 of the life on copies, no life of 80 locked. M1-M6 all met, on all
+five lineages.
+
+- Each part pays alone and together: cut x1.37-1.44, again x1.29-1.33, both over either,
+  sure at 0.5 another x1.06-1.18 and the first third at the copies' own.
+- 64 dreams mended: 263 / 272 / 259 / 240 / 268 (0.82-0.88 of copies) at 1 500-1 700 hops a
+  tick. I had predicted they would fall short of 256 dreams as they are; they eat half as much
+  again, and more than 1024 as they were.
+- 1024 dreams (8 lives): the setting picked locks 3 lives of 40; with the line at 0.6 none,
+  and 0.93-0.99 of copies on every lineage. The line wants to rise with the number of dreams.
+- Predictions: the pick right (by a hair); M2's guess too low (0.72-0.85, came 0.90-0.94);
+  cut's worth too low; M6 wrong; the cost of `again` x2.1-2.3 (guessed x3).
+- Dreams as they are at side 12: 0.40 (256 dreams) and 0.47-0.49 (1024) of copies; guesses held.
+- The life that locks with the dice alone is a blind walker's: the fruit is seldom within a
+  dream's reach and nothing sends the body to look.
+
+What it says: the list of rooms, the breadth-first order and the copy per room were not what
+a life in this land needs; they made thinking cheap. A thought of walks at random, mended by
+three small parts, eats within a tenth. All of it is still by hand, and the walks are K
+copies of the brain's activity at once.
+
+**Next, running**: step 5, breadth: what copies cost in hops, mended dreams at side 12, in the
+maze, at 128 and 512 cells, and with doubt in a land that changes (one bar, N1).

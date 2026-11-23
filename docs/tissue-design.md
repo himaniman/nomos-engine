@@ -3631,6 +3631,88 @@ tick; cut, again and sure at 0.5, 247 meals at 5 700 hops a tick. One life.)
 of 32 steps with seeking. A guess: 1024 dreams eat 0.35-0.5 of what copies do on the same
 lives (the fruit is more often farther than a walk reaches), 256 dreams 0.25-0.4.
 
+**Outcome (2026-11-23): M1-M6 are met on all five lineages. Mended, a life on dreams is within
+a tenth of a life on copies, and 64 dreams mended eat more than 1024 as they were.**
+
+The pilot (meals a life, the mean of `twice-s0` and `twice-s4`; copies there 298): as they are
+170; cut 246; again 226; cut and again 265; with sure at 0.4, 262; at 0.5, 280; at 0.6, 279.
+The rule picks **cut, again and sure with the line at 0.5** (by a hair over 0.6; my guess of
+the pick was right). The exam, 256 dreams of 32 steps (16 lives a lineage):
+
+| | meals a life, five lineages | of the life on copies | first / last third, of the copies' | hops of thought a tick | lives of 80 locked |
+|---|---|---|---|---|---|
+| as they are (step 3) | 172 / 180 / 175 / 158 / 178 | 0.54-0.58 | 0.39-0.51 / 0.58-0.61 | about 2 300 | 0 |
+| cut | 236 / 258 / 248 / 220 / 257 | 0.75-0.83 | 0.62-0.81 / 0.77-0.84 | 2 260-2 700 | 1 |
+| again | 223 / 237 / 232 / 205 / 236 | 0.70-0.77 | 0.45-0.63 / 0.79-0.82 | 4 950-5 750 | 0 |
+| cut, again | 264 / 271 / 269 / 223 / 274 | 0.76-0.88 | 0.61-0.81 / 0.79-0.92 | 4 290-5 120 | 1 |
+| cut, again, sure at 0.4 | 273 / 243 / 271 / 235 / 279 | 0.79-0.90 | 0.71-0.89 / 0.78-0.92 | 4 390-5 160 | 3 |
+| **cut, again, sure at 0.5 (picked)** | **282 / 291 / 288 / 264 / 291** | **0.90-0.94** | 0.93-1.01 / 0.90-0.94 | 4 820-5 600 | 0 |
+| cut, again, sure at 0.6 | 286 / 285 / 290 / 255 / 296 | 0.87-0.96 | 0.66-0.99 / 0.92-0.95 | 5 140-6 700 | 0 |
+
+| the four the rule could pick, at other numbers of dreams | cut, again | sure at 0.4 | sure at 0.5 (picked) | sure at 0.6 |
+|---|---|---|---|---|
+| 64 dreams, 16 lives (as they are 128 / 131 / 135 / 115 / 138) | 243 / 256 / 250 / 226 / 255 | 248 / 263 / 250 / 230 / 255 | **263 / 272 / 259 / 240 / 268** | 258 / 268 / 264 / 236 / 271 |
+| of copies; hops a tick | 0.77-0.83; 1 410-1 580 | 0.79-0.85; 1 450-1 620 | 0.82-0.88; 1 480-1 740 | 0.81-0.88; 1 580-1 950 |
+| 1024 dreams, 8 lives (as they are on those lives 221 / 226 / 224 / 204 / 231, copies 312 / 318 / 316 / 303 / 318) | 276 / 259 / 270 / 172 / 287 | 255 / 265 / 260 / 253 / 286 | **308 / 304 / 261 / 252 / 299** | 303 / 301 / 307 / 281 / 314 |
+| of copies; lives of 40 locked; hops a tick | 0.57-0.90; 4; 15 000 | 0.82-0.90; 2; 16 500 | 0.83-0.99; 3; 16 000-18 500 | 0.93-0.99; 0; 18 000-22 400 |
+
+- **M1 met**: 256 dreams mended eat x1.33-1.38 what 1024 as they are do, on all five lineages.
+- **M2 met**: 0.90-0.94 of the life on copies on all five (the bar was 0.75; my guess 0.72-0.85
+  was too low).
+- **M3 met**: cut alone x1.37-1.44 (I guessed x1.15-1.3), again alone x1.29-1.33 (I had it
+  open), both together over cut x1.01-1.12 and over again x1.09-1.18, each on all five
+  lineages. `sure` at 0.5 adds x1.06-1.18 on all five and lifts the first third to the
+  copies' own (0.93-1.01). At 0.4 it adds nothing and three lives lock.
+- **M4 met**: the last third 112-118 meals of the copies' 125 (0.90-0.94); trips of 9 steps and
+  more in it take 1.13-1.19 steps per step of the shortest road (2.13-2.32 as they were).
+- **M5 met** at 256 dreams: no life of 80 locked. NOT at 1024 dreams, where the bar was not
+  asked: the setting picked locks 3 lives of 40 (10 and 25 meals in a life), and with the line
+  at 0.6 none locks and every lineage is at 0.93-0.99 of copies. The more dreams, the more
+  sayings, the more of them wrong in a middling voice: THE LINE WANTS TO RISE WITH THE NUMBER
+  OF DREAMS (0.5 for 64 and 256, 0.6 for 1024). The locked lives were not looked into.
+- **M6 met, my prediction wrong**: 64 dreams mended eat x1.48-1.52 what 256 as they are do,
+  0.82-0.88 of copies, at 1 500-1 700 hops a tick: more than 1024 dreams as they were at a
+  tenth of the thinking. What the three parts add is worth more than sixteen times the walks.
+- The guess for 1024 dreams (x1.15-1.3 over as they are): x1.17-1.39 for the setting picked,
+  x1.33-1.37 on every lineage at 0.6. The guess for the cost: `again` makes thinking x2.1-2.3
+  as dear, not three times.
+- **Dreams as they are in the bigger land** (side 12, 512 cells, 8 lives, of copies on the
+  same lives): 256 dreams 0.40 and 0.40, 1024 dreams 0.47 and 0.49; no life locked. Both
+  guesses held (0.25-0.4, 0.35-0.5).
+- The life that "locks" on dreams with the dice alone (the look `out/jobs/w4-why-dice.log`,
+  `twice-s1`, 3 meals): no to and fro. The fruit is five steps and more away on most ticks, a
+  dream finds nothing on 0.77-0.97 of them, and with no seeking the body is a blind walker
+  that never comes near. Seeking is what undoes it.
+
+So a thought with NO LIST OF ROOMS, no breadth-first order and no copy per room comes within
+a tenth of the thought with all three (0.90-0.94 at 256 dreams, 0.93-0.99 at 1024 with the
+line at 0.6). By hand in it: the dice of the walks; the walks all at once; the noting of the
+walk that met the look; the road kept, its loops cut; the line; that a walk ends when it
+speaks quietly. It is dear: 1 500 to 20 000 hops of thought a tick of life (what copies
+cost was never counted: asked in step 5).
+
+### Wave, step 5: mended dreams in other lands, at other sizes, with doubt. Guesses before the runs
+
+Breadth, no new mechanism (`out/jobs17.txt`, logs `out/jobs/w5-*`; the control genomes, five
+lineages, a road kept, cut, again, sure):
+
+- **What copies cost**: the base lives again (side 8, copies with seeking), to count their
+  hops. The lives must come out the same to the meal. A guess: 150-400 hops a tick, so 256
+  dreams mended think 12-30 times as dear.
+- **The bigger land** (side 12, 512 cells, 8 lives): 64 and 256 dreams, the line at 0.5 and at
+  0.6. A guess: 256 dreams 0.65-0.8 of copies on the same lives (as they are 0.40), 64 dreams
+  0.55-0.7.
+- **The maze** (side 8, walls 0.5, 16 lives; copies 180-195): 256 dreams, the line at 0.5 and
+  0.6. A guess: 0.8-0.95 of copies (a corridor has few ways to go wrong).
+- **Sizes** (side 8, 256 dreams, the line at 0.5): 128 cells (16 lives) and 512 cells (8
+  lives). A guess: growth pays as it does with copies (128 to 256 cells x1.14-1.24, then
+  x1.03-1.04): the map is what grows, the thought is the same.
+- **Doubt** (side 8, half the walls moved at half-life, 256 dreams): the line at 0.6 with
+  `--fade 0.0003`, and without fading. One bar, **N1**: with fading, in the half-life after
+  the change at least 0.8 of what copies with doubt eat there (111 / 121 / 117 / 104 / 111: so
+  89 / 97 / 94 / 83 / 89) on four lineages, and at most 2 lives of 80 with no meal in the last
+  third. Prediction: met (the mended dream already leaves out what is said quietly).
+
 (Forgetting step 8, the look `h6-lean` and wave step 1 ran on the VM on 2026-11-21; wave step 2 next.)
 
 ### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
@@ -3941,6 +4023,12 @@ side 8.
    times the shortest (1.05-1.10 with their loops cut), a young brain's dreams come upon the
    wanted look where it is not (0.39 of the ticks of the first third on false roads), and late
    in life every way "not known" a dream leads to is a walk's voice sunk in the dark.
+13. DREAMS MENDED ("Wave, step 4"): three parts by hand, each of which pays on all five
+   lineages: the road's loops cut, the brain dreaming on with a road in hand (a shorter road
+   takes its place), a walk ending where it speaks quietly. 256 dreams then eat 0.90-0.94 of
+   the life on copies, 64 dreams 0.82-0.88, 1024 dreams with the line at 0.6 0.93-0.99. So the
+   list of rooms, the breadth-first order and the copy per room are not needed for a life in
+   this land. What they bought was cheapness: dreams think 1 500-20 000 hops a tick of life.
 
 **What is still by hand in the world**, with what it carries: a dendrite per way (the body's
 sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
@@ -3961,8 +4049,8 @@ wanting to know, forgetting beside it, a thought as a wave later.
   leans on it) and is asked once more with the land's own kind of change and the land's own
   fading (step 6'). If that fails the three parts stay by hand.
 - A thought as a wave, the third road of the order: a wave fails, dreams work (12 above).
-  RUNNING (2026-11-22): dreams mended by hand, step 4 (loops cut, dreaming on with a road in
-  hand, walks that end at what is not known), and dreams as they are in the bigger land. After
+  Mended by hand they come within a tenth of copies (13 above). RUNNING (2026-11-23): step 5,
+  mended dreams in the bigger land, the maze, at other sizes, with doubt. After
   it, what is still by hand in a dream: the dice of the walks, the walks all at once, the
   noting of the walk that met the look. And for the claim of the line: a code that gains
   dimensions with the cells, so that growth pays for a thought and not only for the map.
@@ -4107,7 +4195,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | wave 1: one state for many rooms (a look by hand) | done. A room has one code seen or thought of; one state holds about 16 rooms AT ANY SIZE (a room's code is its look spread over the cells); a wave kept clear of where it has been gives the first way 3 steps out on 0.8 of the askings, 4 steps 0.5-0.75, and little beyond. Growth does not pay for a wave in this code |
 | wave 2: a life on four waves (`--wave`) | failed at the pilot: 0.1-5 meals a life (a blind walker 6). A wave reaches 3-4 steps, too short to live on, or the body is passed to and fro |
 | wave 3: thinking as dreams (`--dreams`) | done, R1-R3 met on all five lineages. K walks in the dark by ways at random, the soonest to come upon the wanted look gives its road, no list of rooms: 1024 dreams of 32 steps eat 208 / 212 / 212 / 192 / 219 (0.66-0.71 of the life on copies), no life locked; 64 / 256 / 1024 dreams a dial (x1.3-1.4, x1.2). Reach is bought with walks, not with cells |
-| wave 4: dreams mended (`--cut`, `--again`, `--sure` whole) | running (2026-11-22), bars M1-M6. A look says where dreams lose: roads 1.3-1.9 times the shortest, false roads in a young brain, false leads later |
+| wave 4: dreams mended (`--cut`, `--again`, `--sure` whole) | done, M1-M6 met on all five lineages. Loops cut out of the road, dreaming on with a road in hand, walks that end at what is not known: 256 dreams eat 282 / 291 / 288 / 264 / 291 (0.90-0.94 of the life on copies), each part pays; 64 dreams mended (0.82-0.88) eat more than 1024 as they were; 1024 with the line at 0.6: 0.93-0.99. The line wants to rise with the number of dreams. Dear: 1 500-20 000 hops of thought a tick |
+| wave 5: mended dreams in other lands, at other sizes, with doubt | running (2026-11-23): guesses, one bar N1 |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

@@ -855,20 +855,21 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   `out/tissue.dreamwhy.py`) says where it loses: roads 1.3-1.9 times the shortest (1.05-1.10
   with loops cut); false roads in a young brain (0.39 of the first third's ticks); false leads
   late (a walk's voice sunk in the dark).
-  WAVE STEP 4, DREAMS MENDED, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-22 ~21:45
-  local, 13 hours or more): three parts by hand, `--cut` (loops cut), `--again` (the brain
+  WAVE STEP 4 DONE (2026-11-23): DREAMS MENDED COME WITHIN A TENTH OF COPIES. Three parts by
+  hand, each pays on all five lineages: `--cut` (the road's loops cut), `--again` (the brain
   dreams on with a road in hand, a shorter road takes its place), `--sure` whole for dreams (a
-  walk that speaks quietly ends, a new one begins). Queue `out/jobs16.txt`, log
-  `out/jobs/queue16.log`: the pilot `w4-pilot-*` (lands of `--seed 1`, 256 dreams), the exam
-  `w4-exam-k{64,256,1024}-*` (1024 dreams: 8 lives). Beside it `out/jobs15.txt`: dreams as they
-  are at side 12 (`w4-big-*`, 8 lives). TO COLLECT: read the pilot, apply the written rule (of
-  the four settings with cut and again: no sure, sure at 0.4 / 0.5 / 0.6, the most meals)
-  BEFORE opening the exam; bars M1-M6 in the note ("Wave, step 4"). Records now count `hops`
-  (what thinking costs). One life seen after the bars (a land of `--seed 2`, 256 dreams): 137
-  meals as they are, 247 mended, thinking 2.5 times as dear. Also to read:
-  `out/jobs/w4-why-dice.log` on the VM (a look at a life that locks on dreams with the dice
-  alone, four such lives of 80 in step 3). Picture of step 3: `out/tissue/dreams.png`
-  (scratch `dreams_png.py`, PIL).
+  walk that speaks quietly ends, a new one begins). The rule picked the line at 0.5: 256
+  dreams 282 / 291 / 288 / 264 / 291 meals (0.90-0.94 of the life on copies), no life locked,
+  M1-M6 met; 64 dreams mended 0.82-0.88 (more than 1024 as they were, my prediction wrong);
+  1024 dreams with the line at 0.6: 0.93-0.99 (at 0.5 three lives of 40 lock: THE LINE WANTS TO
+  RISE WITH THE NUMBER OF DREAMS). Dear: 1 500-20 000 hops of thought a tick. Records count
+  `hops`. Picture of step 3: `out/tissue/dreams.png` (scratch `dreams_png.py`, PIL).
+  WAVE STEP 5, BREADTH, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-23 ~14:40 local,
+  about 12 hours): queue `out/jobs17.txt`, log `out/jobs/queue17.log`, jobs `w5-*`: copies'
+  hops (the base lives again: they must come out the same), mended dreams at side 12 (64 and
+  256 dreams, lines 0.5 and 0.6, 8 lives), in the maze, at 128 / 512 cells, and with doubt in
+  a land that changes (`--fade 0.0003`, line 0.6). Guesses and the one bar N1 in the note
+  ("Wave, step 5").
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

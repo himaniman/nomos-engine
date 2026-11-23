@@ -381,8 +381,9 @@ def test_a_brain_that_grows_in_mid_life_keeps_every_old_cell_and_says_the_same_a
     _, was = small.tick(state, -cue, cue, 1.0, 1.0, where=place / 40)
     _, now = big.tick(grown, -cue, cue, 1.0, 1.0, where=place / 64)
     assert torch.allclose(was, now, atol=1e-5)
-    with pytest.raises(ValueError):
-        Tissue(RUNG1, ITEM).grow(16).more(Tissue(RUNG1, ITEM).grow(16).born(1, gen(0)), 8, gen(1))
+    with pytest.raises(ValueError):                         # from fewer cells than wires a cell to more: another brain
+        odd = Tissue(replace(RUNG1, fan=20), ITEM).grow(16)
+        odd.more(odd.born(1, gen(0)), 24, gen(1))
 
 
 def test_a_life_in_two_halves_is_the_same_world_for_every_arm_and_a_pure_function():
@@ -1319,3 +1320,54 @@ def test_dreams_mended_a_walk_ends_at_what_is_not_known_a_road_has_its_loops_cut
         mind.goal, mind.due, mind.road = world.key(wanted), world.key(looks[start]), [(3, 111)]
         spent = mind.hops
         assert mind.think(wanted, gen(4)) == 3 and mind.hops == spent
+
+
+def test_a_brain_wired_from_every_cell_grows_in_mid_life_and_says_what_it_said():
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    brain = genome.grow(16)
+    with torch.no_grad():
+        state = brain.born(3, gen(1))
+        for k in range(6):                                  # a few ticks seen and taught: the wires hold something
+            cue = torch.randn(3, ITEM.d_in, generator=gen(10 + k)).sign()
+            state, _ = brain.tick(state, cue, cue, 1.0, 1.0)
+        cue = torch.randn(3, ITEM.d_in, generator=gen(99)).sign()
+        was, said = brain.tick(state, cue, cue, 0.0, 1.0)
+        for scale in (True, False):
+            big, grown = brain.more(state, 16, gen(2), scale=scale)
+            assert big.n["I"] == 32 and all(w.shape[1] == 32 for i, w in grown[1].items() if RUNG1.blocks[i].post == "I")
+            now, says = big.tick(grown, cue, cue, 0.0, 1.0)
+            same = torch.allclose(says, said, atol=1e-5) and torch.allclose(now[0]["I"][:, :16], was[0]["I"], atol=1e-5)
+            assert same == scale                            # louder old wires: the old cells and the mouth as before
+        # the dendrites of a body grow with it
+        from tissue import fork
+        body = fork.Dendrites(brain, state, 4)
+        body.bank += 1.0
+        body.more(16, 32, 2.0)
+        assert body.bank.shape == (3, 4, 32, 32) and float(body.bank[:, :, :16, :16].min()) == 2.0
+        assert float(body.bank[:, :, 16:].abs().max()) == 0.0 and float(body.bank[:, :, :, 16:].abs().max()) == 0.0
+
+
+def test_a_brain_in_a_land_is_given_cells_by_the_clock_or_gives_them_to_itself_when_surprised():
+    from tissue import world
+    import pytest
+    shape = world.Land(side=3, ticks=120)
+    looks, nxt, trees, start = world.land(12, shape, gen(1))
+    genome = Tissue(replace(RUNG1, still=True), ITEM)
+    with pytest.raises(ValueError):
+        world.Mind(genome.grow(8), gen(2), grows=0.1)                   # it needs the size it may grow to
+    with torch.no_grad():
+        live = lambda **kw: world.live(world.Mind(genome.grow(8), gen(2), budget=64, keep=True, **kw), looks, nxt,
+                                       trees, start, 120, gen(3), fruits=5)
+        plain = live()
+        assert plain["cells"] == 8 and plain["grew"] == [] and plain["cell_ticks"] == 8 * 121 and len(plain["shocks"]) == 8
+        clock, again = live(grow=((30, 16), (60, 32))), live(grow=((30, 16), (60, 32)))
+        assert clock["grew"] == [(30, 16), (60, 32)] and clock["cells"] == 32
+        assert again["meals"] == clock["meals"] and torch.equal(again["walked"], clock["walked"])    # a pure function
+        assert clock["body"].body.bank.shape[-2:] == (32, 32) and clock["body"].deaf.n["I"] == 32
+        assert clock["cell_ticks"] == 8 * 30 + 16 * 30 + 32 * 61
+        never = live(grows=1.0, most=64)                    # never surprised on more than every step: it stays
+        assert never["cells"] == 8 and never["grew"] == []
+        always = live(grows=-1.0, most=64)                  # every look back says grow: 8, 16, 32, 64 by its own clock
+        assert always["grew"] == [(32, 16), (32 + 64, 32)] and always["cells"] == 32
+        most = live(grows=-1.0, most=12)
+        assert most["grew"] == [(32, 12)] and most["cells"] == 12

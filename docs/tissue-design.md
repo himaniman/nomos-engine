@@ -3713,6 +3713,96 @@ lineages, a road kept, cut, again, sure):
   89 / 97 / 94 / 83 / 89) on four lineages, and at most 2 lives of 80 with no meal in the last
   third. Prediction: met (the mended dream already leaves out what is said quietly).
 
+## A brain that grows in its land (from 2026-11-23; the user's question put to the land)
+
+The user's hope for the line, said on 2026-11-23: with the right conditions of growth a
+bigger brain given more power should organise itself and begin to do more. What the data
+says so far: size has bought MEMORY (the map, up to a knee) and never a new ability (a wave
+holds 16 rooms at any size; a dream's reach is bought with walks). And growth within a life
+was only ever shown in the stream (exam 3), never in a land. So the question is put where it
+can be answered now: a brain born small into a land too big for it, that takes cells as it
+goes. Does it keep getting better while it grows, and does it stop when its land is learnt?
+
+### Growth, step 1: cells given in mid-life, and a brain that gives itself cells. Looks, a rule, bars
+
+**Growth for a brain wired from every cell** (`Grown.more` in `tissue/kernel.py`, till now only
+for a few wires per cell; `Dendrites.more`, `Mind.more`): new interneurons with innate wires of
+their own, every plastic wire to and from them at zero. A plastic dendrite is divided by the
+number of its wires, so, BY HAND, the old wires are made louder by new over old: an old cell
+hears from the old cells just what it heard before, and on the tick of the growth the brain
+says exactly what it said (a test holds it; the off-switch is `--unscaled`).
+
+**What a brain too small for its land feels** (a look, scratch `growlook.py`, `twice-s0`, one
+life on a land of `--seed 2`, copies with seeking; on every step the brain is asked what it
+will see by the way it is about to go). Of the steps by a way GONE BEFORE, the share on which
+it is wrong, by eighths of the life:
+
+| | meals | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| side 8, 64 cells | 38 | 0.47 | 0.47 | 0.52 | 0.40 | 0.48 | 0.40 | 0.23 | 0.28 |
+| side 8, 128 cells | 222 | 0.18 | 0.26 | 0.20 | 0.05 | 0.03 | 0.02 | 0.02 | 0.00 |
+| side 8, 256 cells | 260 | 0.04 | 0.07 | 0.04 | 0.02 | 0.02 | 0.00 | 0.00 | 0.01 |
+| side 12, 128 cells | 35 | 0.41 | 0.51 | 0.49 | 0.44 | 0.47 | 0.43 | 0.40 | 0.32 |
+| side 12, 256 cells | 270 | 0.19 | 0.42 | 0.25 | 0.09 | 0.03 | 0.01 | 0.01 | 0.01 |
+
+A brain that fits its land stops being wrong about what it has walked; one too small goes on
+being wrong, to the end. The signal is the brain's own: SURPRISE, what it said it would see
+against what it sees.
+
+**The rule, BY HAND** (`--grows SHARE --most CELLS`, `Mind.see`): on every step the brain is
+surprised or not. Every `--pace` (4) ticks per cell since it was born or last grew it looks
+back over the last half of that time, and if it was surprised on more than SHARE of those
+steps it gives itself as many cells again, up to `--most`. By hand: the counting, the clock
+per cell, the doubling. Not by hand: what it is surprised by. `--grow SIZE --at SHARE` is the
+examiner's clock, the control. Every life now records its surprise by eighths, its size at
+the end and its mean size (`cells`, `mean_cells`, `grew`, `surprise`); lives without growth
+are the same to the step as before.
+
+One life each, the same lands of `--seed 2`, `twice-s0` born with 64 cells, seen before the
+bars: at side 8, given 256 cells at an eighth of the life, 242 meals (unscaled 243; born with
+256: 260; left at 64: 38); growing by itself (share 0.1) it takes 128 cells at tick 256, 256 at
+tick 768 and STOPS: 226 meals, 120 in the last third. At side 12 it takes 128, 256, and 512 at
+tick 1792, and stops: 266 meals, 173 in the last third (born with 256 there: 270; left at 128:
+35). The same newborn, the same rule: 256 cells in the land of 256 ways, 512 in the land of
+576.
+
+**The pilot** (the pilot's lands, `--seed 1`, 8 lives, `twice-s0`, `twice-s4`, born with 64
+cells, sides 8 and 12, `--most 1024`): the share and the pace at (0.1, 4), (0.2, 4), (0.2, 2),
+(0.3, 2). **The rule that picks**: the most meals a life summed over the two lands (the mean
+of the two genomes); if another setting is within 3% of it with a smaller mean size summed
+over the two lands, that one.
+
+**The exam** (the exam's lands, five lineages, copies with seeking; `out/jobs18.txt`, logs
+`out/jobs/g1-*`): brains left at 64 cells (side 8) and at 64 and 128 (side 12), for what
+growth is for; born with 64 and given 256 cells (side 8) or 512 (side 12) at an eighth of the
+life, scaled and unscaled; born with 128 and given 256 at HALF the life (side 8), scaled and
+unscaled; and the four settings of the pilot at both sides. Bars:
+
+- **H1, a brain given cells goes on as one born big**: given its cells at an eighth of the
+  life, in the last third it eats at least 0.9 of what the brain born with that many eats
+  there (side 8: 256 cells; side 12: 512), on four lineages at each side.
+- **H2, it gives itself what its land asks for**: with the setting picked, the size at the end
+  (the median over lives) is at side 12 at least twice that at side 8, on four lineages; and
+  at side 8 it is 512 or less on four lineages (it stops).
+- **H3, and ends as one born that size**: in the last third at least 0.85 of what a brain born
+  with the size it ends at (that median) eats there, at each side, on four lineages.
+- **H4, no life lost to it**: at most 2 lives of 80 at each side with no meal in the last
+  third.
+
+Predictions. H1 met. H2 met (256 and 512). H3 met at side 8, open at side 12 (one life: 173
+of about 194). H4 met. Over the WHOLE life it eats less than one born big, 0.85 at side 8 and
+0.6-0.7 at side 12 (it lives its first third too small): no bar, a guess; its mean size is
+0.8 of the size it ends at. The pick: (0.2, 2), the faster clock. The scaling: no difference
+at an eighth of the life (a brain of 64 cells knows little by then); at half the life the
+scaled brain eats more in the eighth after the growth.
+
+**A look past what the VM can do well** (side 16, 1024 ways, a life of 10 240 ticks; `twice-s0`,
+`twice-s4`, 4 lives): the brain that grows by itself, (0.1, 4) and (0.2, 2), `--most 1024`,
+beside brains born with 512 and with 1024. A guess: it ends at 1024 in most lives and is
+still surprised on more than a tenth of its steps at the end; 1024 over 512 pays more than
+at side 12 (x1.08-1.10 there). Brains past 1024 cells wired from every cell are beyond these
+threads: where a card would be needed.
+
 (Forgetting step 8, the look `h6-lean` and wave step 1 ran on the VM on 2026-11-21; wave step 2 next.)
 
 ### Forgetting, step 7: doubt by hand in other lands and at a slower fading. Predictions before the runs
@@ -4197,6 +4287,7 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | wave 3: thinking as dreams (`--dreams`) | done, R1-R3 met on all five lineages. K walks in the dark by ways at random, the soonest to come upon the wanted look gives its road, no list of rooms: 1024 dreams of 32 steps eat 208 / 212 / 212 / 192 / 219 (0.66-0.71 of the life on copies), no life locked; 64 / 256 / 1024 dreams a dial (x1.3-1.4, x1.2). Reach is bought with walks, not with cells |
 | wave 4: dreams mended (`--cut`, `--again`, `--sure` whole) | done, M1-M6 met on all five lineages. Loops cut out of the road, dreaming on with a road in hand, walks that end at what is not known: 256 dreams eat 282 / 291 / 288 / 264 / 291 (0.90-0.94 of the life on copies), each part pays; 64 dreams mended (0.82-0.88) eat more than 1024 as they were; 1024 with the line at 0.6: 0.93-0.99. The line wants to rise with the number of dreams. Dear: 1 500-20 000 hops of thought a tick |
 | wave 5: mended dreams in other lands, at other sizes, with doubt | running (2026-11-23): guesses, one bar N1 |
+| growth 1: cells in mid-life in a land; a brain that gives itself cells when surprised (`--grow`, `--grows`) | running (2026-11-23), bars H1-H4. One life: born with 64 cells it stops at 256 in the land of 256 ways and at 512 in the land of 576 |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from

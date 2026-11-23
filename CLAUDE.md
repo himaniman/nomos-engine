@@ -870,6 +870,20 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   256 dreams, lines 0.5 and 0.6, 8 lives), in the maze, at 128 / 512 cells, and with doubt in
   a land that changes (`--fade 0.0003`, line 0.6). Guesses and the one bar N1 in the note
   ("Wave, step 5").
+  THE USER'S HOPE, SAID 2026-11-23: a bigger brain with more power and the right conditions of
+  growth should organise itself and do more. What the data says so far: size buys memory,
+  never a new ability. Put to the land as GROWTH, STEP 1 (note: "A brain that grows in its
+  land"), RUNNING BEHIND STEP 5, NOT COLLECTED: `Grown.more` now grows a brain wired from
+  every cell (old wires made louder, by hand; `--unscaled` off); `--grow SIZE --at SHARE` the
+  examiner's clock; `--grows SHARE --most N [--pace 4]`, BY HAND: the brain counts its
+  SURPRISE (what it said it would see by the way it went against what it sees; recorded in
+  every life from now on) and gives itself as many cells again when surprised too often. One
+  life (seen before the bars): born with 64 cells it stops at 256 in the land of 256 ways (226
+  meals; left at 64: 38) and at 512 in the land of 576. Queue `out/jobs18.txt`, log
+  `out/jobs/queue18.log`, jobs `g1-*`: the pilot (lands of `--seed 1`), fixed small sizes, the
+  clock (scaled, unscaled), four settings of the rule at sides 8 and 12, a look at side 16.
+  TO COLLECT: the pilot first and the written rule, then the exam; bars H1-H4. Scratch looks:
+  `growlook.py`.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

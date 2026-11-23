@@ -201,19 +201,42 @@ class Grown:
         act, wires, sources = state
         return {t: torch.zeros_like(a) for t, a in act.items()}, wires, sources
 
-    def more(self, state, extra: int, gen: torch.Generator):
+    def more(self, state, extra: int, gen: torch.Generator, scale: bool = True):
         """The brain grows in mid-life: `extra` interneurons are born where the ring closes,
         after the last cell, with innate wires of their own and every plastic wire at zero.
         An old cell keeps its number, its wires and what they hold; nothing else changes.
-        Returns (the grown brain, its state). Only for a brain with one type of interneuron
-        and a few wires per cell: wired from every cell, the old cells would need new wires."""
+        Returns (the grown brain, its state). For a brain with one type of interneuron.
+        With a few wires per cell (`fan`) an old cell keeps the wires it has. Wired from
+        every cell, an old cell gets a wire from every new cell as well, at zero if plastic;
+        and since a plastic dendrite is divided by the number of its wires (unless
+        `plan.spoken`), `scale`, BY HAND, makes the old wires that much stronger, so that an
+        old cell hears from the old cells just what it heard before the brain grew."""
         act, wires, sources = state
         old = self.n["I"]
         grown = Grown(self.t, {"I": old + extra})
         plan = self.t.plan
-        if any(b.pre == b.post and not (self.sparse(b) and grown.sparse(b)) for b in plan.blocks):
-            raise ValueError("only a brain with a few wires per cell can grow in mid-life")
+        if any(b.pre == b.post and self.sparse(b) != grown.sparse(b) for b in plan.blocks):
+            raise ValueError("a brain grown past its few wires per cell: grow it from more cells than `fan`")
         new_act, new_wires, new_sources = grown.born(act["I"].shape[0], gen)   # take its new cells
+        if not any(b.pre == b.post and self.sparse(b) for b in plan.blocks):     # wired from every cell
+            if plan.sleep or plan.body:
+                raise ValueError("growth of a brain wired from every cell: no sleep cells, no body cells yet")
+            new_act["I"] = torch.cat([act["I"], new_act["I"][:, old:]], dim=1)
+            new_act.update({t: a for t, a in act.items() if t != "I"})
+            ratio = (old + extra) / old
+            for i, b in enumerate(plan.blocks):
+                louder = 1.0
+                if scale and b.pre == "I":          # what an old cell hears must not be thinned by the new wires
+                    louder = (1.0 if plan.spoken else ratio) if b.plastic else math.sqrt(ratio)
+                if b.pre == "I" and b.post == "I":
+                    new_wires[i][:, :old, :old] = wires[i] * louder
+                elif b.post == "I":
+                    new_wires[i][:, :old] = wires[i]
+                elif b.pre == "I":
+                    new_wires[i][:, :, :old] = wires[i] * louder
+                else:
+                    new_wires[i] = wires[i]
+            return grown, (new_act, new_wires, new_sources)
         new_act["I"] = torch.cat([act["I"], new_act["I"][:, old:]], dim=1)
         new_act.update({t: a for t, a in act.items() if t not in ("I", SLEEP)})
         if plan.sleep:                  # the new interneurons bring sleep cells of their own

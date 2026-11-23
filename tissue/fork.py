@@ -193,6 +193,17 @@ class Dendrites:
                                 *state[1][self.inner].shape[1:])
         self.rows = torch.arange(self.bank.shape[0])
 
+    def more(self, old: int, new: int, louder: float = 1.0) -> None:
+        """The brain has grown from `old` interneurons to `new` (`Grown.more`): every dendrite
+        gets room for the new cells, at zero, and the old wires are made `louder` as the
+        brain's own are."""
+        if self.bank.shape[-1] == old:              # wired from every cell
+            bank = torch.zeros(*self.bank.shape[:2], new, new)
+            bank[:, :, :old, :old] = self.bank * louder
+        else:                                       # a few wires per cell: the new cells' rows
+            bank = torch.cat([self.bank, torch.zeros(*self.bank.shape[:2], new - old, self.bank.shape[-1])], dim=2)
+        self.bank = bank
+
     def tick(self, brain, state, cue, way, teach, flag: float, on: float, keep: bool = True):
         """One tick of the brain with the dendrite of `way` (B,) live. `keep=False`: what
         that dendrite learns on this tick is thrown away (a walk in thought only)."""

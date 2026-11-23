@@ -6466,3 +6466,29 @@ copies of the brain's activity at once.
 
 **Next, running**: step 5, breadth: what copies cost in hops, mended dreams at side 12, in the
 maze, at 128 and 512 cells, and with doubt in a land that changes (one bar, N1).
+
+## 2026-11-23 (16:10) — the user's hope put to the land: a brain born small that gives itself cells when it is surprised too often stops at the size its land asks for (one life each; the exam is queued)
+
+The user said what they had been hoping the line would show: a bigger brain, more power, the
+right conditions of growth, and it organises itself and does more. My answer from the data:
+size has bought memory and never a new ability, and what turns size into ability is
+organisation and a signal that reaches every part. We agreed to test it where it can be
+tested now: growth in a land.
+
+- `Grown.more` grows a brain wired from every cell (it could only grow one with a few wires
+  per cell). The old wires are made louder by new over old, by hand, because a plastic
+  dendrite is divided by the number of its wires; on the tick of the growth the brain says
+  what it said.
+- A look for an inner sign of "too small": on steps by ways gone before a brain of 64 cells at
+  side 8 is wrong on 0.4-0.5 of them all its life, one of 128 on 0.2 while it learns and then
+  on none, one of 256 on 0.05. The same at side 12 a size up. The sign is the brain's own
+  surprise.
+- The rule by hand: every 4 ticks per cell it looks back, and surprised on more than a tenth
+  of its late steps it doubles. One life each: born with 64 cells it takes 128, then 256, and
+  stops, in the land of 256 ways (226 meals; left at 64, 38; born with 256, 260); in the land
+  of 576 ways it goes on to 512 and stops there (266 meals; left at 128, 35).
+
+Queued behind step 5 with bars H1-H4 and a pilot that picks the share and the pace. What it
+can and cannot say: it can show a brain taking the cells its land asks for, by its own sign;
+it cannot show a new ability coming of size. For brains past a thousand cells wired from
+every cell the VM's threads are not enough.

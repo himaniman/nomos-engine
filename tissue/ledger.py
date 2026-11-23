@@ -22,7 +22,7 @@ import re
 NUM = r"(\d+(?:\.\d+)?)"
 DEFAULTS = {"walls": 0.3, "trees": 0, "ticks": 0, "shift": 0.0, "budget": 256, "slack": 0,
             "mumble": 0.0, "curious": 0.0, "explore": 0.0, "fade": 0.0, "wave": 0.0, "dreams": 0, "depth": 24,
-            "seed": 90_000}
+            "grows": 0.0, "most": 0, "pace": 4, "seed": 90_000}
 
 
 def parse(name: str) -> dict | None:
@@ -39,7 +39,8 @@ def parse(name: str) -> dict | None:
     for key in ("walls", "trees", "ticks", "shift"):
         hit = re.search(rf"\.{key}{NUM}", ground)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
-    for key in ("budget", "slack", "mumble", "curious", "explore", "fade", "wave", "dreams", "depth", "seed"):
+    for key in ("budget", "slack", "mumble", "curious", "explore", "fade", "wave", "dreams", "depth", "grows",
+                "most", "pace", "seed"):
         hit = re.search(rf"\.{key}{NUM}", switches)
         row[key] = float(hit[1]) if hit else DEFAULTS[key]
     row["reborn"] = ".reborn" in ground         # a look: the body born again when the land changed
@@ -48,6 +49,9 @@ def parse(name: str) -> dict | None:
     row["sure"] = bool(re.search(r"\.sure(?=\.|$)", switches))
     row["cut"] = bool(re.search(r"\.cut(?=\.|$)", switches))
     row["again"] = bool(re.search(r"\.again(?=\.|$)", switches))
+    clock = re.search(r"\.grow(\d[\d-]*at\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)*)", switches)
+    row["grow"] = clock[1] if clock else ""         # the examiner's clock: sizes "at" shares of the life
+    row["unscaled"] = bool(re.search(r"\.unscaled(?=\.|$)", switches))
     row["ground"] = ground
     row["pilot"] = row["seed"] != DEFAULTS["seed"]
     return row
@@ -81,6 +85,8 @@ def rows(paths: list[str]) -> list[dict]:
                 "thought_afresh": round(res["thoughts"], 4) if "thoughts" in res else "",
                 "sought": round(res["sought"], 4) if "sought" in res else "",
                 "hops_a_tick": round(res["hops"], 1) if "hops" in res else "",
+                "cells_end": round(res["cells"], 1) if "cells" in res else "",
+                "cells_mean": round(res["mean_cells"], 1) if "mean_cells" in res else "",
                 "early_ways_gone": round(res["early"], 4) if "early" in res else "",
                 "far9_straight": round(every["straight"], 4) if every else "",
                 "far9_straight_late": round(late["straight"], 4) if late else "",

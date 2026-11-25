@@ -6492,3 +6492,45 @@ Queued behind step 5 with bars H1-H4 and a pilot that picks the share and the pa
 can and cannot say: it can show a brain taking the cells its land asks for, by its own sign;
 it cannot show a new ability coming of size. For brains past a thousand cells wired from
 every cell the VM's threads are not enough.
+
+## 2026-11-25 — a brain born small that takes cells as it goes ends as one born big, on every lineage (H1-H4 met); mended dreams lose where the fruit is far and need no fading of wires in a land that changes (N1 met)
+
+Both queues were done when the user called (step 5 of the wave, `w5-*`; growth step 1,
+`g1-*`). The pilot of growth was read first and the written rule applied before the exam was
+opened.
+
+**Wave, step 5.** No life locked in any arm.
+- Copies cost 973 / 955 / 961 / 1195 / 882 hops a tick; I had guessed 150-400. Mended dreams
+  are 1.5 times (64 dreams) and 5 times (256 dreams) as dear as copies, not tens of times.
+- Side 12 with 512 cells: 256 dreams 0.68-0.79 of copies, 64 dreams 0.58-0.67 (both guesses
+  right). The maze: 0.56-0.71 (guessed 0.8-0.95, wrong). The reason is one: trips of 9 steps
+  or more, which are a third of all at side 8 and more than half in the maze and at side 12,
+  go straight on 0.4-0.5 with dreams and on 0.95 with copies.
+- Sizes: the knee as with copies (128 to 256 cells x1.14-1.28, then x0.94-1.08).
+- Doubt: N1 met on all five (113 / 111 / 117 / 92 / 116 in the half-life after the change).
+  Not foreseen: with no fading of wires the dreams do as well after the change and better
+  before it. For copies fading was needed. A guess, not looked at: a dream gives another road
+  each time, copies the same false one.
+
+**Growth, step 1.** The rule picked (share 0.3, pace 2); I had predicted (0.2, 2).
+- H1-H4 met on all five lineages at both sides. Born with 64 cells and growing by its own
+  surprise the brain eats 271 / 278 / 276 / 257 / 274 at side 8 (left at 64: 58-89) and 370 /
+  385 / 381 / 328 / 389 at side 12 (left at 64: 9-11), ends as the brain born big (last third
+  0.98-1.02), and no life of 160 is lost.
+- The share of surprise is no dial; the clock is. And the clock, not only the land, sets the
+  size the brain stops at (512 or 1024 in the land of 576 ways): surprise cannot tell "not
+  yet learnt" from "too small".
+- Old wires made louder at a growth: needed when the map is right (growth at half the life:
+  no dip against a third of the meals for two eighths), in the way when it is wrong (64 to
+  512 cells at side 12: unscaled eats 4-9% more). I had predicted no difference there.
+- Side 16: a brain of 512 cells learns the land of 1024 ways whole, only later than one of
+  1024. Up to two ways a cell size buys how soon a land is learnt. I had guessed it would
+  still be surprised at the end: wrong.
+
+What this says to the user's hope: growth in a land works and costs nothing learned; it buys
+the map and the map sooner; it shows nothing a brain born big cannot do.
+
+Method. A mishap: `vm.sh push` unpacks the committed records over the VM's, and it laid the
+old base records over the ones a job had rewritten an hour before with their hops. Nothing
+lost but the count in the records (it is in the logs). Pull before pushing while a queue
+rewrites tracked records, or give such runs a name of their own.

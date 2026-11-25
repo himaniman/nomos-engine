@@ -864,26 +864,35 @@ pick the same neighbour (see `laws/evolvability_moving.nomos`).
   1024 dreams with the line at 0.6: 0.93-0.99 (at 0.5 three lives of 40 lock: THE LINE WANTS TO
   RISE WITH THE NUMBER OF DREAMS). Dear: 1 500-20 000 hops of thought a tick. Records count
   `hops`. Picture of step 3: `out/tissue/dreams.png` (scratch `dreams_png.py`, PIL).
-  WAVE STEP 5, BREADTH, RUNNING ON THE VM, NOT COLLECTED (started 2026-11-23 ~14:40 local,
-  about 12 hours): queue `out/jobs17.txt`, log `out/jobs/queue17.log`, jobs `w5-*`: copies'
-  hops (the base lives again: they must come out the same), mended dreams at side 12 (64 and
-  256 dreams, lines 0.5 and 0.6, 8 lives), in the maze, at 128 / 512 cells, and with doubt in
-  a land that changes (`--fade 0.0003`, line 0.6). Guesses and the one bar N1 in the note
-  ("Wave, step 5").
+  WAVE STEP 5 DONE (2026-11-25), breadth of mended dreams: N1 met on all five (in a land
+  that changes, 256 dreams eat as copies with doubt do, and WITHOUT fading of wires as well:
+  dreams give another road each time). Side 12, 512 cells: 0.65-0.80 of copies; the maze
+  0.56-0.71 (my guess 0.8-0.95 wrong): a dream loses on FAR TRIPS (9+ steps: straight on
+  0.4-0.5, copies 0.95), a walk's reach again. Copies cost 900-1 200 hops a tick (guessed
+  150-400), so 64 dreams mended are 1.5 times as dear, 256 dreams 5 times. The knee of size
+  as with copies. MISHAP: `vm.sh push` unpacks committed records over what a run on the VM
+  has just rewritten; pull before pushing (the base records hold no `hops`: they are in the
+  VM's logs `out/jobs/w5-copies-hops-*`).
   THE USER'S HOPE, SAID 2026-11-23: a bigger brain with more power and the right conditions of
   growth should organise itself and do more. What the data says so far: size buys memory,
-  never a new ability. Put to the land as GROWTH, STEP 1 (note: "A brain that grows in its
-  land"), RUNNING BEHIND STEP 5, NOT COLLECTED: `Grown.more` now grows a brain wired from
-  every cell (old wires made louder, by hand; `--unscaled` off); `--grow SIZE --at SHARE` the
-  examiner's clock; `--grows SHARE --most N [--pace 4]`, BY HAND: the brain counts its
-  SURPRISE (what it said it would see by the way it went against what it sees; recorded in
-  every life from now on) and gives itself as many cells again when surprised too often. One
-  life (seen before the bars): born with 64 cells it stops at 256 in the land of 256 ways (226
-  meals; left at 64: 38) and at 512 in the land of 576. Queue `out/jobs18.txt`, log
-  `out/jobs/queue18.log`, jobs `g1-*`: the pilot (lands of `--seed 1`), fixed small sizes, the
-  clock (scaled, unscaled), four settings of the rule at sides 8 and 12, a look at side 16.
-  TO COLLECT: the pilot first and the written rule, then the exam; bars H1-H4. Scratch looks:
-  `growlook.py`.
+  never a new ability. GROWTH, STEP 1 DONE (2026-11-25; note: "A brain that grows in its
+  land"): `Grown.more` grows a brain wired from every cell (old wires made louder, by hand;
+  `--unscaled` off); `--grow SIZE --at SHARE` the examiner's clock; `--grows SHARE --most N
+  [--pace 4]`, BY HAND: the brain counts its SURPRISE (what it said it would see by the way
+  it went against what it sees; recorded in every life) and gives itself as many cells again
+  when surprised too often. The rule picked (share 0.3, pace 2). H1-H4 MET on all five
+  lineages at sides 8 and 12: born with 64 cells it ends as one born big (last third
+  0.97-1.02), eats 271 / 278 / 276 / 257 / 274 at side 8 (left at 64: 58-89; born 256:
+  292-310) and 370 / 385 / 381 / 328 / 389 at side 12 (left at 64: 9-11; born 512: 392-443),
+  no life locked; it ends at 256 cells in the land of 256 ways and at 512-1024 in the land
+  of 576. LIMITS: surprise cannot tell a land not yet learnt from a brain too small (pace 4
+  stops at 512 at side 12, pace 2 goes to 1024); it buys nothing a brain born big lacks; it
+  is not cheaper. Old wires made louder keep a good map (growth at half-life: no dip; unscaled
+  a third for two eighths) and hold on to a bad one (64 to 512 cells at side 12: unscaled
+  eats 4-9% more). Side 16 (4 lives, two genomes): born 512 / 1024 eat 320-391 / 494-543;
+  the grower 398-448; a brain with two ways a cell learns the whole land, only later: UP TO
+  TWO WAYS A CELL SIZE BUYS HOW SOON A LAND IS LEARNT. Scratch: `exam17.py`, `pilot18.py`,
+  `exam18.py`, `growlook.py`.
   FORGETTING BY HAND, a pilot only: `Plan.fade` / `--fade F` (wires lose a share of themselves
   on every tick seen; off unless asked) makes the brain WRONG about a way before it makes it
   quiet (one life: 234 meals to 163 at 0.001). Fading alone is not doubt; doubt needs the cell

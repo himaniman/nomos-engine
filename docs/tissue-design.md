@@ -3713,6 +3713,48 @@ lineages, a road kept, cut, again, sure):
   89 / 97 / 94 / 83 / 89) on four lineages, and at most 2 lives of 80 with no meal in the last
   third. Prediction: met (the mended dream already leaves out what is said quietly).
 
+**Outcome (2026-11-25; scratch `exam17.py`).** No life locked in any arm of the step.
+
+- **What copies cost**: 973 / 955 / 961 / 1195 / 882 hops a tick, and the lives came out the
+  same to the meal (304.8 / 309.0 / 306.9 / 292.3 / 309.9, the thirds alike). MY GUESS WAS
+  WRONG by a factor of three (150-400). So 256 dreams mended (4 800-5 600 hops) think 5 times
+  as dear as copies, not 12-30 times, and 64 dreams mended (1 500-1 700) 1.5 times as dear for
+  0.82-0.88 of the meals. The count is in the jobs' logs only (`out/jobs/w5-copies-hops-*` on
+  the VM): the records those jobs rewrote were laid over an hour later by my own `vm.sh push`
+  (it unpacks what is committed), so the base records still hold no `hops`.
+- **The bigger land** (side 12, 512 cells, 8 lives; copies on the same lives 422 / 446 / 429 /
+  389 / 443): 256 dreams 328 / 346 / 303 / 264 / 352 with the line at 0.5 (0.78 / 0.78 / 0.71 /
+  0.68 / 0.79 of copies) and 328 / 339 / 338 / 252 / 353 at 0.6 (0.78 / 0.76 / 0.79 / 0.65 /
+  0.80); 64 dreams 281 / 295 / 281 / 224 / 290 (0.58-0.67) and 273 / 288 / 280 / 205 / 296
+  (0.53-0.67). Both guesses right. As they were, 256 dreams ate 0.40 there: mending doubles a
+  life. The line is no dial between 0.5 and 0.6. Dear: 8 100-11 000 hops a tick.
+- **The maze**: 126 / 136 / 137 / 101 / 133 with the line at 0.5 (0.66 / 0.70 / 0.71 / 0.56 /
+  0.70 of copies), 129 / 122 / 134 / 98 / 141 at 0.6. MY GUESS WAS WRONG (0.8-0.95): I took a
+  corridor for a place with few ways to go wrong; it is a place where the fruit is far.
+- **Why the big land and the maze cost a dream more than side 8 does: far trips.** In the
+  last third, of the trips to a fruit 9 steps away or more a dream goes straight on 0.59-0.66
+  at side 8, 0.44-0.53 in the maze and 0.36-0.47 at side 12 (copies 0.92-0.98 everywhere), at
+  1.1-1.2, 1.5-1.9 and 1.4-1.5 steps for a step of the shortest road; trips of 5-8 steps are
+  as copies' (0.89-0.99 straight). And such far trips are 0.31 of all at side 8, 0.53 in the
+  maze, 0.57 at side 12. A walk of 32 steps at random does not reach far: the reach, as in
+  step 3, and still bought with walks.
+- **Sizes** (side 8): 128 cells 237 / 255 / 248 / 206 / 246 (0.87-0.94 of copies with 128
+  cells), 512 cells 306 / 313 / 289 / 298 / 305 on 8 lives (0.89-0.95). From 128 to 256 cells
+  x1.19 / 1.14 / 1.16 / 1.28 / 1.18 (copies x1.14-1.24), from 256 to 512 x1.03 / 1.03 / 0.94 /
+  1.08 / 1.01 (copies x1.03-1.04). The guess right: the map is what grows, the thought is the
+  same.
+- **Doubt, N1 MET on all five lineages**: with fading, in the half-life after the change 113 /
+  111 / 117 / 92 / 116 (the bar 89 / 97 / 94 / 83 / 89; copies with doubt 111 / 121 / 117 /
+  104 / 111), no life of 80 locked, 214 / 215 / 223 / 161 / 228 a life. NOT FORESEEN: WITHOUT
+  fading the dreams eat as much after the change, 110 / 112 / 115 / 110 / 116, and more in the
+  whole life, 223 / 222 / 229 / 193 / 235 (fading costs them the first half: 101 / 104 / 106 /
+  69 / 112 against 114 / 110 / 114 / 83 / 119), and no life locks. Copies without fading eat
+  85 / 88 / 85 / 95 / 82 there and lock 5 lives of 80: for copies each of the three parts of
+  doubt was needed, for dreams two are enough (the line, and what is said quietly not
+  believed). Why, a guess not looked at: copies give the same shortest road again and again,
+  so a false old road is tried until its wires are undone or have faded; dreams give another
+  road each time.
+
 ## A brain that grows in its land (from 2026-11-23; the user's question put to the land)
 
 The user's hope for the line, said on 2026-11-23: with the right conditions of growth a
@@ -3802,6 +3844,96 @@ beside brains born with 512 and with 1024. A guess: it ends at 1024 in most live
 still surprised on more than a tenth of its steps at the end; 1024 over 512 pays more than
 at side 12 (x1.08-1.10 there). Brains past 1024 cells wired from every cell are beyond these
 threads: where a card would be needed.
+
+**The pilot's outcome and the pick (2026-11-25; scratch `pilot18.py`).** Meals a life summed
+over the two lands (the mean of the two genomes), and the mean size summed the same way:
+(0.1, 4) 554 meals, 624 cells; (0.2, 4) the same lives to the meal; (0.2, 2) 645 meals, 1048
+cells; (0.3, 2) 643 meals, 920 cells. The most meals: (0.2, 2); within 3% of it with fewer
+cells: (0.3, 2). **The rule picks (0.3, 2).** My prediction, (0.2, 2), was wrong by the rule's
+second clause. Seen in the pilot already: the share is no dial (0.1 and 0.2 give the same
+lives, 0.2 and 0.3 nearly), the pace is; and at side 12 the faster clock goes on to 1024
+cells where the slower stops at 512.
+
+**The exam's outcome (2026-11-25; scratch `exam18.py`; 16 lives, five lineages). H1-H4 ARE MET,
+each on all five lineages at both sides.** Meals a life, and in brackets the last third:
+
+| | side 8 (256 ways) | side 12 (576 ways) |
+|---|---|---|
+| left at 64 cells | 65 / 89 / 84 / 58 / 85 (29-49) | 9 / 11 / 10 / 11 / 10 (3) |
+| left at 128 cells | 252 / 270 / 265 / 236 / 266 (115-120) | 28 / 34 / 32 / 23 / 33 (10-17) |
+| born with 256 | 305 / 309 / 307 / 292 / 310 (125) | 297 / 330 / 320 / 226 / 341 (145-183) |
+| born with 512 | 315 / 321 / 318 / 304 / 319 (125-127) | 423 / 434 / 432 / 392 / 443 (193-196) |
+| born with 1024 | | 464 / 474 / 472 / 430 / 479 (195-198) |
+| born with 64, given 256 (side 8) or 512 (side 12) at an eighth of the life | 262 / 272 / 269 / 252 / 272 (121-125) | 336 / 359 / 354 / 293 / 362 (192-197) |
+| the same, the old wires not made louder | 259 / 266 / 263 / 249 / 267 (122-124) | 351 / 373 / 364 / 319 / 376 (194-197) |
+| born with 64, gives itself cells, (0.1, 4) | 241 / 253 / 252 / 231 / 255 (119-123) | 301 / 327 / 321 / 262 / 330 (190-197) |
+| born with 64, gives itself cells, (0.2, 2) | 272 / 278 / 276 / 257 / 274 (122-124) | 370 / 389 / 382 / 329 / 391 (195-200) |
+| born with 64, gives itself cells, (0.3, 2), THE PICK | 271 / 278 / 276 / 257 / 274 (122-124) | 370 / 385 / 381 / 328 / 389 (195-198) |
+
+- **H1 met**: given its cells at an eighth of the life the brain eats in the last third 0.97 /
+  0.99 / 0.99 / 0.98 / 0.98 of the one born big at side 8 and 0.99 / 1.00 / 1.02 / 0.98 / 1.00
+  at side 12; over the whole life 0.86-0.88 and 0.75-0.83; x3.1-4.4 and x26-37 what the brain
+  left at 64 cells eats.
+- **H2 met, and what it does not say**: with the pick the median size at the end is 256 on
+  all five lineages at side 8 (79 lives of 80 end at 256, one at 512) and 1024 / 512 / 1024 /
+  1024 / 512 at side 12 (lives that end at 512: 3, 12, 7, 1, 9 of 16; the rest at 1024). But
+  THE SIZE IT STOPS AT IS SET BY THE CLOCK AS MUCH AS BY THE LAND: at side 12 the slower clock
+  (pace 4) stops at 512 in all 160 lives, the faster one with the share at 0.2 goes to 1024 in
+  all 80. A brain of 512 cells a thousand ticks old in a land of 576 ways is still surprised on
+  a quarter of its steps; left alone it stops being so (the slower clock shows it). ITS
+  SURPRISE CANNOT TELL A LAND NOT YET LEARNT FROM A BRAIN TOO SMALL. A brain of 1024 cells eats
+  x1.08-1.10 what one of 512 does there, so the faster clock's size is not a waste; it is not
+  what the bar meant by "what its land asks for" either.
+- **H3 met** (I had it open at side 12): in the last third 0.98-0.99 of the brain born with
+  256 at side 8, and 1.00-1.02 of the brain born with the size it ends at at side 12.
+- **H4 met**: no life of 80 locked at either side, with any of the four settings.
+- **Over the whole life**, with the pick: 0.88-0.90 of the brain born with 256 at side 8 (my
+  guess 0.85) and 0.84-0.89 of the one born with 512 at side 12 (my guess, 0.6-0.7, WRONG: it
+  is right for the slower clock, 0.67-0.75). The faster clock is worth x1.07-1.13 at side 8
+  and x1.18-1.25 at side 12, all in the first two thirds. The brain that gives itself cells
+  eats more than the one given them by the examiner at an eighth of the life (it takes its
+  first at tick 128). Its mean size is 0.79-0.91 of the size it ends at (my guess 0.8).
+- **What it does not buy: cheapness.** At side 12 the pick's mean size is 548-782 cells for
+  0.84-0.89 of the meals of a brain born with 512. What it buys is that nobody has to tell
+  the brain how big its land is.
+- **The old wires made louder** (the hand-made part; `--unscaled` is its off-switch). At half
+  the life, a brain of 128 cells with a map that is right: scaled, it eats in the eighth after
+  the growth 42 / 45 / 43 / 40 / 44 (the brain left at 128: 42 / 45 / 43 / 39 / 45; no dip);
+  unscaled 16 / 15 / 17 / 9 / 17, and it is not back for two eighths; scaled eats more in all
+  80 lives (256 / 273 / 267 / 242 / 269 against 215 / 228 / 228 / 192 / 227). As predicted. At
+  an eighth of the life, side 8: scaled 1-2% more on all five. At an eighth, side 12, born
+  with 64 and given 512: UNSCALED eats 4-9% more on all five (I predicted no difference):
+  there the old wires are the map of a brain of 64 cells in a land of 576 ways, wrong on
+  0.65-0.79 of its steps, and made eight times louder they are in the way. A good map should
+  be kept loud, a bad one let go quiet: again the old map as "a start, then a weight".
+- **Cells given late add little**: a brain of 128 cells given 256 at half the life eats 256 /
+  273 / 267 / 242 / 269 against 252 / 270 / 265 / 236 / 266 left at 128; in the last third
+  119-123 against 115-120 (born with 256: 125).
+- **Surprise in brains left alone** (recorded in every life now), by eighths of the life, the
+  mean of five lineages: side 8, 64 cells (4 ways a cell) 0.76 falling to 0.26, still falling
+  at the end; side 12, 128 cells (4.5 ways a cell) 0.73 to 0.38, falling; side 12, 64 cells (9
+  ways a cell) 0.79 to 0.71, stuck.
+
+**The look at side 16** (1024 ways, 4 lives; `twice-s0` | `twice-s4`): born with 512 cells 320 |
+391 meals (the last third 222 | 234); born with 1024: 494 | 543 (251 | 257); born with 64,
+giving itself cells at (0.1, 4): 308 | 361 (240 | 262), at 1024 cells from tick 3840 in every
+life; at (0.2, 2): 398 | 448 (254 | 254), at 1024 from tick 1920: 0.81 | 0.83 of the brain
+born with 1024 and level with it in the last third. The guesses: it ends at 1024, right (at
+its cap in every life: whether it would have stopped was not asked); 1024 over 512 pays more
+than at side 12, right (x1.55 | x1.39). "Still surprised on more than a tenth of its steps at
+the end": WRONG, its surprise is 0.00 over the last three eighths; and the brain born with
+512, two ways a cell, ends at 0.00-0.01 as well (0.68 / 0.51 / 0.30 / 0.13 / 0.03 / 0.01 /
+0.00 / 0.00): it learns the whole land, only later (thirds 14 / 83 / 222 against 24 / 219 /
+251). So up to two ways a cell WHAT SIZE BUYS IS HOW SOON THE LAND IS LEARNT, not how much of
+it can be held in the end: the soft knee of the breadth is this.
+
+**What the step says to the user's question.** A brain born small into a land too big for it,
+given cells or taking them by its own sign, goes on as one born big: no life is lost to the
+growth, nothing learned is lost when the old wires are made louder, and its end is the end of
+the brain born big. That much of "a brain that grows in its land" holds on every lineage.
+What it does not show: anything a brain born big could not do. Growth buys the map, and the
+map sooner. By hand: the counting of surprise, the clock per cell, the doubling, the loudness
+of old wires. Not by hand: what surprises it.
 
 (Forgetting step 8, the look `h6-lean` and wave step 1 ran on the VM on 2026-11-21; wave step 2 next.)
 
@@ -4119,6 +4251,23 @@ side 8.
    the life on copies, 64 dreams 0.82-0.88, 1024 dreams with the line at 0.6 0.93-0.99. So the
    list of rooms, the breadth-first order and the copy per room are not needed for a life in
    this land. What they bought was cheapness: dreams think 1 500-20 000 hops a tick of life.
+   Counted (step 5): copies cost 900-1 200 hops a tick, so 64 dreams mended are 1.5 times as
+   dear and 256 dreams 5 times. Where the fruit is far a dream loses more: 0.65-0.80 of copies
+   at side 12 and 0.56-0.71 in the maze (trips of 9 steps or more go straight on 0.4-0.5,
+   copies' on 0.95): the reach of a walk at random. The knee of size is the same as with
+   copies. In a land that changes dreams need no fading of wires: after half the walls move
+   they eat as copies with all three parts of doubt do, and lock no life.
+14. A BRAIN THAT GROWS IN ITS LAND ("Growth, step 1"; the user's hope put to the land). Born
+   with 64 cells and given cells at an eighth of the life, or giving itself as many again
+   when it is surprised too often (surprise: what it said it would see by the way it went
+   against what it sees), the brain ends as one born big on all five lineages (last third
+   0.97-1.02), eats x3-4.5 (side 8) and x26-40 (side 12) what the brain left small eats, loses
+   no life, and over the whole life eats 0.84-0.90 of the one born big. The same newborn ends
+   at 256 cells in the land of 256 ways and at 512-1024 in the land of 576. Two limits: its
+   surprise cannot tell a land not yet learnt from a brain too small (the size it stops at
+   follows the clock), and it buys nothing a brain born big lacks. Up to two ways a cell size
+   buys how SOON a land is learnt (a brain of 512 cells learns the land of 1024 ways whole,
+   late). Old wires made louder at a growth keep a good map and hold on to a bad one.
 
 **What is still by hand in the world**, with what it carries: a dendrite per way (the body's
 sense; a search found a weak stand-in on one lineage of five, 4b); no learning in thought
@@ -4139,11 +4288,17 @@ wanting to know, forgetting beside it, a thought as a wave later.
   leans on it) and is asked once more with the land's own kind of change and the land's own
   fading (step 6'). If that fails the three parts stay by hand.
 - A thought as a wave, the third road of the order: a wave fails, dreams work (12 above).
-  Mended by hand they come within a tenth of copies (13 above). RUNNING (2026-11-23): step 5,
-  mended dreams in the bigger land, the maze, at other sizes, with doubt. After
-  it, what is still by hand in a dream: the dice of the walks, the walks all at once, the
-  noting of the walk that met the look. And for the claim of the line: a code that gains
-  dimensions with the cells, so that growth pays for a thought and not only for the map.
+  Mended by hand they come within a tenth of copies (13 above), less where the fruit is far.
+  What is still by hand in a dream: the dice of the walks, the walks all at once, the
+  noting of the walk that met the look, the road kept and cut. Open: a dream that reaches
+  far (longer walks, walks begun from rooms a walk came upon). And for the claim of the line:
+  a code that gains dimensions with the cells, so that growth pays for a thought and not only
+  for the map.
+- A brain that grows in its land (14 above): done by hand, bars met. Open: a sign that tells
+  "still learning" from "too small" (surprise that no longer falls); growth past 1024 cells
+  (a card); what would make new cells buy more than the map.
+- Senses that are not clean, NEXT (the largest risk on the road to a world that is not a
+  maze of rooms all unlike): rooms that look alike, eyes that err.
 - Thinking into tissue: the procedure is now the largest hand-made part and the most
   load-bearing; what a brain without copies can do was asked once (5b-5d) on 32 rooms.
 - The will into the brain: a fruit's look learned rather than told (hunger, reward).
@@ -4286,8 +4441,8 @@ dendrite as units with a rule of their own, as the sleep cell was for the gate).
 | wave 2: a life on four waves (`--wave`) | failed at the pilot: 0.1-5 meals a life (a blind walker 6). A wave reaches 3-4 steps, too short to live on, or the body is passed to and fro |
 | wave 3: thinking as dreams (`--dreams`) | done, R1-R3 met on all five lineages. K walks in the dark by ways at random, the soonest to come upon the wanted look gives its road, no list of rooms: 1024 dreams of 32 steps eat 208 / 212 / 212 / 192 / 219 (0.66-0.71 of the life on copies), no life locked; 64 / 256 / 1024 dreams a dial (x1.3-1.4, x1.2). Reach is bought with walks, not with cells |
 | wave 4: dreams mended (`--cut`, `--again`, `--sure` whole) | done, M1-M6 met on all five lineages. Loops cut out of the road, dreaming on with a road in hand, walks that end at what is not known: 256 dreams eat 282 / 291 / 288 / 264 / 291 (0.90-0.94 of the life on copies), each part pays; 64 dreams mended (0.82-0.88) eat more than 1024 as they were; 1024 with the line at 0.6: 0.93-0.99. The line wants to rise with the number of dreams. Dear: 1 500-20 000 hops of thought a tick |
-| wave 5: mended dreams in other lands, at other sizes, with doubt | running (2026-11-23): guesses, one bar N1 |
-| growth 1: cells in mid-life in a land; a brain that gives itself cells when surprised (`--grow`, `--grows`) | running (2026-11-23), bars H1-H4. One life: born with 64 cells it stops at 256 in the land of 256 ways and at 512 in the land of 576 |
+| wave 5: mended dreams in other lands, at other sizes, with doubt | DONE (2026-11-25), N1 met on all five: with doubt as copies with doubt, and with no fading of wires. Side 12: 0.65-0.80 of copies, the maze 0.56-0.71 (guessed 0.8-0.95, wrong): far trips, a walk's reach. Copies cost 900-1 200 hops a tick (guessed 150-400, wrong). The knee of size as with copies |
+| growth 1: cells in mid-life in a land; a brain that gives itself cells when surprised (`--grow`, `--grows`) | DONE (2026-11-25), H1-H4 met on all five lineages at both sides: it ends as one born big (last third 0.97-1.02), eats 0.84-0.90 of it over the life, x3-40 the brain left small; 256 cells in the land of 256 ways, 512-1024 in the land of 576. Its surprise cannot tell "not yet learnt" from "too small" (the size follows the clock). Buys the map and the map sooner, nothing new |
 | 4b the body's sense asked of a search (`Plan.body`) | one lineage of five finds a use for it (108 links at 256 cells, a quarter of the hand-made dendrites, twice as much at every doubling, one hop deep); B1-B4 missed. The dendrite per way stays by hand |
 
 Open questions carried along: what separates the lineages that scale without a fade from
